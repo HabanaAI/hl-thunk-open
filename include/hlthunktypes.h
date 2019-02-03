@@ -28,10 +28,9 @@
 extern "C" {
 #endif
 
-typedef enum _HLTHUNK_STATUS
-{
-	HLTHUNK_STATUS_SUCCESS = 0,	// Operation successful
-	HLTHUNK = 1,			// General error return if not otherwise specified
+typedef enum _HLTHUNK_STATUS {
+	HLTHUNK_STATUS_SUCCESS = 0,
+	HLTHUNK = 1,
 
 } HLTHUNK_STATUS;
 

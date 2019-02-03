@@ -31,3 +31,12 @@ $ yum install epel-release
 $ yum install gcc make cmake3
 ```
 
+## Coding Style
+
+This project uses the Linux kernel coding style with some minor changes, such
+as allowing typedefs.
+
+Best practice is to use the checkpatch utility of the Linux kernel with the
+following ignores:
+
+checkpatch.pl --ignore SPDX_LICENSE_TAG,NEW_TYPEDEFS
