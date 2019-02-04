@@ -50,7 +50,7 @@ extern int hlthunk_debug_level;
 #define pr_debug(fmt, ...) \
 	hlthunk_print(HLTHUNK_DEBUG_LEVEL_DEBUG, fmt, ##__VA_ARGS__)
 
-/* HL thunk global functions */
-int hlthunk_ioctl(int fd, unsigned long request, void *arg);
+#undef HLTHUNKAPI
+#define HLTHUNKAPI __attribute__((visibility("default")))
 
 #endif /* LIBHLTHUNK_H_ */

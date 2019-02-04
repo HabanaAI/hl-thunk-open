@@ -30,6 +30,8 @@ extern "C" {
 
 #include "hlthunktypes.h"
 
+HLTHUNK_STATUS HLTHUNKAPI hlthunk_open_device(int device_id, int *fd);
+HLTHUNK_STATUS HLTHUNKAPI hlthunk_close_device(int fd);
 
 #ifdef __cplusplus
 }   //extern "C"
