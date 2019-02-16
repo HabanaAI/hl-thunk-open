@@ -28,10 +28,14 @@
 extern "C" {
 #endif
 
-#include "hlthunktypes.h"
+#define HLTHUNK_MAX_MINOR		16
+#define HLTHUNK_DEV_NAME_PRIMARY	"/dev/hl%d"
 
-HLTHUNK_STATUS HLTHUNKAPI hlthunk_open_device(int device_id, int *fd);
-HLTHUNK_STATUS HLTHUNKAPI hlthunk_close_device(int fd);
+#define HLTHUNK_NODE_PRIMARY		0
+#define HLTHUNK_NODE_MAX		1
+
+int hlthunk_open(const char *busid);
+int hlthunk_close(int fd);
 
 #ifdef __cplusplus
 }   //extern "C"

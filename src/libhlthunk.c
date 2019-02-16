@@ -27,15 +27,12 @@
 
 #include <errno.h>
 #include <sys/ioctl.h>
-#include <pthread.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
 
-int hlthunk_debug_level;
-unsigned long kmd_open_count;
-pthread_mutex_t hlthunk_mutex = PTHREAD_MUTEX_INITIALIZER;
+int hlthunk_debug_level = HLTHUNK_DEBUG_LEVEL_NA;
 
 static int hlthunk_ioctl(int fd, unsigned long request, void *arg)
 {
@@ -48,77 +45,64 @@ static int hlthunk_ioctl(int fd, unsigned long request, void *arg)
 	return ret;
 }
 
-/* Normally libraries don't print messages. For debugging purpose, we'll
- * print messages if an environment variable, HLTHUNK_DEBUG_LEVEL, is set.
- */
-static void init_debug_level(void)
+static const char* hlthunk_get_device_name_by_type(int type)
 {
-	char *envvar;
-	int debug_level;
-
-	hlthunk_debug_level = HLTHUNK_DEBUG_LEVEL_DEFAULT;
-
-	envvar = getenv("HLTHUNK_DEBUG_LEVEL");
-	if (envvar) {
-		debug_level = atoi(envvar);
-		if (debug_level >= HLTHUNK_DEBUG_LEVEL_ERR &&
-				debug_level <= HLTHUNK_DEBUG_LEVEL_DEBUG)
-			hlthunk_debug_level = debug_level;
+	switch (type) {
+	case HLTHUNK_NODE_PRIMARY:
+		return HLTHUNK_DEV_NAME_PRIMARY;
+	default:
+		return NULL;
 	}
 }
 
-HLTHUNK_STATUS HLTHUNKAPI hlthunk_open_device(int device_id, int *fd)
+static int hlthunk_open_by_busid(const char *busid, int type)
 {
-	HLTHUNK_STATUS rc;
-	char *device_name;
+	const char *dev_name = hlthunk_get_device_name_by_type(type);
 
-	if (asprintf(&device_name, "/dev/hl%d", device_id) == -1) {
-		pr_err("Failed to allocate memory for device name\n");
-		return HLTHUNK_STATUS_NO_MEMORY;
-	}
+	if (!dev_name)
+		return -1;
 
-	pthread_mutex_lock(&hlthunk_mutex);
-
-	if (kmd_open_count == 0) {
-		init_debug_level();
-
-		*fd = open(device_name, O_RDWR | O_CLOEXEC);
-
-		if (*fd != -1) {
-			kmd_open_count = 1;
-		} else {
-			rc = HLTHUNK_STATUS_KMD_IO_CHANNEL_NOT_OPENED;
-			goto open_failed;
-		}
-	} else {
-		kmd_open_count++;
-		rc = HLTHUNK_STATUS_KERNEL_ALREADY_OPENED;
-	}
-
-open_failed:
-	pthread_mutex_unlock(&hlthunk_mutex);
-
-	free(device_name);
-
-	return rc;
+	return -1;
 }
 
-HLTHUNK_STATUS HLTHUNKAPI hlthunk_close_device(int fd)
+static int hlthunk_open_minor(int minor, const char *dev_name)
 {
-	HLTHUNK_STATUS rc;
+	char buf[64];
+	int fd;
 
-	pthread_mutex_lock(&hlthunk_mutex);
-
-	if (kmd_open_count > 0)	{
-		if (--kmd_open_count == 0)
-			close(fd);
-
-		rc = HLTHUNK_STATUS_SUCCESS;
-	} else
-		rc = HLTHUNK_STATUS_KMD_IO_CHANNEL_NOT_OPENED;
-
-	pthread_mutex_unlock(&hlthunk_mutex);
-
-	return rc;
+	sprintf(buf, dev_name, minor);
+	if ((fd = open(buf, O_RDWR | O_CLOEXEC, 0)) >= 0)
+		return fd;
+	return -errno;
 }
 
+static int hlthunk_open_device(int type)
+{
+	int fd, i;
+	const char *dev_name = hlthunk_get_device_name_by_type(type);
+
+	if (!dev_name)
+		return -1;
+
+	for (i = 0 ; i < HLTHUNK_MAX_MINOR ; i++)
+		if ((fd = hlthunk_open_minor(i, dev_name)) >= 0)
+			return fd;
+
+	return -1;
+}
+
+int hlthunk_open(const char *busid)
+{
+	if (busid) {
+		int fd = hlthunk_open_by_busid(busid, HLTHUNK_NODE_PRIMARY);
+		if (fd >= 0)
+			return fd;
+	}
+
+	return hlthunk_open_device(HLTHUNK_NODE_PRIMARY);
+}
+
+int hlthunk_close(int fd)
+{
+	return close(fd);
+}

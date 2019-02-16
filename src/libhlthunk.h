@@ -30,12 +30,25 @@
 extern int hlthunk_debug_level;
 
 #define hlthunk_print(level, fmt, ...) \
-	do { \
-		if (level <= hlthunk_debug_level) \
-			fprintf(stderr, fmt, ##__VA_ARGS__); \
-	} while (0)
+do { \
+	char *envvar; \
+	int debug_level; \
+	if (hlthunk_debug_level == HLTHUNK_DEBUG_LEVEL_NA) { \
+		hlthunk_debug_level = HLTHUNK_DEBUG_LEVEL_DEFAULT; \
+		envvar = getenv("HLTHUNK_DEBUG_LEVEL"); \
+		if (envvar) { \
+			debug_level = atoi(envvar); \
+			if (debug_level >= HLTHUNK_DEBUG_LEVEL_ERR \
+					&& debug_level <= HLTHUNK_DEBUG_LEVEL_DEBUG) \
+				hlthunk_debug_level = debug_level; \
+		} \
+	} \
+	if (level <= hlthunk_debug_level) \
+		fprintf(stderr, fmt, ##__VA_ARGS__); \
+} while (0)
 
-#define HLTHUNK_DEBUG_LEVEL_DEFAULT	-1
+#define HLTHUNK_DEBUG_LEVEL_NA		-1
+#define HLTHUNK_DEBUG_LEVEL_DEFAULT	0
 #define HLTHUNK_DEBUG_LEVEL_ERR		3
 #define HLTHUNK_DEBUG_LEVEL_WARNING	4
 #define HLTHUNK_DEBUG_LEVEL_INFO	6
@@ -49,8 +62,5 @@ extern int hlthunk_debug_level;
 	hlthunk_print(HLTHUNK_DEBUG_LEVEL_INFO, fmt, ##__VA_ARGS__)
 #define pr_debug(fmt, ...) \
 	hlthunk_print(HLTHUNK_DEBUG_LEVEL_DEBUG, fmt, ##__VA_ARGS__)
-
-#undef HLTHUNKAPI
-#define HLTHUNKAPI __attribute__((visibility("default")))
 
 #endif /* LIBHLTHUNK_H_ */
