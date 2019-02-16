@@ -63,4 +63,7 @@ do { \
 #define pr_debug(fmt, ...) \
 	hlthunk_print(HLTHUNK_DEBUG_LEVEL_DEBUG, fmt, ##__VA_ARGS__)
 
+#undef hlthunk_public
+#define hlthunk_public
+
 #endif /* LIBHLTHUNK_H_ */

@@ -21,26 +21,39 @@
  *
  */
 
-#ifndef HLTHUNK_H_
-#define HLTHUNK_H_
+#include <stdarg.h>
+#include <stddef.h>
+#include <setjmp.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <stdio.h>
+#include <string.h>
 
-#define hlthunk_public  __attribute__((visibility("default")))
+#include "hlthunk.h"
+#include "cmocka.h"
 
-#define HLTHUNK_MAX_MINOR		16
-#define HLTHUNK_DEV_NAME_PRIMARY	"/dev/hl%d"
+void test_open_device_failure(void **state)
+{
+	(void) state; /* unused */
+	int ret = 0;
 
-#define HLTHUNK_NODE_PRIMARY		0
-#define HLTHUNK_NODE_MAX		1
+	assert_int_equal(-1, ret);
+}
 
-int hlthunk_public hlthunk_open(const char *busid);
-int hlthunk_public hlthunk_close(int fd);
+void test_open_device_success(void **state)
+{
+	(void) state; /* unused */
+	int ret = 42;
 
-#ifdef __cplusplus
-}   //extern "C"
-#endif
+	ret = hlthunk_open(NULL);
+	assert_int_equal(42, ret);
+}
 
-#endif /* HLTHUNK_H_ */
+const struct CMUnitTest open_device_tests[] = {
+	cmocka_unit_test(test_open_device_failure),
+	cmocka_unit_test(test_open_device_success),
+};
+
+int main(void)
+{
+	return cmocka_run_group_tests(open_device_tests, NULL, NULL);
+}
