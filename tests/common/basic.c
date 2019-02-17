@@ -36,7 +36,7 @@ void test_open_device_failure(void **state)
 	int fd, ret;
 
 	fd = hlthunk_open(NULL);
-	assert_in_range(fd, 1, INT_MAX);
+	assert_in_range(fd, 0, INT_MAX);
 	ret = hlthunk_open(NULL);
 	assert_in_range(ret, INT_MIN, -1);
 	hlthunk_close(fd);
@@ -48,7 +48,7 @@ void test_open_device_success(void **state)
 	int fd;
 
 	fd = hlthunk_open(NULL);
-	assert_in_range(fd, 1, INT_MAX);
+	assert_in_range(fd, 0, INT_MAX);
 	hlthunk_close(fd);
 }
 

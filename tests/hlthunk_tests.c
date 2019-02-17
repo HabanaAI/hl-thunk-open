@@ -21,3 +21,32 @@
  *
  */
 
+#include "hlthunk.h"
+#include "specs/pci_ids.h"
+
+#include <stdio.h>
+#include <errno.h>
+
+int hlthunk_tests_init(const char *busid)
+{
+	int fd, rc = 0;
+	enum hl_pci_ids device_type = PCI_IDS_GOYA;
+
+	fd = hlthunk_open(busid);
+	if (fd < 0)
+		return fd;
+
+	/* TODO: get device type from fd */
+	switch (device_type) {
+	case PCI_IDS_GOYA:
+		break;
+	default:
+		printf("Invalid device type %d\n", device_type);
+		rc = -ENXIO;
+		break;
+	}
+
+	hlthunk_close(fd);
+
+	return rc;
+}
