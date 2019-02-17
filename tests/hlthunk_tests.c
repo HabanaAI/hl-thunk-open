@@ -21,39 +21,3 @@
  *
  */
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-
-#include <stdio.h>
-#include <string.h>
-
-#include "hlthunk.h"
-#include "cmocka.h"
-
-void test_open_device_failure(void **state)
-{
-	(void) state; /* unused */
-	int ret = 0;
-
-	assert_int_equal(-1, ret);
-}
-
-void test_open_device_success(void **state)
-{
-	(void) state; /* unused */
-	int ret = 42;
-
-	ret = hlthunk_open(NULL);
-	assert_int_equal(42, ret);
-}
-
-const struct CMUnitTest open_device_tests[] = {
-	cmocka_unit_test(test_open_device_failure),
-	cmocka_unit_test(test_open_device_success),
-};
-
-int main(void)
-{
-	return cmocka_run_group_tests(open_device_tests, NULL, NULL);
-}
