@@ -106,3 +106,33 @@ int hlthunk_close(int fd)
 {
 	return close(fd);
 }
+
+int hlthunk_public hlthunk_get_info(int fd, struct hl_info_args *info)
+{
+	return hlthunk_ioctl(fd, HL_IOCTL_INFO, info);
+}
+
+int hlthunk_public hlthunk_command_buffer(int fd, union hl_cb_args *cb)
+{
+	return hlthunk_ioctl(fd, HL_IOCTL_CB, cb);
+}
+
+int hlthunk_public hlthunk_command_submission(int fd, union hl_cs_args *cs)
+{
+	return hlthunk_ioctl(fd, HL_IOCTL_CS, cs);
+}
+
+int hlthunk_public hlthunk_wait_for_cs(int fd, union hl_wait_cs_args *wait_for_cs)
+{
+	return hlthunk_ioctl(fd, HL_IOCTL_WAIT_CS, wait_for_cs);
+}
+
+int hlthunk_public hlthunk_memory(int fd, union hl_mem_args *mem)
+{
+	return hlthunk_ioctl(fd, HL_IOCTL_MEMORY, mem);
+}
+
+int hlthunk_public hlthunk_debug(int fd, struct hl_debug_args *debug)
+{
+	return hlthunk_ioctl(fd, HL_IOCTL_DEBUG, debug);
+}

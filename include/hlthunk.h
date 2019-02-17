@@ -28,6 +28,8 @@
 extern "C" {
 #endif
 
+#include <uapi/misc/habanalabs.h>
+
 #define hlthunk_public  __attribute__((visibility("default")))
 
 #define HLTHUNK_MAX_MINOR		16
@@ -38,6 +40,13 @@ extern "C" {
 
 int hlthunk_public hlthunk_open(const char *busid);
 int hlthunk_public hlthunk_close(int fd);
+
+int hlthunk_public hlthunk_get_info(int fd, struct hl_info_args *info);
+int hlthunk_public hlthunk_command_buffer(int fd, union hl_cb_args *cb);
+int hlthunk_public hlthunk_command_submission(int fd, union hl_cs_args *cs);
+int hlthunk_public hlthunk_wait_for_cs(int fd, union hl_wait_cs_args *wait_for_cs);
+int hlthunk_public hlthunk_memory(int fd, union hl_mem_args *mem);
+int hlthunk_public hlthunk_debug(int fd, struct hl_debug_args *debug);
 
 #ifdef __cplusplus
 }   //extern "C"
