@@ -38,8 +38,24 @@ extern "C" {
 #define HLTHUNK_NODE_PRIMARY		0
 #define HLTHUNK_NODE_MAX		1
 
-int hlthunk_public hlthunk_open(const char *busid);
-int hlthunk_public hlthunk_close(int fd);
+hlthunk_public void *hlthunk_random_create(unsigned long seed);
+hlthunk_public void hlthunk_random_destroy(void *state);
+hlthunk_public unsigned long hlthunk_random(void *state);
+hlthunk_public double hlthunk_random_double(void *state);
+
+hlthunk_public void* hlthunk_hash_create(void);
+hlthunk_public int hlthunk_hash_destroy(void *t);
+hlthunk_public int hlthunk_hash_lookup(void *t, unsigned long key, void **value);
+hlthunk_public int hlthunk_hash_insert(void *t, unsigned long key, void *value);
+hlthunk_public int hlthunk_hash_delete(void *t, unsigned long key);
+hlthunk_public int hlthunk_hash_next(void *t, unsigned long *key, void **value);
+hlthunk_public int hlthunk_hash_first(void *t, unsigned long *key, void **value);
+
+hlthunk_public void* hlthunk_malloc(int size);
+hlthunk_public void hlthunk_free(void *pt);
+
+hlthunk_public int hlthunk_open(const char *busid);
+hlthunk_public int hlthunk_close(int fd);
 
 int hlthunk_public hlthunk_get_info(int fd, struct hl_info_args *info);
 int hlthunk_public hlthunk_command_buffer(int fd, union hl_cb_args *cb);

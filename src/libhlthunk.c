@@ -91,7 +91,17 @@ static int hlthunk_open_device(int type)
 	return -1;
 }
 
-int hlthunk_open(const char *busid)
+hlthunk_public void* hlthunk_malloc(int size)
+{
+	return calloc(1, size);
+}
+
+hlthunk_public void hlthunk_free(void *pt)
+{
+	free(pt);
+}
+
+hlthunk_public int hlthunk_open(const char *busid)
 {
 	if (busid) {
 		int fd = hlthunk_open_by_busid(busid, HLTHUNK_NODE_PRIMARY);
@@ -102,7 +112,7 @@ int hlthunk_open(const char *busid)
 	return hlthunk_open_device(HLTHUNK_NODE_PRIMARY);
 }
 
-int hlthunk_close(int fd)
+hlthunk_public int hlthunk_close(int fd)
 {
 	return close(fd);
 }
