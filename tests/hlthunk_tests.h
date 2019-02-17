@@ -21,13 +21,25 @@
  *
  */
 
-#include "hlthunk_tests.h"
+#ifndef HLTHUNK_TESTS_H
+#define HLTHUNK_TESTS_H
 
-static const struct hlthunk_tests_asic_funcs goya_funcs = {
+#include <hlthunk_tests_atomic.h>
 
+struct hlthunk_tests_asic_funcs {
 };
 
-void goya_tests_set_asic_funcs(struct hlthunk_tests_device *hdev)
-{
-	hdev->asic_funcs = &goya_funcs;
-}
+struct hlthunk_tests_device {
+	const struct hlthunk_tests_asic_funcs *asic_funcs;
+	int fd;
+	atomic_t refcnt;
+};
+
+int hlthunk_tests_init(void);
+void hlthunk_tests_fini(void);
+int hlthunk_tests_open(const char *busid);
+int hlthunk_tests_close(int fd);
+
+void goya_tests_set_asic_funcs(struct hlthunk_tests_device *hdev);
+
+#endif /* HLTHUNK_TESTS_H */

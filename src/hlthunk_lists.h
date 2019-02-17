@@ -30,6 +30,9 @@
  * list handling. No list looping yet.
  */
 
+#ifndef HLTHUNK_LISTS_H
+#define HLTHUNK_LISTS_H
+
 #include <stddef.h>
 
 typedef struct _hlthunk_list_head
@@ -117,3 +120,5 @@ do {						\
 	(__join)->next->prev = (__list)->prev;				\
 	(__join)->next = (__list)->next;				\
 }
+
+#endif /* HLTHUNK_LISTS_H */

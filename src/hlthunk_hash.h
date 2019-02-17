@@ -25,6 +25,9 @@
  * Authors: Rickard E. (Rik) Faith <faith@valinux.com>
  */
 
+#ifndef HLTHUNK_HASH_H
+#define HLTHUNK_HASH_H
+
 #define HASH_SIZE  512		/* Good for about 100 entries */
 				/* If you change this value, you probably
 				   have to change the HashHash hashing
@@ -46,3 +49,5 @@ typedef struct HashTable {
 	int		p0;
 	HashBucketPtr	p1;
 } HashTable, *HashTablePtr;
+
+#endif /* HLTHUNK_HASH_H */

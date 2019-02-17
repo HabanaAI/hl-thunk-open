@@ -34,8 +34,8 @@
  * Is not threadsafe, so common operations need to
  * be protected using an external mutex.
  */
-#ifndef _U_DOUBLE_LIST_H_
-#define _U_DOUBLE_LIST_H_
+#ifndef UTIL_DOUBLE_LIST_H
+#define UTIL_DOUBLE_LIST_H
 
 #include <stddef.h>
 
@@ -141,4 +141,4 @@ static inline void list_delinit(struct list_head *item)
 		&pos->member != (head);					\
 		pos = container_of(pos->member.prev, pos, member))
 
-#endif /*_U_DOUBLE_LIST_H_*/
+#endif /*UTIL_DOUBLE_LIST_H*/

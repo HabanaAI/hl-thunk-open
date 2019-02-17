@@ -21,8 +21,8 @@
  *
  */
 
-#ifndef HLTHUNK_H_
-#define HLTHUNK_H_
+#ifndef HLTHUNK_H
+#define HLTHUNK_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -68,4 +68,4 @@ int hlthunk_public hlthunk_debug(int fd, struct hl_debug_args *debug);
 }   //extern "C"
 #endif
 
-#endif /* HLTHUNK_H_ */
+#endif /* HLTHUNK_H */

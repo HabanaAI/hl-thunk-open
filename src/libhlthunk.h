@@ -21,8 +21,8 @@
  *
  */
 
-#ifndef LIBHLTHUNK_H_
-#define LIBHLTHUNK_H_
+#ifndef LIBHLTHUNK_H
+#define LIBHLTHUNK_H
 
 #include "hlthunk.h"
 
@@ -66,4 +66,4 @@ do { \
 #undef hlthunk_public
 #define hlthunk_public
 
-#endif /* LIBHLTHUNK_H_ */
+#endif /* LIBHLTHUNK_H */

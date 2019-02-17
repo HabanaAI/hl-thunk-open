@@ -22,8 +22,8 @@
  *
 */
 
-#ifndef _UTIL_MATH_H_
-#define _UTIL_MATH_H_
+#ifndef UTIL_MATH_H
+#define UTIL_MATH_H
 
 #define MIN2( A, B )	( (A)<(B) ? (A) : (B) )
 #define MAX2( A, B )	( (A)>(B) ? (A) : (B) )
@@ -32,4 +32,4 @@
 #define __align_mask(value, mask)	(((value) + (mask)) & ~(mask))
 #define ALIGN(value, alignment)		__align_mask(value, (__typeof__(value))((alignment) - 1))
 
-#endif /*_UTIL_MATH_H_*/
+#endif /* UTIL_MATH_H */

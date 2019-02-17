@@ -21,14 +21,16 @@
  *
  */
 
+#include "hlthunk.h"
+#include "hlthunk_tests.h"
+
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
 
 #include <limits.h>
-
-#include "hlthunk.h"
-#include "cmocka.h"
+#include <cmocka.h>
+#include <stdio.h>
 
 void test_open_device_failure(void **state)
 {
@@ -59,5 +61,17 @@ const struct CMUnitTest open_device_tests[] = {
 
 int main(void)
 {
-	return cmocka_run_group_tests(open_device_tests, NULL, NULL);
+	int rc;
+
+	rc = hlthunk_tests_init();
+	if (rc) {
+		printf("Failed to init tests library %d\n", rc);
+		return rc;
+	}
+
+	rc = cmocka_run_group_tests(open_device_tests, NULL, NULL);
+
+	hlthunk_tests_fini();
+
+	return rc;
 }

@@ -25,6 +25,9 @@
  * Authors: Rickard E. (Rik) Faith <faith@valinux.com>
  */
 
+#ifndef HLTHUNK_RANDOM_H
+#define HLTHUNK_RANDOM_H
+
 typedef struct RandomState {
 	unsigned long magic;
 	unsigned long a;
@@ -34,3 +37,5 @@ typedef struct RandomState {
 	unsigned long check;
 	unsigned long seed;
 } RandomState;
+
+#endif /* HLTHUNK_RANDOM_H */
