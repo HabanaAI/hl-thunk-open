@@ -24,6 +24,8 @@
 #ifndef HLTHUNK_H
 #define HLTHUNK_H
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -57,12 +59,38 @@ hlthunk_public void hlthunk_free(void *pt);
 hlthunk_public int hlthunk_open(const char *busid);
 hlthunk_public int hlthunk_close(int fd);
 
-int hlthunk_public hlthunk_get_info(int fd, struct hl_info_args *info);
-int hlthunk_public hlthunk_command_buffer(int fd, union hl_cb_args *cb);
-int hlthunk_public hlthunk_command_submission(int fd, union hl_cs_args *cs);
-int hlthunk_public hlthunk_wait_for_cs(int fd, union hl_wait_cs_args *wait_for_cs);
-int hlthunk_public hlthunk_memory(int fd, union hl_mem_args *mem);
-int hlthunk_public hlthunk_debug(int fd, struct hl_debug_args *debug);
+#define HLTHUNK_INFO_VERSION_MAX_LEN	128
+
+struct hlthunk_hw_ip_info {
+	uint64_t sram_base_address;
+	uint64_t dram_base_address;
+	uint64_t dram_size;
+	uint32_t sram_size;
+	uint32_t num_of_events;
+	uint32_t device_id; /* PCI Device ID */
+	uint32_t armcp_cpld_version;
+	uint32_t psoc_pci_pll_nr;
+	uint32_t psoc_pci_pll_nf;
+	uint32_t psoc_pci_pll_od;
+	uint32_t psoc_pci_pll_div_factor;
+	uint8_t tpc_enabled_mask;
+	uint8_t dram_enabled;
+	uint8_t armcp_version[HLTHUNK_INFO_VERSION_MAX_LEN];
+};
+
+hlthunk_public int hlthunk_get_hw_ip_info(int fd,
+					struct hlthunk_hw_ip_info *hw_ip);
+
+hlthunk_public int hlthunk_get_info(int fd, struct hl_info_args *info);
+hlthunk_public int hlthunk_command_buffer(int fd, union hl_cb_args *cb);
+hlthunk_public int hlthunk_command_submission(int fd, union hl_cs_args *cs);
+hlthunk_public int hlthunk_wait_for_cs(int fd,
+					union hl_wait_cs_args *wait_for_cs);
+hlthunk_public int hlthunk_memory(int fd, union hl_mem_args *mem);
+hlthunk_public int hlthunk_debug(int fd, struct hl_debug_args *debug);
+
+hlthunk_public int hlthunk_get_device_type_from_fd(int fd,
+						uint16_t *device_type);
 
 #ifdef __cplusplus
 }   //extern "C"

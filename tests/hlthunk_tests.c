@@ -53,7 +53,7 @@ int hlthunk_tests_open(const char *busid)
 {
 	int fd, rc;
 	struct hlthunk_tests_device *hdev = NULL;
-	enum hl_pci_ids device_type = PCI_IDS_GOYA;
+	enum hl_pci_ids device_type;
 
 	pthread_mutex_lock(&table_lock);
 
@@ -77,6 +77,10 @@ int hlthunk_tests_open(const char *busid)
 		atomic_inc(&hdev->refcnt);
 		goto out;
 	}
+
+	rc = hlthunk_get_device_type_from_fd(fd, (uint16_t *) &device_type);
+	if (rc)
+		return rc;
 
 	/* TODO: get device type from fd */
 	switch (device_type) {

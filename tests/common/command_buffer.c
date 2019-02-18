@@ -77,6 +77,10 @@ int cb_tests_teardown(void **state)
 {
 	struct hlthunk_tests_state *tests_state =
 					(struct hlthunk_tests_state *) *state;
+
+	if (!tests_state)
+		return -EINVAL;
+
 	if (hlthunk_tests_close(tests_state->fd))
 		printf("Problem in closing FD, ignoring...\n");
 
