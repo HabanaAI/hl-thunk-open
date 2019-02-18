@@ -28,6 +28,10 @@
 #include <stdio.h>
 #include <errno.h>
 #include <pthread.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
+#include <stdlib.h>
 
 static pthread_mutex_t table_lock = PTHREAD_MUTEX_INITIALIZER;
 static void* dev_table;
@@ -91,6 +95,9 @@ int hlthunk_tests_open(const char *busid)
 		break;
 	}
 
+	hdev->debugfs_addr_fd = -1;
+	hdev->debugfs_data_fd = -1;
+
 out:
 	pthread_mutex_unlock(&table_lock);
 	return fd;
@@ -126,7 +133,7 @@ int hlthunk_tests_close(int fd)
 	return 0;
 }
 
-void *hlthunk_tests_mmap(int fd, size_t length, off_t offset)
+void* hlthunk_tests_mmap(int fd, size_t length, off_t offset)
 {
 	return mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd,
 			offset);
@@ -135,4 +142,80 @@ void *hlthunk_tests_mmap(int fd, size_t length, off_t offset)
 int hlthunk_tests_munmap(void *addr, size_t length)
 {
 	return munmap(addr, length);
+}
+
+int hlthunk_tests_debugfs_open(int fd)
+{
+	struct hlthunk_tests_device *hdev = NULL;
+	int debugfs_addr_fd, debugfs_data_fd;
+
+	if (hlthunk_hash_lookup(dev_table, fd, (void **) &hdev))
+		return -ENODEV;
+
+	debugfs_addr_fd =
+		open("//sys/kernel/debug/habanalabs/hl0/addr", O_WRONLY);
+	debugfs_data_fd =
+		open("//sys/kernel/debug/habanalabs/hl0/data32", O_RDWR);
+
+	if ((debugfs_addr_fd == -1) || (debugfs_data_fd == -1)) {
+		if (debugfs_addr_fd >= 0)
+			close(debugfs_addr_fd);
+		else if (debugfs_data_fd >= 0)
+			close(debugfs_data_fd);
+		return -EPERM;
+	}
+
+	hdev->debugfs_addr_fd = debugfs_addr_fd;
+	hdev->debugfs_data_fd = debugfs_data_fd;
+
+	return 0;
+}
+
+int hlthunk_tests_debugfs_close(int fd)
+{
+	struct hlthunk_tests_device *hdev = NULL;
+
+	if (hlthunk_hash_lookup(dev_table, fd, (void **) &hdev))
+		return -ENODEV;
+
+	if ((hdev->debugfs_addr_fd == -1) || (hdev->debugfs_data_fd == -1))
+		return -EFAULT;
+
+	close(hdev->debugfs_addr_fd);
+	close(hdev->debugfs_data_fd);
+	hdev->debugfs_addr_fd = -1;
+	hdev->debugfs_data_fd = -1;
+
+	return 0;
+}
+
+uint32_t hlthunk_tests_debugfs_read(int fd, uint64_t full_address)
+{
+	struct hlthunk_tests_device *hdev = NULL;
+	char addr_str[64] = {0}, value[64] = {0};
+
+	if (hlthunk_hash_lookup(dev_table, fd, (void **) &hdev))
+		return -1;
+
+	sprintf(addr_str, "0x%lx", full_address);
+
+	write(hdev->debugfs_addr_fd, addr_str, strlen(addr_str) + 1);
+	pread(hdev->debugfs_data_fd, value, sizeof(value), 0);
+
+	return strtoul(value, NULL, 16);
+}
+
+void hlthunk_tests_debugfs_write(int fd, uint64_t full_address, uint32_t val)
+{
+	struct hlthunk_tests_device *hdev = NULL;
+	char addr_str[64] = {0}, val_str[64] = {0};
+
+	if (hlthunk_hash_lookup(dev_table, fd, (void **) &hdev))
+		return;
+
+	sprintf(addr_str, "0x%lx", full_address);
+	sprintf(val_str, "0x%x", val);
+
+	write(hdev->debugfs_addr_fd, addr_str, strlen(addr_str) + 1);
+	write(hdev->debugfs_data_fd, val_str, strlen(val_str) + 1);
 }
