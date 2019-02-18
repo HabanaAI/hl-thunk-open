@@ -162,6 +162,7 @@ int hlthunk_tests_debugfs_open(int fd)
 			close(debugfs_addr_fd);
 		else if (debugfs_data_fd >= 0)
 			close(debugfs_data_fd);
+		printf("Failed to open DebugFS (Didn't run with sudo ?)\n");
 		return -EPERM;
 	}
 
@@ -269,4 +270,30 @@ int hlthunk_tests_teardown(void **state)
 	hlthunk_free(*state);
 
 	return 0;
+}
+
+int hlthunk_tests_root_setup(void **state)
+{
+	struct hlthunk_tests_state *tests_state;
+	int rc;
+
+	rc = hlthunk_tests_setup(state);
+	if (rc)
+		return rc;
+
+	tests_state = (struct hlthunk_tests_state *) *state;
+	return hlthunk_tests_debugfs_open(tests_state->fd);
+}
+
+int hlthunk_tests_root_teardown(void **state)
+{
+	struct hlthunk_tests_state *tests_state =
+					(struct hlthunk_tests_state *) *state;
+
+	if (!tests_state)
+		return -EINVAL;
+
+	hlthunk_tests_debugfs_close(tests_state->fd);
+
+	return hlthunk_tests_teardown(state);
 }

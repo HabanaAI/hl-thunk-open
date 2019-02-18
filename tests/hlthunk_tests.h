@@ -60,6 +60,8 @@ void hlthunk_tests_debugfs_write(int fd, uint64_t full_address, uint32_t val);
 
 int hlthunk_tests_setup(void **state);
 int hlthunk_tests_teardown(void **state);
+int hlthunk_tests_root_setup(void **state);
+int hlthunk_tests_root_teardown(void **state);
 
 void goya_tests_set_asic_funcs(struct hlthunk_tests_device *hdev);
 

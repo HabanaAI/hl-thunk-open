@@ -2,9 +2,13 @@
 
 project(goyatests C)
 
-include_directories(${CMAKE_SOURCE_DIR}/include)
+include_directories(
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/include/specs
+)
 
 set(GOYA_UNIT_TESTS
+    root
 )
 
 foreach(_UNIT_TEST ${GOYA_UNIT_TESTS})
