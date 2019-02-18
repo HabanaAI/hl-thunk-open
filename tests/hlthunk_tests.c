@@ -63,18 +63,6 @@ int hlthunk_tests_open(const char *busid)
 		goto out_err;
 	}
 
-	/* TODO: get device type from fd */
-	switch (device_type) {
-	case PCI_IDS_GOYA:
-		goya_tests_set_asic_funcs(hdev);
-		break;
-	default:
-		printf("Invalid device type %d\n", device_type);
-		rc = -ENXIO;
-		goto close_device;
-		break;
-	}
-
 	if (hlthunk_hash_lookup(dev_table, fd, (void **) &hdev)) {
 		/* not found, create new device */
 		hdev = hlthunk_malloc(sizeof(struct hlthunk_tests_device));
@@ -87,12 +75,28 @@ int hlthunk_tests_open(const char *busid)
 	} else {
 		/* found, just incr refcnt */
 		atomic_inc(&hdev->refcnt);
+		goto out;
 	}
 
+	/* TODO: get device type from fd */
+	switch (device_type) {
+	case PCI_IDS_GOYA:
+		goya_tests_set_asic_funcs(hdev);
+		break;
+	default:
+		printf("Invalid device type %d\n", device_type);
+		rc = -ENXIO;
+		goto remove_device;
+		break;
+	}
+
+out:
 	pthread_mutex_unlock(&table_lock);
+	return fd;
 
-	return 0;
-
+remove_device:
+	hlthunk_hash_delete(dev_table, hdev->fd);
+	hlthunk_free(hdev);
 close_device:
 	hlthunk_close(fd);
 out_err:
@@ -104,11 +108,13 @@ int hlthunk_tests_close(int fd)
 {
 	struct hlthunk_tests_device *hdev = NULL;
 
-	if (!hlthunk_hash_lookup(dev_table, fd, (void **) &hdev))
-		return -1;
+	if (hlthunk_hash_lookup(dev_table, fd, (void **) &hdev))
+		return -ENODEV;
 
 	if (!atomic_dec_and_test(&hdev->refcnt))
 		return 0;
+
+	hlthunk_close(hdev->fd);
 
 	pthread_mutex_lock(&table_lock);
 	hlthunk_hash_delete(dev_table, hdev->fd);

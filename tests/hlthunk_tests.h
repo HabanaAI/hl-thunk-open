@@ -26,6 +26,10 @@
 
 #include <hlthunk_tests_atomic.h>
 
+struct hlthunk_tests_state {
+	int fd;
+};
+
 struct hlthunk_tests_asic_funcs {
 };
 
