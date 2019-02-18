@@ -28,6 +28,7 @@
 #define PCI_VENDOR_ID_HABANALABS	0x1da3
 
 enum hl_pci_ids {
+	PCI_IDS_INVALID		= 0x0000, /* PCI device ID 0 is not legal */
 	PCI_IDS_GOYA		= 0x0001,
 };
 

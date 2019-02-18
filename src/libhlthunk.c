@@ -189,28 +189,14 @@ hlthunk_public int hlthunk_destroy_command_buffer(int fd, uint64_t cb_handle)
 	return hlthunk_ioctl(fd, HL_IOCTL_CB, &args);
 }
 
-hlthunk_public int hlthunk_get_device_type_from_fd(int fd,
-						uint16_t *device_type)
+hlthunk_public enum hl_pci_ids hlthunk_get_device_type_from_fd(int fd)
 {
 	struct hlthunk_hw_ip_info hw_ip = {};
-	int rc = 0;
 
-	if (!device_type)
-		return -EINVAL;
+	if (hlthunk_get_hw_ip_info(fd, &hw_ip))
+		return PCI_IDS_INVALID;
 
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	if (rc)
-		return -EINVAL;
-
-	switch (hw_ip.device_id) {
-	case PCI_IDS_GOYA:
-		*device_type = (uint16_t) hw_ip.device_id;
-		break;
-	default:
-		rc = -EINVAL;
-	}
-
-	return rc;
+	return (enum hl_pci_ids) hw_ip.device_id;
 }
 
 hlthunk_public int hlthunk_get_info(int fd, struct hl_info_args *info)

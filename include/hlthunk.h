@@ -86,8 +86,7 @@ hlthunk_public int hlthunk_request_command_buffer(int fd, uint32_t cb_size,
 							uint64_t *cb_handle);
 hlthunk_public int hlthunk_destroy_command_buffer(int fd, uint64_t cb_handle);
 
-hlthunk_public int hlthunk_get_device_type_from_fd(int fd,
-						uint16_t *device_type);
+hlthunk_public enum hl_pci_ids hlthunk_get_device_type_from_fd(int fd);
 
 /* TODO: replace the following wrapper functions with suitable API functions */
 hlthunk_public int hlthunk_get_info(int fd, struct hl_info_args *info);

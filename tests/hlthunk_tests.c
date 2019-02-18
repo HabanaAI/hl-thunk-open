@@ -78,11 +78,8 @@ int hlthunk_tests_open(const char *busid)
 		goto out;
 	}
 
-	rc = hlthunk_get_device_type_from_fd(fd, (uint16_t *) &device_type);
-	if (rc)
-		return rc;
+	device_type = hlthunk_get_device_type_from_fd(fd);
 
-	/* TODO: get device type from fd */
 	switch (device_type) {
 	case PCI_IDS_GOYA:
 		goya_tests_set_asic_funcs(hdev);
