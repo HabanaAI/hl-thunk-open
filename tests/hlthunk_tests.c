@@ -219,3 +219,54 @@ void hlthunk_tests_debugfs_write(int fd, uint64_t full_address, uint32_t val)
 	write(hdev->debugfs_addr_fd, addr_str, strlen(addr_str) + 1);
 	write(hdev->debugfs_data_fd, val_str, strlen(val_str) + 1);
 }
+
+int hlthunk_tests_setup(void **state)
+{
+	struct hlthunk_tests_state *tests_state;
+	int rc;
+
+	tests_state = hlthunk_malloc(sizeof(struct hlthunk_tests_state));
+	if (!tests_state)
+		return -ENOMEM;
+
+	rc = hlthunk_tests_init();
+	if (rc) {
+		printf("Failed to init tests library %d\n", rc);
+		goto free_state;
+	}
+
+	tests_state->fd = hlthunk_tests_open(NULL);
+	if (tests_state->fd < 0) {
+		printf("Failed to open device %d\n", tests_state->fd);
+		rc = tests_state->fd;
+		goto fini_tests;
+	}
+
+	*state = tests_state;
+
+	return 0;
+
+fini_tests:
+	hlthunk_tests_fini();
+free_state:
+	hlthunk_free(tests_state);
+	return rc;
+}
+
+int hlthunk_tests_teardown(void **state)
+{
+	struct hlthunk_tests_state *tests_state =
+					(struct hlthunk_tests_state *) *state;
+
+	if (!tests_state)
+		return -EINVAL;
+
+	if (hlthunk_tests_close(tests_state->fd))
+		printf("Problem in closing FD, ignoring...\n");
+
+	hlthunk_tests_fini();
+
+	hlthunk_free(*state);
+
+	return 0;
+}

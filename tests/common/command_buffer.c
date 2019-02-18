@@ -52,63 +52,12 @@ void test_cb_mmap(void **state)
 	assert_int_equal(rc, 0);
 }
 
-int cb_tests_setup(void **state)
-{
-	struct hlthunk_tests_state *tests_state;
-	int rc;
-
-	tests_state = hlthunk_malloc(sizeof(struct hlthunk_tests_state));
-	if (!tests_state)
-		return -ENOMEM;
-
-	rc = hlthunk_tests_init();
-	if (rc) {
-		printf("Failed to init tests library %d\n", rc);
-		goto free_state;
-	}
-
-	tests_state->fd = hlthunk_tests_open(NULL);
-	if (tests_state->fd < 0) {
-		printf("Failed to open device %d\n", tests_state->fd);
-		rc = tests_state->fd;
-		goto fini_tests;
-	}
-
-	*state = tests_state;
-
-	return 0;
-
-fini_tests:
-	hlthunk_tests_fini();
-free_state:
-	hlthunk_free(tests_state);
-	return rc;
-}
-
-int cb_tests_teardown(void **state)
-{
-	struct hlthunk_tests_state *tests_state =
-					(struct hlthunk_tests_state *) *state;
-
-	if (!tests_state)
-		return -EINVAL;
-
-	if (hlthunk_tests_close(tests_state->fd))
-		printf("Problem in closing FD, ignoring...\n");
-
-	hlthunk_tests_fini();
-
-	hlthunk_free(*state);
-
-	return 0;
-}
-
 const struct CMUnitTest cb_tests[] = {
 	cmocka_unit_test(test_cb_mmap),
 };
 
 int main(void)
 {
-	return cmocka_run_group_tests(cb_tests, cb_tests_setup,
-					cb_tests_teardown);
+	return cmocka_run_group_tests(cb_tests, hlthunk_tests_setup,
+					hlthunk_tests_teardown);
 }
