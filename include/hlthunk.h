@@ -78,19 +78,24 @@ struct hlthunk_hw_ip_info {
 	uint8_t armcp_version[HLTHUNK_INFO_VERSION_MAX_LEN];
 };
 
+/* TODO: split this function into several "logic" functions */
 hlthunk_public int hlthunk_get_hw_ip_info(int fd,
 					struct hlthunk_hw_ip_info *hw_ip);
 
+hlthunk_public int hlthunk_request_command_buffer(int fd, uint32_t cb_size,
+							uint64_t *cb_handle);
+hlthunk_public int hlthunk_destroy_command_buffer(int fd, uint64_t cb_handle);
+
+hlthunk_public int hlthunk_get_device_type_from_fd(int fd,
+						uint16_t *device_type);
+
+/* TODO: replace the following wrapper functions with suitable API functions */
 hlthunk_public int hlthunk_get_info(int fd, struct hl_info_args *info);
-hlthunk_public int hlthunk_command_buffer(int fd, union hl_cb_args *cb);
 hlthunk_public int hlthunk_command_submission(int fd, union hl_cs_args *cs);
 hlthunk_public int hlthunk_wait_for_cs(int fd,
 					union hl_wait_cs_args *wait_for_cs);
 hlthunk_public int hlthunk_memory(int fd, union hl_mem_args *mem);
 hlthunk_public int hlthunk_debug(int fd, struct hl_debug_args *debug);
-
-hlthunk_public int hlthunk_get_device_type_from_fd(int fd,
-						uint16_t *device_type);
 
 #ifdef __cplusplus
 }   //extern "C"

@@ -158,34 +158,35 @@ hlthunk_public int hlthunk_get_hw_ip_info(int fd,
 	return 0;
 }
 
-hlthunk_public int hlthunk_get_info(int fd, struct hl_info_args *info)
+hlthunk_public int hlthunk_request_command_buffer(int fd, uint32_t cb_size,
+							uint64_t *cb_handle)
 {
-	return hlthunk_ioctl(fd, HL_IOCTL_INFO, info);
+	union hl_cb_args args = {};
+	int rc;
+
+	if (!cb_handle)
+		return -EINVAL;
+
+	args.in.op = HL_CB_OP_CREATE;
+	args.in.cb_size = cb_size;
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_CB, &args);
+	if (rc)
+		return rc;
+
+	*cb_handle = args.out.cb_handle;
+
+	return 0;
 }
 
-hlthunk_public int hlthunk_command_buffer(int fd, union hl_cb_args *cb)
+hlthunk_public int hlthunk_destroy_command_buffer(int fd, uint64_t cb_handle)
 {
-	return hlthunk_ioctl(fd, HL_IOCTL_CB, cb);
-}
+	union hl_cb_args args = {};
 
-hlthunk_public int hlthunk_command_submission(int fd, union hl_cs_args *cs)
-{
-	return hlthunk_ioctl(fd, HL_IOCTL_CS, cs);
-}
+	args.in.op = HL_CB_OP_DESTROY;
+	args.in.cb_handle = cb_handle;
 
-hlthunk_public int hlthunk_wait_for_cs(int fd, union hl_wait_cs_args *wait_for_cs)
-{
-	return hlthunk_ioctl(fd, HL_IOCTL_WAIT_CS, wait_for_cs);
-}
-
-hlthunk_public int hlthunk_memory(int fd, union hl_mem_args *mem)
-{
-	return hlthunk_ioctl(fd, HL_IOCTL_MEMORY, mem);
-}
-
-hlthunk_public int hlthunk_debug(int fd, struct hl_debug_args *debug)
-{
-	return hlthunk_ioctl(fd, HL_IOCTL_DEBUG, debug);
+	return hlthunk_ioctl(fd, HL_IOCTL_CB, &args);
 }
 
 hlthunk_public int hlthunk_get_device_type_from_fd(int fd,
@@ -210,4 +211,35 @@ hlthunk_public int hlthunk_get_device_type_from_fd(int fd,
 	}
 
 	return rc;
+}
+
+hlthunk_public int hlthunk_get_info(int fd, struct hl_info_args *info)
+{
+	return hlthunk_ioctl(fd, HL_IOCTL_INFO, info);
+}
+
+hlthunk_public int hlthunk_command_buffer(int fd, union hl_cb_args *cb)
+{
+	return hlthunk_ioctl(fd, HL_IOCTL_CB, cb);
+}
+
+hlthunk_public int hlthunk_command_submission(int fd, union hl_cs_args *cs)
+{
+	return hlthunk_ioctl(fd, HL_IOCTL_CS, cs);
+}
+
+hlthunk_public int hlthunk_wait_for_cs(int fd,
+					union hl_wait_cs_args *wait_for_cs)
+{
+	return hlthunk_ioctl(fd, HL_IOCTL_WAIT_CS, wait_for_cs);
+}
+
+hlthunk_public int hlthunk_memory(int fd, union hl_mem_args *mem)
+{
+	return hlthunk_ioctl(fd, HL_IOCTL_MEMORY, mem);
+}
+
+hlthunk_public int hlthunk_debug(int fd, struct hl_debug_args *debug)
+{
+	return hlthunk_ioctl(fd, HL_IOCTL_DEBUG, debug);
 }

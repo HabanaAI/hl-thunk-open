@@ -26,6 +26,9 @@
 
 #include <hlthunk_tests_atomic.h>
 
+#include <sys/types.h>
+#include <sys/mman.h>
+
 struct hlthunk_tests_state {
 	int fd;
 };
@@ -43,6 +46,9 @@ int hlthunk_tests_init(void);
 void hlthunk_tests_fini(void);
 int hlthunk_tests_open(const char *busid);
 int hlthunk_tests_close(int fd);
+
+void *hlthunk_tests_mmap(int fd, size_t len, off_t offset);
+int hlthunk_tests_munmap(void *addr, size_t length);
 
 void goya_tests_set_asic_funcs(struct hlthunk_tests_device *hdev);
 

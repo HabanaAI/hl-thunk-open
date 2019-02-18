@@ -128,3 +128,14 @@ int hlthunk_tests_close(int fd)
 
 	return 0;
 }
+
+void *hlthunk_tests_mmap(int fd, size_t length, off_t offset)
+{
+	return mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd,
+			offset);
+}
+
+int hlthunk_tests_munmap(void *addr, size_t length)
+{
+	return munmap(addr, length);
+}

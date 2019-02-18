@@ -37,7 +37,19 @@ void test_cb_mmap(void **state)
 {
 	struct hlthunk_tests_state *tests_state =
 					(struct hlthunk_tests_state *) *state;
-	assert_in_range(tests_state->fd, 0, INT_MAX);
+	uint32_t size = 0x100000;
+	uint64_t handle;
+	void *ptr;
+	int rc;
+
+	rc = hlthunk_request_command_buffer(tests_state->fd, size, &handle);
+	assert_int_equal(rc, 0);
+
+	ptr = hlthunk_tests_mmap(tests_state->fd, size, handle);
+	assert_ptr_not_equal(ptr, MAP_FAILED);
+
+	rc = hlthunk_tests_munmap(ptr, size);
+	assert_int_equal(rc, 0);
 }
 
 int cb_tests_setup(void **state)
