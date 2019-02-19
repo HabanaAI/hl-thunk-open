@@ -378,7 +378,7 @@ static void* allocate_huge_mem(uint64_t size)
 	return vaddr;
 }
 
-void *hlthunk_tests_allocate_host_mem(int fd, uint64_t size, bool huge)
+void* hlthunk_tests_allocate_host_mem(int fd, uint64_t size, bool huge)
 {
 	struct hlthunk_tests_device *hdev;
 	struct hlthunk_tests_memory *mem;
@@ -395,6 +395,7 @@ void *hlthunk_tests_allocate_host_mem(int fd, uint64_t size, bool huge)
 
 	mem->is_host = true;
 	mem->is_huge = huge;
+	mem->size = size;
 
 	if (mem->is_huge)
 		mem->host_ptr = allocate_huge_mem(size);
@@ -433,17 +434,129 @@ free_mem_struct:
 	return NULL;
 }
 
-void *hlthunk_tests_allocate_device_mem(int fd, uint64_t size)
+void* hlthunk_tests_allocate_device_mem(int fd, uint64_t size)
 {
+	struct hlthunk_tests_device *hdev;
+	struct hlthunk_tests_memory *mem;
+	khint_t k;
+	int rc;
+
+	hdev = get_hdev_from_fd(fd);
+	if (!hdev)
+		return NULL;
+
+	mem = hlthunk_malloc(sizeof(struct hlthunk_tests_memory));
+	if (!mem)
+		return NULL;
+
+	mem->is_host = false;
+	mem->size = size;
+
+	mem->device_handle = hlthunk_device_memory_alloc(fd, size, false,
+							false);
+
+	if (!mem->device_handle) {
+		printf("Failed to allocate %lu bytes of device memory\n", size);
+		goto free_mem_struct;
+	}
+
+	mem->device_virtual_address = hlthunk_device_memory_map(fd,
+							mem->device_handle, 0);
+
+	if (!mem->device_virtual_address) {
+		printf("Failed to map device memory allocation\n");
+		goto free_allocation;
+	}
+
+	pthread_mutex_lock(&hdev->mem_table_lock);
+
+	k = kh_put(ptr64, hdev->mem_table, mem->device_virtual_address, &rc);
+	kh_val(hdev->mem_table, k) = mem;
+
+	pthread_mutex_unlock(&hdev->mem_table_lock);
+
+	return (void *) mem->device_virtual_address;
+
+free_allocation:
+	hlthunk_device_memory_free(fd, mem->device_handle);
+free_mem_struct:
+	hlthunk_free(mem);
 	return NULL;
 }
 
-void hlthunk_tests_free_host_mem(int fd, void *vaddr)
+int hlthunk_tests_free_host_mem(int fd, void *vaddr)
 {
+	struct hlthunk_tests_device *hdev;
+	struct hlthunk_tests_memory *mem;
+	khint_t k;
+	int rc;
 
+	hdev = get_hdev_from_fd(fd);
+	if (!hdev)
+		return -ENODEV;
+
+	pthread_mutex_lock(&hdev->mem_table_lock);
+
+	k = kh_get(ptr64, hdev->mem_table, (uint64_t) vaddr);
+	if (k == kh_end(hdev->mem_table)) {
+		pthread_mutex_unlock(&hdev->mem_table_lock);
+		return -EINVAL;
+	}
+
+	mem = kh_val(hdev->mem_table, k);
+	kh_del(ptr64, hdev->mem_table, k);
+
+	pthread_mutex_unlock(&hdev->mem_table_lock);
+
+	rc = hlthunk_memory_unmap(fd, mem->device_virtual_address);
+	if (rc) {
+		printf("Failed to unmap host memory\n");
+		return rc;
+	}
+
+	if (mem->is_huge)
+		munmap(mem->host_ptr, mem->size);
+	else
+		free(mem->host_ptr);
+
+	hlthunk_free(mem);
+
+	return 0;
 }
 
-void hlthunk_tests_free_device_mem(int fd, void *vaddr)
+int hlthunk_tests_free_device_mem(int fd, void *vaddr)
 {
+	struct hlthunk_tests_device *hdev;
+	struct hlthunk_tests_memory *mem;
+	khint_t k;
+	int rc;
 
+	hdev = get_hdev_from_fd(fd);
+	if (!hdev)
+		return -ENODEV;
+
+	pthread_mutex_lock(&hdev->mem_table_lock);
+
+	k = kh_get(ptr64, hdev->mem_table, (uint64_t) vaddr);
+	if (k == kh_end(hdev->mem_table)) {
+		pthread_mutex_unlock(&hdev->mem_table_lock);
+		return -EINVAL;
+	}
+
+	mem = kh_val(hdev->mem_table, k);
+	kh_del(ptr64, hdev->mem_table, k);
+
+	pthread_mutex_unlock(&hdev->mem_table_lock);
+
+	rc = hlthunk_memory_unmap(fd, mem->device_virtual_address);
+	if (rc) {
+		printf("Failed to unmap device memory\n");
+		return rc;
+	}
+
+	hlthunk_device_memory_free(fd, mem->device_handle);
+
+	hlthunk_free(mem);
+
+	return 0;
 }
