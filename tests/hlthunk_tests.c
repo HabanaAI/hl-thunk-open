@@ -21,6 +21,7 @@
  *
  */
 
+#include "khash.h"
 #include "hlthunk_tests.h"
 #include "hlthunk.h"
 #include "specs/pci_ids.h"
@@ -34,15 +35,32 @@
 #include <stdlib.h>
 
 static pthread_mutex_t table_lock = PTHREAD_MUTEX_INITIALIZER;
-static void* dev_table;
+KHASH_MAP_INIT_INT(dev, void*)
+static khash_t(dev) *dev_table;
+
+static int hlthunk_tests_create_mem_map(struct hlthunk_tests_device *hdev)
+{
+	/*hdev->mem_table = hlthunk_hash_create();
+	if (!hdev->mem_table)
+		return -ENOMEM;
+*/
+	return 0;
+}
+
+static void hlthunk_tests_destroy_mem_map(struct hlthunk_tests_device *hdev)
+{
+	/*if (hdev->mem_table)
+		hlthunk_hash_destroy(dev_table);*/
+}
 
 int hlthunk_tests_init(void)
 {
-	if (!dev_table)
-		dev_table = hlthunk_hash_create();
+	if (!dev_table) {
+		dev_table = kh_init(dev);
 
-	if (!dev_table)
-		return -ENOMEM;
+		if (!dev_table)
+			return -ENOMEM;
+	}
 
 	return 0;
 }
@@ -50,7 +68,7 @@ int hlthunk_tests_init(void)
 void hlthunk_tests_fini(void)
 {
 	if (dev_table)
-		hlthunk_hash_destroy(dev_table);
+		kh_destroy(dev, dev_table);
 }
 
 int hlthunk_tests_open(const char *busid)
@@ -58,29 +76,31 @@ int hlthunk_tests_open(const char *busid)
 	int fd, rc;
 	struct hlthunk_tests_device *hdev = NULL;
 	enum hl_pci_ids device_type;
+	khint_t k;
 
 	pthread_mutex_lock(&table_lock);
 
-	fd = hlthunk_open(busid);
-	if (fd < 0) {
-		rc = fd;
-		goto out_err;
-	}
+	rc = fd = hlthunk_open(busid);
+	if (fd < 0)
+		goto out;
 
-	if (hlthunk_hash_lookup(dev_table, fd, (void **) &hdev)) {
-		/* not found, create new device */
-		hdev = hlthunk_malloc(sizeof(struct hlthunk_tests_device));
-		if (!hdev) {
-			rc = -ENOMEM;
-			goto close_device;
-		}
-		hdev->fd = fd;
-		hlthunk_hash_insert(dev_table, hdev->fd, hdev);
-	} else {
+	k = kh_get(dev, dev_table, fd);
+	if (k != kh_end(dev_table)) {
 		/* found, just incr refcnt */
-		atomic_inc(&hdev->refcnt);
+		hdev = kh_val(dev_table, k);
+		hdev->refcnt++;
 		goto out;
 	}
+
+	/* not found, create new device */
+	hdev = hlthunk_malloc(sizeof(struct hlthunk_tests_device));
+	if (!hdev) {
+		rc = -ENOMEM;
+		goto close_device;
+	}
+	hdev->fd = fd;
+	k = kh_put(dev, dev_table, fd, &rc);
+	kh_val(dev_table, k) = hdev;
 
 	device_type = hlthunk_get_device_type_from_fd(fd);
 
@@ -98,16 +118,25 @@ int hlthunk_tests_open(const char *busid)
 	hdev->debugfs_addr_fd = -1;
 	hdev->debugfs_data_fd = -1;
 
-out:
+	rc = pthread_mutex_init(&hdev->refcnt_lock, NULL);
+	if (rc)
+		goto remove_device;
+
+	rc = hlthunk_tests_create_mem_map(hdev);
+	if (rc)
+		goto destroy_refcnt_lock;
+
 	pthread_mutex_unlock(&table_lock);
 	return fd;
 
+destroy_refcnt_lock:
+	pthread_mutex_destroy(&hdev->refcnt_lock);
 remove_device:
-	hlthunk_hash_delete(dev_table, hdev->fd);
+	kh_del(dev, dev_table, k);
 	hlthunk_free(hdev);
 close_device:
 	hlthunk_close(fd);
-out_err:
+out:
 	pthread_mutex_unlock(&table_lock);
 	return rc;
 }
@@ -115,17 +144,29 @@ out_err:
 int hlthunk_tests_close(int fd)
 {
 	struct hlthunk_tests_device *hdev = NULL;
+	khint_t k;
 
-	if (hlthunk_hash_lookup(dev_table, fd, (void **) &hdev))
+	k = kh_get(dev, dev_table, fd);
+	if (k == kh_end(dev_table))
 		return -ENODEV;
 
-	if (!atomic_dec_and_test(&hdev->refcnt))
+	hdev = kh_val(dev_table, k);
+
+	pthread_mutex_lock(&hdev->refcnt_lock);
+	if (--hdev->refcnt) {
+		pthread_mutex_unlock(&hdev->refcnt_lock);
 		return 0;
+	}
+	pthread_mutex_unlock(&hdev->refcnt_lock);
+
+	hlthunk_tests_destroy_mem_map(hdev);
+
+	pthread_mutex_destroy(&hdev->refcnt_lock);
 
 	hlthunk_close(hdev->fd);
 
 	pthread_mutex_lock(&table_lock);
-	hlthunk_hash_delete(dev_table, hdev->fd);
+	kh_del(dev, dev_table, k);
 	pthread_mutex_unlock(&table_lock);
 
 	hlthunk_free(hdev);
@@ -148,9 +189,13 @@ int hlthunk_tests_debugfs_open(int fd)
 {
 	struct hlthunk_tests_device *hdev = NULL;
 	int debugfs_addr_fd, debugfs_data_fd;
+	khint_t k;
 
-	if (hlthunk_hash_lookup(dev_table, fd, (void **) &hdev))
+	k = kh_get(dev, dev_table, fd);
+	if (k == kh_end(dev_table))
 		return -ENODEV;
+
+	hdev = kh_val(dev_table, k);
 
 	debugfs_addr_fd =
 		open("//sys/kernel/debug/habanalabs/hl0/addr", O_WRONLY);
@@ -175,9 +220,13 @@ int hlthunk_tests_debugfs_open(int fd)
 int hlthunk_tests_debugfs_close(int fd)
 {
 	struct hlthunk_tests_device *hdev = NULL;
+	khint_t k;
 
-	if (hlthunk_hash_lookup(dev_table, fd, (void **) &hdev))
+	k = kh_get(dev, dev_table, fd);
+	if (k == kh_end(dev_table))
 		return -ENODEV;
+
+	hdev = kh_val(dev_table, k);
 
 	if ((hdev->debugfs_addr_fd == -1) || (hdev->debugfs_data_fd == -1))
 		return -EFAULT;
@@ -194,9 +243,13 @@ uint32_t hlthunk_tests_debugfs_read(int fd, uint64_t full_address)
 {
 	struct hlthunk_tests_device *hdev = NULL;
 	char addr_str[64] = {0}, value[64] = {0};
+	khint_t k;
 
-	if (hlthunk_hash_lookup(dev_table, fd, (void **) &hdev))
+	k = kh_get(dev, dev_table, fd);
+	if (k == kh_end(dev_table))
 		return -1;
+
+	hdev = kh_val(dev_table, k);
 
 	sprintf(addr_str, "0x%lx", full_address);
 
@@ -210,9 +263,13 @@ void hlthunk_tests_debugfs_write(int fd, uint64_t full_address, uint32_t val)
 {
 	struct hlthunk_tests_device *hdev = NULL;
 	char addr_str[64] = {0}, val_str[64] = {0};
+	khint_t k;
 
-	if (hlthunk_hash_lookup(dev_table, fd, (void **) &hdev))
+	k = kh_get(dev, dev_table, fd);
+	if (k == kh_end(dev_table))
 		return;
+
+	hdev = kh_val(dev_table, k);
 
 	sprintf(addr_str, "0x%lx", full_address);
 	sprintf(val_str, "0x%x", val);

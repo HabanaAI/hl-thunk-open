@@ -24,8 +24,6 @@
 #ifndef HLTHUNK_TESTS_H
 #define HLTHUNK_TESTS_H
 
-#include <hlthunk_tests_atomic.h>
-
 #include <stdint.h>
 #include <sys/types.h>
 #include <sys/mman.h>
@@ -41,10 +39,19 @@ struct hlthunk_tests_asic_funcs {
 					uint32_t mon_id, uint64_t mon_address);
 };
 
+struct hlthunk_tests_memory {
+	uint64_t device_handle;
+	bool is_huge;
+	bool is_host;
+};
+
 struct hlthunk_tests_device {
 	const struct hlthunk_tests_asic_funcs *asic_funcs;
+	void* mem_table;
+	pthread_mutex_t mem_table_lock;
 	int fd;
-	atomic_t refcnt;
+	int refcnt;
+	pthread_mutex_t refcnt_lock;
 	int debugfs_addr_fd;
 	int debugfs_data_fd;
 };
