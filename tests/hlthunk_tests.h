@@ -34,6 +34,8 @@
 KHASH_MAP_INIT_INT(ptr, void*)
 KHASH_MAP_INIT_INT64(ptr64, void*)
 
+#define HLTHUNK_TESTS_WAIT_FOR_CS_DEFAULT_TIMEOUT	1000000 /* 1 sec */
+
 struct hlthunk_tests_state {
 	int fd;
 };
@@ -55,12 +57,21 @@ struct hlthunk_tests_memory {
 	bool is_host;
 };
 
+struct hlthunk_tests_cb {
+	void *ptr;
+	uint64_t cb_handle;
+	uint32_t cb_size;
+	bool is_external;
+};
+
 struct hlthunk_tests_device {
 	const struct hlthunk_tests_asic_funcs *asic_funcs;
 	khash_t(ptr64) *mem_table_host;
 	pthread_mutex_t mem_table_host_lock;
 	khash_t(ptr64) *mem_table_device;
 	pthread_mutex_t mem_table_device_lock;
+	khash_t(ptr64) *cb_table;
+	pthread_mutex_t cb_table_lock;
 	int fd;
 	int refcnt;
 	pthread_mutex_t refcnt_lock;
@@ -73,8 +84,8 @@ void hlthunk_tests_fini(void);
 int hlthunk_tests_open(const char *busid);
 int hlthunk_tests_close(int fd);
 
-void* hlthunk_tests_mmap(int fd, size_t len, off_t offset);
-int hlthunk_tests_munmap(void *addr, size_t length);
+void* hlthunk_tests_cb_mmap(int fd, size_t len, off_t offset);
+int hlthunk_tests_cb_munmap(void *addr, size_t length);
 
 int hlthunk_tests_debugfs_open(int fd);
 int hlthunk_tests_debugfs_close(int fd);
@@ -86,6 +97,27 @@ void* hlthunk_tests_allocate_device_mem(int fd, uint64_t size);
 int hlthunk_tests_free_host_mem(int fd, void *vaddr);
 int hlthunk_tests_free_device_mem(int fd, void *vaddr);
 uint64_t hlthunk_tests_get_device_va_for_host_ptr(int fd, void *vaddr);
+
+void *hlthunk_tests_create_cb(int fd, uint32_t cb_size, bool is_external);
+int hlthunk_tests_destroy_cb(int fd, void *ptr);
+int hlthunk_tests_add_packet_to_cb(void *ptr, uint32_t offset, void *pkt,
+		uint32_t pkt_size);
+
+struct hlthunk_tests_cs_chunk {
+	void *cb_ptr;
+	uint32_t cb_size;
+	uint32_t queue_index;
+};
+
+int hlthunk_tests_submit_cs(int fd,
+		struct hlthunk_tests_cs_chunk *restore_arr,
+		uint32_t restore_arr_size,
+		struct hlthunk_tests_cs_chunk *execute_arr,
+		uint32_t execute_arr_size,
+		bool force_restore,
+		uint64_t *seq);
+
+int hlthunk_tests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us);
 
 int hlthunk_tests_setup(void **state);
 int hlthunk_tests_teardown(void **state);

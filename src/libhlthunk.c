@@ -99,7 +99,8 @@ hlthunk_public void* hlthunk_malloc(int size)
 
 hlthunk_public void hlthunk_free(void *pt)
 {
-	free(pt);
+	if (pt)
+		free(pt);
 }
 
 hlthunk_public int hlthunk_open(const char *busid)
@@ -155,33 +156,33 @@ hlthunk_public int hlthunk_get_hw_ip_info(int fd,
 	return 0;
 }
 
-hlthunk_public int hlthunk_request_command_buffer(int fd, uint32_t size,
-		uint64_t *handle)
+hlthunk_public int hlthunk_request_command_buffer(int fd, uint32_t cb_size,
+		uint64_t *cb_handle)
 {
 	union hl_cb_args args = {};
 	int rc;
 
-	if (!handle)
+	if (!cb_handle)
 		return -EINVAL;
 
 	args.in.op = HL_CB_OP_CREATE;
-	args.in.cb_size = size;
+	args.in.cb_size = cb_size;
 
 	rc = hlthunk_ioctl(fd, HL_IOCTL_CB, &args);
 	if (rc)
 		return rc;
 
-	*handle = args.out.cb_handle;
+	*cb_handle = args.out.cb_handle;
 
 	return 0;
 }
 
-hlthunk_public int hlthunk_destroy_command_buffer(int fd, uint64_t handle)
+hlthunk_public int hlthunk_destroy_command_buffer(int fd, uint64_t cb_handle)
 {
 	union hl_cb_args args = {};
 
 	args.in.op = HL_CB_OP_DESTROY;
-	args.in.cb_handle = handle;
+	args.in.cb_handle = cb_handle;
 
 	return hlthunk_ioctl(fd, HL_IOCTL_CB, &args);
 }
@@ -212,8 +213,8 @@ hlthunk_public int hlthunk_command_submission(int fd, struct hlthunk_cs_in *in,
 	return 0;
 }
 
-hlthunk_public int hlthunk_wait_for_cs(int fd, struct hlthunk_wait_cs_in *in,
-		struct hlthunk_wait_cs_out *out)
+hlthunk_public int hlthunk_wait_for_cs(int fd, uint64_t seq,
+		uint64_t timeout_us, uint32_t *status)
 {
 	union hl_wait_cs_args args = {};
 	struct hl_wait_cs_in *hl_in;
@@ -221,15 +222,15 @@ hlthunk_public int hlthunk_wait_for_cs(int fd, struct hlthunk_wait_cs_in *in,
 	int rc;
 
 	hl_in = &args.in;
-	hl_in->seq = in->seq;
-	hl_in->timeout_us = in->timeout_us;
+	hl_in->seq = seq;
+	hl_in->timeout_us = timeout_us;
 
 	rc = hlthunk_ioctl(fd, HL_IOCTL_WAIT_CS, &args);
 	if (rc)
 		return rc;
 
 	hl_out = &args.out;
-	out->status = hl_out->status;
+	*status = hl_out->status;
 
 	return 0;
 }

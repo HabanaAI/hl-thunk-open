@@ -7,6 +7,7 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 set(COMMON_UNIT_TESTS
     basic
     command_buffer
+    command_submission
 )
 
 foreach(_UNIT_TEST ${COMMON_UNIT_TESTS})
