@@ -32,6 +32,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
+#include <linux/mman.h>
 
 static pthread_mutex_t table_lock = PTHREAD_MUTEX_INITIALIZER;
 static khash_t(ptr) *dev_table;
@@ -362,7 +363,19 @@ int hlthunk_tests_root_teardown(void **state)
 
 static void* allocate_huge_mem(uint64_t size)
 {
-	return NULL;
+	int mmapFlags = MAP_HUGE_2MB | MAP_HUGETLB | MAP_SHARED | MAP_ANONYMOUS;
+	int prot = PROT_READ | PROT_WRITE;
+	void *vaddr;
+
+	vaddr = mmap(0, size, prot, mmapFlags, -1, 0);
+
+	if (vaddr == MAP_FAILED) {
+		printf("Failed to allocate %lu of host memory with huge pages\n",
+			size);
+		return NULL;
+	}
+
+	return vaddr;
 }
 
 void *hlthunk_tests_allocate_host_mem(int fd, uint64_t size, bool huge)
