@@ -33,6 +33,7 @@
 #include <cmocka.h>
 #include <stdio.h>
 #include <errno.h>
+#include <unistd.h>
 
 void test_debugfs_sram_read_write(void **state)
 {
@@ -56,6 +57,9 @@ const struct CMUnitTest root_tests[] = {
 
 int main(void)
 {
+	if (access("/sys/kernel/debug", R_OK))
+		return 0;
+
 	return cmocka_run_group_tests(root_tests, hlthunk_tests_root_setup,
 					hlthunk_tests_root_teardown);
 }
