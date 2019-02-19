@@ -24,10 +24,14 @@
 #ifndef HLTHUNK_TESTS_H
 #define HLTHUNK_TESTS_H
 
+#include "khash.h"
+
 #include <stdint.h>
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <stdbool.h>
+
+KHASH_MAP_INIT_INT(ptr, void*)
 
 struct hlthunk_tests_state {
 	int fd;
@@ -47,7 +51,7 @@ struct hlthunk_tests_memory {
 
 struct hlthunk_tests_device {
 	const struct hlthunk_tests_asic_funcs *asic_funcs;
-	void* mem_table;
+	khash_t(ptr) *mem_table;
 	pthread_mutex_t mem_table_lock;
 	int fd;
 	int refcnt;

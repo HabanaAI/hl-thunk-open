@@ -21,7 +21,6 @@
  *
  */
 
-#include "khash.h"
 #include "hlthunk_tests.h"
 #include "hlthunk.h"
 #include "specs/pci_ids.h"
@@ -35,7 +34,6 @@
 #include <stdlib.h>
 
 static pthread_mutex_t table_lock = PTHREAD_MUTEX_INITIALIZER;
-KHASH_MAP_INIT_INT(ptr, void*)
 static khash_t(ptr) *dev_table;
 
 static struct hlthunk_tests_device* get_hdev_from_fd(int fd)
@@ -51,17 +49,27 @@ static struct hlthunk_tests_device* get_hdev_from_fd(int fd)
 
 static int create_mem_map(struct hlthunk_tests_device *hdev)
 {
-	/*hdev->mem_table = hlthunk_hash_create();
+	int rc;
+
+	hdev->mem_table = kh_init(ptr);
 	if (!hdev->mem_table)
 		return -ENOMEM;
-*/
+
+	rc = pthread_mutex_init(&hdev->mem_table_lock, NULL);
+	if (rc)
+		goto delete_hash;
+
 	return 0;
+
+delete_hash:
+	kh_destroy(ptr, hdev->mem_table);
+	return rc;
 }
 
 static void destroy_mem_map(struct hlthunk_tests_device *hdev)
 {
-	/*if (hdev->mem_table)
-		hlthunk_hash_destroy(dev_table);*/
+	kh_destroy(ptr, hdev->mem_table);
+	pthread_mutex_destroy(&hdev->mem_table_lock);
 }
 
 int hlthunk_tests_init(void)
