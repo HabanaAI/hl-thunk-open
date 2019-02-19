@@ -26,7 +26,6 @@
 #include "goya/goya.h"
 #include "goya/goya_packets.h"
 
-#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -182,7 +181,7 @@ uint32_t goya_tests_add_monitor_and_fence(uint8_t *cb, uint8_t queue_id,
 }
 
 static const struct hlthunk_tests_asic_funcs goya_funcs = {
-
+	.add_monitor_and_fence = goya_tests_add_monitor_and_fence
 };
 
 void goya_tests_set_asic_funcs(struct hlthunk_tests_device *hdev)

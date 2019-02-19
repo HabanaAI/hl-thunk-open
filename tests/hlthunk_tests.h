@@ -29,12 +29,16 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <sys/mman.h>
+#include <stdbool.h>
 
 struct hlthunk_tests_state {
 	int fd;
 };
 
 struct hlthunk_tests_asic_funcs {
+	uint32_t (*add_monitor_and_fence)(uint8_t *cb, uint8_t queue_id,
+					bool cmdq_fence, uint32_t so_id,
+					uint32_t mon_id, uint64_t mon_address);
 };
 
 struct hlthunk_tests_device {
