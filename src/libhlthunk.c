@@ -221,6 +221,28 @@ hlthunk_public int hlthunk_command_submission(int fd, struct hlthunk_cs_in *in,
 	return 0;
 }
 
+hlthunk_public int hlthunk_wait_for_cs(int fd, struct hlthunk_wait_cs_in *in,
+		struct hlthunk_wait_cs_out *out)
+{
+	union hl_wait_cs_args args = {};
+	struct hl_wait_cs_in *hl_in;
+	struct hl_wait_cs_out *hl_out;
+	int rc;
+
+	hl_in = &args.in;
+	hl_in->seq = in->seq;
+	hl_in->timeout_us = in->timeout_us;
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_WAIT_CS, &args);
+	if (rc)
+		return rc;
+
+	hl_out = &args.out;
+	out->status = hl_out->status;
+
+	return 0;
+}
+
 hlthunk_public enum hl_pci_ids hlthunk_get_device_type_from_fd(int fd)
 {
 	struct hlthunk_hw_ip_info hw_ip = {};
@@ -234,17 +256,6 @@ hlthunk_public enum hl_pci_ids hlthunk_get_device_type_from_fd(int fd)
 hlthunk_public int hlthunk_get_info(int fd, struct hl_info_args *info)
 {
 	return hlthunk_ioctl(fd, HL_IOCTL_INFO, info);
-}
-
-hlthunk_public int hlthunk_command_buffer(int fd, union hl_cb_args *cb)
-{
-	return hlthunk_ioctl(fd, HL_IOCTL_CB, cb);
-}
-
-hlthunk_public int hlthunk_wait_for_cs(int fd,
-					union hl_wait_cs_args *wait_for_cs)
-{
-	return hlthunk_ioctl(fd, HL_IOCTL_WAIT_CS, wait_for_cs);
 }
 
 hlthunk_public int hlthunk_memory(int fd, union hl_mem_args *mem)

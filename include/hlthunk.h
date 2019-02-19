@@ -107,12 +107,27 @@ struct hlthunk_cs_out {
 hlthunk_public int hlthunk_command_submission(int fd, struct hlthunk_cs_in *in,
 		struct hlthunk_cs_out *out);
 
+struct hlthunk_wait_cs_in {
+	uint64_t seq;
+	uint64_t timeout_us;
+};
+
+struct hlthunk_wait_cs_out {
+	uint32_t status;
+#define HLTHUNK_WAIT_CS_STATUS_COMPLETED	0
+#define HLTHUNK_WAIT_CS_STATUS_BUSY		1
+#define HLTHUNK_WAIT_CS_STATUS_TIMEDOUT		2
+#define HLTHUNK_WAIT_CS_STATUS_ABORTED		3
+#define HLTHUNK_WAIT_CS_STATUS_INTERRUPTED	4
+};
+
+hlthunk_public int hlthunk_wait_for_cs(int fd, struct hlthunk_wait_cs_in *in,
+		struct hlthunk_wait_cs_out *out);
+
 hlthunk_public enum hl_pci_ids hlthunk_get_device_type_from_fd(int fd);
 
 /* TODO: replace the following wrapper functions with suitable API functions */
 hlthunk_public int hlthunk_get_info(int fd, struct hl_info_args *info);
-hlthunk_public int hlthunk_wait_for_cs(int fd,
-					union hl_wait_cs_args *wait_for_cs);
 hlthunk_public int hlthunk_memory(int fd, union hl_mem_args *mem);
 hlthunk_public int hlthunk_debug(int fd, struct hl_debug_args *debug);
 
