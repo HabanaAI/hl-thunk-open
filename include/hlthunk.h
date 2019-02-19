@@ -30,10 +30,8 @@
 extern "C" {
 #endif
 
-#include "specs/pci_ids.h"
-
-/* TODO: remove when all IOCTL wrappers are replaced and removed */
 #include <uapi/misc/habanalabs.h>
+#include "specs/pci_ids.h"
 
 #define hlthunk_public  __attribute__((visibility("default")))
 
@@ -62,8 +60,6 @@ hlthunk_public void hlthunk_free(void *pt);
 hlthunk_public int hlthunk_open(const char *busid);
 hlthunk_public int hlthunk_close(int fd);
 
-#define HLTHUNK_INFO_VERSION_MAX_LEN	128
-
 struct hlthunk_hw_ip_info {
 	uint64_t sram_base_address;
 	uint64_t dram_base_address;
@@ -78,12 +74,12 @@ struct hlthunk_hw_ip_info {
 	uint32_t psoc_pci_pll_div_factor;
 	uint8_t tpc_enabled_mask;
 	uint8_t dram_enabled;
-	uint8_t armcp_version[HLTHUNK_INFO_VERSION_MAX_LEN];
+	uint8_t armcp_version[HL_INFO_VERSION_MAX_LEN];
 };
 
 /* TODO: split this function into several "logic" functions */
 hlthunk_public int hlthunk_get_hw_ip_info(int fd,
-					struct hlthunk_hw_ip_info *hw_ip);
+		struct hlthunk_hw_ip_info *hw_ip);
 
 hlthunk_public int hlthunk_request_command_buffer(int fd, uint32_t size,
 		uint64_t *handle);
@@ -95,13 +91,11 @@ struct hlthunk_cs_in {
 	uint32_t num_chunks_restore;
 	uint32_t num_chunks_execute;
 	uint32_t flags;
-#define HLTHUNK_CS_FLAGS_FORCE_RESTORE	0x1
 };
 
 struct hlthunk_cs_out {
 	uint64_t seq;
 	uint32_t status;
-#define HLTHUNK_CS_STATUS_SUCCESS	0
 };
 
 hlthunk_public int hlthunk_command_submission(int fd, struct hlthunk_cs_in *in,
@@ -114,11 +108,6 @@ struct hlthunk_wait_cs_in {
 
 struct hlthunk_wait_cs_out {
 	uint32_t status;
-#define HLTHUNK_WAIT_CS_STATUS_COMPLETED	0
-#define HLTHUNK_WAIT_CS_STATUS_BUSY		1
-#define HLTHUNK_WAIT_CS_STATUS_TIMEDOUT		2
-#define HLTHUNK_WAIT_CS_STATUS_ABORTED		3
-#define HLTHUNK_WAIT_CS_STATUS_INTERRUPTED	4
 };
 
 hlthunk_public int hlthunk_wait_for_cs(int fd, struct hlthunk_wait_cs_in *in,

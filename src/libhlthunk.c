@@ -119,7 +119,7 @@ hlthunk_public int hlthunk_close(int fd)
 }
 
 hlthunk_public int hlthunk_get_hw_ip_info(int fd,
-					struct hlthunk_hw_ip_info *hw_ip)
+		struct hlthunk_hw_ip_info *hw_ip)
 {
 	struct hl_info_args args = {};
 	struct hl_info_hw_ip_info hl_hw_ip = {};
@@ -150,8 +150,7 @@ hlthunk_public int hlthunk_get_hw_ip_info(int fd,
 	hw_ip->psoc_pci_pll_div_factor = hl_hw_ip.psoc_pci_pll_div_factor;
 	hw_ip->tpc_enabled_mask = hl_hw_ip.tpc_enabled_mask;
 	hw_ip->dram_enabled = hl_hw_ip.dram_enabled;
-	size = HL_INFO_VERSION_MAX_LEN > HLTHUNK_INFO_VERSION_MAX_LEN ?
-			HL_INFO_VERSION_MAX_LEN : HLTHUNK_INFO_VERSION_MAX_LEN;
+	size = HL_INFO_VERSION_MAX_LEN;
 	memcpy(hw_ip->armcp_version, hl_hw_ip.armcp_version, size);
 
 	return 0;
@@ -201,14 +200,7 @@ hlthunk_public int hlthunk_command_submission(int fd, struct hlthunk_cs_in *in,
 	hl_in->chunks_execute = (__u64) (uintptr_t) in->chunks_execute;
 	hl_in->num_chunks_restore = in->num_chunks_restore;
 	hl_in->num_chunks_execute = in->num_chunks_execute;
-
-	switch (in->flags) {
-	case HLTHUNK_CS_FLAGS_FORCE_RESTORE:
-		hl_in->cs_flags |= HL_CS_FLAGS_FORCE_RESTORE;
-		break;
-	default:
-		break;
-	}
+	hl_in->cs_flags = in->flags;
 
 	rc = hlthunk_ioctl(fd, HL_IOCTL_CS, &args);
 	if (rc)
