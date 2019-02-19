@@ -8,6 +8,7 @@ include_directories(
     ${CMOCKA_INCLUDE_DIR}
     ${CMAKE_BINARY_DIR}
     ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/include/specs
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
