@@ -269,16 +269,11 @@ hlthunk_public uint64_t hlthunk_device_memory_alloc(int fd, uint64_t size,
 	return ioctl_args.out.handle;
 }
 
-hlthunk_public int hlthunk_device_memory_free(int fd,
-						struct hlthunk_mem_free *args)
+hlthunk_public int hlthunk_device_memory_free(int fd, uint64_t handle)
 {
 	union hl_mem_args ioctl_args = {0};
 
-	if (!args)
-		return -EINVAL;
-
-	ioctl_args.in.free.handle = args->handle;
-	ioctl_args.in.ctx_id = args->ctx_id;
+	ioctl_args.in.free.handle = handle;
 	ioctl_args.in.op = HL_MEM_OP_FREE;
 
 	return hlthunk_ioctl(fd, HL_IOCTL_MEMORY, &ioctl_args);
@@ -321,15 +316,11 @@ hlthunk_public uint64_t hlthunk_host_memory_map(int fd, void *host_virt_addr,
 	return ioctl_args.out.device_virt_addr;
 }
 
-hlthunk_public int hlthunk_memory_unmap(int fd, struct hlthunk_mem_unmap *args)
+hlthunk_public int hlthunk_memory_unmap(int fd, uint64_t device_virt_addr)
 {
 	union hl_mem_args ioctl_args = {0};
 
-	if (!args)
-		return -EINVAL;
-
-	ioctl_args.in.unmap.device_virt_addr = args->device_virt_addr;
-	ioctl_args.in.ctx_id = args->ctx_id;
+	ioctl_args.in.unmap.device_virt_addr = device_virt_addr;
 	ioctl_args.in.op = HL_MEM_OP_UNMAP;
 
 	return hlthunk_ioctl(fd, HL_IOCTL_MEMORY, &ioctl_args);

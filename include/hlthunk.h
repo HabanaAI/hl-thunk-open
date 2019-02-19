@@ -78,20 +78,6 @@ struct hlthunk_hw_ip_info {
 	uint8_t armcp_version[HL_INFO_VERSION_MAX_LEN];
 };
 
-struct hlthunk_mem_free {
-	/* Handle returned from alloc */
-	uint64_t handle;
-	/* Context ID - Currently not in use */
-	uint32_t ctx_id;
-};
-
-struct hlthunk_mem_unmap {
-	/* Virtual address returned from HL_MEM_OP_MAP */
-	uint64_t device_virt_addr;
-	/* Context ID - Currently not in use */
-	uint32_t ctx_id;
-};
-
 /* TODO: split this function into several "logic" functions */
 hlthunk_public int hlthunk_get_hw_ip_info(int fd,
 		struct hlthunk_hw_ip_info *hw_ip);
@@ -136,8 +122,7 @@ hlthunk_public int hlthunk_get_info(int fd, struct hl_info_args *info);
 hlthunk_public uint64_t hlthunk_device_memory_alloc(int fd, uint64_t size,
 						bool contiguous, bool shared);
 
-hlthunk_public int hlthunk_device_memory_free(int fd,
-					struct hlthunk_mem_free *args);
+hlthunk_public int hlthunk_device_memory_free(int fd, uint64_t handle);
 
 hlthunk_public uint64_t hlthunk_device_memory_map(int fd, uint64_t handle,
 							uint64_t hint_addr);
@@ -145,7 +130,7 @@ hlthunk_public uint64_t hlthunk_host_memory_map(int fd, void *host_virt_addr,
 						uint64_t hint_addr,
 						uint64_t host_size);
 
-hlthunk_public int hlthunk_memory_unmap(int fd, struct hlthunk_mem_unmap *args);
+hlthunk_public int hlthunk_memory_unmap(int fd, uint64_t device_virt_addr);
 hlthunk_public int hlthunk_debug(int fd, struct hl_debug_args *debug);
 
 #ifdef __cplusplus
