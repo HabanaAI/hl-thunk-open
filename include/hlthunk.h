@@ -30,6 +30,9 @@
 extern "C" {
 #endif
 
+#include "specs/pci_ids.h"
+
+/* TODO: remove when all IOCTL wrappers are replaced and removed */
 #include <uapi/misc/habanalabs.h>
 
 #define hlthunk_public  __attribute__((visibility("default")))
@@ -82,15 +85,32 @@ struct hlthunk_hw_ip_info {
 hlthunk_public int hlthunk_get_hw_ip_info(int fd,
 					struct hlthunk_hw_ip_info *hw_ip);
 
-hlthunk_public int hlthunk_request_command_buffer(int fd, uint32_t cb_size,
-							uint64_t *cb_handle);
-hlthunk_public int hlthunk_destroy_command_buffer(int fd, uint64_t cb_handle);
+hlthunk_public int hlthunk_request_command_buffer(int fd, uint32_t size,
+		uint64_t *handle);
+hlthunk_public int hlthunk_destroy_command_buffer(int fd, uint64_t handle);
+
+struct hlthunk_cs_in {
+	void *chunks_restore;
+	void *chunks_execute;
+	uint32_t num_chunks_restore;
+	uint32_t num_chunks_execute;
+	uint32_t flags;
+#define HLTHUNK_CS_FLAGS_FORCE_RESTORE	0x1
+};
+
+struct hlthunk_cs_out {
+	uint64_t seq;
+	uint32_t status;
+#define HLTHUNK_CS_STATUS_SUCCESS	0
+};
+
+hlthunk_public int hlthunk_command_submission(int fd, struct hlthunk_cs_in *in,
+		struct hlthunk_cs_out *out);
 
 hlthunk_public enum hl_pci_ids hlthunk_get_device_type_from_fd(int fd);
 
 /* TODO: replace the following wrapper functions with suitable API functions */
 hlthunk_public int hlthunk_get_info(int fd, struct hl_info_args *info);
-hlthunk_public int hlthunk_command_submission(int fd, union hl_cs_args *cs);
 hlthunk_public int hlthunk_wait_for_cs(int fd,
 					union hl_wait_cs_args *wait_for_cs);
 hlthunk_public int hlthunk_memory(int fd, union hl_mem_args *mem);
