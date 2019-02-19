@@ -35,14 +35,14 @@
 #include <stdlib.h>
 
 static pthread_mutex_t table_lock = PTHREAD_MUTEX_INITIALIZER;
-KHASH_MAP_INIT_INT(dev, void*)
-static khash_t(dev) *dev_table;
+KHASH_MAP_INIT_INT(ptr, void*)
+static khash_t(ptr) *dev_table;
 
 static struct hlthunk_tests_device* get_hdev_from_fd(int fd)
 {
 	khint_t k;
 
-	k = kh_get(dev, dev_table, fd);
+	k = kh_get(ptr, dev_table, fd);
 	if (k == kh_end(dev_table))
 		return NULL;
 
@@ -67,7 +67,7 @@ static void destroy_mem_map(struct hlthunk_tests_device *hdev)
 int hlthunk_tests_init(void)
 {
 	if (!dev_table) {
-		dev_table = kh_init(dev);
+		dev_table = kh_init(ptr);
 
 		if (!dev_table)
 			return -ENOMEM;
@@ -79,7 +79,7 @@ int hlthunk_tests_init(void)
 void hlthunk_tests_fini(void)
 {
 	if (dev_table)
-		kh_destroy(dev, dev_table);
+		kh_destroy(ptr, dev_table);
 }
 
 int hlthunk_tests_open(const char *busid)
@@ -109,7 +109,7 @@ int hlthunk_tests_open(const char *busid)
 		goto close_device;
 	}
 	hdev->fd = fd;
-	k = kh_put(dev, dev_table, fd, &rc);
+	k = kh_put(ptr, dev_table, fd, &rc);
 	kh_val(dev_table, k) = hdev;
 
 	device_type = hlthunk_get_device_type_from_fd(fd);
@@ -142,7 +142,7 @@ int hlthunk_tests_open(const char *busid)
 destroy_refcnt_lock:
 	pthread_mutex_destroy(&hdev->refcnt_lock);
 remove_device:
-	kh_del(dev, dev_table, k);
+	kh_del(ptr, dev_table, k);
 	hlthunk_free(hdev);
 close_device:
 	hlthunk_close(fd);
@@ -174,8 +174,8 @@ int hlthunk_tests_close(int fd)
 	hlthunk_close(hdev->fd);
 
 	pthread_mutex_lock(&table_lock);
-	k = kh_get(dev, dev_table, fd);
-	kh_del(dev, dev_table, k);
+	k = kh_get(ptr, dev_table, fd);
+	kh_del(ptr, dev_table, k);
 	pthread_mutex_unlock(&table_lock);
 
 	hlthunk_free(hdev);
