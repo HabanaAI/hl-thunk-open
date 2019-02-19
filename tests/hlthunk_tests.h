@@ -32,6 +32,7 @@
 #include <stdbool.h>
 
 KHASH_MAP_INIT_INT(ptr, void*)
+KHASH_MAP_INIT_INT64(ptr64, void*)
 
 struct hlthunk_tests_state {
 	int fd;
@@ -44,14 +45,18 @@ struct hlthunk_tests_asic_funcs {
 };
 
 struct hlthunk_tests_memory {
-	uint64_t device_handle;
+	union {
+		uint64_t device_handle;
+		void *host_ptr;
+	};
+	uint64_t device_virtual_address;
 	bool is_huge;
 	bool is_host;
 };
 
 struct hlthunk_tests_device {
 	const struct hlthunk_tests_asic_funcs *asic_funcs;
-	khash_t(ptr) *mem_table;
+	khash_t(ptr64) *mem_table;
 	pthread_mutex_t mem_table_lock;
 	int fd;
 	int refcnt;

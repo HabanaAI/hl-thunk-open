@@ -51,7 +51,7 @@ static int create_mem_map(struct hlthunk_tests_device *hdev)
 {
 	int rc;
 
-	hdev->mem_table = kh_init(ptr);
+	hdev->mem_table = kh_init(ptr64);
 	if (!hdev->mem_table)
 		return -ENOMEM;
 
@@ -62,13 +62,13 @@ static int create_mem_map(struct hlthunk_tests_device *hdev)
 	return 0;
 
 delete_hash:
-	kh_destroy(ptr, hdev->mem_table);
+	kh_destroy(ptr64, hdev->mem_table);
 	return rc;
 }
 
 static void destroy_mem_map(struct hlthunk_tests_device *hdev)
 {
-	kh_destroy(ptr, hdev->mem_table);
+	kh_destroy(ptr64, hdev->mem_table);
 	pthread_mutex_destroy(&hdev->mem_table_lock);
 }
 
@@ -93,7 +93,7 @@ void hlthunk_tests_fini(void)
 int hlthunk_tests_open(const char *busid)
 {
 	int fd, rc;
-	struct hlthunk_tests_device *hdev = NULL;
+	struct hlthunk_tests_device *hdev;
 	enum hl_pci_ids device_type;
 	khint_t k;
 
@@ -161,7 +161,7 @@ out:
 
 int hlthunk_tests_close(int fd)
 {
-	struct hlthunk_tests_device *hdev = NULL;
+	struct hlthunk_tests_device *hdev;
 	khint_t k;
 
 	hdev = get_hdev_from_fd(fd);
@@ -204,7 +204,7 @@ int hlthunk_tests_munmap(void *addr, size_t length)
 
 static int debugfs_open(int fd)
 {
-	struct hlthunk_tests_device *hdev = NULL;
+	struct hlthunk_tests_device *hdev;
 	int debugfs_addr_fd, debugfs_data_fd;
 
 	hdev = get_hdev_from_fd(fd);
@@ -233,7 +233,7 @@ static int debugfs_open(int fd)
 
 static int debugfs_close(int fd)
 {
-	struct hlthunk_tests_device *hdev = NULL;
+	struct hlthunk_tests_device *hdev;
 
 	hdev = get_hdev_from_fd(fd);
 	if (!hdev)
@@ -252,7 +252,7 @@ static int debugfs_close(int fd)
 
 uint32_t hlthunk_tests_debugfs_read(int fd, uint64_t full_address)
 {
-	struct hlthunk_tests_device *hdev = NULL;
+	struct hlthunk_tests_device *hdev;
 	char addr_str[64] = {0}, value[64] = {0};
 
 	hdev = get_hdev_from_fd(fd);
@@ -269,7 +269,7 @@ uint32_t hlthunk_tests_debugfs_read(int fd, uint64_t full_address)
 
 void hlthunk_tests_debugfs_write(int fd, uint64_t full_address, uint32_t val)
 {
-	struct hlthunk_tests_device *hdev = NULL;
+	struct hlthunk_tests_device *hdev;
 	char addr_str[64] = {0}, val_str[64] = {0};
 
 	hdev = get_hdev_from_fd(fd);
@@ -360,8 +360,63 @@ int hlthunk_tests_root_teardown(void **state)
 	return hlthunk_tests_teardown(state);
 }
 
+static void* allocate_huge_mem(uint64_t size)
+{
+	return NULL;
+}
+
 void *hlthunk_tests_allocate_host_mem(int fd, uint64_t size, bool huge)
 {
+	struct hlthunk_tests_device *hdev;
+	struct hlthunk_tests_memory *mem;
+	khint_t k;
+	int rc;
+
+	hdev = get_hdev_from_fd(fd);
+	if (!hdev)
+		return NULL;
+
+	mem = hlthunk_malloc(sizeof(struct hlthunk_tests_memory));
+	if (!mem)
+		return NULL;
+
+	mem->is_host = true;
+	mem->is_huge = huge;
+
+	if (mem->is_huge)
+		mem->host_ptr = allocate_huge_mem(size);
+	else
+		mem->host_ptr = malloc(size);
+
+	if (!mem->host_ptr) {
+		printf("Failed to allocate %lu bytes of host memory\n", size);
+		goto free_mem_struct;
+	}
+
+	mem->device_virtual_address = hlthunk_host_memory_map(fd, mem->host_ptr,
+								0, size);
+
+	if (!mem->device_virtual_address) {
+		printf("Failed to map host memory to device\n");
+		goto free_allocation;
+	}
+
+	pthread_mutex_lock(&hdev->mem_table_lock);
+
+	k = kh_put(ptr64, hdev->mem_table, mem->device_virtual_address, &rc);
+	kh_val(hdev->mem_table, k) = mem;
+
+	pthread_mutex_unlock(&hdev->mem_table_lock);
+
+	return (void *) mem->device_virtual_address;
+
+free_allocation:
+	if (mem->is_huge)
+		munmap(mem->host_ptr, size);
+	else
+		free(mem->host_ptr);
+free_mem_struct:
+	hlthunk_free(mem);
 	return NULL;
 }
 
