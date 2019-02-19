@@ -69,6 +69,11 @@ int hlthunk_tests_debugfs_close(int fd);
 uint32_t hlthunk_tests_debugfs_read(int fd, uint64_t full_address);
 void hlthunk_tests_debugfs_write(int fd, uint64_t full_address, uint32_t val);
 
+void *hlthunk_tests_allocate_host_mem(int fd, uint64_t size, bool huge);
+void *hlthunk_tests_allocate_device_mem(int fd, uint64_t size);
+void hlthunk_tests_free_host_mem(int fd, void *vaddr);
+void hlthunk_tests_free_device_mem(int fd, void *vaddr);
+
 int hlthunk_tests_setup(void **state);
 int hlthunk_tests_teardown(void **state);
 int hlthunk_tests_root_setup(void **state);

@@ -38,7 +38,18 @@ static pthread_mutex_t table_lock = PTHREAD_MUTEX_INITIALIZER;
 KHASH_MAP_INIT_INT(dev, void*)
 static khash_t(dev) *dev_table;
 
-static int hlthunk_tests_create_mem_map(struct hlthunk_tests_device *hdev)
+static struct hlthunk_tests_device* get_hdev_from_fd(int fd)
+{
+	khint_t k;
+
+	k = kh_get(dev, dev_table, fd);
+	if (k == kh_end(dev_table))
+		return NULL;
+
+	return kh_val(dev_table, k);
+}
+
+static int create_mem_map(struct hlthunk_tests_device *hdev)
 {
 	/*hdev->mem_table = hlthunk_hash_create();
 	if (!hdev->mem_table)
@@ -47,7 +58,7 @@ static int hlthunk_tests_create_mem_map(struct hlthunk_tests_device *hdev)
 	return 0;
 }
 
-static void hlthunk_tests_destroy_mem_map(struct hlthunk_tests_device *hdev)
+static void destroy_mem_map(struct hlthunk_tests_device *hdev)
 {
 	/*if (hdev->mem_table)
 		hlthunk_hash_destroy(dev_table);*/
@@ -84,10 +95,9 @@ int hlthunk_tests_open(const char *busid)
 	if (fd < 0)
 		goto out;
 
-	k = kh_get(dev, dev_table, fd);
-	if (k != kh_end(dev_table)) {
+	hdev = get_hdev_from_fd(fd);
+	if (hdev) {
 		/* found, just incr refcnt */
-		hdev = kh_val(dev_table, k);
 		hdev->refcnt++;
 		goto out;
 	}
@@ -122,7 +132,7 @@ int hlthunk_tests_open(const char *busid)
 	if (rc)
 		goto remove_device;
 
-	rc = hlthunk_tests_create_mem_map(hdev);
+	rc = create_mem_map(hdev);
 	if (rc)
 		goto destroy_refcnt_lock;
 
@@ -146,11 +156,9 @@ int hlthunk_tests_close(int fd)
 	struct hlthunk_tests_device *hdev = NULL;
 	khint_t k;
 
-	k = kh_get(dev, dev_table, fd);
-	if (k == kh_end(dev_table))
+	hdev = get_hdev_from_fd(fd);
+	if (!hdev)
 		return -ENODEV;
-
-	hdev = kh_val(dev_table, k);
 
 	pthread_mutex_lock(&hdev->refcnt_lock);
 	if (--hdev->refcnt) {
@@ -159,13 +167,14 @@ int hlthunk_tests_close(int fd)
 	}
 	pthread_mutex_unlock(&hdev->refcnt_lock);
 
-	hlthunk_tests_destroy_mem_map(hdev);
+	destroy_mem_map(hdev);
 
 	pthread_mutex_destroy(&hdev->refcnt_lock);
 
 	hlthunk_close(hdev->fd);
 
 	pthread_mutex_lock(&table_lock);
+	k = kh_get(dev, dev_table, fd);
 	kh_del(dev, dev_table, k);
 	pthread_mutex_unlock(&table_lock);
 
@@ -185,17 +194,14 @@ int hlthunk_tests_munmap(void *addr, size_t length)
 	return munmap(addr, length);
 }
 
-int hlthunk_tests_debugfs_open(int fd)
+static int debugfs_open(int fd)
 {
 	struct hlthunk_tests_device *hdev = NULL;
 	int debugfs_addr_fd, debugfs_data_fd;
-	khint_t k;
 
-	k = kh_get(dev, dev_table, fd);
-	if (k == kh_end(dev_table))
+	hdev = get_hdev_from_fd(fd);
+	if (!hdev)
 		return -ENODEV;
-
-	hdev = kh_val(dev_table, k);
 
 	debugfs_addr_fd =
 		open("//sys/kernel/debug/habanalabs/hl0/addr", O_WRONLY);
@@ -217,16 +223,13 @@ int hlthunk_tests_debugfs_open(int fd)
 	return 0;
 }
 
-int hlthunk_tests_debugfs_close(int fd)
+static int debugfs_close(int fd)
 {
 	struct hlthunk_tests_device *hdev = NULL;
-	khint_t k;
 
-	k = kh_get(dev, dev_table, fd);
-	if (k == kh_end(dev_table))
+	hdev = get_hdev_from_fd(fd);
+	if (!hdev)
 		return -ENODEV;
-
-	hdev = kh_val(dev_table, k);
 
 	if ((hdev->debugfs_addr_fd == -1) || (hdev->debugfs_data_fd == -1))
 		return -EFAULT;
@@ -243,13 +246,10 @@ uint32_t hlthunk_tests_debugfs_read(int fd, uint64_t full_address)
 {
 	struct hlthunk_tests_device *hdev = NULL;
 	char addr_str[64] = {0}, value[64] = {0};
-	khint_t k;
 
-	k = kh_get(dev, dev_table, fd);
-	if (k == kh_end(dev_table))
+	hdev = get_hdev_from_fd(fd);
+	if (!hdev)
 		return -1;
-
-	hdev = kh_val(dev_table, k);
 
 	sprintf(addr_str, "0x%lx", full_address);
 
@@ -263,13 +263,10 @@ void hlthunk_tests_debugfs_write(int fd, uint64_t full_address, uint32_t val)
 {
 	struct hlthunk_tests_device *hdev = NULL;
 	char addr_str[64] = {0}, val_str[64] = {0};
-	khint_t k;
 
-	k = kh_get(dev, dev_table, fd);
-	if (k == kh_end(dev_table))
+	hdev = get_hdev_from_fd(fd);
+	if (!hdev)
 		return;
-
-	hdev = kh_val(dev_table, k);
 
 	sprintf(addr_str, "0x%lx", full_address);
 	sprintf(val_str, "0x%x", val);
@@ -339,7 +336,7 @@ int hlthunk_tests_root_setup(void **state)
 		return rc;
 
 	tests_state = (struct hlthunk_tests_state *) *state;
-	return hlthunk_tests_debugfs_open(tests_state->fd);
+	return debugfs_open(tests_state->fd);
 }
 
 int hlthunk_tests_root_teardown(void **state)
@@ -350,7 +347,27 @@ int hlthunk_tests_root_teardown(void **state)
 	if (!tests_state)
 		return -EINVAL;
 
-	hlthunk_tests_debugfs_close(tests_state->fd);
+	debugfs_close(tests_state->fd);
 
 	return hlthunk_tests_teardown(state);
+}
+
+void *hlthunk_tests_allocate_host_mem(int fd, uint64_t size, bool huge)
+{
+	return NULL;
+}
+
+void *hlthunk_tests_allocate_device_mem(int fd, uint64_t size)
+{
+	return NULL;
+}
+
+void hlthunk_tests_free_host_mem(int fd, void *vaddr)
+{
+
+}
+
+void hlthunk_tests_free_device_mem(int fd, void *vaddr)
+{
+
 }

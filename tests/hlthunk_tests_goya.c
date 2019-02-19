@@ -180,6 +180,55 @@ uint32_t goya_tests_add_monitor_and_fence(uint8_t *cb, uint8_t queue_id,
 	return sizeof(monitor) + sizeof(fence);
 }
 
+#if 0
+int goya_tests_prepare_dma_packet(struct packet_lin_dma *packet, uint32_t size,
+				enum goya_dma_direction dir, uint64_t src_addr,
+				uint64_t dst_addr, uint8_t eb)
+{
+	int rc;
+
+	memset(packet, 0, sizeof(*packet));
+	packet->opcode = PACKET_LIN_DMA;
+	packet->dma_dir = dir;
+	packet->tsize = size;
+	packet->weakly_ordered = 1;
+	packet->reg_barrier = 1;
+	packet->eng_barrier = eb;
+
+	if ((size) && (!src_addr))
+	{
+		status = synMalloc(deviceId, packet->tsize, synMemFlags::synMemHost,
+				(void **)&packet->src_addr, 0);
+		if (status != synSuccess)
+		{
+			cout << "Failed to map host memory for src" << endl;
+			return status;
+		}
+	}
+	else
+	{
+		packet->src_addr = src_addr;
+	}
+
+	if ((size) && (!dst_addr))
+	{
+		status = synMalloc(deviceId, packet->tsize, synMemFlags::synMemHost,
+				(void **)&packet->dst_addr, 0);
+		if (status != synSuccess)
+		{
+			cout << "Failed to map host memory for dst" << endl;
+			return status;
+		}
+	}
+	else
+	{
+		packet->dst_addr = dst_addr;
+	}
+
+	return synSuccess;
+}
+#endif
+
 static const struct hlthunk_tests_asic_funcs goya_funcs = {
 	.add_monitor_and_fence = goya_tests_add_monitor_and_fence
 };
