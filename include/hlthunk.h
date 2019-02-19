@@ -77,6 +77,48 @@ struct hlthunk_hw_ip_info {
 	uint8_t armcp_version[HL_INFO_VERSION_MAX_LEN];
 };
 
+struct hlthunk_mem_alloc {
+	/* Size to alloc */
+	uint32_t mem_size;
+	/* HL_MEM_* flags */
+	uint32_t flags;
+	/* Context ID - Currently not in use */
+	uint32_t ctx_id;
+};
+
+struct hlthunk_mem_free {
+	/* Handle returned from alloc */
+	uint64_t handle;
+	/* Context ID - Currently not in use */
+	uint32_t ctx_id;
+};
+
+struct hlthunk_mem_map {
+	/*
+	 * Requested virtual address of mapped memory.
+	 * KMD will try to map the requested region to this
+	 * hint address, as long as the address is valid and
+	 * not already mapped. The user should check the
+	 * returned address of the IOCTL to make sure he got
+	 * the hint address. Passing 0 here means that KMD
+	 * will choose the address itself.
+	 */
+	uint64_t hint_addr;
+	/* Handle returned from alloc */
+	uint64_t handle;
+	/* HL_MEM_* flags */
+	uint32_t flags;
+	/* Context ID - Currently not in use */
+	uint32_t ctx_id;
+};
+
+struct hlthunk_mem_unmap {
+	/* Virtual address returned from HL_MEM_OP_MAP */
+	uint64_t device_virt_addr;
+	/* Context ID - Currently not in use */
+	uint32_t ctx_id;
+};
+
 /* TODO: split this function into several "logic" functions */
 hlthunk_public int hlthunk_get_hw_ip_info(int fd,
 		struct hlthunk_hw_ip_info *hw_ip);
@@ -117,7 +159,16 @@ hlthunk_public enum hl_pci_ids hlthunk_get_device_type_from_fd(int fd);
 
 /* TODO: replace the following wrapper functions with suitable API functions */
 hlthunk_public int hlthunk_get_info(int fd, struct hl_info_args *info);
-hlthunk_public int hlthunk_memory(int fd, union hl_mem_args *mem);
+
+hlthunk_public int hlthunk_memory_alloc(int fd, struct hlthunk_mem_alloc *args,
+					uint64_t *mem_handle);
+
+hlthunk_public int hlthunk_memory_free(int fd, struct hlthunk_mem_free *args);
+
+hlthunk_public int hlthunk_memory_map(int fd, struct hlthunk_mem_map *args,
+					uint64_t *device_virtual_address);
+
+hlthunk_public int hlthunk_memory_unmap(int fd, struct hlthunk_mem_unmap *args);
 hlthunk_public int hlthunk_debug(int fd, struct hl_debug_args *debug);
 
 #ifdef __cplusplus
