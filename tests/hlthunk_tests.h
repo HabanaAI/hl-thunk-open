@@ -49,7 +49,7 @@ struct hlthunk_tests_memory {
 		uint64_t device_handle;
 		void *host_ptr;
 	};
-	uint64_t device_virtual_address;
+	uint64_t device_virt_addr;
 	uint64_t size;
 	bool is_huge;
 	bool is_host;
@@ -57,8 +57,10 @@ struct hlthunk_tests_memory {
 
 struct hlthunk_tests_device {
 	const struct hlthunk_tests_asic_funcs *asic_funcs;
-	khash_t(ptr64) *mem_table;
-	pthread_mutex_t mem_table_lock;
+	khash_t(ptr64) *mem_table_host;
+	pthread_mutex_t mem_table_host_lock;
+	khash_t(ptr64) *mem_table_device;
+	pthread_mutex_t mem_table_device_lock;
 	int fd;
 	int refcnt;
 	pthread_mutex_t refcnt_lock;

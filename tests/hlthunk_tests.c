@@ -48,29 +48,43 @@ static struct hlthunk_tests_device* get_hdev_from_fd(int fd)
 	return kh_val(dev_table, k);
 }
 
-static int create_mem_map(struct hlthunk_tests_device *hdev)
+static int create_mem_maps(struct hlthunk_tests_device *hdev)
 {
 	int rc;
 
-	hdev->mem_table = kh_init(ptr64);
-	if (!hdev->mem_table)
+	hdev->mem_table_host = kh_init(ptr64);
+	if (!hdev->mem_table_host)
 		return -ENOMEM;
 
-	rc = pthread_mutex_init(&hdev->mem_table_lock, NULL);
+	hdev->mem_table_device = kh_init(ptr64);
+	if (!hdev->mem_table_device)
+		goto delete_mem_hash;
+
+	rc = pthread_mutex_init(&hdev->mem_table_host_lock, NULL);
 	if (rc)
-		goto delete_hash;
+		goto delete_device_hash;
+
+	rc = pthread_mutex_init(&hdev->mem_table_device_lock, NULL);
+	if (rc)
+		goto destroy_host_lock;
 
 	return 0;
 
-delete_hash:
-	kh_destroy(ptr64, hdev->mem_table);
+destroy_host_lock:
+	pthread_mutex_destroy(&hdev->mem_table_host_lock);
+delete_device_hash:
+	kh_destroy(ptr64, hdev->mem_table_device);
+delete_mem_hash:
+	kh_destroy(ptr64, hdev->mem_table_host);
 	return rc;
 }
 
-static void destroy_mem_map(struct hlthunk_tests_device *hdev)
+static void destroy_mem_maps(struct hlthunk_tests_device *hdev)
 {
-	kh_destroy(ptr64, hdev->mem_table);
-	pthread_mutex_destroy(&hdev->mem_table_lock);
+	kh_destroy(ptr64, hdev->mem_table_host);
+	kh_destroy(ptr64, hdev->mem_table_device);
+	pthread_mutex_destroy(&hdev->mem_table_host_lock);
+	pthread_mutex_destroy(&hdev->mem_table_device_lock);
 }
 
 int hlthunk_tests_init(void)
@@ -141,7 +155,7 @@ int hlthunk_tests_open(const char *busid)
 	if (rc)
 		goto remove_device;
 
-	rc = create_mem_map(hdev);
+	rc = create_mem_maps(hdev);
 	if (rc)
 		goto destroy_refcnt_lock;
 
@@ -176,7 +190,7 @@ int hlthunk_tests_close(int fd)
 	}
 	pthread_mutex_unlock(&hdev->refcnt_lock);
 
-	destroy_mem_map(hdev);
+	destroy_mem_maps(hdev);
 
 	pthread_mutex_destroy(&hdev->refcnt_lock);
 
@@ -378,6 +392,14 @@ static void* allocate_huge_mem(uint64_t size)
 	return vaddr;
 }
 
+/**
+ * This function will allocate memory on the host and will map it to the device
+ * @param fd file descriptor of the device to which the function will map
+ *           the memory
+ * @param size how much memory to allocate
+ * @param huge whether to use huge pages for the memory allocation
+ * @return pointer to the host memory
+ */
 void* hlthunk_tests_allocate_host_mem(int fd, uint64_t size, bool huge)
 {
 	struct hlthunk_tests_device *hdev;
@@ -407,22 +429,22 @@ void* hlthunk_tests_allocate_host_mem(int fd, uint64_t size, bool huge)
 		goto free_mem_struct;
 	}
 
-	mem->device_virtual_address = hlthunk_host_memory_map(fd, mem->host_ptr,
-								0, size);
+	mem->device_virt_addr = hlthunk_host_memory_map(fd, mem->host_ptr, 0,
+							size);
 
-	if (!mem->device_virtual_address) {
+	if (!mem->device_virt_addr) {
 		printf("Failed to map host memory to device\n");
 		goto free_allocation;
 	}
 
-	pthread_mutex_lock(&hdev->mem_table_lock);
+	pthread_mutex_lock(&hdev->mem_table_host_lock);
 
-	k = kh_put(ptr64, hdev->mem_table, mem->device_virtual_address, &rc);
-	kh_val(hdev->mem_table, k) = mem;
+	k = kh_put(ptr64, hdev->mem_table_host, mem->device_virt_addr, &rc);
+	kh_val(hdev->mem_table_host, k) = mem;
 
-	pthread_mutex_unlock(&hdev->mem_table_lock);
+	pthread_mutex_unlock(&hdev->mem_table_host_lock);
 
-	return (void *) mem->device_virtual_address;
+	return (void *) mem->device_virt_addr;
 
 free_allocation:
 	if (mem->is_huge)
@@ -460,22 +482,22 @@ void* hlthunk_tests_allocate_device_mem(int fd, uint64_t size)
 		goto free_mem_struct;
 	}
 
-	mem->device_virtual_address = hlthunk_device_memory_map(fd,
+	mem->device_virt_addr = hlthunk_device_memory_map(fd,
 							mem->device_handle, 0);
 
-	if (!mem->device_virtual_address) {
+	if (!mem->device_virt_addr) {
 		printf("Failed to map device memory allocation\n");
 		goto free_allocation;
 	}
 
-	pthread_mutex_lock(&hdev->mem_table_lock);
+	pthread_mutex_lock(&hdev->mem_table_device_lock);
 
-	k = kh_put(ptr64, hdev->mem_table, mem->device_virtual_address, &rc);
-	kh_val(hdev->mem_table, k) = mem;
+	k = kh_put(ptr64, hdev->mem_table_device, mem->device_virt_addr, &rc);
+	kh_val(hdev->mem_table_device, k) = mem;
 
-	pthread_mutex_unlock(&hdev->mem_table_lock);
+	pthread_mutex_unlock(&hdev->mem_table_device_lock);
 
-	return (void *) mem->device_virtual_address;
+	return (void *) mem->device_virt_addr;
 
 free_allocation:
 	hlthunk_device_memory_free(fd, mem->device_handle);
@@ -495,20 +517,20 @@ int hlthunk_tests_free_host_mem(int fd, void *vaddr)
 	if (!hdev)
 		return -ENODEV;
 
-	pthread_mutex_lock(&hdev->mem_table_lock);
+	pthread_mutex_lock(&hdev->mem_table_host_lock);
 
-	k = kh_get(ptr64, hdev->mem_table, (uint64_t) vaddr);
-	if (k == kh_end(hdev->mem_table)) {
-		pthread_mutex_unlock(&hdev->mem_table_lock);
+	k = kh_get(ptr64, hdev->mem_table_host, (uint64_t) vaddr);
+	if (k == kh_end(hdev->mem_table_host)) {
+		pthread_mutex_unlock(&hdev->mem_table_host_lock);
 		return -EINVAL;
 	}
 
-	mem = kh_val(hdev->mem_table, k);
-	kh_del(ptr64, hdev->mem_table, k);
+	mem = kh_val(hdev->mem_table_host, k);
+	kh_del(ptr64, hdev->mem_table_host, k);
 
-	pthread_mutex_unlock(&hdev->mem_table_lock);
+	pthread_mutex_unlock(&hdev->mem_table_host_lock);
 
-	rc = hlthunk_memory_unmap(fd, mem->device_virtual_address);
+	rc = hlthunk_memory_unmap(fd, mem->device_virt_addr);
 	if (rc) {
 		printf("Failed to unmap host memory\n");
 		return rc;
@@ -535,20 +557,20 @@ int hlthunk_tests_free_device_mem(int fd, void *vaddr)
 	if (!hdev)
 		return -ENODEV;
 
-	pthread_mutex_lock(&hdev->mem_table_lock);
+	pthread_mutex_lock(&hdev->mem_table_device_lock);
 
-	k = kh_get(ptr64, hdev->mem_table, (uint64_t) vaddr);
-	if (k == kh_end(hdev->mem_table)) {
-		pthread_mutex_unlock(&hdev->mem_table_lock);
+	k = kh_get(ptr64, hdev->mem_table_device, (uint64_t) vaddr);
+	if (k == kh_end(hdev->mem_table_device)) {
+		pthread_mutex_unlock(&hdev->mem_table_device_lock);
 		return -EINVAL;
 	}
 
-	mem = kh_val(hdev->mem_table, k);
-	kh_del(ptr64, hdev->mem_table, k);
+	mem = kh_val(hdev->mem_table_device, k);
+	kh_del(ptr64, hdev->mem_table_device, k);
 
-	pthread_mutex_unlock(&hdev->mem_table_lock);
+	pthread_mutex_unlock(&hdev->mem_table_device_lock);
 
-	rc = hlthunk_memory_unmap(fd, mem->device_virtual_address);
+	rc = hlthunk_memory_unmap(fd, mem->device_virt_addr);
 	if (rc) {
 		printf("Failed to unmap device memory\n");
 		return rc;
