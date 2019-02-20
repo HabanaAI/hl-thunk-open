@@ -302,6 +302,7 @@ uint32_t hlthunk_tests_debugfs_read(int fd, uint64_t full_address)
 {
 	struct hlthunk_tests_device *hdev;
 	char addr_str[64] = {0}, value[64] = {0};
+	ssize_t size;
 
 	hdev = get_hdev_from_fd(fd);
 	if (!hdev)
@@ -309,8 +310,14 @@ uint32_t hlthunk_tests_debugfs_read(int fd, uint64_t full_address)
 
 	sprintf(addr_str, "0x%lx", full_address);
 
-	write(hdev->debugfs_addr_fd, addr_str, strlen(addr_str) + 1);
-	pread(hdev->debugfs_data_fd, value, sizeof(value), 0);
+	size = write(hdev->debugfs_addr_fd, addr_str, strlen(addr_str) + 1);
+	if (size < 0)
+		printf("Failed to write to debugfs address fd [rc %zd]\n",
+				size);
+
+	size = pread(hdev->debugfs_data_fd, value, sizeof(value), 0);
+	if (size < 0)
+		printf("Failed to read from debugfs data fd [rc %zd]\n", size);
 
 	return strtoul(value, NULL, 16);
 }
@@ -319,6 +326,7 @@ void hlthunk_tests_debugfs_write(int fd, uint64_t full_address, uint32_t val)
 {
 	struct hlthunk_tests_device *hdev;
 	char addr_str[64] = {0}, val_str[64] = {0};
+	ssize_t size;
 
 	hdev = get_hdev_from_fd(fd);
 	if (!hdev)
@@ -327,8 +335,14 @@ void hlthunk_tests_debugfs_write(int fd, uint64_t full_address, uint32_t val)
 	sprintf(addr_str, "0x%lx", full_address);
 	sprintf(val_str, "0x%x", val);
 
-	write(hdev->debugfs_addr_fd, addr_str, strlen(addr_str) + 1);
-	write(hdev->debugfs_data_fd, val_str, strlen(val_str) + 1);
+	size = write(hdev->debugfs_addr_fd, addr_str, strlen(addr_str) + 1);
+	if (size < 0)
+		printf("Failed to write to debugfs address fd [rc %zd]\n",
+				size);
+
+	size = write(hdev->debugfs_data_fd, val_str, strlen(val_str) + 1);
+	if (size < 0)
+		printf("Failed to write to debugfs data fd [rc %zd]\n", size);
 }
 
 int hlthunk_tests_setup(void **state)
