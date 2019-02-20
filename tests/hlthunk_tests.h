@@ -85,6 +85,7 @@ void* hlthunk_tests_allocate_host_mem(int fd, uint64_t size, bool huge);
 void* hlthunk_tests_allocate_device_mem(int fd, uint64_t size);
 int hlthunk_tests_free_host_mem(int fd, void *vaddr);
 int hlthunk_tests_free_device_mem(int fd, void *vaddr);
+uint64_t hlthunk_tests_get_device_va_for_host_ptr(int fd, void *vaddr);
 
 int hlthunk_tests_setup(void **state);
 int hlthunk_tests_teardown(void **state);

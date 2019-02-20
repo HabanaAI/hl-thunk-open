@@ -582,3 +582,22 @@ int hlthunk_tests_free_device_mem(int fd, void *vaddr)
 
 	return 0;
 }
+
+uint64_t hlthunk_tests_get_device_va_for_host_ptr(int fd, void *vaddr)
+{
+	struct hlthunk_tests_device *hdev;
+	struct hlthunk_tests_memory *mem;
+	khint_t k;
+
+	hdev = get_hdev_from_fd(fd);
+	if (!hdev)
+		return 0;
+
+	k = kh_get(ptr64, hdev->mem_table_host, (uintptr_t) vaddr);
+	if (k == kh_end(hdev->mem_table_host))
+		return 0;
+
+	mem = kh_val(hdev->mem_table_host, k);
+
+	return mem->device_virt_addr;
+}
