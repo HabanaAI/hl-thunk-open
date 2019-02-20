@@ -393,12 +393,13 @@ static void* allocate_huge_mem(uint64_t size)
 }
 
 /**
- * This function will allocate memory on the host and will map it to the device
+ * This function allocates memory on the host and will map it to the device
+ * virtual address space
  * @param fd file descriptor of the device to which the function will map
  *           the memory
  * @param size how much memory to allocate
  * @param huge whether to use huge pages for the memory allocation
- * @return pointer to the host memory
+ * @return pointer to the host memory. NULL is returned upon failure
  */
 void* hlthunk_tests_allocate_host_mem(int fd, uint64_t size, bool huge)
 {
@@ -456,6 +457,15 @@ free_mem_struct:
 	return NULL;
 }
 
+/**
+ * This function allocates DRAM memory on the device and will map it to
+ * the device virtual address space
+ * @param fd file descriptor of the device to which the function will map
+ *           the memory
+ * @param size how much memory to allocate
+ * @return pointer to the device memory. This pointer can NOT be derefenced
+ * directly from the host. NULL is returned upon failure
+ */
 void* hlthunk_tests_allocate_device_mem(int fd, uint64_t size)
 {
 	struct hlthunk_tests_device *hdev;
@@ -506,6 +516,13 @@ free_mem_struct:
 	return NULL;
 }
 
+/**
+ * This function frees host memory allocation which were done using
+ * hlthunk_tests_allocate_host_mem
+ * @param fd file descriptor of the device that the host memory is mapped to
+ * @param vaddr host pointer that points to the memory area
+ * @return 0 for success, negative value for failure
+ */
 int hlthunk_tests_free_host_mem(int fd, void *vaddr)
 {
 	struct hlthunk_tests_device *hdev;
@@ -546,6 +563,13 @@ int hlthunk_tests_free_host_mem(int fd, void *vaddr)
 	return 0;
 }
 
+/**
+ * This function frees device memory allocation which were done using
+ * hlthunk_tests_allocate_device_mem
+ * @param fd file descriptor of the device that this memory belongs to
+ * @param vaddr device VA that points to the memory area
+ * @return 0 for success, negative value for failure
+ */
 int hlthunk_tests_free_device_mem(int fd, void *vaddr)
 {
 	struct hlthunk_tests_device *hdev;
@@ -583,6 +607,14 @@ int hlthunk_tests_free_device_mem(int fd, void *vaddr)
 	return 0;
 }
 
+/**
+ * This function retrieves the device VA for a host memory area that was mapped
+ * to the device
+ * @param fd file descriptor of the device that the host memory is mapped to
+ * @param vaddr host pointer that points to the memory area
+ * @return virtual address in the device VA space representing this host memory
+ * area. 0 for failure
+ */
 uint64_t hlthunk_tests_get_device_va_for_host_ptr(int fd, void *vaddr)
 {
 	struct hlthunk_tests_device *hdev;
