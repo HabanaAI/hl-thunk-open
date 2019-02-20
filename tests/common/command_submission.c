@@ -68,8 +68,54 @@ void test_cs_nop(void **state)
 	assert_int_equal(rc, 0);
 }
 
+void test_cs_msg_long(void **state)
+{
+	struct hlthunk_tests_state *tests_state =
+			(struct hlthunk_tests_state *) *state;
+	struct hlthunk_hw_ip_info hw_ip;
+	struct hlthunk_tests_cs_chunk execute_arr[1];
+	struct packet_msg_long msg_long = {};
+	uint32_t size, offset = 0;
+	uint64_t seq;
+	void *ptr;
+	int rc;
+
+	size = sizeof(msg_long);
+	ptr = hlthunk_tests_create_cb(tests_state->fd, size, true);
+	assert_ptr_not_equal(ptr, NULL);
+
+	rc = hlthunk_get_hw_ip_info(tests_state->fd, &hw_ip);
+	assert_int_equal(rc, 0);
+
+	msg_long.opcode = PACKET_MSG_LONG;
+	msg_long.eng_barrier = 0;
+	msg_long.reg_barrier = 1;
+	msg_long.msg_barrier = 1;
+	msg_long.op = 0;
+	msg_long.addr = hw_ip.sram_base_address + 0x1000;
+	msg_long.value = 0xbaba0ded;
+
+	offset = hlthunk_tests_add_packet_to_cb(ptr, offset, &msg_long,
+			sizeof(msg_long));
+
+	execute_arr[0].cb_ptr = ptr;
+	execute_arr[0].cb_size = size;
+	execute_arr[0].queue_index = GOYA_QUEUE_ID_DMA_1;
+	rc = hlthunk_tests_submit_cs(tests_state->fd, NULL, 0, execute_arr, 1,
+			false, &seq);
+	assert_int_equal(rc, 0);
+
+	rc = hlthunk_tests_wait_for_cs(tests_state->fd, seq,
+			HLTHUNK_TESTS_WAIT_FOR_CS_DEFAULT_TIMEOUT);
+	assert_int_equal(rc, 0);
+
+	rc = hlthunk_tests_destroy_cb(tests_state->fd, ptr);
+	assert_int_equal(rc, 0);
+}
+
 const struct CMUnitTest cs_tests[] = {
 	cmocka_unit_test(test_cs_nop),
+	cmocka_unit_test(test_cs_msg_long),
 };
 
 int main(void)
