@@ -439,12 +439,12 @@ void* hlthunk_tests_allocate_host_mem(int fd, uint64_t size, bool huge)
 
 	pthread_mutex_lock(&hdev->mem_table_host_lock);
 
-	k = kh_put(ptr64, hdev->mem_table_host, mem->device_virt_addr, &rc);
+	k = kh_put(ptr64, hdev->mem_table_host, (uintptr_t) mem->host_ptr, &rc);
 	kh_val(hdev->mem_table_host, k) = mem;
 
 	pthread_mutex_unlock(&hdev->mem_table_host_lock);
 
-	return (void *) mem->device_virt_addr;
+	return (void *) mem->host_ptr;
 
 free_allocation:
 	if (mem->is_huge)
@@ -519,7 +519,7 @@ int hlthunk_tests_free_host_mem(int fd, void *vaddr)
 
 	pthread_mutex_lock(&hdev->mem_table_host_lock);
 
-	k = kh_get(ptr64, hdev->mem_table_host, (uint64_t) vaddr);
+	k = kh_get(ptr64, hdev->mem_table_host, (uintptr_t) vaddr);
 	if (k == kh_end(hdev->mem_table_host)) {
 		pthread_mutex_unlock(&hdev->mem_table_host_lock);
 		return -EINVAL;
@@ -559,7 +559,7 @@ int hlthunk_tests_free_device_mem(int fd, void *vaddr)
 
 	pthread_mutex_lock(&hdev->mem_table_device_lock);
 
-	k = kh_get(ptr64, hdev->mem_table_device, (uint64_t) vaddr);
+	k = kh_get(ptr64, hdev->mem_table_device, (uintptr_t) vaddr);
 	if (k == kh_end(hdev->mem_table_device)) {
 		pthread_mutex_unlock(&hdev->mem_table_device_lock);
 		return -EINVAL;
