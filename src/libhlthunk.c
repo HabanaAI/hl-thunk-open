@@ -249,6 +249,16 @@ hlthunk_public int hlthunk_get_info(int fd, struct hl_info_args *info)
 	return hlthunk_ioctl(fd, HL_IOCTL_INFO, info);
 }
 
+/**
+ * This function allocates DRAM memory on the device
+ * @param fd file descriptor of the device on which to allocate the memory
+ * @param size how much memory to allocate
+ * @param contiguous whether the memory area will be physically contiguous
+ * @param shared whether this memory can be shared with other user processes
+ * on the device
+ * @return opaque handle representing the memory allocation. 0 is returned
+ * upon failure
+ */
 hlthunk_public uint64_t hlthunk_device_memory_alloc(int fd, uint64_t size,
 						bool contiguous, bool shared)
 {
@@ -269,6 +279,13 @@ hlthunk_public uint64_t hlthunk_device_memory_alloc(int fd, uint64_t size,
 	return ioctl_args.out.handle;
 }
 
+/**
+ * This function frees DRAM memory that was allocated on the device using
+ * hlthunk_device_memory_alloc
+ * @param fd file descriptor of the device that this memory belongs to
+ * @param handle the opaque handle that represents this memory
+ * @return 0 for success, negative value for failure
+ */
 hlthunk_public int hlthunk_device_memory_free(int fd, uint64_t handle)
 {
 	union hl_mem_args ioctl_args = {0};
@@ -279,6 +296,16 @@ hlthunk_public int hlthunk_device_memory_free(int fd, uint64_t handle)
 	return hlthunk_ioctl(fd, HL_IOCTL_MEMORY, &ioctl_args);
 }
 
+/**
+ * This function asks the driver to map a previously allocated DRAM memory
+ * to the device's MMU and to allocate for it a VA in the device address space
+ * @param fd file descriptor of the device that this memory belongs to
+ * @param handle the opaque handle that represents this memory
+ * @param hint_addr the user can request from the driver that the VA will be
+ * a specific address. The driver doesn't have to comply to this request but
+ * will take it under consideration
+ * @return VA in the device address space. 0 is returned upon failure
+ */
 hlthunk_public uint64_t hlthunk_device_memory_map(int fd, uint64_t handle,
 							uint64_t hint_addr)
 {
@@ -296,6 +323,17 @@ hlthunk_public uint64_t hlthunk_device_memory_map(int fd, uint64_t handle,
 	return ioctl_args.out.device_virt_addr;
 }
 
+/**
+ * This function asks the driver to map a previously allocated host memory
+ * to the device's MMU and to allocate for it a VA in the device address space
+ * @param fd file descriptor of the device that this memory will be mapped to
+ * @param host_virt_addr the user's VA of memory area on the host
+ * @param hint_addr the user can request from the driver that the device VA will
+ * be a specific address. The driver doesn't have to comply to this request but
+ * will take it under consideration
+ * @param host_size the size of the memory area
+ * @return VA in the device address space. 0 is returned upon failure
+ */
 hlthunk_public uint64_t hlthunk_host_memory_map(int fd, void *host_virt_addr,
 						uint64_t hint_addr,
 						uint64_t host_size)
@@ -316,6 +354,14 @@ hlthunk_public uint64_t hlthunk_host_memory_map(int fd, void *host_virt_addr,
 	return ioctl_args.out.device_virt_addr;
 }
 
+/**
+ * This function unmaps a mapping in the device's MMU that was previously done
+ * using either hlthunk_device_memory_map or hlthunk_host_memory_map
+ * @param fd file descriptor of the device that contains the mapping
+ * @param device_virt_addr the VA in the device address space representing
+ * the device or host memory area
+ * @return 0 for success, negative value for failure
+ */
 hlthunk_public int hlthunk_memory_unmap(int fd, uint64_t device_virt_addr)
 {
 	union hl_mem_args ioctl_args = {0};
