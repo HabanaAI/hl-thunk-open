@@ -914,3 +914,15 @@ uint32_t hlthunk_tests_add_msg_long_pkt(int fd, void *buffer, uint32_t buf_off,
 
 	return asic->add_msg_long_pkt(buffer, buf_off, eb, mb, address, value);
 }
+
+uint32_t hlthunk_tests_add_dma_pkt(int fd, void *buffer, uint32_t buf_off,
+				bool eb, bool mb, uint64_t src_addr,
+				uint64_t dst_addr, uint32_t size,
+				enum hlthunk_tests_goya_dma_direction dma_dir)
+{
+	const struct hlthunk_tests_asic_funcs *asic =
+			get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->add_dma_pkt(buffer, buf_off, eb, mb, src_addr, dst_addr,
+					size, dma_dir);
+}
