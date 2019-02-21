@@ -57,9 +57,18 @@ const struct CMUnitTest root_tests[] = {
 
 int main(void)
 {
+	char *test_names_to_run;
+	int rc;
+
 	if (access("/sys/kernel/debug", R_OK))
 		return 0;
 
-	return cmocka_run_group_tests(root_tests, hlthunk_tests_root_setup,
+	test_names_to_run = getenv("HLTHUNK_TESTS_NAMES");
+	if (test_names_to_run)
+		cmocka_set_test_filter(test_names_to_run);
+
+	rc = cmocka_run_group_tests(root_tests, hlthunk_tests_root_setup,
 					hlthunk_tests_root_teardown);
+
+	return rc;
 }

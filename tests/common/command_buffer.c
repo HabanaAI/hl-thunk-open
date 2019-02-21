@@ -33,11 +33,11 @@
 #include <stdio.h>
 #include <errno.h>
 
-void test_cb_mmap(void **state)
+static void cb_create_mmap_unmap_destroy(void **state, uint32_t size,
+					bool unmap, bool destroy)
 {
 	struct hlthunk_tests_state *tests_state =
 					(struct hlthunk_tests_state *) *state;
-	uint32_t size = 0x100000;
 	uint64_t cb_handle;
 	void *ptr;
 	int rc;
@@ -48,19 +48,67 @@ void test_cb_mmap(void **state)
 	ptr = hlthunk_tests_cb_mmap(tests_state->fd, size, cb_handle);
 	assert_ptr_not_equal(ptr, MAP_FAILED);
 
-	rc = hlthunk_tests_cb_munmap(ptr, size);
-	assert_int_equal(rc, 0);
+	if (unmap) {
+		rc = hlthunk_tests_cb_munmap(ptr, size);
+		assert_int_equal(rc, 0);
+	}
 
-	rc = hlthunk_destroy_command_buffer(tests_state->fd, cb_handle);
-	assert_int_equal(rc, 0);
+	if (destroy) {
+		rc = hlthunk_destroy_command_buffer(tests_state->fd, cb_handle);
+		assert_int_equal(rc, 0);
+	}
+}
+
+void test_cb_mmap(void **state)
+{
+	cb_create_mmap_unmap_destroy(state, 0x100000, true, true);
+}
+
+void test_cb_unaligned_size(void **state)
+{
+	cb_create_mmap_unmap_destroy(state, 5000, true, true);
+}
+
+void test_cb_small_unaligned_odd_size(void **state)
+{
+	cb_create_mmap_unmap_destroy(state, 77, true, true);
+}
+
+void test_cb_unaligned_odd_size(void **state)
+{
+	cb_create_mmap_unmap_destroy(state, 92517, true, true);
+}
+
+void test_cb_skip_unmap(void **state)
+{
+	cb_create_mmap_unmap_destroy(state, 92517, false, true);
+}
+
+void test_cb_skip_unmap_and_destroy(void **state)
+{
+	cb_create_mmap_unmap_destroy(state, 92517, false, false);
 }
 
 const struct CMUnitTest cb_tests[] = {
 	cmocka_unit_test(test_cb_mmap),
+	cmocka_unit_test(test_cb_unaligned_size),
+	cmocka_unit_test(test_cb_small_unaligned_odd_size),
+	cmocka_unit_test(test_cb_unaligned_odd_size),
+	cmocka_unit_test(test_cb_skip_unmap),
+	cmocka_unit_test(test_cb_skip_unmap_and_destroy),
 };
 
 int main(void)
 {
-	return cmocka_run_group_tests(cb_tests, hlthunk_tests_setup,
+	char *test_names_to_run;
+	int rc;
+
+	test_names_to_run = getenv("HLTHUNK_TESTS_NAMES");
+	if (test_names_to_run)
+		cmocka_set_test_filter(test_names_to_run);
+
+	rc = cmocka_run_group_tests(cb_tests, hlthunk_tests_setup,
 					hlthunk_tests_teardown);
+
+	return rc;
 }

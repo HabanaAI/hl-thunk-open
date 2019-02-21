@@ -120,6 +120,15 @@ const struct CMUnitTest cs_tests[] = {
 
 int main(void)
 {
-	return cmocka_run_group_tests(cs_tests, hlthunk_tests_setup,
-			hlthunk_tests_teardown);
+	char *test_names_to_run;
+	int rc;
+
+	test_names_to_run = getenv("HLTHUNK_TESTS_NAMES");
+	if (test_names_to_run)
+		cmocka_set_test_filter(test_names_to_run);
+
+	rc = cmocka_run_group_tests(cs_tests, hlthunk_tests_setup,
+					hlthunk_tests_teardown);
+
+	return rc;
 }

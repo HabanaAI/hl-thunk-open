@@ -61,7 +61,12 @@ const struct CMUnitTest open_device_tests[] = {
 
 int main(void)
 {
+	char *test_names_to_run;
 	int rc;
+
+	test_names_to_run = getenv("HLTHUNK_TESTS_NAMES");
+	if (test_names_to_run)
+		cmocka_set_test_filter(test_names_to_run);
 
 	rc = hlthunk_tests_init();
 	if (rc) {
