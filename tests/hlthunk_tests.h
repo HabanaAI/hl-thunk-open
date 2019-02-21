@@ -68,6 +68,9 @@ struct hlthunk_tests_asic_funcs {
 	uint32_t (*add_msg_short_pkt)(void *buffer, uint32_t buf_off, bool eb,
 					bool mb, uint16_t address,
 					uint32_t value);
+	uint32_t (*add_fence_pkt)(void *buffer, uint32_t buf_off, bool eb,
+					bool mb, uint8_t dec_val,
+					uint8_t gate_val, uint8_t fence_id);
 	uint32_t (*add_dma_pkt)(void *buffer, uint32_t buf_off, bool eb,
 				bool mb, uint64_t src_addr,
 				uint64_t dst_addr, uint32_t size,
@@ -145,6 +148,9 @@ uint32_t hlthunk_tests_add_msg_long_pkt(int fd, void *buffer, uint32_t buf_off,
 uint32_t hlthunk_tests_add_msg_short_pkt(int fd, void *buffer, uint32_t buf_off,
 					bool eb, bool mb, uint16_t address,
 					uint32_t value);
+uint32_t hlthunk_tests_add_fence_pkt(int fd, void *buffer, uint32_t buf_off,
+					bool eb, bool mb, uint8_t dec_val,
+					uint8_t gate_val, uint8_t fence_id);
 
 uint32_t hlthunk_tests_add_dma_pkt(int fd, void *buffer, uint32_t buf_off,
 				bool eb, bool mb, uint64_t src_addr,
