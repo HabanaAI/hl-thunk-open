@@ -40,7 +40,7 @@ struct MTState {
   size_t index;
 };
 
-static struct MTState state = {{}, {}, SIZE};
+static struct MTState state;
 
 #define M32(x) (0x80000000 & x) // 32nd MSB
 #define L31(x) (0x7FFFFFFF & x) // 31 LSBs

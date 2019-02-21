@@ -157,6 +157,8 @@ int hlthunk_tests_teardown(void **state);
 int hlthunk_tests_root_setup(void **state);
 int hlthunk_tests_root_teardown(void **state);
 
+void hlthunk_tests_fill_rand_values(void *ptr, uint32_t size);
+
 void goya_tests_set_asic_funcs(struct hlthunk_tests_device *hdev);
 
 #endif /* HLTHUNK_TESTS_H */

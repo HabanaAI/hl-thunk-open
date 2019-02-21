@@ -18,25 +18,17 @@
 #ifndef MERSENNE_TWISTER_H
 #define MERSENNE_TWISTER_H
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "hlthunk.h"
 
 /*
  * Extract a pseudo-random unsigned 32-bit integer in the range 0 ... UINT32_MAX
  */
-uint32_t rand_u32(void);
+hlthunk_public uint32_t rand_u32(void);
 
 /*
  * Initialize Mersenne Twister with given seed value.
  */
-void seed(uint32_t seed_value);
-
-#ifdef __cplusplus
-} // extern "C"
-#endif
+hlthunk_public void seed(uint32_t seed_value);
 
 #endif // MERSENNE_TWISTER_H

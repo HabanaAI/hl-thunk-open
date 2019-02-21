@@ -24,6 +24,7 @@
 #include "hlthunk_tests.h"
 #include "hlthunk.h"
 #include "specs/pci_ids.h"
+#include "mersenne-twister.h"
 
 #include <stdio.h>
 #include <errno.h>
@@ -33,6 +34,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <linux/mman.h>
+#include <time.h>
 
 static pthread_mutex_t table_lock = PTHREAD_MUTEX_INITIALIZER;
 static khash_t(ptr) *dev_table;
@@ -368,6 +370,8 @@ int hlthunk_tests_setup(void **state)
 	}
 
 	*state = tests_state;
+
+	seed(time(NULL));
 
 	return 0;
 
@@ -925,4 +929,24 @@ uint32_t hlthunk_tests_add_dma_pkt(int fd, void *buffer, uint32_t buf_off,
 
 	return asic->add_dma_pkt(buffer, buf_off, eb, mb, src_addr, dst_addr,
 					size, dma_dir);
+}
+
+void hlthunk_tests_fill_rand_values(void *ptr, uint32_t size)
+{
+	uint32_t i, *p = ptr, rounddown_aligned_size, remainder, val;
+
+	rounddown_aligned_size = size & ~(sizeof(uint32_t) - 1);
+	remainder = size - rounddown_aligned_size;
+
+	for (i = 0 ; i < rounddown_aligned_size ; i += sizeof(uint32_t), p++)
+		*p = rand_u32();
+
+	if (!remainder)
+		return;
+
+	val = rand_u32();
+	for (i = 0 ; i < remainder ; i++) {
+		((uint8_t *) p)[i] = (uint8_t) (val & 0xff);
+		val >>= 8;
+	}
 }
