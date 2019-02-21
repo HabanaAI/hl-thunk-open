@@ -762,8 +762,8 @@ int hlthunk_tests_destroy_cb(int fd, void *ptr)
 	return 0;
 }
 
-int hlthunk_tests_add_packet_to_cb(void *ptr, uint32_t offset, void *pkt,
-		uint32_t pkt_size)
+uint32_t hlthunk_tests_add_packet_to_cb(void *ptr, uint32_t offset, void *pkt,
+					uint32_t pkt_size)
 {
 	memcpy((uint8_t *) ptr + offset, pkt, pkt_size);
 
@@ -894,4 +894,9 @@ int hlthunk_tests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us)
 		return -EINVAL;
 
 	return 0;
+}
+
+uint32_t hlthunk_tests_add_nop_pkt(int fd, void *buffer, uint32_t buf_off)
+{
+	return get_hdev_from_fd(fd)->asic_funcs->add_nop_pkt(buffer, buf_off);
 }

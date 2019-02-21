@@ -229,8 +229,18 @@ int goya_tests_prepare_dma_packet(struct packet_lin_dma *packet, uint32_t size,
 }
 #endif
 
+static uint32_t goya_add_nop_pkt(void *buffer, uint32_t buf_off)
+{
+	struct packet_nop packet = {0};
+
+	packet.opcode = PACKET_NOP;
+	return hlthunk_tests_add_packet_to_cb(buffer, buf_off, &packet,
+						sizeof(packet));
+}
+
 static const struct hlthunk_tests_asic_funcs goya_funcs = {
-	.add_monitor_and_fence = goya_tests_add_monitor_and_fence
+	.add_monitor_and_fence = goya_tests_add_monitor_and_fence,
+	.add_nop_pkt = goya_add_nop_pkt,
 };
 
 void goya_tests_set_asic_funcs(struct hlthunk_tests_device *hdev)

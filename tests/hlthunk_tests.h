@@ -44,6 +44,7 @@ struct hlthunk_tests_asic_funcs {
 	uint32_t (*add_monitor_and_fence)(uint8_t *cb, uint8_t queue_id,
 					bool cmdq_fence, uint32_t so_id,
 					uint32_t mon_id, uint64_t mon_address);
+	uint32_t (*add_nop_pkt)(void *buffer, uint32_t buf_off);
 };
 
 struct hlthunk_tests_memory {
@@ -62,6 +63,12 @@ struct hlthunk_tests_cb {
 	uint64_t cb_handle;
 	uint32_t cb_size;
 	bool is_external;
+};
+
+struct hlthunk_tests_cs_chunk {
+	void *cb_ptr;
+	uint32_t cb_size;
+	uint32_t queue_index;
 };
 
 struct hlthunk_tests_device {
@@ -100,22 +107,16 @@ uint64_t hlthunk_tests_get_device_va_for_host_ptr(int fd, void *vaddr);
 
 void *hlthunk_tests_create_cb(int fd, uint32_t cb_size, bool is_external);
 int hlthunk_tests_destroy_cb(int fd, void *ptr);
-int hlthunk_tests_add_packet_to_cb(void *ptr, uint32_t offset, void *pkt,
-		uint32_t pkt_size);
+uint32_t hlthunk_tests_add_packet_to_cb(void *ptr, uint32_t offset, void *pkt,
+					uint32_t pkt_size);
 
-struct hlthunk_tests_cs_chunk {
-	void *cb_ptr;
-	uint32_t cb_size;
-	uint32_t queue_index;
-};
+uint32_t hlthunk_tests_add_nop_pkt(int fd, void *buffer, uint32_t buf_off);
 
-int hlthunk_tests_submit_cs(int fd,
-		struct hlthunk_tests_cs_chunk *restore_arr,
-		uint32_t restore_arr_size,
-		struct hlthunk_tests_cs_chunk *execute_arr,
-		uint32_t execute_arr_size,
-		bool force_restore,
-		uint64_t *seq);
+int hlthunk_tests_submit_cs(int fd, struct hlthunk_tests_cs_chunk *restore_arr,
+				uint32_t restore_arr_size,
+				struct hlthunk_tests_cs_chunk *execute_arr,
+				uint32_t execute_arr_size, bool force_restore,
+				uint64_t *seq);
 
 int hlthunk_tests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us);
 

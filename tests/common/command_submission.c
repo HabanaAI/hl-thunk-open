@@ -33,31 +33,28 @@
 #include <cmocka.h>
 #include <stdio.h>
 #include <errno.h>
+#include <unistd.h>
 
 void test_cs_nop(void **state)
 {
 	struct hlthunk_tests_state *tests_state =
 			(struct hlthunk_tests_state *) *state;
 	struct hlthunk_tests_cs_chunk execute_arr[1];
-	struct packet_nop packet = {};
-	uint32_t size, offset = 0;
+	uint32_t offset = 0;
 	uint64_t seq;
 	void *ptr;
 	int rc;
 
-	size = sizeof(packet);
-	ptr = hlthunk_tests_create_cb(tests_state->fd, size, true);
+	ptr = hlthunk_tests_create_cb(tests_state->fd, getpagesize(), true);
 	assert_ptr_not_equal(ptr, NULL);
 
-	packet.opcode = PACKET_NOP;
-	offset = hlthunk_tests_add_packet_to_cb(ptr, offset, &packet,
-			sizeof(packet));
+	offset = hlthunk_tests_add_nop_pkt(tests_state->fd, ptr, offset);
 
 	execute_arr[0].cb_ptr = ptr;
-	execute_arr[0].cb_size = size;
+	execute_arr[0].cb_size = offset;
 	execute_arr[0].queue_index = GOYA_QUEUE_ID_DMA_1;
 	rc = hlthunk_tests_submit_cs(tests_state->fd, NULL, 0, execute_arr, 1,
-			false, &seq);
+					false, &seq);
 	assert_int_equal(rc, 0);
 
 	rc = hlthunk_tests_wait_for_cs(tests_state->fd, seq,
