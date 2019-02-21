@@ -34,7 +34,7 @@
 KHASH_MAP_INIT_INT(ptr, void*)
 KHASH_MAP_INIT_INT64(ptr64, void*)
 
-#define HLTHUNK_TESTS_WAIT_FOR_CS_DEFAULT_TIMEOUT	1000000 /* 1 sec */
+#define WAIT_FOR_CS_DEFAULT_TIMEOUT	1000000 /* 1 sec */
 
 struct hlthunk_tests_state {
 	int fd;
@@ -44,7 +44,11 @@ struct hlthunk_tests_asic_funcs {
 	uint32_t (*add_monitor_and_fence)(uint8_t *cb, uint8_t queue_id,
 					bool cmdq_fence, uint32_t so_id,
 					uint32_t mon_id, uint64_t mon_address);
-	uint32_t (*add_nop_pkt)(void *buffer, uint32_t buf_off);
+	uint32_t (*add_nop_pkt)(void *buffer, uint32_t buf_off, bool eb,
+				bool mb);
+	uint32_t (*add_msg_long_pkt)(void *buffer, uint32_t buf_off, bool eb,
+					bool mb, uint64_t address,
+					uint32_t value);
 };
 
 struct hlthunk_tests_memory {
@@ -110,7 +114,11 @@ int hlthunk_tests_destroy_cb(int fd, void *ptr);
 uint32_t hlthunk_tests_add_packet_to_cb(void *ptr, uint32_t offset, void *pkt,
 					uint32_t pkt_size);
 
-uint32_t hlthunk_tests_add_nop_pkt(int fd, void *buffer, uint32_t buf_off);
+uint32_t hlthunk_tests_add_nop_pkt(int fd, void *buffer, uint32_t buf_off,
+					bool eb, bool mb);
+uint32_t hlthunk_tests_add_msg_long_pkt(int fd, void *buffer, uint32_t buf_off,
+					bool eb, bool mb, uint64_t address,
+					uint32_t value);
 
 int hlthunk_tests_submit_cs(int fd, struct hlthunk_tests_cs_chunk *restore_arr,
 				uint32_t restore_arr_size,

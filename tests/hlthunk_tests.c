@@ -896,7 +896,21 @@ int hlthunk_tests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us)
 	return 0;
 }
 
-uint32_t hlthunk_tests_add_nop_pkt(int fd, void *buffer, uint32_t buf_off)
+uint32_t hlthunk_tests_add_nop_pkt(int fd, void *buffer, uint32_t buf_off,
+					bool eb, bool mb)
 {
-	return get_hdev_from_fd(fd)->asic_funcs->add_nop_pkt(buffer, buf_off);
+	const struct hlthunk_tests_asic_funcs *asic =
+			get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->add_nop_pkt(buffer, buf_off, eb, mb);
+}
+
+uint32_t hlthunk_tests_add_msg_long_pkt(int fd, void *buffer, uint32_t buf_off,
+					bool eb, bool mb, uint64_t address,
+					uint32_t value)
+{
+	const struct hlthunk_tests_asic_funcs *asic =
+			get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->add_msg_long_pkt(buffer, buf_off, eb, mb, address, value);
 }

@@ -229,11 +229,33 @@ int goya_tests_prepare_dma_packet(struct packet_lin_dma *packet, uint32_t size,
 }
 #endif
 
-static uint32_t goya_add_nop_pkt(void *buffer, uint32_t buf_off)
+static uint32_t goya_add_nop_pkt(void *buffer, uint32_t buf_off, bool eb,
+					bool mb)
 {
 	struct packet_nop packet = {0};
 
 	packet.opcode = PACKET_NOP;
+	packet.eng_barrier = eb;
+	packet.msg_barrier = mb;
+	packet.reg_barrier = 1;
+
+	return hlthunk_tests_add_packet_to_cb(buffer, buf_off, &packet,
+						sizeof(packet));
+}
+
+static uint32_t goya_add_msg_long_pkt(void *buffer, uint32_t buf_off, bool eb,
+					bool mb, uint64_t address,
+					uint32_t value)
+{
+	struct packet_msg_long packet = {0};
+
+	packet.opcode = PACKET_MSG_LONG;
+	packet.addr = address;
+	packet.value = value;
+	packet.eng_barrier = eb;
+	packet.msg_barrier = mb;
+	packet.reg_barrier = mb;
+
 	return hlthunk_tests_add_packet_to_cb(buffer, buf_off, &packet,
 						sizeof(packet));
 }
@@ -241,6 +263,7 @@ static uint32_t goya_add_nop_pkt(void *buffer, uint32_t buf_off)
 static const struct hlthunk_tests_asic_funcs goya_funcs = {
 	.add_monitor_and_fence = goya_tests_add_monitor_and_fence,
 	.add_nop_pkt = goya_add_nop_pkt,
+	.add_msg_long_pkt = goya_add_msg_long_pkt,
 };
 
 void goya_tests_set_asic_funcs(struct hlthunk_tests_device *hdev)
