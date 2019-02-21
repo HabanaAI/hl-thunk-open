@@ -40,3 +40,17 @@ Best practice is to use the checkpatch utility of the Linux kernel with the
 following ignores:
 
 checkpatch.pl --ignore SPDX_LICENSE_TAG,NEW_TYPEDEFS
+
+## Testing
+
+This library comes with a suite of tests for the various ASICs. The tests
+were developed using the CMocka testing framework. To build and run the
+tests suite, one needs to install the CMocka library and header files.
+
+The minimum CMocka version required is 1.1.3
+
+CMocka can be usually installed using the repository managers of the various
+distributions, or it can be compiled from source and installed.
+
+The tests suite is not build by default. To build it, run cmake with
+-DUNIT_TESTING=ON
