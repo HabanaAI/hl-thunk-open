@@ -211,6 +211,23 @@ static uint32_t goya_add_msg_long_pkt(void *buffer, uint32_t buf_off, bool eb,
 						sizeof(packet));
 }
 
+static uint32_t goya_add_msg_short_pkt(void *buffer, uint32_t buf_off, bool eb,
+					bool mb, uint16_t address,
+					uint32_t value)
+{
+	struct packet_msg_short packet = {0};
+
+	packet.opcode = PACKET_MSG_SHORT;
+	packet.msg_addr_offset = address;
+	packet.value = value;
+	packet.eng_barrier = eb;
+	packet.msg_barrier = mb;
+	packet.reg_barrier = 1;
+
+	return hlthunk_tests_add_packet_to_cb(buffer, buf_off, &packet,
+						sizeof(packet));
+}
+
 static uint32_t goya_add_dma_pkt(void *buffer, uint32_t buf_off, bool eb,
 			bool mb, uint64_t src_addr,
 			uint64_t dst_addr, uint32_t size,
@@ -236,6 +253,7 @@ static const struct hlthunk_tests_asic_funcs goya_funcs = {
 	.add_monitor_and_fence = goya_tests_add_monitor_and_fence,
 	.add_nop_pkt = goya_add_nop_pkt,
 	.add_msg_long_pkt = goya_add_msg_long_pkt,
+	.add_msg_short_pkt = goya_add_msg_short_pkt,
 	.add_dma_pkt = goya_add_dma_pkt,
 };
 
