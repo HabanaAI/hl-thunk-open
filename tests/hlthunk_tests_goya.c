@@ -29,14 +29,122 @@
 #include <stdio.h>
 #include <string.h>
 
-uint32_t goya_tests_add_monitor_and_fence(uint8_t *cb, uint8_t queue_id,
-					bool cmdq_fence, uint32_t so_id,
-					uint32_t mon_id, uint64_t mon_address)
+static uint32_t goya_add_nop_pkt(void *buffer, uint32_t buf_off, bool eb,
+					bool mb)
+{
+	struct packet_nop packet = {0};
+
+	packet.opcode = PACKET_NOP;
+	packet.eng_barrier = eb;
+	packet.msg_barrier = mb;
+	packet.reg_barrier = 1;
+
+	return hlthunk_tests_add_packet_to_cb(buffer, buf_off, &packet,
+						sizeof(packet));
+}
+
+static uint32_t goya_add_msg_long_pkt(void *buffer, uint32_t buf_off, bool eb,
+					bool mb, uint64_t address,
+					uint32_t value)
+{
+	struct packet_msg_long packet = {0};
+
+	packet.opcode = PACKET_MSG_LONG;
+	packet.addr = address;
+	packet.value = value;
+	packet.eng_barrier = eb;
+	packet.msg_barrier = mb;
+	packet.reg_barrier = 1;
+
+	return hlthunk_tests_add_packet_to_cb(buffer, buf_off, &packet,
+						sizeof(packet));
+}
+
+static uint32_t goya_add_msg_short_pkt(void *buffer, uint32_t buf_off, bool eb,
+					bool mb, uint16_t address,
+					uint32_t value)
+{
+	struct packet_msg_short packet = {0};
+
+	packet.opcode = PACKET_MSG_SHORT;
+	packet.msg_addr_offset = address;
+	packet.value = value;
+	packet.eng_barrier = eb;
+	packet.msg_barrier = mb;
+	packet.reg_barrier = 1;
+
+	return hlthunk_tests_add_packet_to_cb(buffer, buf_off, &packet,
+						sizeof(packet));
+}
+
+static uint32_t goya_add_arm_monitor_pkt(void *buffer, uint32_t buf_off,
+					bool eb, bool mb, uint16_t address,
+					uint32_t value, uint8_t mon_mode,
+					uint16_t sync_val, uint16_t sync_id)
+{
+	struct packet_msg_short packet = {0};
+
+	packet.opcode = PACKET_MSG_SHORT;
+	packet.msg_addr_offset = address;
+	packet.value = value;
+	packet.eng_barrier = eb;
+	packet.msg_barrier = mb;
+	packet.reg_barrier = 1;
+	packet.mon_arm_register.mode = mon_mode;
+	packet.mon_arm_register.sync_value = sync_val;
+	packet.mon_arm_register.sync_id = sync_id;
+
+	return hlthunk_tests_add_packet_to_cb(buffer, buf_off, &packet,
+						sizeof(packet));
+}
+
+static uint32_t goya_add_fence_pkt(void *buffer, uint32_t buf_off, bool eb,
+					bool mb, uint8_t dec_val,
+					uint8_t gate_val, uint8_t fence_id)
+{
+	struct packet_fence packet = {0};
+
+	packet.opcode = PACKET_FENCE;
+	packet.dec_val = dec_val;
+	packet.gate_val = gate_val;
+	packet.id = fence_id;
+	packet.eng_barrier = eb;
+	packet.msg_barrier = mb;
+	packet.reg_barrier = 1;
+
+	return hlthunk_tests_add_packet_to_cb(buffer, buf_off, &packet,
+						sizeof(packet));
+}
+
+static uint32_t goya_add_dma_pkt(void *buffer, uint32_t buf_off, bool eb,
+			bool mb, uint64_t src_addr,
+			uint64_t dst_addr, uint32_t size,
+			enum hlthunk_tests_goya_dma_direction dma_dir)
+{
+	struct packet_lin_dma packet = {0};
+
+	packet.opcode = PACKET_LIN_DMA;
+	packet.eng_barrier = eb;
+	packet.msg_barrier = mb;
+	packet.reg_barrier = 1;
+	packet.weakly_ordered = 1;
+	packet.src_addr = src_addr;
+	packet.dst_addr = dst_addr;
+	packet.tsize = size;
+	packet.dma_dir = dma_dir;
+
+	return hlthunk_tests_add_packet_to_cb(buffer, buf_off, &packet,
+						sizeof(packet));
+}
+
+static uint32_t goya_tests_add_monitor_and_fence(void *buffer, uint32_t buf_off,
+					uint8_t queue_id, bool cmdq_fence,
+					uint32_t so_id, uint32_t mon_id,
+					uint64_t mon_address)
 {
 	uint64_t address, monitor_base;
-	struct packet_msg_short monitor[4];
-	struct packet_fence fence;
 	uint32_t fence_addr = 0;
+	uint16_t msg_addr_offset;
 
 	switch (queue_id)
 	{
@@ -119,152 +227,40 @@ uint32_t goya_tests_add_monitor_and_fence(uint8_t *cb, uint8_t queue_id,
 	else
 		address = CFG_BASE + fence_addr;
 
+	/* monitor_base should be the content of the base0 address registers,
+	 * so it will be added to the msg short offsets
+	 */
 	monitor_base = mmSYNC_MNGR_MON_PAY_ADDRL_0;
-	//monitor_base should be the content of the base0 address registers, so it will be added to the msg short offsets
 
-	//First monitor config packet: low address of the sync
-	monitor[0].opcode = PACKET_MSG_SHORT;
-	monitor[0].op = 0;
-	monitor[0].base = 0;
-	monitor[0].eng_barrier = 0x0;
-	monitor[0].reg_barrier = 0x1;
-	monitor[0].msg_barrier = 0x1;
-	monitor[0].msg_addr_offset = (mmSYNC_MNGR_MON_PAY_ADDRL_0 + mon_id * 4) - monitor_base;
-	monitor[0].value = (uint32_t) address;
+	/* First monitor config packet: low address of the sync */
+	msg_addr_offset = (mmSYNC_MNGR_MON_PAY_ADDRL_0 + mon_id * 4) -
+								monitor_base;
+	buf_off = goya_add_msg_short_pkt(buffer, buf_off, false, true,
+					msg_addr_offset, (uint32_t) address);
 
-	//Second config packet: high address of the sync
-	monitor[1].opcode = PACKET_MSG_SHORT;
-	monitor[1].op = 0;
-	monitor[1].base = 0;
-	monitor[1].eng_barrier = 0x0;
-	monitor[1].reg_barrier = 0x1;
-	monitor[1].msg_barrier = 0x1;
-	monitor[1].msg_addr_offset = (mmSYNC_MNGR_MON_PAY_ADDRH_0 + mon_id * 4) - monitor_base;
-	monitor[1].value = (uint32_t) (address >> 32);
+	/* Second config packet: high address of the sync */
+	msg_addr_offset = (mmSYNC_MNGR_MON_PAY_ADDRH_0 + mon_id * 4) -
+								monitor_base;
+	buf_off = goya_add_msg_short_pkt(buffer, buf_off, false, true,
+				msg_addr_offset, (uint32_t) (address >> 32));
 
-	//Third config packet: the payload, i.e. what to write when the sync triggers
-	monitor[2].opcode = PACKET_MSG_SHORT;
-	monitor[2].op = 0;
-	monitor[2].base = 0;
-	monitor[2].eng_barrier = 0x0;
-	monitor[2].reg_barrier = 0x1;
-	monitor[2].msg_barrier = 0x1;
-	monitor[2].msg_addr_offset = (mmSYNC_MNGR_MON_PAY_DATA_0 + mon_id * 4) - monitor_base;
-	monitor[2].value = 1;
+	/* Third config packet: the payload, i.e. what to write when the sync
+	 * triggers
+	 */
+	msg_addr_offset = (mmSYNC_MNGR_MON_PAY_DATA_0 + mon_id * 4) -
+								monitor_base;
+	buf_off = goya_add_msg_short_pkt(buffer, buf_off, false, true,
+					msg_addr_offset, 1);
 
-	//Fourth config packet: bind the monitor to a sync object
-	monitor[3].opcode = PACKET_MSG_SHORT;
-	monitor[3].op = 0;
-	monitor[3].base = 0;
-	monitor[3].eng_barrier = 0x0;
-	monitor[3].reg_barrier = 0x1;
-	monitor[3].msg_barrier = 0x1;
-	monitor[3].msg_addr_offset = (mmSYNC_MNGR_MON_ARM_0 + mon_id * 4) - monitor_base;
-	monitor[3].value = 0;
-	monitor[3].mon_arm_register.mode = 0;
-	monitor[3].mon_arm_register.sync_value = 1;
-	monitor[3].mon_arm_register.sync_id = so_id;
+	/* Fourth config packet: bind the monitor to a sync object */
+	msg_addr_offset = (mmSYNC_MNGR_MON_ARM_0 + mon_id * 4) - monitor_base;
+	buf_off = goya_add_arm_monitor_pkt(buffer, buf_off, false, true,
+					msg_addr_offset, 1, 0, 1, so_id);
 
-	//Fence packet
-	fence.opcode = PACKET_FENCE;
-	fence.dec_val = 1;
-	fence.gate_val = 1;
-	fence.id = 0;
-	fence.eng_barrier = 0x0;
-	fence.reg_barrier = 0x1;
-	fence.msg_barrier = 0x1;
+	/* Fence packet */
+	buf_off = goya_add_fence_pkt(buffer, buf_off, false, true, 1, 1, 0);
 
-	memcpy(cb, monitor, sizeof(monitor));
-	memcpy(cb + sizeof(monitor), &fence, sizeof(fence));
-
-	return sizeof(monitor) + sizeof(fence);
-}
-
-static uint32_t goya_add_nop_pkt(void *buffer, uint32_t buf_off, bool eb,
-					bool mb)
-{
-	struct packet_nop packet = {0};
-
-	packet.opcode = PACKET_NOP;
-	packet.eng_barrier = eb;
-	packet.msg_barrier = mb;
-	packet.reg_barrier = 1;
-
-	return hlthunk_tests_add_packet_to_cb(buffer, buf_off, &packet,
-						sizeof(packet));
-}
-
-static uint32_t goya_add_msg_long_pkt(void *buffer, uint32_t buf_off, bool eb,
-					bool mb, uint64_t address,
-					uint32_t value)
-{
-	struct packet_msg_long packet = {0};
-
-	packet.opcode = PACKET_MSG_LONG;
-	packet.addr = address;
-	packet.value = value;
-	packet.eng_barrier = eb;
-	packet.msg_barrier = mb;
-	packet.reg_barrier = 1;
-
-	return hlthunk_tests_add_packet_to_cb(buffer, buf_off, &packet,
-						sizeof(packet));
-}
-
-static uint32_t goya_add_msg_short_pkt(void *buffer, uint32_t buf_off, bool eb,
-					bool mb, uint16_t address,
-					uint32_t value)
-{
-	struct packet_msg_short packet = {0};
-
-	packet.opcode = PACKET_MSG_SHORT;
-	packet.msg_addr_offset = address;
-	packet.value = value;
-	packet.eng_barrier = eb;
-	packet.msg_barrier = mb;
-	packet.reg_barrier = 1;
-
-	return hlthunk_tests_add_packet_to_cb(buffer, buf_off, &packet,
-						sizeof(packet));
-}
-
-static uint32_t goya_add_fence_pkt(void *buffer, uint32_t buf_off, bool eb,
-					bool mb, uint8_t dec_val,
-					uint8_t gate_val, uint8_t fence_id)
-{
-	struct packet_fence packet = {0};
-
-	packet.opcode = PACKET_FENCE;
-	packet.dec_val = dec_val;
-	packet.gate_val = gate_val;
-	packet.id = fence_id;
-	packet.eng_barrier = eb;
-	packet.msg_barrier = mb;
-	packet.reg_barrier = 1;
-
-	return hlthunk_tests_add_packet_to_cb(buffer, buf_off, &packet,
-						sizeof(packet));
-}
-
-static uint32_t goya_add_dma_pkt(void *buffer, uint32_t buf_off, bool eb,
-			bool mb, uint64_t src_addr,
-			uint64_t dst_addr, uint32_t size,
-			enum hlthunk_tests_goya_dma_direction dma_dir)
-{
-	struct packet_lin_dma packet = {0};
-
-	packet.opcode = PACKET_LIN_DMA;
-	packet.eng_barrier = eb;
-	packet.msg_barrier = mb;
-	packet.reg_barrier = 1;
-	packet.weakly_ordered = 1;
-	packet.src_addr = src_addr;
-	packet.dst_addr = dst_addr;
-	packet.tsize = size;
-	packet.dma_dir = dma_dir;
-
-	return hlthunk_tests_add_packet_to_cb(buffer, buf_off, &packet,
-						sizeof(packet));
+	return buf_off;
 }
 
 static const struct hlthunk_tests_asic_funcs goya_funcs = {
@@ -272,6 +268,7 @@ static const struct hlthunk_tests_asic_funcs goya_funcs = {
 	.add_nop_pkt = goya_add_nop_pkt,
 	.add_msg_long_pkt = goya_add_msg_long_pkt,
 	.add_msg_short_pkt = goya_add_msg_short_pkt,
+	.add_arm_monitor_pkt = goya_add_arm_monitor_pkt,
 	.add_fence_pkt = goya_add_fence_pkt,
 	.add_dma_pkt = goya_add_dma_pkt,
 };

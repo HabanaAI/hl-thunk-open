@@ -929,6 +929,19 @@ uint32_t hlthunk_tests_add_msg_short_pkt(int fd, void *buffer, uint32_t buf_off,
 	return asic->add_msg_short_pkt(buffer, buf_off, eb, mb, address, value);
 }
 
+uint32_t hlthunk_tests_add_arm_monitor_pkt(int fd, void *buffer,
+					uint32_t buf_off, bool eb, bool mb,
+					uint16_t address, uint32_t value,
+					uint8_t mon_mode, uint16_t sync_val,
+					uint16_t sync_id)
+{
+	const struct hlthunk_tests_asic_funcs *asic =
+			get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->add_arm_monitor_pkt(buffer, buf_off, eb, mb, address,
+					value, mon_mode, sync_val, sync_id);
+}
+
 uint32_t hlthunk_tests_add_fence_pkt(int fd, void *buffer, uint32_t buf_off,
 					bool eb, bool mb, uint8_t dec_val,
 					uint8_t gate_val, uint8_t fence_id)
