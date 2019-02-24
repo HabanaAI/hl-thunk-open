@@ -52,7 +52,8 @@ void test_cs_nop(void **state)
 
 	execute_arr[0].cb_ptr = ptr;
 	execute_arr[0].cb_size = offset;
-	execute_arr[0].queue_index = GOYA_QUEUE_ID_DMA_1;
+	execute_arr[0].queue_index =
+			hlthunk_tests_get_dma_down_qid(tests_state->fd);
 
 	rc = hlthunk_tests_submit_cs(tests_state->fd, NULL, 0, execute_arr, 1,
 					false, &seq);
@@ -90,7 +91,8 @@ void test_cs_msg_long(void **state)
 
 	execute_arr[0].cb_ptr = ptr;
 	execute_arr[0].cb_size = offset;
-	execute_arr[0].queue_index = GOYA_QUEUE_ID_DMA_1;
+	execute_arr[0].queue_index =
+			hlthunk_tests_get_dma_down_qid(tests_state->fd);
 
 	rc = hlthunk_tests_submit_cs(tests_state->fd, NULL, 0, execute_arr, 1,
 					false, &seq);
@@ -133,7 +135,8 @@ void test_cs_msg_long_2000(void **state)
 
 	execute_arr[0].cb_ptr = ptr;
 	execute_arr[0].cb_size = offset;
-	execute_arr[0].queue_index = GOYA_QUEUE_ID_DMA_1;
+	execute_arr[0].queue_index =
+			hlthunk_tests_get_dma_down_qid(tests_state->fd);
 
 	rc = hlthunk_tests_submit_cs(tests_state->fd, NULL, 0, execute_arr, 1,
 					false, &seq);

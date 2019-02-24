@@ -983,6 +983,22 @@ uint32_t hlthunk_tests_add_dma_pkt(int fd, void *buffer, uint32_t buf_off,
 					size, dma_dir);
 }
 
+uint32_t hlthunk_tests_get_dma_down_qid(int fd)
+{
+	const struct hlthunk_tests_asic_funcs *asic =
+				get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->get_dma_down_qid();
+}
+
+uint32_t hlthunk_tests_get_dma_up_qid(int fd)
+{
+	const struct hlthunk_tests_asic_funcs *asic =
+				get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->get_dma_up_qid();
+}
+
 void hlthunk_tests_fill_rand_values(void *ptr, uint32_t size)
 {
 	uint32_t i, *p = ptr, rounddown_aligned_size, remainder, val;

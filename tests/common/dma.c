@@ -77,15 +77,16 @@ static int _test_dma(void **state, bool is_ddr, uint64_t size, bool is_huge)
 	host_dst_addr = hlthunk_tests_get_device_va_for_host_ptr(fd, dst_ptr);
 
 	/* DMA: host->device */
-	rc = hlthunk_tests_dma_transfer(fd, GOYA_QUEUE_ID_DMA_1, 0, 1,
-					host_src_addr,
+	rc = hlthunk_tests_dma_transfer(fd, hlthunk_tests_get_dma_down_qid(fd),
+					0, 1, host_src_addr,
 					(uint64_t) (uintptr_t) device_addr,
 					size, dma_dir_down,
 					WAIT_FOR_CS_DEFAULT_TIMEOUT);
 	assert_int_equal(rc, 0);
 
 	/* DMA: device->host */
-	rc = hlthunk_tests_dma_transfer(fd, GOYA_QUEUE_ID_DMA_2, 0, 1,
+	rc = hlthunk_tests_dma_transfer(fd, hlthunk_tests_get_dma_up_qid(fd),
+					0, 1,
 					(uint64_t) (uintptr_t) device_addr,
 					host_dst_addr, size, dma_dir_up,
 					WAIT_FOR_CS_DEFAULT_TIMEOUT);

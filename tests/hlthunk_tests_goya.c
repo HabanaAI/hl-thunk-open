@@ -263,6 +263,16 @@ static uint32_t goya_tests_add_monitor_and_fence(void *buffer, uint32_t buf_off,
 	return buf_off;
 }
 
+static uint32_t goya_get_dma_down_qid(void)
+{
+	return GOYA_QUEUE_ID_DMA_1;
+}
+
+static uint32_t goya_get_dma_up_qid(void)
+{
+	return GOYA_QUEUE_ID_DMA_2;
+}
+
 static const struct hlthunk_tests_asic_funcs goya_funcs = {
 	.add_monitor_and_fence = goya_tests_add_monitor_and_fence,
 	.add_nop_pkt = goya_add_nop_pkt,
@@ -271,6 +281,8 @@ static const struct hlthunk_tests_asic_funcs goya_funcs = {
 	.add_arm_monitor_pkt = goya_add_arm_monitor_pkt,
 	.add_fence_pkt = goya_add_fence_pkt,
 	.add_dma_pkt = goya_add_dma_pkt,
+	.get_dma_down_qid = goya_get_dma_down_qid,
+	.get_dma_up_qid = goya_get_dma_up_qid,
 };
 
 void goya_tests_set_asic_funcs(struct hlthunk_tests_device *hdev)

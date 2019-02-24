@@ -80,6 +80,8 @@ struct hlthunk_tests_asic_funcs {
 				bool mb, uint64_t src_addr,
 				uint64_t dst_addr, uint32_t size,
 				enum hlthunk_tests_goya_dma_direction dma_dir);
+	uint32_t (*get_dma_down_qid)(void);
+	uint32_t (*get_dma_up_qid)(void);
 };
 
 struct hlthunk_tests_memory {
@@ -168,6 +170,9 @@ uint32_t hlthunk_tests_add_dma_pkt(int fd, void *buffer, uint32_t buf_off,
 				bool eb, bool mb, uint64_t src_addr,
 				uint64_t dst_addr, uint32_t size,
 				enum hlthunk_tests_goya_dma_direction dma_dir);
+
+uint32_t hlthunk_tests_get_dma_down_qid(int fd);
+uint32_t hlthunk_tests_get_dma_up_qid(int fd);
 
 int hlthunk_tests_submit_cs(int fd, struct hlthunk_tests_cs_chunk *restore_arr,
 				uint32_t restore_arr_size,
