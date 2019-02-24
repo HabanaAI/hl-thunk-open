@@ -929,7 +929,7 @@ out:
 	return rc;
 }
 
-static int hltests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us)
+int hltests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us)
 {
 	uint32_t status;
 	int rc;
@@ -986,6 +986,27 @@ uint32_t hltests_add_arm_monitor_pkt(int fd, void *buffer,
 					value, mon_mode, sync_val, sync_id);
 }
 
+uint32_t hltests_add_write_to_sob_pkt(int fd, void *buffer, uint32_t buf_off,
+					bool eb, bool mb, uint16_t address,
+					uint16_t value, uint8_t mode)
+{
+	const struct hltests_asic_funcs *asic =
+			get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->add_write_to_sob_pkt(buffer, buf_off, eb, mb, address,
+						value, mode);
+}
+
+uint32_t hltests_add_set_sob_pkt(int fd, void *buffer, uint32_t buf_off,
+					bool eb, bool mb, uint16_t sob_id,
+					uint32_t value)
+{
+	const struct hltests_asic_funcs *asic =
+			get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->add_set_sob_pkt(buffer, buf_off, eb, mb, sob_id, value);
+}
+
 uint32_t hltests_add_fence_pkt(int fd, void *buffer, uint32_t buf_off,
 					bool eb, bool mb, uint8_t dec_val,
 					uint8_t gate_val, uint8_t fence_id)
@@ -1009,12 +1030,25 @@ uint32_t hltests_add_dma_pkt(int fd, void *buffer, uint32_t buf_off,
 					size, dma_dir);
 }
 
+uint32_t hltests_add_monitor_and_fence(int fd, void *buffer, uint32_t buf_off,
+					uint8_t queue_id, bool cmdq_fence,
+					uint32_t so_id, uint32_t mon_id,
+					uint64_t mon_address)
+{
+	const struct hltests_asic_funcs *asic =
+			get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->add_monitor_and_fence(buffer, buf_off, queue_id,
+						cmdq_fence, so_id, mon_id,
+						mon_address);
+}
+
 uint32_t hltests_get_dma_down_qid(int fd, uint8_t stream)
 {
 	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->get_dma_down_qid();
+	return asic->get_dma_down_qid(stream);
 }
 
 uint32_t hltests_get_dma_up_qid(int fd, uint8_t stream)
@@ -1022,7 +1056,31 @@ uint32_t hltests_get_dma_up_qid(int fd, uint8_t stream)
 	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->get_dma_up_qid();
+	return asic->get_dma_up_qid(stream);
+}
+
+uint32_t hltests_get_tpc_qid(int fd, uint8_t tpc_id, uint8_t stream)
+{
+	const struct hltests_asic_funcs *asic =
+				get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->get_tpc_qid(tpc_id, stream);
+}
+
+uint32_t hltests_get_mme_qid(int fd, uint8_t mme_id, uint8_t stream)
+{
+	const struct hltests_asic_funcs *asic =
+				get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->get_mme_qid(mme_id, stream);
+}
+
+uint8_t hltests_get_tpc_cnt(int fd)
+{
+	const struct hltests_asic_funcs *asic =
+				get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->get_tpc_cnt();
 }
 
 void hltests_fill_rand_values(void *ptr, uint32_t size)

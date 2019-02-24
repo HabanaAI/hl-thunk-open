@@ -263,12 +263,12 @@ static uint32_t goya_tests_add_monitor_and_fence(void *buffer, uint32_t buf_off,
 	return buf_off;
 }
 
-static uint32_t goya_get_dma_down_qid(void)
+static uint32_t goya_get_dma_down_qid(uint8_t stream)
 {
 	return GOYA_QUEUE_ID_DMA_1;
 }
 
-static uint32_t goya_get_dma_up_qid(void)
+static uint32_t goya_get_dma_up_qid(uint8_t stream)
 {
 	return GOYA_QUEUE_ID_DMA_2;
 }

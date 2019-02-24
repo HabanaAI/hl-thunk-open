@@ -10,6 +10,7 @@ set(COMMON_UNIT_TESTS
     command_submission
     dma
     dma_1kb_inc
+    sync_manager
 )
 
 foreach(_UNIT_TEST ${COMMON_UNIT_TESTS})
