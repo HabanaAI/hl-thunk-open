@@ -165,7 +165,7 @@ void hltests_fill_rand_values(void *ptr, uint32_t size);
 
 int hltests_mem_compare(void *ptr1, void *ptr2, uint64_t size);
 
-int hltests_dma_transfer(int fd, uint32_t queue_index, bool eb, bool mb,
+void hltests_dma_transfer(int fd, uint32_t queue_index, bool eb, bool mb,
 				uint64_t src_addr, uint64_t dst_addr,
 				uint32_t size,
 				enum hltests_goya_dma_direction dma_dir,

@@ -1062,38 +1062,23 @@ int hltests_mem_compare(void *ptr1, void *ptr2, uint64_t size)
 	return err_cnt;
 }
 
-int hltests_dma_transfer(int fd, uint32_t queue_index, bool eb, bool mb,
+void hltests_dma_transfer(int fd, uint32_t queue_index, bool eb, bool mb,
 				uint64_t src_addr, uint64_t dst_addr,
 				uint32_t size,
 				enum hltests_goya_dma_direction dma_dir,
 				uint64_t timeout_us)
 {
-	struct hltests_cs_chunk execute_arr[1];
 	uint32_t offset = 0;
-	uint64_t seq;
 	void *ptr;
-	int rc;
 
 	ptr = hltests_create_cb(fd, getpagesize(), true, 0);
-	if (!ptr)
-		return -ENOMEM;
+	assert_ptr_not_equal(ptr, NULL);
 
 	offset = hltests_add_dma_pkt(fd, ptr, offset, eb, mb, src_addr,
 						dst_addr, size, dma_dir);
 
-	execute_arr[0].cb_ptr = ptr;
-	execute_arr[0].cb_size = offset;
-	execute_arr[0].queue_index = queue_index;
-
-	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, false, &seq);
-	if (rc)
-		return rc;
-
-	rc = hltests_wait_for_cs(fd, seq, timeout_us);
-	if (rc)
-		return rc;
-
-	return hltests_destroy_cb(fd, ptr);
+	hltests_submit_and_wait_cs(fd, ptr, offset, queue_index, timeout_us,
+					true);
 }
 
 int hltests_dma_test(void **state, bool is_ddr, uint64_t size, bool is_huge)
@@ -1137,20 +1122,15 @@ int hltests_dma_test(void **state, bool is_ddr, uint64_t size, bool is_huge)
 	host_dst_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
 
 	/* DMA: host->device */
-	rc = hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, 0),
-					0, 1, host_src_addr,
-					(uint64_t) (uintptr_t) device_addr,
-					size, dma_dir_down,
-					WAIT_FOR_CS_DEFAULT_TIMEOUT);
-	assert_int_equal(rc, 0);
+	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, 0), 0, 1,
+			host_src_addr, (uint64_t) (uintptr_t) device_addr,
+			size, dma_dir_down, WAIT_FOR_CS_DEFAULT_TIMEOUT);
 
 	/* DMA: device->host */
-	rc = hltests_dma_transfer(fd, hltests_get_dma_up_qid(fd, 0),
-					0, 1,
-					(uint64_t) (uintptr_t) device_addr,
-					host_dst_addr, size, dma_dir_up,
-					WAIT_FOR_CS_DEFAULT_TIMEOUT);
-	assert_int_equal(rc, 0);
+	hltests_dma_transfer(fd, hltests_get_dma_up_qid(fd, 0),	0, 1,
+				(uint64_t) (uintptr_t) device_addr,
+				host_dst_addr, size, dma_dir_up,
+				WAIT_FOR_CS_DEFAULT_TIMEOUT);
 
 	/* Compare host memories */
 	rc = hltests_mem_compare(src_ptr, dst_ptr, size);
