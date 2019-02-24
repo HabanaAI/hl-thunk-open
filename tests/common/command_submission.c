@@ -38,11 +38,8 @@ void test_cs_nop(void **state)
 {
 	struct hltests_state *tests_state =
 			(struct hltests_state *) *state;
-	struct hltests_cs_chunk execute_arr[1];
 	uint32_t offset = 0;
-	uint64_t seq;
 	void *ptr;
-	int rc;
 
 	ptr = hltests_create_cb(tests_state->fd, getpagesize(), true, 0);
 	assert_ptr_not_equal(ptr, NULL);
@@ -50,21 +47,9 @@ void test_cs_nop(void **state)
 	offset = hltests_add_nop_pkt(tests_state->fd, ptr, offset, false,
 						false);
 
-	execute_arr[0].cb_ptr = ptr;
-	execute_arr[0].cb_size = offset;
-	execute_arr[0].queue_index =
-			hltests_get_dma_down_qid(tests_state->fd, 0);
-
-	rc = hltests_submit_cs(tests_state->fd, NULL, 0, execute_arr, 1,
-					false, &seq);
-	assert_int_equal(rc, 0);
-
-	rc = hltests_wait_for_cs(tests_state->fd, seq,
-					WAIT_FOR_CS_DEFAULT_TIMEOUT);
-	assert_int_equal(rc, 0);
-
-	rc = hltests_destroy_cb(tests_state->fd, ptr);
-	assert_int_equal(rc, 0);
+	hltests_submit_and_wait_cs(tests_state->fd, ptr, offset,
+				hltests_get_dma_down_qid(tests_state->fd, 0),
+				WAIT_FOR_CS_DEFAULT_TIMEOUT, true);
 }
 
 void test_cs_msg_long(void **state)
@@ -72,9 +57,7 @@ void test_cs_msg_long(void **state)
 	struct hltests_state *tests_state =
 			(struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
-	struct hltests_cs_chunk execute_arr[1];
 	uint32_t offset = 0;
-	uint64_t seq;
 	void *ptr;
 	int rc;
 
@@ -89,21 +72,9 @@ void test_cs_msg_long(void **state)
 					hw_ip.sram_base_address + 0x1000,
 					0xbaba0ded);
 
-	execute_arr[0].cb_ptr = ptr;
-	execute_arr[0].cb_size = offset;
-	execute_arr[0].queue_index =
-			hltests_get_dma_down_qid(tests_state->fd, 0);
-
-	rc = hltests_submit_cs(tests_state->fd, NULL, 0, execute_arr, 1,
-					false, &seq);
-	assert_int_equal(rc, 0);
-
-	rc = hltests_wait_for_cs(tests_state->fd, seq,
-					WAIT_FOR_CS_DEFAULT_TIMEOUT);
-	assert_int_equal(rc, 0);
-
-	rc = hltests_destroy_cb(tests_state->fd, ptr);
-	assert_int_equal(rc, 0);
+	hltests_submit_and_wait_cs(tests_state->fd, ptr, offset,
+				hltests_get_dma_down_qid(tests_state->fd, 0),
+				WAIT_FOR_CS_DEFAULT_TIMEOUT, true);
 }
 
 #define NUM_OF_MSGS	2000
@@ -113,9 +84,7 @@ void test_cs_msg_long_2000(void **state)
 	struct hltests_state *tests_state =
 			(struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
-	struct hltests_cs_chunk execute_arr[1];
 	uint32_t offset = 0;
-	uint64_t seq;
 	void *ptr;
 	int rc, i;
 
@@ -133,21 +102,9 @@ void test_cs_msg_long_2000(void **state)
 				hw_ip.sram_base_address + 0x1000 + i * 4,
 				0x0ded0000 + i);
 
-	execute_arr[0].cb_ptr = ptr;
-	execute_arr[0].cb_size = offset;
-	execute_arr[0].queue_index =
-			hltests_get_dma_down_qid(tests_state->fd, 0);
-
-	rc = hltests_submit_cs(tests_state->fd, NULL, 0, execute_arr, 1,
-					false, &seq);
-	assert_int_equal(rc, 0);
-
-	rc = hltests_wait_for_cs(tests_state->fd, seq,
-					WAIT_FOR_CS_DEFAULT_TIMEOUT);
-	assert_int_equal(rc, 0);
-
-	rc = hltests_destroy_cb(tests_state->fd, ptr);
-	assert_int_equal(rc, 0);
+	hltests_submit_and_wait_cs(tests_state->fd, ptr, offset,
+				hltests_get_dma_down_qid(tests_state->fd, 0),
+				WAIT_FOR_CS_DEFAULT_TIMEOUT, true);
 }
 
 const struct CMUnitTest cs_tests[] = {

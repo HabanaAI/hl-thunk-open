@@ -26,6 +26,11 @@
 #include "specs/pci_ids.h"
 #include "mersenne-twister.h"
 
+#include <stdarg.h>
+#include <stddef.h>
+#include <setjmp.h>
+#include <cmocka.h>
+
 #include <stdio.h>
 #include <errno.h>
 #include <pthread.h>
@@ -1086,7 +1091,7 @@ int hltests_dma_transfer(int fd, uint32_t queue_index, bool eb, bool mb,
 
 	rc = hltests_wait_for_cs(fd, seq, timeout_us);
 	if (rc)
-		return  rc;
+		return rc;
 
 	return hltests_destroy_cb(fd, ptr);
 }
@@ -1163,4 +1168,28 @@ int hltests_dma_test(void **state, bool is_ddr, uint64_t size, bool is_huge)
 	}
 
 	return 0;
+}
+
+void hltests_submit_and_wait_cs(int fd, void *cb_ptr, uint32_t cb_size,
+				uint32_t queue_index, uint64_t timeout_us,
+				bool destroy_cb)
+{
+	struct hltests_cs_chunk execute_arr[1];
+	uint64_t seq;
+	int rc;
+
+	execute_arr[0].cb_ptr = cb_ptr;
+	execute_arr[0].cb_size = cb_size;
+	execute_arr[0].queue_index = queue_index;
+
+	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, false, &seq);
+	assert_int_equal(rc, 0);
+
+	rc = hltests_wait_for_cs(fd, seq, timeout_us);
+	assert_int_equal(rc, 0);
+
+	if (destroy_cb) {
+		rc = hltests_destroy_cb(fd, cb_ptr);
+		assert_int_equal(rc, 0);
+	}
 }

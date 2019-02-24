@@ -173,6 +173,10 @@ int hltests_dma_transfer(int fd, uint32_t queue_index, bool eb, bool mb,
 
 int hltests_dma_test(void **state, bool is_ddr, uint64_t size, bool is_huge);
 
+void hltests_submit_and_wait_cs(int fd, void *cb_ptr, uint32_t cb_size,
+				uint32_t queue_index, uint64_t timeout_us,
+				bool destroy_cb);
+
 /* ASIC functions */
 uint32_t hltests_add_nop_pkt(int fd, void *buffer, uint32_t buf_off,
 					bool eb, bool mb);
@@ -187,6 +191,9 @@ uint32_t hltests_add_arm_monitor_pkt(int fd, void *buffer,
 					uint16_t address, uint32_t value,
 					uint8_t mon_mode, uint16_t sync_val,
 					uint16_t sync_id);
+uint32_t hltests_add_write_to_sob_pkt(int fd, void *buffer, uint32_t buf_off,
+					bool eb, bool mb, uint16_t address,
+					uint16_t value, uint8_t mode);
 
 uint32_t hltests_add_fence_pkt(int fd, void *buffer, uint32_t buf_off,
 					bool eb, bool mb, uint8_t dec_val,
