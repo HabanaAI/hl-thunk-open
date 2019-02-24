@@ -197,6 +197,9 @@ int hlthunk_tests_dma_transfer(int fd, uint32_t queue_index, bool eb, bool mb,
 				enum hlthunk_tests_goya_dma_direction dma_dir,
 				uint64_t timeout_us);
 
+int hlthunk_tests_dma_test(void **state, bool is_ddr, uint64_t size,
+				bool is_huge);
+
 void goya_tests_set_asic_funcs(struct hlthunk_tests_device *hdev);
 
 #endif /* HLTHUNK_TESTS_H */
