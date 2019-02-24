@@ -44,7 +44,7 @@ void test_cs_nop(void **state)
 	void *ptr;
 	int rc;
 
-	ptr = hlthunk_tests_create_cb(tests_state->fd, getpagesize(), true);
+	ptr = hlthunk_tests_create_cb(tests_state->fd, getpagesize(), true, 0);
 	assert_ptr_not_equal(ptr, NULL);
 
 	offset = hlthunk_tests_add_nop_pkt(tests_state->fd, ptr, offset, false,
@@ -77,7 +77,7 @@ void test_cs_msg_long(void **state)
 	void *ptr;
 	int rc;
 
-	ptr = hlthunk_tests_create_cb(tests_state->fd, getpagesize(), true);
+	ptr = hlthunk_tests_create_cb(tests_state->fd, getpagesize(), true, 0);
 	assert_ptr_not_equal(ptr, NULL);
 
 	rc = hlthunk_get_hw_ip_info(tests_state->fd, &hw_ip);
@@ -118,7 +118,8 @@ void test_cs_msg_long_2000(void **state)
 	int rc, i;
 
 	/* Largest packet is 24 bytes, so 32 is a good number */
-	ptr = hlthunk_tests_create_cb(tests_state->fd, NUM_OF_MSGS * 32, true);
+	ptr = hlthunk_tests_create_cb(tests_state->fd, NUM_OF_MSGS * 32, true,
+					0);
 	assert_ptr_not_equal(ptr, NULL);
 
 	rc = hlthunk_get_hw_ip_info(tests_state->fd, &hw_ip);

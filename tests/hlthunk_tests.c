@@ -686,7 +686,20 @@ uint64_t hlthunk_tests_get_device_va_for_host_ptr(int fd, void *vaddr)
 	return mem->device_virt_addr;
 }
 
-void *hlthunk_tests_create_cb(int fd, uint32_t cb_size, bool is_external)
+/**
+ * This function creates a command buffer for a specific device. It also
+ * supports creating internal command buffer, which is basically a block of
+ * memory on the host which is DMA'd into the device memory
+ * @param fd file descriptor of the device
+ * @param cb_size the size of the command buffer
+ * @param is_external true if CB is for external queue, false otherwise
+ * @cb_internal_sram_address the address in the sram that the internal CB will
+ *                           be executed from by the CS
+ * @return virtual address of the CB in the user process VA space, or NULL for
+ *         failure
+ */
+void* hlthunk_tests_create_cb(int fd, uint32_t cb_size, bool is_external,
+				uint64_t cb_internal_sram_address)
 {
 	struct hlthunk_tests_device *hdev;
 	struct hlthunk_tests_cb *cb;
@@ -701,18 +714,24 @@ void *hlthunk_tests_create_cb(int fd, uint32_t cb_size, bool is_external)
 	if (!cb)
 		return NULL;
 
-	// TODO: Add handling of CB for internal queues.
-
 	cb->cb_size = cb_size;
-	rc = hlthunk_request_command_buffer(fd, cb->cb_size, &cb->cb_handle);
-	if (rc)
-		goto free_cb;
+	cb->external = is_external;
 
-	cb->ptr = hlthunk_tests_cb_mmap(fd, cb->cb_size, cb->cb_handle);
-	if (cb->ptr == MAP_FAILED)
-		goto destroy_cb;
+	if (is_external) {
+		rc = hlthunk_request_command_buffer(fd, cb->cb_size,
+							&cb->cb_handle);
+		if (rc)
+			goto free_cb;
 
-	cb->is_external = is_external;
+		cb->ptr = hlthunk_tests_cb_mmap(fd, cb->cb_size, cb->cb_handle);
+		if (cb->ptr == MAP_FAILED)
+			goto destroy_cb;
+	} else {
+		cb->ptr = hlthunk_tests_allocate_host_mem(fd, cb_size, false);
+		if (!cb->ptr)
+			goto free_cb;
+		cb->cb_handle = cb_internal_sram_address;
+	}
 
 	pthread_mutex_lock(&hdev->cb_table_lock);
 
@@ -734,7 +753,6 @@ int hlthunk_tests_destroy_cb(int fd, void *ptr)
 {
 	struct hlthunk_tests_device *hdev;
 	struct hlthunk_tests_cb *cb;
-	int rc;
 	khint_t k;
 
 	hdev = get_hdev_from_fd(fd);
@@ -754,13 +772,12 @@ int hlthunk_tests_destroy_cb(int fd, void *ptr)
 
 	pthread_mutex_unlock(&hdev->cb_table_lock);
 
-	rc = hlthunk_tests_cb_munmap(cb->ptr, cb->cb_size);
-	if (rc)
-		return rc;
-
-	rc = hlthunk_destroy_command_buffer(fd, cb->cb_handle);
-	if (rc)
-		return rc;
+	if (cb->external) {
+		hlthunk_tests_cb_munmap(cb->ptr, cb->cb_size);
+		hlthunk_destroy_command_buffer(fd, cb->cb_handle);
+	} else {
+		hlthunk_tests_free_host_mem(fd, cb->ptr);
+	}
 
 	hlthunk_free(cb);
 
@@ -1030,7 +1047,7 @@ int hlthunk_tests_dma_transfer(int fd, uint32_t queue_index, bool eb, bool mb,
 	void *ptr;
 	int rc;
 
-	ptr = hlthunk_tests_create_cb(fd, getpagesize(), true);
+	ptr = hlthunk_tests_create_cb(fd, getpagesize(), true, 0);
 	if (!ptr)
 		return -ENOMEM;
 

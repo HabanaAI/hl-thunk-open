@@ -97,7 +97,7 @@ struct hlthunk_tests_cb {
 	void *ptr;
 	uint64_t cb_handle;
 	uint32_t cb_size;
-	bool is_external;
+	bool external;
 };
 
 struct hlthunk_tests_cs_chunk {
@@ -140,7 +140,8 @@ int hlthunk_tests_free_host_mem(int fd, void *vaddr);
 int hlthunk_tests_free_device_mem(int fd, void *vaddr);
 uint64_t hlthunk_tests_get_device_va_for_host_ptr(int fd, void *vaddr);
 
-void *hlthunk_tests_create_cb(int fd, uint32_t cb_size, bool is_external);
+void* hlthunk_tests_create_cb(int fd, uint32_t cb_size, bool is_external,
+				uint64_t cb_internal_sram_address);
 int hlthunk_tests_destroy_cb(int fd, void *ptr);
 uint32_t hlthunk_tests_add_packet_to_cb(void *ptr, uint32_t offset, void *pkt,
 					uint32_t pkt_size);
