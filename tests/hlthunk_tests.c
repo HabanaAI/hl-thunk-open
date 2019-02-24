@@ -165,9 +165,10 @@ int hltests_open(const char *busid)
 	if (fd < 0)
 		goto out;
 
-	hdev = get_hdev_from_fd(fd);
-	if (hdev) {
+	k = kh_get(ptr, dev_table, fd);
+	if (k != kh_end(dev_table)) {
 		/* found, just incr refcnt */
+		hdev = kh_val(dev_table, k);
 		hdev->refcnt++;
 		goto out;
 	}
