@@ -68,7 +68,7 @@ int main(void)
 	if (test_names_to_run)
 		cmocka_set_test_filter(test_names_to_run);
 
-	rc = hlthunk_tests_init();
+	rc = hltests_init();
 	if (rc) {
 		printf("Failed to init tests library %d\n", rc);
 		return rc;
@@ -76,7 +76,7 @@ int main(void)
 
 	rc = cmocka_run_group_tests(open_device_tests, NULL, NULL);
 
-	hlthunk_tests_fini();
+	hltests_fini();
 
 	return rc;
 }

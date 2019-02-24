@@ -39,7 +39,7 @@ static uint32_t goya_add_nop_pkt(void *buffer, uint32_t buf_off, bool eb,
 	packet.msg_barrier = mb;
 	packet.reg_barrier = 1;
 
-	return hlthunk_tests_add_packet_to_cb(buffer, buf_off, &packet,
+	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
 						sizeof(packet));
 }
 
@@ -56,7 +56,7 @@ static uint32_t goya_add_msg_long_pkt(void *buffer, uint32_t buf_off, bool eb,
 	packet.msg_barrier = mb;
 	packet.reg_barrier = 1;
 
-	return hlthunk_tests_add_packet_to_cb(buffer, buf_off, &packet,
+	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
 						sizeof(packet));
 }
 
@@ -73,7 +73,7 @@ static uint32_t goya_add_msg_short_pkt(void *buffer, uint32_t buf_off, bool eb,
 	packet.msg_barrier = mb;
 	packet.reg_barrier = 1;
 
-	return hlthunk_tests_add_packet_to_cb(buffer, buf_off, &packet,
+	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
 						sizeof(packet));
 }
 
@@ -94,7 +94,7 @@ static uint32_t goya_add_arm_monitor_pkt(void *buffer, uint32_t buf_off,
 	packet.mon_arm_register.sync_value = sync_val;
 	packet.mon_arm_register.sync_id = sync_id;
 
-	return hlthunk_tests_add_packet_to_cb(buffer, buf_off, &packet,
+	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
 						sizeof(packet));
 }
 
@@ -112,14 +112,14 @@ static uint32_t goya_add_fence_pkt(void *buffer, uint32_t buf_off, bool eb,
 	packet.msg_barrier = mb;
 	packet.reg_barrier = 1;
 
-	return hlthunk_tests_add_packet_to_cb(buffer, buf_off, &packet,
+	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
 						sizeof(packet));
 }
 
 static uint32_t goya_add_dma_pkt(void *buffer, uint32_t buf_off, bool eb,
 			bool mb, uint64_t src_addr,
 			uint64_t dst_addr, uint32_t size,
-			enum hlthunk_tests_goya_dma_direction dma_dir)
+			enum hltests_goya_dma_direction dma_dir)
 {
 	struct packet_lin_dma packet = {0};
 
@@ -133,7 +133,7 @@ static uint32_t goya_add_dma_pkt(void *buffer, uint32_t buf_off, bool eb,
 	packet.tsize = size;
 	packet.dma_dir = dma_dir;
 
-	return hlthunk_tests_add_packet_to_cb(buffer, buf_off, &packet,
+	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
 						sizeof(packet));
 }
 
@@ -273,7 +273,7 @@ static uint32_t goya_get_dma_up_qid(void)
 	return GOYA_QUEUE_ID_DMA_2;
 }
 
-static const struct hlthunk_tests_asic_funcs goya_funcs = {
+static const struct hltests_asic_funcs goya_funcs = {
 	.add_monitor_and_fence = goya_tests_add_monitor_and_fence,
 	.add_nop_pkt = goya_add_nop_pkt,
 	.add_msg_long_pkt = goya_add_msg_long_pkt,
@@ -285,7 +285,7 @@ static const struct hlthunk_tests_asic_funcs goya_funcs = {
 	.get_dma_up_qid = goya_get_dma_up_qid,
 };
 
-void goya_tests_set_asic_funcs(struct hlthunk_tests_device *hdev)
+void goya_tests_set_asic_funcs(struct hltests_device *hdev)
 {
 	hdev->asic_funcs = &goya_funcs;
 }

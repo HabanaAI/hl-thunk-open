@@ -37,25 +37,25 @@
 #define DMA_1KB_INC_SRAM(name, state, size) \
 	void name(void **state) \
 	{ \
-		hlthunk_tests_dma_test(state, false, size, false); \
+		hltests_dma_test(state, false, size, false); \
 	}
 
 #define DMA_1KB_INC_SRAM_HUGE_PAGES(name, state, size) \
 	void name(void **state) \
 	{ \
-		hlthunk_tests_dma_test(state, false, size, true); \
+		hltests_dma_test(state, false, size, true); \
 	}
 
 #define DMA_1KB_INC_DDR(name, state, size) \
 	void name(void **state) \
 	{ \
-		hlthunk_tests_dma_test(state, true, size, false); \
+		hltests_dma_test(state, true, size, false); \
 	}
 
 #define DMA_1KB_INC_DDR_HUGE_PAGES(name, state, size) \
 	void name(void **state) \
 	{ \
-		hlthunk_tests_dma_test(state, true, size, true); \
+		hltests_dma_test(state, true, size, true); \
 	}
 
 DMA_1KB_INC_SRAM(test_dma_sram_size_1kb, state, 0x400)
@@ -197,8 +197,8 @@ int main(void)
 	if (test_names_to_run)
 		cmocka_set_test_filter(test_names_to_run);
 
-	rc = cmocka_run_group_tests(dma_1kb_inc_tests, hlthunk_tests_setup,
-					hlthunk_tests_teardown);
+	rc = cmocka_run_group_tests(dma_1kb_inc_tests, hltests_setup,
+					hltests_teardown);
 
 	return rc;
 }

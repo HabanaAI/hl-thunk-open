@@ -37,15 +37,15 @@
 
 void test_debugfs_sram_read_write(void **state)
 {
-	struct hlthunk_tests_state *tests_state =
-					(struct hlthunk_tests_state *) *state;
+	struct hltests_state *tests_state =
+					(struct hltests_state *) *state;
 	uint32_t val;
 
-	hlthunk_tests_debugfs_write(tests_state->fd, SRAM_BASE_ADDR + 0x200000,
+	hltests_debugfs_write(tests_state->fd, SRAM_BASE_ADDR + 0x200000,
 					0x99775533);
-	hlthunk_tests_debugfs_write(tests_state->fd, SRAM_BASE_ADDR + 0x200000,
+	hltests_debugfs_write(tests_state->fd, SRAM_BASE_ADDR + 0x200000,
 					0x12345678);
-	val = hlthunk_tests_debugfs_read(tests_state->fd,
+	val = hltests_debugfs_read(tests_state->fd,
 					SRAM_BASE_ADDR + 0x200000);
 
 	assert_int_equal(0x12345678, val);
@@ -67,8 +67,8 @@ int main(void)
 	if (test_names_to_run)
 		cmocka_set_test_filter(test_names_to_run);
 
-	rc = cmocka_run_group_tests(root_tests, hlthunk_tests_root_setup,
-					hlthunk_tests_root_teardown);
+	rc = cmocka_run_group_tests(root_tests, hltests_root_setup,
+					hltests_root_teardown);
 
 	return rc;
 }

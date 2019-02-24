@@ -36,8 +36,8 @@
 static void cb_create_mmap_unmap_destroy(void **state, uint32_t size,
 					bool unmap, bool destroy)
 {
-	struct hlthunk_tests_state *tests_state =
-					(struct hlthunk_tests_state *) *state;
+	struct hltests_state *tests_state =
+					(struct hltests_state *) *state;
 	uint64_t cb_handle;
 	void *ptr;
 	int rc;
@@ -45,11 +45,11 @@ static void cb_create_mmap_unmap_destroy(void **state, uint32_t size,
 	rc = hlthunk_request_command_buffer(tests_state->fd, size, &cb_handle);
 	assert_int_equal(rc, 0);
 
-	ptr = hlthunk_tests_cb_mmap(tests_state->fd, size, cb_handle);
+	ptr = hltests_cb_mmap(tests_state->fd, size, cb_handle);
 	assert_ptr_not_equal(ptr, MAP_FAILED);
 
 	if (unmap) {
-		rc = hlthunk_tests_cb_munmap(ptr, size);
+		rc = hltests_cb_munmap(ptr, size);
 		assert_int_equal(rc, 0);
 	}
 
@@ -107,8 +107,8 @@ int main(void)
 	if (test_names_to_run)
 		cmocka_set_test_filter(test_names_to_run);
 
-	rc = cmocka_run_group_tests(cb_tests, hlthunk_tests_setup,
-					hlthunk_tests_teardown);
+	rc = cmocka_run_group_tests(cb_tests, hltests_setup,
+					hltests_teardown);
 
 	return rc;
 }

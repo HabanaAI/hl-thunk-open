@@ -36,22 +36,22 @@
 
 void test_dma_ddr(void **state)
 {
-	hlthunk_tests_dma_test(state, true, 0x1000, false);
+	hltests_dma_test(state, true, 0x1000, false);
 }
 
 void test_dma_ddr_huge_pages(void **state)
 {
-	hlthunk_tests_dma_test(state, true, 0x1000, true);
+	hltests_dma_test(state, true, 0x1000, true);
 }
 
 void test_dma_sram(void **state)
 {
-	hlthunk_tests_dma_test(state, false, 0x1000, false);
+	hltests_dma_test(state, false, 0x1000, false);
 }
 
 void test_dma_sram_huge_pages(void **state)
 {
-	hlthunk_tests_dma_test(state, false, 0x1000, true);
+	hltests_dma_test(state, false, 0x1000, true);
 }
 
 const struct CMUnitTest dma_tests[] = {
@@ -70,8 +70,8 @@ int main(void)
 	if (test_names_to_run)
 		cmocka_set_test_filter(test_names_to_run);
 
-	rc = cmocka_run_group_tests(dma_tests, hlthunk_tests_setup,
-					hlthunk_tests_teardown);
+	rc = cmocka_run_group_tests(dma_tests, hltests_setup,
+					hltests_teardown);
 
 	return rc;
 }

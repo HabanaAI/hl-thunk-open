@@ -40,7 +40,7 @@ KHASH_MAP_INIT_INT64(ptr64, void*)
  * This structure is relevant only for Goya. In Gaudi and above, we don't need
  * the user to hint us about the direction
  */
-enum hlthunk_tests_goya_dma_direction {
+enum hltests_goya_dma_direction {
 	GOYA_DMA_HOST_TO_DRAM,
 	GOYA_DMA_HOST_TO_SRAM,
 	GOYA_DMA_DRAM_TO_SRAM,
@@ -52,11 +52,11 @@ enum hlthunk_tests_goya_dma_direction {
 	GOYA_DMA_ENUM_MAX
 };
 
-struct hlthunk_tests_state {
+struct hltests_state {
 	int fd;
 };
 
-struct hlthunk_tests_asic_funcs {
+struct hltests_asic_funcs {
 	uint32_t (*add_monitor_and_fence)(void *buffer, uint32_t buf_off,
 					uint8_t queue_id, bool cmdq_fence,
 					uint32_t so_id, uint32_t mon_id,
@@ -79,12 +79,12 @@ struct hlthunk_tests_asic_funcs {
 	uint32_t (*add_dma_pkt)(void *buffer, uint32_t buf_off, bool eb,
 				bool mb, uint64_t src_addr,
 				uint64_t dst_addr, uint32_t size,
-				enum hlthunk_tests_goya_dma_direction dma_dir);
+				enum hltests_goya_dma_direction dma_dir);
 	uint32_t (*get_dma_down_qid)(void);
 	uint32_t (*get_dma_up_qid)(void);
 };
 
-struct hlthunk_tests_memory {
+struct hltests_memory {
 	union {
 		uint64_t device_handle;
 		void *host_ptr;
@@ -95,21 +95,21 @@ struct hlthunk_tests_memory {
 	bool is_host;
 };
 
-struct hlthunk_tests_cb {
+struct hltests_cb {
 	void *ptr;
 	uint64_t cb_handle;
 	uint32_t cb_size;
 	bool external;
 };
 
-struct hlthunk_tests_cs_chunk {
+struct hltests_cs_chunk {
 	void *cb_ptr;
 	uint32_t cb_size;
 	uint32_t queue_index;
 };
 
-struct hlthunk_tests_device {
-	const struct hlthunk_tests_asic_funcs *asic_funcs;
+struct hltests_device {
+	const struct hltests_asic_funcs *asic_funcs;
 	khash_t(ptr64) *mem_table_host;
 	pthread_mutex_t mem_table_host_lock;
 	khash_t(ptr64) *mem_table_device;
@@ -123,83 +123,87 @@ struct hlthunk_tests_device {
 	int debugfs_data_fd;
 };
 
-int hlthunk_tests_init(void);
-void hlthunk_tests_fini(void);
-int hlthunk_tests_open(const char *busid);
-int hlthunk_tests_close(int fd);
+int hltests_init(void);
+void hltests_fini(void);
+int hltests_open(const char *busid);
+int hltests_close(int fd);
 
-void* hlthunk_tests_cb_mmap(int fd, size_t len, off_t offset);
-int hlthunk_tests_cb_munmap(void *addr, size_t length);
+void* hltests_cb_mmap(int fd, size_t len, off_t offset);
+int hltests_cb_munmap(void *addr, size_t length);
 
-int hlthunk_tests_debugfs_open(int fd);
-int hlthunk_tests_debugfs_close(int fd);
-uint32_t hlthunk_tests_debugfs_read(int fd, uint64_t full_address);
-void hlthunk_tests_debugfs_write(int fd, uint64_t full_address, uint32_t val);
+int hltests_debugfs_open(int fd);
+int hltests_debugfs_close(int fd);
+uint32_t hltests_debugfs_read(int fd, uint64_t full_address);
+void hltests_debugfs_write(int fd, uint64_t full_address, uint32_t val);
 
-void* hlthunk_tests_allocate_host_mem(int fd, uint64_t size, bool huge);
-void* hlthunk_tests_allocate_device_mem(int fd, uint64_t size);
-int hlthunk_tests_free_host_mem(int fd, void *vaddr);
-int hlthunk_tests_free_device_mem(int fd, void *vaddr);
-uint64_t hlthunk_tests_get_device_va_for_host_ptr(int fd, void *vaddr);
+void* hltests_allocate_host_mem(int fd, uint64_t size, bool huge);
+void* hltests_allocate_device_mem(int fd, uint64_t size);
+int hltests_free_host_mem(int fd, void *vaddr);
+int hltests_free_device_mem(int fd, void *vaddr);
+uint64_t hltests_get_device_va_for_host_ptr(int fd, void *vaddr);
 
-void* hlthunk_tests_create_cb(int fd, uint32_t cb_size, bool is_external,
+void* hltests_create_cb(int fd, uint32_t cb_size, bool is_external,
 				uint64_t cb_internal_sram_address);
-int hlthunk_tests_destroy_cb(int fd, void *ptr);
-uint32_t hlthunk_tests_add_packet_to_cb(void *ptr, uint32_t offset, void *pkt,
+int hltests_destroy_cb(int fd, void *ptr);
+uint32_t hltests_add_packet_to_cb(void *ptr, uint32_t offset, void *pkt,
 					uint32_t pkt_size);
 
-uint32_t hlthunk_tests_add_nop_pkt(int fd, void *buffer, uint32_t buf_off,
+int hltests_submit_cs(int fd, struct hltests_cs_chunk *restore_arr,
+				uint32_t restore_arr_size,
+				struct hltests_cs_chunk *execute_arr,
+				uint32_t execute_arr_size, bool force_restore,
+				uint64_t *seq);
+
+int hltests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us);
+
+int hltests_setup(void **state);
+int hltests_teardown(void **state);
+int hltests_root_setup(void **state);
+int hltests_root_teardown(void **state);
+
+void hltests_fill_rand_values(void *ptr, uint32_t size);
+
+int hltests_mem_compare(void *ptr1, void *ptr2, uint64_t size);
+
+int hltests_dma_transfer(int fd, uint32_t queue_index, bool eb, bool mb,
+				uint64_t src_addr, uint64_t dst_addr,
+				uint32_t size,
+				enum hltests_goya_dma_direction dma_dir,
+				uint64_t timeout_us);
+
+int hltests_dma_test(void **state, bool is_ddr, uint64_t size, bool is_huge);
+
+/* ASIC functions */
+uint32_t hltests_add_nop_pkt(int fd, void *buffer, uint32_t buf_off,
 					bool eb, bool mb);
-uint32_t hlthunk_tests_add_msg_long_pkt(int fd, void *buffer, uint32_t buf_off,
+uint32_t hltests_add_msg_long_pkt(int fd, void *buffer, uint32_t buf_off,
 					bool eb, bool mb, uint64_t address,
 					uint32_t value);
-uint32_t hlthunk_tests_add_msg_short_pkt(int fd, void *buffer, uint32_t buf_off,
+uint32_t hltests_add_msg_short_pkt(int fd, void *buffer, uint32_t buf_off,
 					bool eb, bool mb, uint16_t address,
 					uint32_t value);
-uint32_t hlthunk_tests_add_arm_monitor_pkt(int fd, void *buffer,
+uint32_t hltests_add_arm_monitor_pkt(int fd, void *buffer,
 					uint32_t buf_off, bool eb, bool mb,
 					uint16_t address, uint32_t value,
 					uint8_t mon_mode, uint16_t sync_val,
 					uint16_t sync_id);
 
-uint32_t hlthunk_tests_add_fence_pkt(int fd, void *buffer, uint32_t buf_off,
+uint32_t hltests_add_fence_pkt(int fd, void *buffer, uint32_t buf_off,
 					bool eb, bool mb, uint8_t dec_val,
 					uint8_t gate_val, uint8_t fence_id);
 
-uint32_t hlthunk_tests_add_dma_pkt(int fd, void *buffer, uint32_t buf_off,
+uint32_t hltests_add_dma_pkt(int fd, void *buffer, uint32_t buf_off,
 				bool eb, bool mb, uint64_t src_addr,
 				uint64_t dst_addr, uint32_t size,
-				enum hlthunk_tests_goya_dma_direction dma_dir);
+				enum hltests_goya_dma_direction dma_dir);
 
-uint32_t hlthunk_tests_get_dma_down_qid(int fd);
-uint32_t hlthunk_tests_get_dma_up_qid(int fd);
+uint32_t hltests_get_dma_down_qid(int fd, uint8_t stream);
+uint32_t hltests_get_dma_up_qid(int fd, uint8_t stream);
+uint32_t hltests_get_tpc_qid(int fd, uint8_t tpc_id, uint8_t stream);
+uint32_t hltests_get_mme_qid(int fd, uint8_t mme_id, uint8_t stream);
 
-int hlthunk_tests_submit_cs(int fd, struct hlthunk_tests_cs_chunk *restore_arr,
-				uint32_t restore_arr_size,
-				struct hlthunk_tests_cs_chunk *execute_arr,
-				uint32_t execute_arr_size, bool force_restore,
-				uint64_t *seq);
+uint8_t hltests_get_tpc_cnt(int fd);
 
-int hlthunk_tests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us);
-
-int hlthunk_tests_setup(void **state);
-int hlthunk_tests_teardown(void **state);
-int hlthunk_tests_root_setup(void **state);
-int hlthunk_tests_root_teardown(void **state);
-
-void hlthunk_tests_fill_rand_values(void *ptr, uint32_t size);
-
-int hlthunk_tests_mem_compare(void *ptr1, void *ptr2, uint64_t size);
-
-int hlthunk_tests_dma_transfer(int fd, uint32_t queue_index, bool eb, bool mb,
-				uint64_t src_addr, uint64_t dst_addr,
-				uint32_t size,
-				enum hlthunk_tests_goya_dma_direction dma_dir,
-				uint64_t timeout_us);
-
-int hlthunk_tests_dma_test(void **state, bool is_ddr, uint64_t size,
-				bool is_huge);
-
-void goya_tests_set_asic_funcs(struct hlthunk_tests_device *hdev);
+void goya_tests_set_asic_funcs(struct hltests_device *hdev);
 
 #endif /* HLTHUNK_TESTS_H */

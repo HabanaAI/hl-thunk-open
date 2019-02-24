@@ -43,7 +43,7 @@
 static pthread_mutex_t table_lock = PTHREAD_MUTEX_INITIALIZER;
 static khash_t(ptr) *dev_table;
 
-static struct hlthunk_tests_device* get_hdev_from_fd(int fd)
+static struct hltests_device* get_hdev_from_fd(int fd)
 {
 	khint_t k;
 
@@ -54,7 +54,7 @@ static struct hlthunk_tests_device* get_hdev_from_fd(int fd)
 	return kh_val(dev_table, k);
 }
 
-static int create_mem_maps(struct hlthunk_tests_device *hdev)
+static int create_mem_maps(struct hltests_device *hdev)
 {
 	int rc;
 
@@ -87,7 +87,7 @@ delete_mem_hash:
 	return rc;
 }
 
-static void destroy_mem_maps(struct hlthunk_tests_device *hdev)
+static void destroy_mem_maps(struct hltests_device *hdev)
 {
 	kh_destroy(ptr64, hdev->mem_table_host);
 	kh_destroy(ptr64, hdev->mem_table_device);
@@ -95,7 +95,7 @@ static void destroy_mem_maps(struct hlthunk_tests_device *hdev)
 	pthread_mutex_destroy(&hdev->mem_table_device_lock);
 }
 
-static int create_cb_map(struct hlthunk_tests_device *hdev)
+static int create_cb_map(struct hltests_device *hdev)
 {
 	int rc;
 
@@ -114,13 +114,13 @@ delete_hash:
 	return rc;
 }
 
-static void destroy_cb_map(struct hlthunk_tests_device *hdev)
+static void destroy_cb_map(struct hltests_device *hdev)
 {
 	kh_destroy(ptr64, hdev->cb_table);
 	pthread_mutex_destroy(&hdev->cb_table_lock);
 }
 
-int hlthunk_tests_init(void)
+int hltests_init(void)
 {
 	if (!dev_table) {
 		dev_table = kh_init(ptr);
@@ -132,16 +132,16 @@ int hlthunk_tests_init(void)
 	return 0;
 }
 
-void hlthunk_tests_fini(void)
+void hltests_fini(void)
 {
 	if (dev_table)
 		kh_destroy(ptr, dev_table);
 }
 
-int hlthunk_tests_open(const char *busid)
+int hltests_open(const char *busid)
 {
 	int fd, rc;
-	struct hlthunk_tests_device *hdev;
+	struct hltests_device *hdev;
 	enum hl_pci_ids device_type;
 	khint_t k;
 
@@ -159,7 +159,7 @@ int hlthunk_tests_open(const char *busid)
 	}
 
 	/* not found, create new device */
-	hdev = hlthunk_malloc(sizeof(struct hlthunk_tests_device));
+	hdev = hlthunk_malloc(sizeof(struct hltests_device));
 	if (!hdev) {
 		rc = -ENOMEM;
 		goto close_device;
@@ -214,9 +214,9 @@ out:
 	return rc;
 }
 
-int hlthunk_tests_close(int fd)
+int hltests_close(int fd)
 {
-	struct hlthunk_tests_device *hdev;
+	struct hltests_device *hdev;
 	khint_t k;
 
 	hdev = get_hdev_from_fd(fd);
@@ -248,20 +248,20 @@ int hlthunk_tests_close(int fd)
 	return 0;
 }
 
-void* hlthunk_tests_cb_mmap(int fd, size_t length, off_t offset)
+void* hltests_cb_mmap(int fd, size_t length, off_t offset)
 {
 	return mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd,
 			offset);
 }
 
-int hlthunk_tests_cb_munmap(void *addr, size_t length)
+int hltests_cb_munmap(void *addr, size_t length)
 {
 	return munmap(addr, length);
 }
 
 static int debugfs_open(int fd)
 {
-	struct hlthunk_tests_device *hdev;
+	struct hltests_device *hdev;
 	int debugfs_addr_fd, debugfs_data_fd;
 
 	hdev = get_hdev_from_fd(fd);
@@ -290,7 +290,7 @@ static int debugfs_open(int fd)
 
 static int debugfs_close(int fd)
 {
-	struct hlthunk_tests_device *hdev;
+	struct hltests_device *hdev;
 
 	hdev = get_hdev_from_fd(fd);
 	if (!hdev)
@@ -307,9 +307,9 @@ static int debugfs_close(int fd)
 	return 0;
 }
 
-uint32_t hlthunk_tests_debugfs_read(int fd, uint64_t full_address)
+uint32_t hltests_debugfs_read(int fd, uint64_t full_address)
 {
-	struct hlthunk_tests_device *hdev;
+	struct hltests_device *hdev;
 	char addr_str[64] = {0}, value[64] = {0};
 	ssize_t size;
 
@@ -331,9 +331,9 @@ uint32_t hlthunk_tests_debugfs_read(int fd, uint64_t full_address)
 	return strtoul(value, NULL, 16);
 }
 
-void hlthunk_tests_debugfs_write(int fd, uint64_t full_address, uint32_t val)
+void hltests_debugfs_write(int fd, uint64_t full_address, uint32_t val)
 {
-	struct hlthunk_tests_device *hdev;
+	struct hltests_device *hdev;
 	char addr_str[64] = {0}, val_str[64] = {0};
 	ssize_t size;
 
@@ -354,22 +354,22 @@ void hlthunk_tests_debugfs_write(int fd, uint64_t full_address, uint32_t val)
 		printf("Failed to write to debugfs data fd [rc %zd]\n", size);
 }
 
-int hlthunk_tests_setup(void **state)
+int hltests_setup(void **state)
 {
-	struct hlthunk_tests_state *tests_state;
+	struct hltests_state *tests_state;
 	int rc;
 
-	tests_state = hlthunk_malloc(sizeof(struct hlthunk_tests_state));
+	tests_state = hlthunk_malloc(sizeof(struct hltests_state));
 	if (!tests_state)
 		return -ENOMEM;
 
-	rc = hlthunk_tests_init();
+	rc = hltests_init();
 	if (rc) {
 		printf("Failed to init tests library %d\n", rc);
 		goto free_state;
 	}
 
-	tests_state->fd = hlthunk_tests_open(NULL);
+	tests_state->fd = hltests_open(NULL);
 	if (tests_state->fd < 0) {
 		printf("Failed to open device %d\n", tests_state->fd);
 		rc = tests_state->fd;
@@ -383,54 +383,54 @@ int hlthunk_tests_setup(void **state)
 	return 0;
 
 fini_tests:
-	hlthunk_tests_fini();
+	hltests_fini();
 free_state:
 	hlthunk_free(tests_state);
 	return rc;
 }
 
-int hlthunk_tests_teardown(void **state)
+int hltests_teardown(void **state)
 {
-	struct hlthunk_tests_state *tests_state =
-					(struct hlthunk_tests_state *) *state;
+	struct hltests_state *tests_state =
+					(struct hltests_state *) *state;
 
 	if (!tests_state)
 		return -EINVAL;
 
-	if (hlthunk_tests_close(tests_state->fd))
+	if (hltests_close(tests_state->fd))
 		printf("Problem in closing FD, ignoring...\n");
 
-	hlthunk_tests_fini();
+	hltests_fini();
 
 	hlthunk_free(*state);
 
 	return 0;
 }
 
-int hlthunk_tests_root_setup(void **state)
+int hltests_root_setup(void **state)
 {
-	struct hlthunk_tests_state *tests_state;
+	struct hltests_state *tests_state;
 	int rc;
 
-	rc = hlthunk_tests_setup(state);
+	rc = hltests_setup(state);
 	if (rc)
 		return rc;
 
-	tests_state = (struct hlthunk_tests_state *) *state;
+	tests_state = (struct hltests_state *) *state;
 	return debugfs_open(tests_state->fd);
 }
 
-int hlthunk_tests_root_teardown(void **state)
+int hltests_root_teardown(void **state)
 {
-	struct hlthunk_tests_state *tests_state =
-					(struct hlthunk_tests_state *) *state;
+	struct hltests_state *tests_state =
+					(struct hltests_state *) *state;
 
 	if (!tests_state)
 		return -EINVAL;
 
 	debugfs_close(tests_state->fd);
 
-	return hlthunk_tests_teardown(state);
+	return hltests_teardown(state);
 }
 
 static void* allocate_huge_mem(uint64_t size)
@@ -459,10 +459,10 @@ static void* allocate_huge_mem(uint64_t size)
  * @param huge whether to use huge pages for the memory allocation
  * @return pointer to the host memory. NULL is returned upon failure
  */
-void* hlthunk_tests_allocate_host_mem(int fd, uint64_t size, bool huge)
+void* hltests_allocate_host_mem(int fd, uint64_t size, bool huge)
 {
-	struct hlthunk_tests_device *hdev;
-	struct hlthunk_tests_memory *mem;
+	struct hltests_device *hdev;
+	struct hltests_memory *mem;
 	khint_t k;
 	int rc;
 
@@ -470,7 +470,7 @@ void* hlthunk_tests_allocate_host_mem(int fd, uint64_t size, bool huge)
 	if (!hdev)
 		return NULL;
 
-	mem = hlthunk_malloc(sizeof(struct hlthunk_tests_memory));
+	mem = hlthunk_malloc(sizeof(struct hltests_memory));
 	if (!mem)
 		return NULL;
 
@@ -524,10 +524,10 @@ free_mem_struct:
  * @return pointer to the device memory. This pointer can NOT be dereferenced
  * directly from the host. NULL is returned upon failure
  */
-void* hlthunk_tests_allocate_device_mem(int fd, uint64_t size)
+void* hltests_allocate_device_mem(int fd, uint64_t size)
 {
-	struct hlthunk_tests_device *hdev;
-	struct hlthunk_tests_memory *mem;
+	struct hltests_device *hdev;
+	struct hltests_memory *mem;
 	khint_t k;
 	int rc;
 
@@ -535,7 +535,7 @@ void* hlthunk_tests_allocate_device_mem(int fd, uint64_t size)
 	if (!hdev)
 		return NULL;
 
-	mem = hlthunk_malloc(sizeof(struct hlthunk_tests_memory));
+	mem = hlthunk_malloc(sizeof(struct hltests_memory));
 	if (!mem)
 		return NULL;
 
@@ -576,15 +576,15 @@ free_mem_struct:
 
 /**
  * This function frees host memory allocation which were done using
- * hlthunk_tests_allocate_host_mem
+ * hltests_allocate_host_mem
  * @param fd file descriptor of the device that the host memory is mapped to
  * @param vaddr host pointer that points to the memory area
  * @return 0 for success, negative value for failure
  */
-int hlthunk_tests_free_host_mem(int fd, void *vaddr)
+int hltests_free_host_mem(int fd, void *vaddr)
 {
-	struct hlthunk_tests_device *hdev;
-	struct hlthunk_tests_memory *mem;
+	struct hltests_device *hdev;
+	struct hltests_memory *mem;
 	khint_t k;
 	int rc;
 
@@ -623,15 +623,15 @@ int hlthunk_tests_free_host_mem(int fd, void *vaddr)
 
 /**
  * This function frees device memory allocation which were done using
- * hlthunk_tests_allocate_device_mem
+ * hltests_allocate_device_mem
  * @param fd file descriptor of the device that this memory belongs to
  * @param vaddr device VA that points to the memory area
  * @return 0 for success, negative value for failure
  */
-int hlthunk_tests_free_device_mem(int fd, void *vaddr)
+int hltests_free_device_mem(int fd, void *vaddr)
 {
-	struct hlthunk_tests_device *hdev;
-	struct hlthunk_tests_memory *mem;
+	struct hltests_device *hdev;
+	struct hltests_memory *mem;
 	khint_t k;
 	int rc;
 
@@ -673,10 +673,10 @@ int hlthunk_tests_free_device_mem(int fd, void *vaddr)
  * @return virtual address in the device VA space representing this host memory
  * area. 0 for failure
  */
-uint64_t hlthunk_tests_get_device_va_for_host_ptr(int fd, void *vaddr)
+uint64_t hltests_get_device_va_for_host_ptr(int fd, void *vaddr)
 {
-	struct hlthunk_tests_device *hdev;
-	struct hlthunk_tests_memory *mem;
+	struct hltests_device *hdev;
+	struct hltests_memory *mem;
 	khint_t k;
 
 	hdev = get_hdev_from_fd(fd);
@@ -704,11 +704,11 @@ uint64_t hlthunk_tests_get_device_va_for_host_ptr(int fd, void *vaddr)
  * @return virtual address of the CB in the user process VA space, or NULL for
  *         failure
  */
-void* hlthunk_tests_create_cb(int fd, uint32_t cb_size, bool is_external,
+void* hltests_create_cb(int fd, uint32_t cb_size, bool is_external,
 				uint64_t cb_internal_sram_address)
 {
-	struct hlthunk_tests_device *hdev;
-	struct hlthunk_tests_cb *cb;
+	struct hltests_device *hdev;
+	struct hltests_cb *cb;
 	int rc;
 	khint_t k;
 
@@ -729,11 +729,11 @@ void* hlthunk_tests_create_cb(int fd, uint32_t cb_size, bool is_external,
 		if (rc)
 			goto free_cb;
 
-		cb->ptr = hlthunk_tests_cb_mmap(fd, cb->cb_size, cb->cb_handle);
+		cb->ptr = hltests_cb_mmap(fd, cb->cb_size, cb->cb_handle);
 		if (cb->ptr == MAP_FAILED)
 			goto destroy_cb;
 	} else {
-		cb->ptr = hlthunk_tests_allocate_host_mem(fd, cb_size, false);
+		cb->ptr = hltests_allocate_host_mem(fd, cb_size, false);
 		if (!cb->ptr)
 			goto free_cb;
 		cb->cb_handle = cb_internal_sram_address;
@@ -755,10 +755,10 @@ free_cb:
 	return NULL;
 }
 
-int hlthunk_tests_destroy_cb(int fd, void *ptr)
+int hltests_destroy_cb(int fd, void *ptr)
 {
-	struct hlthunk_tests_device *hdev;
-	struct hlthunk_tests_cb *cb;
+	struct hltests_device *hdev;
+	struct hltests_cb *cb;
 	khint_t k;
 
 	hdev = get_hdev_from_fd(fd);
@@ -779,10 +779,10 @@ int hlthunk_tests_destroy_cb(int fd, void *ptr)
 	pthread_mutex_unlock(&hdev->cb_table_lock);
 
 	if (cb->external) {
-		hlthunk_tests_cb_munmap(cb->ptr, cb->cb_size);
+		hltests_cb_munmap(cb->ptr, cb->cb_size);
 		hlthunk_destroy_command_buffer(fd, cb->cb_handle);
 	} else {
-		hlthunk_tests_free_host_mem(fd, cb->ptr);
+		hltests_free_host_mem(fd, cb->ptr);
 	}
 
 	hlthunk_free(cb);
@@ -790,7 +790,7 @@ int hlthunk_tests_destroy_cb(int fd, void *ptr)
 	return 0;
 }
 
-uint32_t hlthunk_tests_add_packet_to_cb(void *ptr, uint32_t offset, void *pkt,
+uint32_t hltests_add_packet_to_cb(void *ptr, uint32_t offset, void *pkt,
 					uint32_t pkt_size)
 {
 	memcpy((uint8_t *) ptr + offset, pkt, pkt_size);
@@ -798,11 +798,11 @@ uint32_t hlthunk_tests_add_packet_to_cb(void *ptr, uint32_t offset, void *pkt,
 	return offset + pkt_size;
 }
 
-static int fill_cs_chunk(struct hlthunk_tests_device *hdev,
+static int fill_cs_chunk(struct hltests_device *hdev,
 		struct hl_cs_chunk *chunk, void *cb_ptr, uint32_t cb_size,
 		uint32_t queue_index)
 {
-	struct hlthunk_tests_cb *cb;
+	struct hltests_cb *cb;
 	khint_t k;
 
 	pthread_mutex_lock(&hdev->cb_table_lock);
@@ -824,15 +824,15 @@ static int fill_cs_chunk(struct hlthunk_tests_device *hdev,
 	return 0;
 }
 
-int hlthunk_tests_submit_cs(int fd,
-		struct hlthunk_tests_cs_chunk *restore_arr,
+int hltests_submit_cs(int fd,
+		struct hltests_cs_chunk *restore_arr,
 		uint32_t restore_arr_size,
-		struct hlthunk_tests_cs_chunk *execute_arr,
+		struct hltests_cs_chunk *execute_arr,
 		uint32_t execute_arr_size,
 		bool force_restore,
 		uint64_t *seq)
 {
-	struct hlthunk_tests_device *hdev;
+	struct hltests_device *hdev;
 	struct hl_cs_chunk *chunks_restore = NULL, *chunks_execute = NULL;
 	struct hlthunk_cs_in cs_in = {};
 	struct hlthunk_cs_out cs_out = {};
@@ -909,7 +909,7 @@ out:
 	return rc;
 }
 
-int hlthunk_tests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us)
+int hltests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us)
 {
 	uint32_t status;
 	int rc;
@@ -924,88 +924,88 @@ int hlthunk_tests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us)
 	return 0;
 }
 
-uint32_t hlthunk_tests_add_nop_pkt(int fd, void *buffer, uint32_t buf_off,
+uint32_t hltests_add_nop_pkt(int fd, void *buffer, uint32_t buf_off,
 					bool eb, bool mb)
 {
-	const struct hlthunk_tests_asic_funcs *asic =
+	const struct hltests_asic_funcs *asic =
 			get_hdev_from_fd(fd)->asic_funcs;
 
 	return asic->add_nop_pkt(buffer, buf_off, eb, mb);
 }
 
-uint32_t hlthunk_tests_add_msg_long_pkt(int fd, void *buffer, uint32_t buf_off,
+uint32_t hltests_add_msg_long_pkt(int fd, void *buffer, uint32_t buf_off,
 					bool eb, bool mb, uint64_t address,
 					uint32_t value)
 {
-	const struct hlthunk_tests_asic_funcs *asic =
+	const struct hltests_asic_funcs *asic =
 			get_hdev_from_fd(fd)->asic_funcs;
 
 	return asic->add_msg_long_pkt(buffer, buf_off, eb, mb, address, value);
 }
 
-uint32_t hlthunk_tests_add_msg_short_pkt(int fd, void *buffer, uint32_t buf_off,
+uint32_t hltests_add_msg_short_pkt(int fd, void *buffer, uint32_t buf_off,
 					bool eb, bool mb, uint16_t address,
 					uint32_t value)
 {
-	const struct hlthunk_tests_asic_funcs *asic =
+	const struct hltests_asic_funcs *asic =
 			get_hdev_from_fd(fd)->asic_funcs;
 
 	return asic->add_msg_short_pkt(buffer, buf_off, eb, mb, address, value);
 }
 
-uint32_t hlthunk_tests_add_arm_monitor_pkt(int fd, void *buffer,
+uint32_t hltests_add_arm_monitor_pkt(int fd, void *buffer,
 					uint32_t buf_off, bool eb, bool mb,
 					uint16_t address, uint32_t value,
 					uint8_t mon_mode, uint16_t sync_val,
 					uint16_t sync_id)
 {
-	const struct hlthunk_tests_asic_funcs *asic =
+	const struct hltests_asic_funcs *asic =
 			get_hdev_from_fd(fd)->asic_funcs;
 
 	return asic->add_arm_monitor_pkt(buffer, buf_off, eb, mb, address,
 					value, mon_mode, sync_val, sync_id);
 }
 
-uint32_t hlthunk_tests_add_fence_pkt(int fd, void *buffer, uint32_t buf_off,
+uint32_t hltests_add_fence_pkt(int fd, void *buffer, uint32_t buf_off,
 					bool eb, bool mb, uint8_t dec_val,
 					uint8_t gate_val, uint8_t fence_id)
 {
-	const struct hlthunk_tests_asic_funcs *asic =
+	const struct hltests_asic_funcs *asic =
 			get_hdev_from_fd(fd)->asic_funcs;
 
 	return asic->add_fence_pkt(buffer, buf_off, eb, mb, dec_val, gate_val,
 					fence_id);
 }
 
-uint32_t hlthunk_tests_add_dma_pkt(int fd, void *buffer, uint32_t buf_off,
+uint32_t hltests_add_dma_pkt(int fd, void *buffer, uint32_t buf_off,
 				bool eb, bool mb, uint64_t src_addr,
 				uint64_t dst_addr, uint32_t size,
-				enum hlthunk_tests_goya_dma_direction dma_dir)
+				enum hltests_goya_dma_direction dma_dir)
 {
-	const struct hlthunk_tests_asic_funcs *asic =
+	const struct hltests_asic_funcs *asic =
 			get_hdev_from_fd(fd)->asic_funcs;
 
 	return asic->add_dma_pkt(buffer, buf_off, eb, mb, src_addr, dst_addr,
 					size, dma_dir);
 }
 
-uint32_t hlthunk_tests_get_dma_down_qid(int fd)
+uint32_t hltests_get_dma_down_qid(int fd, uint8_t stream)
 {
-	const struct hlthunk_tests_asic_funcs *asic =
+	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
 
 	return asic->get_dma_down_qid();
 }
 
-uint32_t hlthunk_tests_get_dma_up_qid(int fd)
+uint32_t hltests_get_dma_up_qid(int fd, uint8_t stream)
 {
-	const struct hlthunk_tests_asic_funcs *asic =
+	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
 
 	return asic->get_dma_up_qid();
 }
 
-void hlthunk_tests_fill_rand_values(void *ptr, uint32_t size)
+void hltests_fill_rand_values(void *ptr, uint32_t size)
 {
 	uint32_t i, *p = ptr, rounddown_aligned_size, remainder, val;
 
@@ -1025,7 +1025,7 @@ void hlthunk_tests_fill_rand_values(void *ptr, uint32_t size)
 	}
 }
 
-int hlthunk_tests_mem_compare(void *ptr1, void *ptr2, uint64_t size)
+int hltests_mem_compare(void *ptr1, void *ptr2, uint64_t size)
 {
 	uint64_t *p1 = (uint64_t *) ptr1, *p2 = (uint64_t *) ptr2;
 	uint32_t err_cnt = 0, rounddown_aligned_size, remainder, i;
@@ -1057,45 +1057,43 @@ int hlthunk_tests_mem_compare(void *ptr1, void *ptr2, uint64_t size)
 	return err_cnt;
 }
 
-int hlthunk_tests_dma_transfer(int fd, uint32_t queue_index, bool eb, bool mb,
+int hltests_dma_transfer(int fd, uint32_t queue_index, bool eb, bool mb,
 				uint64_t src_addr, uint64_t dst_addr,
 				uint32_t size,
-				enum hlthunk_tests_goya_dma_direction dma_dir,
+				enum hltests_goya_dma_direction dma_dir,
 				uint64_t timeout_us)
 {
-	struct hlthunk_tests_cs_chunk execute_arr[1];
+	struct hltests_cs_chunk execute_arr[1];
 	uint32_t offset = 0;
 	uint64_t seq;
 	void *ptr;
 	int rc;
 
-	ptr = hlthunk_tests_create_cb(fd, getpagesize(), true, 0);
+	ptr = hltests_create_cb(fd, getpagesize(), true, 0);
 	if (!ptr)
 		return -ENOMEM;
 
-	offset = hlthunk_tests_add_dma_pkt(fd, ptr, offset, eb, mb, src_addr,
+	offset = hltests_add_dma_pkt(fd, ptr, offset, eb, mb, src_addr,
 						dst_addr, size, dma_dir);
 
 	execute_arr[0].cb_ptr = ptr;
 	execute_arr[0].cb_size = offset;
 	execute_arr[0].queue_index = queue_index;
 
-	rc = hlthunk_tests_submit_cs(fd, NULL, 0, execute_arr, 1, false, &seq);
+	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, false, &seq);
 	if (rc)
 		return rc;
 
-	rc = hlthunk_tests_wait_for_cs(fd, seq, timeout_us);
+	rc = hltests_wait_for_cs(fd, seq, timeout_us);
 	if (rc)
 		return  rc;
 
-	return hlthunk_tests_destroy_cb(fd, ptr);
+	return hltests_destroy_cb(fd, ptr);
 }
 
-int hlthunk_tests_dma_test(void **state, bool is_ddr, uint64_t size,
-				bool is_huge)
+int hltests_dma_test(void **state, bool is_ddr, uint64_t size, bool is_huge)
 {
-	struct hlthunk_tests_state *tests_state =
-			(struct hlthunk_tests_state *) *state;
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
 	void *device_addr, *src_ptr, *dst_ptr;
 	uint64_t host_src_addr, host_dst_addr;
@@ -1110,8 +1108,7 @@ int hlthunk_tests_dma_test(void **state, bool is_ddr, uint64_t size,
 		assert_int_equal(hw_ip.dram_enabled, 1);
 		assert_in_range(size, 1, hw_ip.dram_size);
 
-		device_addr = hlthunk_tests_allocate_device_mem(tests_state->fd,
-								size);
+		device_addr = hltests_allocate_device_mem(fd, size);
 		assert_non_null(device_addr);
 
 		dma_dir_down = GOYA_DMA_HOST_TO_DRAM;
@@ -1124,18 +1121,18 @@ int hlthunk_tests_dma_test(void **state, bool is_ddr, uint64_t size,
 		dma_dir_up = GOYA_DMA_SRAM_TO_HOST;
 	}
 
-	src_ptr = hlthunk_tests_allocate_host_mem(fd, size, is_huge);
+	src_ptr = hltests_allocate_host_mem(fd, size, is_huge);
 	assert_non_null(src_ptr);
-	hlthunk_tests_fill_rand_values(src_ptr, size);
-	host_src_addr = hlthunk_tests_get_device_va_for_host_ptr(fd, src_ptr);
+	hltests_fill_rand_values(src_ptr, size);
+	host_src_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
 
-	dst_ptr = hlthunk_tests_allocate_host_mem(fd, size, is_huge);
+	dst_ptr = hltests_allocate_host_mem(fd, size, is_huge);
 	assert_non_null(dst_ptr);
-	hlthunk_tests_fill_rand_values(dst_ptr, size);
-	host_dst_addr = hlthunk_tests_get_device_va_for_host_ptr(fd, dst_ptr);
+	hltests_fill_rand_values(dst_ptr, size);
+	host_dst_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
 
 	/* DMA: host->device */
-	rc = hlthunk_tests_dma_transfer(fd, hlthunk_tests_get_dma_down_qid(fd),
+	rc = hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, 0),
 					0, 1, host_src_addr,
 					(uint64_t) (uintptr_t) device_addr,
 					size, dma_dir_down,
@@ -1143,7 +1140,7 @@ int hlthunk_tests_dma_test(void **state, bool is_ddr, uint64_t size,
 	assert_int_equal(rc, 0);
 
 	/* DMA: device->host */
-	rc = hlthunk_tests_dma_transfer(fd, hlthunk_tests_get_dma_up_qid(fd),
+	rc = hltests_dma_transfer(fd, hltests_get_dma_up_qid(fd, 0),
 					0, 1,
 					(uint64_t) (uintptr_t) device_addr,
 					host_dst_addr, size, dma_dir_up,
@@ -1151,17 +1148,17 @@ int hlthunk_tests_dma_test(void **state, bool is_ddr, uint64_t size,
 	assert_int_equal(rc, 0);
 
 	/* Compare host memories */
-	rc = hlthunk_tests_mem_compare(src_ptr, dst_ptr, size);
+	rc = hltests_mem_compare(src_ptr, dst_ptr, size);
 	assert_int_equal(rc, 0);
 
 	/* Cleanup */
-	rc = hlthunk_tests_free_host_mem(fd, dst_ptr);
+	rc = hltests_free_host_mem(fd, dst_ptr);
 	assert_int_equal(rc, 0);
-	rc = hlthunk_tests_free_host_mem(fd, src_ptr);
+	rc = hltests_free_host_mem(fd, src_ptr);
 	assert_int_equal(rc, 0);
 
 	if (is_ddr) {
-		rc = hlthunk_tests_free_device_mem(fd, device_addr);
+		rc = hltests_free_device_mem(fd, device_addr);
 		assert_int_equal(rc, 0);
 	}
 
