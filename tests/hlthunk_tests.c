@@ -1228,7 +1228,7 @@ void hltests_submit_and_wait_cs(int fd, void *cb_ptr, uint32_t cb_size,
 				bool destroy_cb)
 {
 	struct hltests_cs_chunk execute_arr[1];
-	uint64_t seq;
+	uint64_t seq = 0;
 	int rc;
 
 	execute_arr[0].cb_ptr = cb_ptr;
