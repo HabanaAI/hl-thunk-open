@@ -50,13 +50,22 @@ static khash_t(ptr) *dev_table;
 
 static struct hltests_device* get_hdev_from_fd(int fd)
 {
+	struct hltests_device *dev;
 	khint_t k;
 
-	k = kh_get(ptr, dev_table, fd);
-	if (k == kh_end(dev_table))
-		return NULL;
+	pthread_mutex_lock(&table_lock);
 
-	return kh_val(dev_table, k);
+	k = kh_get(ptr, dev_table, fd);
+	if (k == kh_end(dev_table)) {
+		pthread_mutex_unlock(&table_lock);
+		return NULL;
+	}
+
+	dev = kh_val(dev_table, k);
+
+	pthread_mutex_unlock(&table_lock);
+
+	return dev;
 }
 
 static int create_mem_maps(struct hltests_device *hdev)
@@ -688,11 +697,17 @@ uint64_t hltests_get_device_va_for_host_ptr(int fd, void *vaddr)
 	if (!hdev)
 		return 0;
 
+	pthread_mutex_lock(&hdev->mem_table_host_lock);
+
 	k = kh_get(ptr64, hdev->mem_table_host, (uintptr_t) vaddr);
-	if (k == kh_end(hdev->mem_table_host))
+	if (k == kh_end(hdev->mem_table_host)) {
+		pthread_mutex_unlock(&hdev->mem_table_host_lock);
 		return 0;
+	}
 
 	mem = kh_val(hdev->mem_table_host, k);
+
+	pthread_mutex_unlock(&hdev->mem_table_host_lock);
 
 	return mem->device_virt_addr;
 }
@@ -914,7 +929,7 @@ out:
 	return rc;
 }
 
-int hltests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us)
+static int hltests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us)
 {
 	uint32_t status;
 	int rc;

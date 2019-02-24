@@ -154,8 +154,6 @@ int hltests_submit_cs(int fd, struct hltests_cs_chunk *restore_arr,
 				uint32_t execute_arr_size, bool force_restore,
 				uint64_t *seq);
 
-int hltests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us);
-
 int hltests_setup(void **state);
 int hltests_teardown(void **state);
 int hltests_root_setup(void **state);
