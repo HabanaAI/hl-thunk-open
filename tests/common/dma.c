@@ -34,18 +34,106 @@
 #include <errno.h>
 #include <unistd.h>
 
-static int _test_dma(void **state, bool is_ddr, uint64_t size)
+static int _test_dma(void **state, bool is_ddr, uint64_t size, bool is_huge)
 {
+	struct hlthunk_tests_state *tests_state =
+			(struct hlthunk_tests_state *) *state;
+	struct hlthunk_hw_ip_info hw_ip;
+	void *device_addr, *src_ptr, *dst_ptr;
+	uint64_t host_src_addr, host_dst_addr;
+	uint32_t dma_dir_down, dma_dir_up;
+	int rc, fd = tests_state->fd;
+
+	/* Sanity and memory allocation */
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+
+	if (is_ddr) {
+		assert_int_equal(hw_ip.dram_enabled, 1);
+		assert_in_range(size, 1, hw_ip.dram_size);
+
+		device_addr = hlthunk_tests_allocate_device_mem(tests_state->fd,
+								size);
+		assert_non_null(device_addr);
+
+		dma_dir_down = GOYA_DMA_HOST_TO_DRAM;
+		dma_dir_up = GOYA_DMA_DRAM_TO_HOST;
+	} else {
+		assert_in_range(size, 1, hw_ip.sram_size);
+		device_addr = (void *) (uintptr_t) hw_ip.sram_base_address;
+
+		dma_dir_down = GOYA_DMA_HOST_TO_SRAM;
+		dma_dir_up = GOYA_DMA_SRAM_TO_HOST;
+	}
+
+	src_ptr = hlthunk_tests_allocate_host_mem(fd, size, is_huge);
+	assert_non_null(src_ptr);
+	hlthunk_tests_fill_rand_values(src_ptr, size);
+	host_src_addr = hlthunk_tests_get_device_va_for_host_ptr(fd, src_ptr);
+
+	dst_ptr = hlthunk_tests_allocate_host_mem(fd, size, is_huge);
+	assert_non_null(dst_ptr);
+	hlthunk_tests_fill_rand_values(dst_ptr, size);
+	host_dst_addr = hlthunk_tests_get_device_va_for_host_ptr(fd, dst_ptr);
+
+	/* DMA: host->device */
+	rc = hlthunk_tests_dma_transfer(fd, GOYA_QUEUE_ID_DMA_1, 0, 1,
+					host_src_addr,
+					(uint64_t) (uintptr_t) device_addr,
+					size, dma_dir_down,
+					WAIT_FOR_CS_DEFAULT_TIMEOUT);
+	assert_int_equal(rc, 0);
+
+	/* DMA: device->host */
+	rc = hlthunk_tests_dma_transfer(fd, GOYA_QUEUE_ID_DMA_2, 0, 1,
+					(uint64_t) (uintptr_t) device_addr,
+					host_dst_addr, size, dma_dir_up,
+					WAIT_FOR_CS_DEFAULT_TIMEOUT);
+	assert_int_equal(rc, 0);
+
+	/* Compare host memories */
+	rc = hlthunk_tests_mem_compare(src_ptr, dst_ptr, size);
+	assert_int_equal(rc, 0);
+
+	/* Cleanup */
+	rc = hlthunk_tests_free_host_mem(fd, dst_ptr);
+	assert_int_equal(rc, 0);
+	rc = hlthunk_tests_free_host_mem(fd, src_ptr);
+	assert_int_equal(rc, 0);
+
+	if (is_ddr) {
+		rc = hlthunk_tests_free_device_mem(fd, device_addr);
+		assert_int_equal(rc, 0);
+	}
+
 	return 0;
 }
 
 void test_dma_ddr(void **state)
 {
-	_test_dma(state, true, 0x1000);
+	_test_dma(state, true, 0x1000, false);
+}
+
+void test_dma_ddr_huge_pages(void **state)
+{
+	_test_dma(state, true, 0x1000, true);
+}
+
+void test_dma_sram(void **state)
+{
+	_test_dma(state, false, 0x1000, false);
+}
+
+void test_dma_sram_huge_pages(void **state)
+{
+	_test_dma(state, false, 0x1000, true);
 }
 
 const struct CMUnitTest dma_tests[] = {
 	cmocka_unit_test(test_dma_ddr),
+	cmocka_unit_test(test_dma_ddr_huge_pages),
+	cmocka_unit_test(test_dma_sram),
+	cmocka_unit_test(test_dma_sram_huge_pages),
 };
 
 int main(void)

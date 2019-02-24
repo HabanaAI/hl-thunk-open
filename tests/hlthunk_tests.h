@@ -187,13 +187,6 @@ int hlthunk_tests_mem_compare(void *ptr1, void *ptr2, uint64_t size);
 
 int hlthunk_tests_dma_transfer(int fd, uint32_t queue_index, bool eb, bool mb,
 				uint64_t src_addr, uint64_t dst_addr,
-				uint32_t size, uint64_t timeout_us);
-
-/* Needed only for Goya.
- * In Gaudi and above the user doesn't need to set the direction.
- */
-int _hlthunk_tests_dma_transfer(int fd, uint32_t queue_index, bool eb, bool mb,
-				uint64_t src_addr, uint64_t dst_addr,
 				uint32_t size,
 				enum hlthunk_tests_goya_dma_direction dma_dir,
 				uint64_t timeout_us);

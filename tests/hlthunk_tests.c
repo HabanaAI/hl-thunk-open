@@ -1020,16 +1020,6 @@ int hlthunk_tests_mem_compare(void *ptr1, void *ptr2, uint64_t size)
 
 int hlthunk_tests_dma_transfer(int fd, uint32_t queue_index, bool eb, bool mb,
 				uint64_t src_addr, uint64_t dst_addr,
-				uint32_t size, uint64_t timeout_us)
-{
-	return _hlthunk_tests_dma_transfer(fd, queue_index, eb, mb, src_addr,
-					dst_addr, size,
-					0 /* arbitrary value as direction */,
-					timeout_us);
-}
-
-int _hlthunk_tests_dma_transfer(int fd, uint32_t queue_index, bool eb, bool mb,
-				uint64_t src_addr, uint64_t dst_addr,
 				uint32_t size,
 				enum hlthunk_tests_goya_dma_direction dma_dir,
 				uint64_t timeout_us)
