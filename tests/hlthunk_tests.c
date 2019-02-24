@@ -63,8 +63,10 @@ static int create_mem_maps(struct hlthunk_tests_device *hdev)
 		return -ENOMEM;
 
 	hdev->mem_table_device = kh_init(ptr64);
-	if (!hdev->mem_table_device)
+	if (!hdev->mem_table_device) {
+		rc = -ENOMEM;
 		goto delete_mem_hash;
+	}
 
 	rc = pthread_mutex_init(&hdev->mem_table_host_lock, NULL);
 	if (rc)
@@ -163,6 +165,7 @@ int hlthunk_tests_open(const char *busid)
 		goto close_device;
 	}
 	hdev->fd = fd;
+
 	k = kh_put(ptr, dev_table, fd, &rc);
 	kh_val(dev_table, k) = hdev;
 
