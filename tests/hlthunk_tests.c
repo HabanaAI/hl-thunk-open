@@ -35,6 +35,7 @@
 #include <stdlib.h>
 #include <linux/mman.h>
 #include <time.h>
+#include <inttypes.h>
 
 static pthread_mutex_t table_lock = PTHREAD_MUTEX_INITIALIZER;
 static khash_t(ptr) *dev_table;
@@ -514,7 +515,7 @@ free_mem_struct:
  * @param fd file descriptor of the device to which the function will map
  *           the memory
  * @param size how much memory to allocate
- * @return pointer to the device memory. This pointer can NOT be derefenced
+ * @return pointer to the device memory. This pointer can NOT be dereferenced
  * directly from the host. NULL is returned upon failure
  */
 void* hlthunk_tests_allocate_device_mem(int fd, uint64_t size)
@@ -983,4 +984,80 @@ void hlthunk_tests_fill_rand_values(void *ptr, uint32_t size)
 		((uint8_t *) p)[i] = (uint8_t) (val & 0xff);
 		val >>= 8;
 	}
+}
+
+int hlthunk_tests_mem_compare(void *ptr1, void *ptr2, uint64_t size)
+{
+	uint64_t *p1 = (uint64_t *) ptr1, *p2 = (uint64_t *) ptr2;
+	uint32_t err_cnt = 0, rounddown_aligned_size, remainder, i;
+
+	rounddown_aligned_size = size & ~(sizeof(uint64_t) - 1);
+	remainder = size - rounddown_aligned_size;
+
+	for (i = 0 ; i < rounddown_aligned_size && err_cnt < 10 ;
+		i += sizeof(uint64_t), p1++, p2++) {
+		if (*p1 != *p2) {
+			printf("[%p]: 0x%"PRIu64" <--> [%p]: 0x%"PRIu64"\n",
+				p1, *p1, p2, *p2);
+			err_cnt++;
+		}
+	}
+
+	if (!remainder)
+		return err_cnt;
+
+	for (i = 0 ; i < remainder ; i++) {
+		if (((uint8_t *) p1)[i] != ((uint8_t *) p2)[i]) {
+			printf("[%p]: 0x%hhx <--> [%p]: 0x%hhx\n",
+				(uint8_t *) p1 + i, ((uint8_t *) p1)[i],
+				(uint8_t *) p2 + i, ((uint8_t *) p2)[i]);
+			err_cnt++;
+		}
+	}
+
+	return err_cnt;
+}
+
+int hlthunk_tests_dma_transfer(int fd, uint32_t queue_index, bool eb, bool mb,
+				uint64_t src_addr, uint64_t dst_addr,
+				uint32_t size, uint64_t timeout_us)
+{
+	return _hlthunk_tests_dma_transfer(fd, queue_index, eb, mb, src_addr,
+					dst_addr, size,
+					0 /* arbitrary value as direction */,
+					timeout_us);
+}
+
+int _hlthunk_tests_dma_transfer(int fd, uint32_t queue_index, bool eb, bool mb,
+				uint64_t src_addr, uint64_t dst_addr,
+				uint32_t size,
+				enum hlthunk_tests_goya_dma_direction dma_dir,
+				uint64_t timeout_us)
+{
+	struct hlthunk_tests_cs_chunk execute_arr[1];
+	uint32_t offset = 0;
+	uint64_t seq;
+	void *ptr;
+	int rc;
+
+	ptr = hlthunk_tests_create_cb(fd, getpagesize(), true);
+	if (!ptr)
+		return -ENOMEM;
+
+	offset = hlthunk_tests_add_dma_pkt(fd, ptr, offset, eb, mb, src_addr,
+						dst_addr, size, dma_dir);
+
+	execute_arr[0].cb_ptr = ptr;
+	execute_arr[0].cb_size = offset;
+	execute_arr[0].queue_index = queue_index;
+
+	rc = hlthunk_tests_submit_cs(fd, NULL, 0, execute_arr, 1, false, &seq);
+	if (rc)
+		return rc;
+
+	rc = hlthunk_tests_wait_for_cs(fd, seq, timeout_us);
+	if (rc)
+		return  rc;
+
+	return hlthunk_tests_destroy_cb(fd, ptr);
 }

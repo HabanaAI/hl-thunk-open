@@ -8,6 +8,7 @@ set(COMMON_UNIT_TESTS
     basic
     command_buffer
     command_submission
+    dma
 )
 
 foreach(_UNIT_TEST ${COMMON_UNIT_TESTS})
