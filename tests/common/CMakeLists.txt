@@ -8,7 +8,6 @@ set(COMMON_UNIT_TESTS
     basic
     command_buffer
     command_submission
-    dma
     dma_1kb_inc
     sync_manager
 )
