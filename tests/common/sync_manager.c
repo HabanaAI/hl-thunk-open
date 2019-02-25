@@ -119,7 +119,7 @@ static void test_sm(void **state, bool is_tpc, bool is_wait)
 	 * a DMA down to the data address on the sram
 	 */
 	offset = hltests_add_monitor_and_fence(tests_state->fd, ext_cb, 0,
-				hltests_get_dma_down_qid(tests_state->fd, 0),
+				hltests_get_dma_up_qid(tests_state->fd, 0),
 				false, 0, 0, 0);
 
 	offset = hltests_add_dma_pkt(tests_state->fd, ext_cb, offset, false,
@@ -129,8 +129,7 @@ static void test_sm(void **state, bool is_tpc, bool is_wait)
 
 	execute_arr[0].cb_ptr = ext_cb;
 	execute_arr[0].cb_size = offset;
-	execute_arr[0].queue_index =
-			hltests_get_dma_down_qid(tests_state->fd, 0);
+	execute_arr[0].queue_index = hltests_get_dma_up_qid(tests_state->fd, 0);
 
 	execute_arr[1].cb_ptr = engine_cb;
 	execute_arr[1].cb_size = engine_cb_size;
