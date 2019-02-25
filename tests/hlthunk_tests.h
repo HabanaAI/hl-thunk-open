@@ -31,10 +31,15 @@
 #include <sys/mman.h>
 #include <stdbool.h>
 
+#define WAIT_FOR_CS_DEFAULT_TIMEOUT	1000000 /* 1 sec */
+
+#define DMA_1KB_INC_SRAM(func_name, state, size) \
+	void func_name(void **state) { hltests_dma_test(state, false, size); }
+#define DMA_1KB_INC_DDR(func_name, state, size) \
+	void func_name(void **state) { hltests_dma_test(state, true, size); }
+
 KHASH_MAP_INIT_INT(ptr, void*)
 KHASH_MAP_INIT_INT64(ptr64, void*)
-
-#define WAIT_FOR_CS_DEFAULT_TIMEOUT	1000000 /* 1 sec */
 
 /* Must be an exact copy of goya_dma_direction for the no mmu mode to work
  * This structure is relevant only for Goya. In Gaudi and above, we don't need

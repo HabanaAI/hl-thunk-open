@@ -8,7 +8,13 @@ set(COMMON_UNIT_TESTS
     basic
     command_buffer
     command_submission
-    dma_1kb_inc
+    dma_1KB_inc
+    dma_4KB_inc
+    dma_32KB_inc
+    dma_128KB_inc
+    dma_1MB_inc
+    dma_4MB_inc
+    dma_64MB_inc
     sync_manager
 )
 
