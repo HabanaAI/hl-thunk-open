@@ -8,6 +8,7 @@ set(COMMON_UNIT_TESTS
     basic
     command_buffer
     command_submission
+    dma
     dma_1KB_inc
     dma_4KB_inc
     dma_32KB_inc
