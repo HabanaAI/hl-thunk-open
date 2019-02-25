@@ -133,7 +133,6 @@ struct hltests_device {
 	pthread_mutex_t cb_table_lock;
 	int fd;
 	int refcnt;
-	pthread_mutex_t refcnt_lock;
 	int debugfs_addr_fd;
 	int debugfs_data_fd;
 };

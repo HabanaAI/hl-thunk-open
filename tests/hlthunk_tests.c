@@ -50,7 +50,7 @@ static khash_t(ptr) *dev_table;
 
 static struct hltests_device* get_hdev_from_fd(int fd)
 {
-	struct hltests_device *dev;
+	struct hltests_device *hdev;
 	khint_t k;
 
 	pthread_mutex_lock(&table_lock);
@@ -61,11 +61,11 @@ static struct hltests_device* get_hdev_from_fd(int fd)
 		return NULL;
 	}
 
-	dev = kh_val(dev_table, k);
+	hdev = kh_val(dev_table, k);
 
 	pthread_mutex_unlock(&table_lock);
 
-	return dev;
+	return hdev;
 }
 
 static int create_mem_maps(struct hltests_device *hdev)
@@ -201,13 +201,9 @@ int hltests_open(const char *busid)
 	hdev->debugfs_addr_fd = -1;
 	hdev->debugfs_data_fd = -1;
 
-	rc = pthread_mutex_init(&hdev->refcnt_lock, NULL);
-	if (rc)
-		goto remove_device;
-
 	rc = create_mem_maps(hdev);
 	if (rc)
-		goto destroy_refcnt_lock;
+		goto remove_device;
 
 	rc = create_cb_map(hdev);
 	if (rc)
@@ -218,8 +214,6 @@ int hltests_open(const char *busid)
 
 destroy_mem_maps:
 	destroy_mem_maps(hdev);
-destroy_refcnt_lock:
-	pthread_mutex_destroy(&hdev->refcnt_lock);
 remove_device:
 	kh_del(ptr, dev_table, k);
 	hlthunk_free(hdev);
@@ -235,27 +229,27 @@ int hltests_close(int fd)
 	struct hltests_device *hdev;
 	khint_t k;
 
-	hdev = get_hdev_from_fd(fd);
-	if (!hdev)
-		return -ENODEV;
+	pthread_mutex_lock(&table_lock);
 
-	pthread_mutex_lock(&hdev->refcnt_lock);
+	k = kh_get(ptr, dev_table, fd);
+	if (k == kh_end(dev_table)) {
+		pthread_mutex_unlock(&table_lock);
+		return -ENODEV;
+	}
+
+	hdev = kh_val(dev_table, k);
+
 	if (--hdev->refcnt) {
-		pthread_mutex_unlock(&hdev->refcnt_lock);
+		pthread_mutex_unlock(&table_lock);
 		return 0;
 	}
-	pthread_mutex_unlock(&hdev->refcnt_lock);
 
 	destroy_mem_maps(hdev);
 
 	destroy_cb_map(hdev);
 
-	pthread_mutex_destroy(&hdev->refcnt_lock);
-
 	hlthunk_close(hdev->fd);
 
-	pthread_mutex_lock(&table_lock);
-	k = kh_get(ptr, dev_table, fd);
 	kh_del(ptr, dev_table, k);
 	pthread_mutex_unlock(&table_lock);
 
