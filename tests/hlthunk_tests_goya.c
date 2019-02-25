@@ -98,6 +98,41 @@ static uint32_t goya_add_arm_monitor_pkt(void *buffer, uint32_t buf_off,
 						sizeof(packet));
 }
 
+static uint32_t goya_add_write_to_sob_pkt(void *buffer, uint32_t buf_off,
+					bool eb, bool mb, uint16_t sob_id,
+					uint16_t value, uint8_t mode)
+{
+	struct packet_msg_short packet = {0};
+
+	packet.opcode = PACKET_MSG_SHORT;
+	packet.msg_addr_offset = sob_id * 4;
+	packet.base = 1; /* SOB base */
+	packet.so_upd.mode = mode;
+	packet.so_upd.sync_value = value;
+	packet.eng_barrier = eb;
+	packet.msg_barrier = mb;
+	packet.reg_barrier = 1;
+
+	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
+						sizeof(packet));
+}
+
+static uint32_t goya_add_set_sob_pkt(void *buffer, uint32_t buf_off, bool eb,
+				bool mb, uint16_t sob_id, uint32_t value)
+{
+	struct packet_msg_long packet = {0};
+
+	packet.opcode = PACKET_MSG_LONG;
+	packet.addr = CFG_BASE + mmSYNC_MNGR_SOB_OBJ_0 + sob_id * 4;
+	packet.value = value;
+	packet.eng_barrier = eb;
+	packet.msg_barrier = mb;
+	packet.reg_barrier = 1;
+
+	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
+						sizeof(packet));
+}
+
 static uint32_t goya_add_fence_pkt(void *buffer, uint32_t buf_off, bool eb,
 					bool mb, uint8_t dec_val,
 					uint8_t gate_val, uint8_t fence_id)
@@ -273,16 +308,36 @@ static uint32_t goya_get_dma_up_qid(uint8_t stream)
 	return GOYA_QUEUE_ID_DMA_2;
 }
 
+static uint32_t goya_get_tpc_qid(uint8_t tpc_id, uint8_t stream)
+{
+	return GOYA_QUEUE_ID_TPC0 + tpc_id;
+}
+
+static uint32_t goya_get_mme_qid(uint8_t mme_id, uint8_t stream)
+{
+	return GOYA_QUEUE_ID_MME;
+}
+
+static uint8_t goya_get_tpc_cnt(void)
+{
+	return TPC_MAX_NUM;
+}
+
 static const struct hltests_asic_funcs goya_funcs = {
 	.add_monitor_and_fence = goya_tests_add_monitor_and_fence,
 	.add_nop_pkt = goya_add_nop_pkt,
 	.add_msg_long_pkt = goya_add_msg_long_pkt,
 	.add_msg_short_pkt = goya_add_msg_short_pkt,
 	.add_arm_monitor_pkt = goya_add_arm_monitor_pkt,
+	.add_write_to_sob_pkt = goya_add_write_to_sob_pkt,
+	.add_set_sob_pkt = goya_add_set_sob_pkt,
 	.add_fence_pkt = goya_add_fence_pkt,
 	.add_dma_pkt = goya_add_dma_pkt,
 	.get_dma_down_qid = goya_get_dma_down_qid,
 	.get_dma_up_qid = goya_get_dma_up_qid,
+	.get_tpc_qid = goya_get_tpc_qid,
+	.get_mme_qid = goya_get_mme_qid,
+	.get_tpc_cnt = goya_get_tpc_cnt,
 };
 
 void goya_tests_set_asic_funcs(struct hltests_device *hdev)

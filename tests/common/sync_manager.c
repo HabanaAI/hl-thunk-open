@@ -85,17 +85,18 @@ static void test_sm(void **state, bool is_tpc, bool is_wait)
 	dst_data_device_va = hltests_get_device_va_for_host_ptr(fd, dst_data);
 
 	/* DMA of data host->sram */
-	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, 0), 0, 1,
+	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, 0), false, true,
 				src_data_device_va, device_data_address,
 				dma_size, GOYA_DMA_HOST_TO_SRAM,
 				WAIT_FOR_CS_DEFAULT_TIMEOUT);
 
+	/* Create internal CB for the engine */
 	engine_cb = hltests_create_cb(fd, 64, false, cb_engine_address);
 	assert_ptr_not_equal(engine_cb, NULL);
 	engine_cb_device_va = hltests_get_device_va_for_host_ptr(fd, engine_cb);
 
-	engine_cb_size = hltests_add_write_to_sob_pkt(fd, engine_cb, 0, 0, 1, 0,
-							1, 1);
+	engine_cb_size = hltests_add_write_to_sob_pkt(fd, engine_cb, 0, false,
+							true, 0, 1, 1);
 
 	/* DMA of cb engine host->sram */
 	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, 0), 0, 1,
@@ -103,19 +104,7 @@ static void test_sm(void **state, bool is_tpc, bool is_wait)
 				engine_cb_size, GOYA_DMA_HOST_TO_SRAM,
 				WAIT_FOR_CS_DEFAULT_TIMEOUT);
 
-/*
-	packet_msg_short *write_to_so_0 =
-	                (packet_msg_short *) lindma_copy_engine_cb.src_addr;
-	write_to_so_0->eng_barrier = 0x0;
-	write_to_so_0->reg_barrier = 0x1;
-	write_to_so_0->msg_barrier = 0x1;
-	write_to_so_0->opcode = PACKET_MSG_SHORT;
-	write_to_so_0->op = 0; //Read from value
-	write_to_so_0->base = 1; //Sync object base
-	write_to_so_0->so_upd.mode = 1;
-	write_to_so_0->msg_addr_offset = 0;
-	write_to_so_0->so_upd.sync_value = 1;*/
-
+	/* Create CB for DMA that clears SOB 0 */
 	ext_cb = hltests_create_cb(tests_state->fd, getpagesize(), true, 0);
 	assert_ptr_not_equal(ext_cb, NULL);
 
@@ -126,17 +115,9 @@ static void test_sm(void **state, bool is_tpc, bool is_wait)
 				hltests_get_dma_down_qid(tests_state->fd, 0),
 				WAIT_FOR_CS_DEFAULT_TIMEOUT, false);
 
-/*
-	packet_msg_long clear_so;
-	clear_so.opcode = PACKET_MSG_LONG;
-	clear_so.eng_barrier = 0;
-	clear_so.reg_barrier = 1;
-	clear_so.msg_barrier = 1;
-	clear_so.op = 0;
-	clear_so.addr = CFG_BASE + mmSYNC_MNGR_SOB_OBJ_0;
-	clear_so.value = 0;
-*/
-
+	/* Create CB for DMA that waits on internal engine and then performs
+	 * a DMA down to the data address on the sram
+	 */
 	offset = hltests_add_monitor_and_fence(tests_state->fd, ext_cb, 0,
 				hltests_get_dma_down_qid(tests_state->fd, 0),
 				false, 0, 0, 0);
@@ -145,10 +126,6 @@ static void test_sm(void **state, bool is_tpc, bool is_wait)
 					false, device_data_address,
 					dst_data_device_va, dma_size,
 					GOYA_DMA_SRAM_TO_HOST);
-
-	hltests_submit_and_wait_cs(tests_state->fd, ext_cb, offset,
-				hltests_get_dma_down_qid(tests_state->fd, 0),
-				WAIT_FOR_CS_DEFAULT_TIMEOUT, false);
 
 	execute_arr[0].cb_ptr = ext_cb;
 	execute_arr[0].cb_size = offset;
@@ -182,6 +159,9 @@ static void test_sm(void **state, bool is_tpc, bool is_wait)
 		}
 
 		assert_int_equal(err_cnt, 0);
+
+		hltests_free_host_mem(fd, src_data);
+		hltests_free_host_mem(fd, dst_data);
 	}
 }
 

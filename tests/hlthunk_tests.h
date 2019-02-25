@@ -79,7 +79,7 @@ struct hltests_asic_funcs {
 					uint32_t value, uint8_t mon_mode,
 					uint16_t sync_val, uint16_t sync_id);
 	uint32_t (*add_write_to_sob_pkt)(void *buffer, uint32_t buf_off,
-					bool eb, bool mb, uint16_t address,
+					bool eb, bool mb, uint16_t sob_id,
 					uint16_t value, uint8_t mode);
 	uint32_t (*add_set_sob_pkt)(void *buffer, uint32_t buf_off,
 					bool eb, bool mb, uint16_t sob_id,
@@ -208,7 +208,7 @@ uint32_t hltests_add_arm_monitor_pkt(int fd, void *buffer,
 					uint16_t sync_id);
 
 uint32_t hltests_add_write_to_sob_pkt(int fd, void *buffer, uint32_t buf_off,
-					bool eb, bool mb, uint16_t address,
+					bool eb, bool mb, uint16_t sob_id,
 					uint16_t value, uint8_t mode);
 
 uint32_t hltests_add_set_sob_pkt(int fd, void *buffer, uint32_t buf_off,

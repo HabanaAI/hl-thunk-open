@@ -988,13 +988,13 @@ uint32_t hltests_add_arm_monitor_pkt(int fd, void *buffer,
 }
 
 uint32_t hltests_add_write_to_sob_pkt(int fd, void *buffer, uint32_t buf_off,
-					bool eb, bool mb, uint16_t address,
+					bool eb, bool mb, uint16_t sob_id,
 					uint16_t value, uint8_t mode)
 {
 	const struct hltests_asic_funcs *asic =
 			get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->add_write_to_sob_pkt(buffer, buf_off, eb, mb, address,
+	return asic->add_write_to_sob_pkt(buffer, buf_off, eb, mb, sob_id,
 						value, mode);
 }
 
