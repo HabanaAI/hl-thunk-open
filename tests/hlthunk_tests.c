@@ -180,6 +180,7 @@ int hltests_open(const char *busid)
 		goto close_device;
 	}
 	hdev->fd = fd;
+	hdev->refcnt = 1;
 
 	k = kh_put(ptr, dev_table, fd, &rc);
 	kh_val(dev_table, k) = hdev;
