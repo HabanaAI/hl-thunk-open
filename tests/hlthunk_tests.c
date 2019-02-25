@@ -1193,7 +1193,7 @@ int hltests_dma_test(void **state, bool is_ddr, uint64_t size)
 
 	dst_ptr = hltests_allocate_host_mem(fd, size, is_huge);
 	assert_non_null(dst_ptr);
-	hltests_fill_rand_values(dst_ptr, size);
+	memset(dst_ptr, 0, size);
 	host_dst_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
 
 	/* DMA: host->device */
