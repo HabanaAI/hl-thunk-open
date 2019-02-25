@@ -164,6 +164,175 @@ static void test_sm(void **state, bool is_tpc, bool is_wait)
 	}
 }
 
+static void test_sm_pingpong_qman(void **state, bool is_tpc)
+{
+	struct hltests_state *tests_state =
+			(struct hltests_state *) *state;
+	void *src_data, *dst_data, *engine_cb, *restore_cb, *dmadown_cb,
+		*dmaup_cb;
+	uint64_t src_data_device_va, dst_data_device_va, device_data_address,
+		engine_cb_sram_addr, engine_cb_device_va;
+	struct hltests_cs_chunk restore_arr[1], execute_arr[3];
+	struct hlthunk_hw_ip_info hw_ip;
+	uint32_t dma_size = 4, engine_cb_size, restore_cb_size, dmadown_cb_size,
+			dmaup_cb_size, i, err_cnt = 0;
+	int rc, engine_qid, fd = tests_state->fd;
+	uint64_t seq;
+
+	/* Get device information, especially tpc enabled mask */
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+
+	if (is_tpc) {
+		/* Find first available TPC */
+		uint8_t tpc_id;
+		for (tpc_id = 0 ;
+			(!(hw_ip.tpc_enabled_mask & (0x1 << tpc_id))) &&
+			(tpc_id < hltests_get_tpc_cnt(fd)) ; tpc_id++);
+
+		assert_in_range(tpc_id, 0, hltests_get_tpc_cnt(fd) - 1);
+
+		engine_qid = hltests_get_tpc_qid(fd, tpc_id, 0);
+	} else {
+		engine_qid = hltests_get_mme_qid(fd, 0, 0);
+	}
+
+	/* SRAM MAP (base + )
+	 * 0x1000 : data
+	 * 0x2000 : engine's internal CB (we only use upper CP in this test)
+	 *
+	 * Test description:
+	 * QMAN DMA1 will transfer data to device and then signal the Engine's
+	 * QMAN. It will signal QMAN DMA2 that will transfer the data from the
+	 * device to the host.
+	 * Setup CB will be used to clear SOB and to download the Engine's CB
+	 * to the SRAM
+	 */
+
+	device_data_address = hw_ip.sram_base_address + 0x1000;
+	engine_cb_sram_addr = hw_ip.sram_base_address + 0x2000;
+
+	/* Allocate two buffers on the host for data transfers */
+	src_data = hltests_allocate_host_mem(fd, dma_size, false);
+	assert_non_null(src_data);
+	hltests_fill_rand_values(src_data, dma_size);
+	src_data_device_va = hltests_get_device_va_for_host_ptr(fd, src_data);
+
+	dst_data = hltests_allocate_host_mem(fd, dma_size, false);
+	assert_non_null(dst_data);
+	memset(dst_data, 0, dma_size);
+	dst_data_device_va = hltests_get_device_va_for_host_ptr(fd, dst_data);
+
+	/* Create internal CB for the engine. It will fence on SOB0 and signal
+	 * SOB1
+	 */
+	engine_cb = hltests_create_cb(fd, 512, false, engine_cb_sram_addr);
+	assert_ptr_not_equal(engine_cb, NULL);
+	engine_cb_device_va = hltests_get_device_va_for_host_ptr(fd, engine_cb);
+
+	engine_cb_size = hltests_add_monitor_and_fence(tests_state->fd,
+							engine_cb, 0,
+							engine_qid, false, 0,
+							0, 0);
+	engine_cb_size = hltests_add_write_to_sob_pkt(fd, engine_cb,
+							engine_cb_size, false,
+							true, 1, 1, 1);
+
+	/* Create Setup CB that clears SOB 0 & 1, and copy the Engine's CB
+	 * to the SRAM
+	 */
+	restore_cb = hltests_create_cb(tests_state->fd, getpagesize(), true, 0);
+	assert_ptr_not_equal(restore_cb, NULL);
+
+	restore_cb_size = hltests_add_set_sob_pkt(tests_state->fd, restore_cb,
+					0, false, true, 0, 0);
+	restore_cb_size = hltests_add_set_sob_pkt(tests_state->fd, restore_cb,
+					restore_cb_size, false, true, 1, 0);
+	restore_cb_size = hltests_add_dma_pkt(tests_state->fd, restore_cb,
+					restore_cb_size, false, false,
+					engine_cb_device_va,
+					engine_cb_sram_addr, engine_cb_size,
+					GOYA_DMA_HOST_TO_SRAM);
+
+	/* Create CB for DMA down that downloads data to device and signal the
+	 * engine
+	 */
+	dmadown_cb = hltests_create_cb(tests_state->fd, getpagesize(), true, 0);
+	assert_ptr_not_equal(dmadown_cb, NULL);
+
+	dmadown_cb_size = hltests_add_dma_pkt(tests_state->fd, dmadown_cb,
+					0, false, false, src_data_device_va,
+					device_data_address, dma_size,
+					GOYA_DMA_HOST_TO_SRAM);
+
+	dmadown_cb_size = hltests_add_write_to_sob_pkt(fd, dmadown_cb,
+					dmadown_cb_size, true, true, 0, 1, 1);
+
+	/* Create CB for DMA up that waits on internal engine and then
+	 * performs a DMA up of the data address on the sram
+	 */
+	dmaup_cb = hltests_create_cb(tests_state->fd, getpagesize(), true, 0);
+	assert_ptr_not_equal(dmaup_cb, NULL);
+
+	dmaup_cb_size = hltests_add_monitor_and_fence(tests_state->fd, dmaup_cb,
+				0, hltests_get_dma_up_qid(tests_state->fd, 0),
+				false, 1, 1, 0);
+
+	dmaup_cb_size = hltests_add_dma_pkt(tests_state->fd, dmaup_cb,
+					dmaup_cb_size, false, true,
+					device_data_address,
+					dst_data_device_va, dma_size,
+					GOYA_DMA_SRAM_TO_HOST);
+
+	restore_arr[0].cb_ptr = restore_cb;
+	restore_arr[0].cb_size = restore_cb_size;
+	restore_arr[0].queue_index =
+			hltests_get_dma_down_qid(tests_state->fd, 0);
+
+	execute_arr[0].cb_ptr = dmaup_cb;
+	execute_arr[0].cb_size = dmaup_cb_size;
+	execute_arr[0].queue_index = hltests_get_dma_up_qid(tests_state->fd, 0);
+
+	execute_arr[1].cb_ptr = engine_cb;
+	execute_arr[1].cb_size = engine_cb_size;
+	execute_arr[1].queue_index = engine_qid;
+
+	execute_arr[2].cb_ptr = dmadown_cb;
+	execute_arr[2].cb_size = dmadown_cb_size;
+	execute_arr[2].queue_index =
+			hltests_get_dma_down_qid(tests_state->fd, 0);
+
+	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 3, true, &seq);
+	assert_int_equal(rc, 0);
+
+	rc = hltests_wait_for_cs(fd, seq, WAIT_FOR_CS_DEFAULT_TIMEOUT);
+	assert_int_equal(rc, 0);
+
+	rc = hltests_destroy_cb(fd, engine_cb);
+	assert_int_equal(rc, 0);
+
+	rc = hltests_destroy_cb(fd, restore_cb);
+	assert_int_equal(rc, 0);
+
+	rc = hltests_destroy_cb(fd, dmadown_cb);
+	assert_int_equal(rc, 0);
+
+	rc = hltests_destroy_cb(fd, dmaup_cb);
+	assert_int_equal(rc, 0);
+
+	for (i = 0 ; (i < dma_size) && (err_cnt < 100) ; i += 4) {
+		if (((uint32_t *) src_data)[i] !=
+					((uint32_t *) dst_data)[i]) {
+			err_cnt++;
+		}
+	}
+
+	assert_int_equal(err_cnt, 0);
+
+	hltests_free_host_mem(fd, src_data);
+	hltests_free_host_mem(fd, dst_data);
+}
+
 void test_sm_tpc(void **state)
 {
 	test_sm(state, true, true);
@@ -174,9 +343,21 @@ void test_sm_mme(void **state)
 	test_sm(state, false, true);
 }
 
+void test_sm_pingpong_tpc_qman(void **state)
+{
+	test_sm_pingpong_qman(state, true);
+}
+
+void test_sm_pingpong_mme_qman(void **state)
+{
+	test_sm_pingpong_qman(state, false);
+}
+
 const struct CMUnitTest sm_tests[] = {
 	cmocka_unit_test(test_sm_tpc),
 	cmocka_unit_test(test_sm_mme),
+	cmocka_unit_test(test_sm_pingpong_tpc_qman),
+	cmocka_unit_test(test_sm_pingpong_mme_qman),
 };
 
 int main(void)
