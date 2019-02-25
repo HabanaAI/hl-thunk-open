@@ -179,7 +179,7 @@ void hltests_dma_transfer(int fd, uint32_t queue_index, bool eb, bool mb,
 				enum hltests_goya_dma_direction dma_dir,
 				uint64_t timeout_us);
 
-int hltests_dma_test(void **state, bool is_ddr, uint64_t size, bool is_huge);
+int hltests_dma_test(void **state, bool is_ddr, uint64_t size);
 
 int hltests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us);
 

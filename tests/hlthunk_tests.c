@@ -1155,13 +1155,14 @@ void hltests_dma_transfer(int fd, uint32_t queue_index, bool eb, bool mb,
 					true);
 }
 
-int hltests_dma_test(void **state, bool is_ddr, uint64_t size, bool is_huge)
+int hltests_dma_test(void **state, bool is_ddr, uint64_t size)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
 	void *device_addr, *src_ptr, *dst_ptr;
 	uint64_t host_src_addr, host_dst_addr;
 	uint32_t dma_dir_down, dma_dir_up;
+	bool is_huge = size > 32 * 1024;
 	int rc, fd = tests_state->fd;
 
 	/* Sanity and memory allocation */

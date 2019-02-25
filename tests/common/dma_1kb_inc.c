@@ -34,93 +34,42 @@
 #include <errno.h>
 #include <unistd.h>
 
-#define DMA_1KB_INC_SRAM(name, state, size) \
-	void name(void **state) \
-	{ \
-		hltests_dma_test(state, false, size, false); \
-	}
+#define DMA_1KB_INC_SRAM(func_name, state, size) \
+	void func_name(void **state) { hltests_dma_test(state, false, size); }
+#define DMA_1KB_INC_DDR(func_name, state, size) \
+	void func_name(void **state) { hltests_dma_test(state, true, size); }
 
-#define DMA_1KB_INC_SRAM_HUGE_PAGES(name, state, size) \
-	void name(void **state) \
-	{ \
-		hltests_dma_test(state, false, size, true); \
-	}
+DMA_1KB_INC_SRAM(test_dma_sram_size_1kb, state, 1 * 1024)
+DMA_1KB_INC_SRAM(test_dma_sram_size_2kb, state, 2 * 1024)
+DMA_1KB_INC_SRAM(test_dma_sram_size_3kb, state, 3 * 1024)
+DMA_1KB_INC_SRAM(test_dma_sram_size_4kb, state, 4 * 1024)
+DMA_1KB_INC_SRAM(test_dma_sram_size_5kb, state, 5 * 1024)
+DMA_1KB_INC_SRAM(test_dma_sram_size_6kb, state, 6 * 1024)
+DMA_1KB_INC_SRAM(test_dma_sram_size_7kb, state, 7 * 1024)
+DMA_1KB_INC_SRAM(test_dma_sram_size_8kb, state, 8 * 1024)
+DMA_1KB_INC_SRAM(test_dma_sram_size_9kb, state, 9 * 1024)
+DMA_1KB_INC_SRAM(test_dma_sram_size_10kb, state, 10 * 1024)
+DMA_1KB_INC_SRAM(test_dma_sram_size_11kb, state, 11 * 1024)
+DMA_1KB_INC_SRAM(test_dma_sram_size_12kb, state, 12 * 1024)
+DMA_1KB_INC_SRAM(test_dma_sram_size_13kb, state, 13 * 1024)
+DMA_1KB_INC_SRAM(test_dma_sram_size_14kb, state, 14 * 1024)
+DMA_1KB_INC_SRAM(test_dma_sram_size_15kb, state, 15 * 1024)
 
-#define DMA_1KB_INC_DDR(name, state, size) \
-	void name(void **state) \
-	{ \
-		hltests_dma_test(state, true, size, false); \
-	}
-
-#define DMA_1KB_INC_DDR_HUGE_PAGES(name, state, size) \
-	void name(void **state) \
-	{ \
-		hltests_dma_test(state, true, size, true); \
-	}
-
-DMA_1KB_INC_SRAM(test_dma_sram_size_1kb, state, 0x400)
-DMA_1KB_INC_SRAM(test_dma_sram_size_2kb, state, 0x800)
-DMA_1KB_INC_SRAM(test_dma_sram_size_3kb, state, 0xc00)
-DMA_1KB_INC_SRAM(test_dma_sram_size_4kb, state, 0x1000)
-DMA_1KB_INC_SRAM(test_dma_sram_size_5kb, state, 0x1400)
-DMA_1KB_INC_SRAM(test_dma_sram_size_6kb, state, 0x1800)
-DMA_1KB_INC_SRAM(test_dma_sram_size_7kb, state, 0x1c00)
-DMA_1KB_INC_SRAM(test_dma_sram_size_8kb, state, 0x2000)
-DMA_1KB_INC_SRAM(test_dma_sram_size_9kb, state, 0x2400)
-DMA_1KB_INC_SRAM(test_dma_sram_size_10kb, state, 0x2800)
-DMA_1KB_INC_SRAM(test_dma_sram_size_11kb, state, 0x2c00)
-DMA_1KB_INC_SRAM(test_dma_sram_size_12kb, state, 0x3000)
-DMA_1KB_INC_SRAM(test_dma_sram_size_13kb, state, 0x3400)
-DMA_1KB_INC_SRAM(test_dma_sram_size_14kb, state, 0x3800)
-DMA_1KB_INC_SRAM(test_dma_sram_size_15kb, state, 0x3c00)
-
-DMA_1KB_INC_SRAM_HUGE_PAGES(test_dma_sram_size_1kb_huge_pages, state, 0x400)
-DMA_1KB_INC_SRAM_HUGE_PAGES(test_dma_sram_size_2kb_huge_pages, state, 0x800)
-DMA_1KB_INC_SRAM_HUGE_PAGES(test_dma_sram_size_3kb_huge_pages, state, 0xc00)
-DMA_1KB_INC_SRAM_HUGE_PAGES(test_dma_sram_size_4kb_huge_pages, state, 0x1000)
-DMA_1KB_INC_SRAM_HUGE_PAGES(test_dma_sram_size_5kb_huge_pages, state, 0x1400)
-DMA_1KB_INC_SRAM_HUGE_PAGES(test_dma_sram_size_6kb_huge_pages, state, 0x1800)
-DMA_1KB_INC_SRAM_HUGE_PAGES(test_dma_sram_size_7kb_huge_pages, state, 0x1c00)
-DMA_1KB_INC_SRAM_HUGE_PAGES(test_dma_sram_size_8kb_huge_pages, state, 0x2000)
-DMA_1KB_INC_SRAM_HUGE_PAGES(test_dma_sram_size_9kb_huge_pages, state, 0x2400)
-DMA_1KB_INC_SRAM_HUGE_PAGES(test_dma_sram_size_10kb_huge_pages, state, 0x2800)
-DMA_1KB_INC_SRAM_HUGE_PAGES(test_dma_sram_size_11kb_huge_pages, state, 0x2c00)
-DMA_1KB_INC_SRAM_HUGE_PAGES(test_dma_sram_size_12kb_huge_pages, state, 0x3000)
-DMA_1KB_INC_SRAM_HUGE_PAGES(test_dma_sram_size_13kb_huge_pages, state, 0x3400)
-DMA_1KB_INC_SRAM_HUGE_PAGES(test_dma_sram_size_14kb_huge_pages, state, 0x3800)
-DMA_1KB_INC_SRAM_HUGE_PAGES(test_dma_sram_size_15kb_huge_pages, state, 0x3c00)
-
-DMA_1KB_INC_DDR(test_dma_ddr_size_1kb, state, 0x400)
-DMA_1KB_INC_DDR(test_dma_ddr_size_2kb, state, 0x800)
-DMA_1KB_INC_DDR(test_dma_ddr_size_3kb, state, 0xc00)
-DMA_1KB_INC_DDR(test_dma_ddr_size_4kb, state, 0x1000)
-DMA_1KB_INC_DDR(test_dma_ddr_size_5kb, state, 0x1400)
-DMA_1KB_INC_DDR(test_dma_ddr_size_6kb, state, 0x1800)
-DMA_1KB_INC_DDR(test_dma_ddr_size_7kb, state, 0x1c00)
-DMA_1KB_INC_DDR(test_dma_ddr_size_8kb, state, 0x2000)
-DMA_1KB_INC_DDR(test_dma_ddr_size_9kb, state, 0x2400)
-DMA_1KB_INC_DDR(test_dma_ddr_size_10kb, state, 0x2800)
-DMA_1KB_INC_DDR(test_dma_ddr_size_11kb, state, 0x2c00)
-DMA_1KB_INC_DDR(test_dma_ddr_size_12kb, state, 0x3000)
-DMA_1KB_INC_DDR(test_dma_ddr_size_13kb, state, 0x3400)
-DMA_1KB_INC_DDR(test_dma_ddr_size_14kb, state, 0x3800)
-DMA_1KB_INC_DDR(test_dma_ddr_size_15kb, state, 0x3c00)
-
-DMA_1KB_INC_DDR_HUGE_PAGES(test_dma_ddr_size_1kb_huge_pages, state, 0x400)
-DMA_1KB_INC_DDR_HUGE_PAGES(test_dma_ddr_size_2kb_huge_pages, state, 0x800)
-DMA_1KB_INC_DDR_HUGE_PAGES(test_dma_ddr_size_3kb_huge_pages, state, 0xc00)
-DMA_1KB_INC_DDR_HUGE_PAGES(test_dma_ddr_size_4kb_huge_pages, state, 0x1000)
-DMA_1KB_INC_DDR_HUGE_PAGES(test_dma_ddr_size_5kb_huge_pages, state, 0x1400)
-DMA_1KB_INC_DDR_HUGE_PAGES(test_dma_ddr_size_6kb_huge_pages, state, 0x1800)
-DMA_1KB_INC_DDR_HUGE_PAGES(test_dma_ddr_size_7kb_huge_pages, state, 0x1c00)
-DMA_1KB_INC_DDR_HUGE_PAGES(test_dma_ddr_size_8kb_huge_pages, state, 0x2000)
-DMA_1KB_INC_DDR_HUGE_PAGES(test_dma_ddr_size_9kb_huge_pages, state, 0x2400)
-DMA_1KB_INC_DDR_HUGE_PAGES(test_dma_ddr_size_10kb_huge_pages, state, 0x2800)
-DMA_1KB_INC_DDR_HUGE_PAGES(test_dma_ddr_size_11kb_huge_pages, state, 0x2c00)
-DMA_1KB_INC_DDR_HUGE_PAGES(test_dma_ddr_size_12kb_huge_pages, state, 0x3000)
-DMA_1KB_INC_DDR_HUGE_PAGES(test_dma_ddr_size_13kb_huge_pages, state, 0x3400)
-DMA_1KB_INC_DDR_HUGE_PAGES(test_dma_ddr_size_14kb_huge_pages, state, 0x3800)
-DMA_1KB_INC_DDR_HUGE_PAGES(test_dma_ddr_size_15kb_huge_pages, state, 0x3c00)
+DMA_1KB_INC_DDR(test_dma_ddr_size_1kb, state, 1 * 1024)
+DMA_1KB_INC_DDR(test_dma_ddr_size_2kb, state, 2 * 1024)
+DMA_1KB_INC_DDR(test_dma_ddr_size_3kb, state, 3 * 1024)
+DMA_1KB_INC_DDR(test_dma_ddr_size_4kb, state, 4 * 1024)
+DMA_1KB_INC_DDR(test_dma_ddr_size_5kb, state, 5 * 1024)
+DMA_1KB_INC_DDR(test_dma_ddr_size_6kb, state, 6 * 1024)
+DMA_1KB_INC_DDR(test_dma_ddr_size_7kb, state, 7 * 1024)
+DMA_1KB_INC_DDR(test_dma_ddr_size_8kb, state, 8 * 1024)
+DMA_1KB_INC_DDR(test_dma_ddr_size_9kb, state, 9 * 1024)
+DMA_1KB_INC_DDR(test_dma_ddr_size_10kb, state, 10 * 1024)
+DMA_1KB_INC_DDR(test_dma_ddr_size_11kb, state, 11 * 1024)
+DMA_1KB_INC_DDR(test_dma_ddr_size_12kb, state, 12 * 1024)
+DMA_1KB_INC_DDR(test_dma_ddr_size_13kb, state, 13 * 1024)
+DMA_1KB_INC_DDR(test_dma_ddr_size_14kb, state, 14 * 1024)
+DMA_1KB_INC_DDR(test_dma_ddr_size_15kb, state, 15 * 1024)
 
 const struct CMUnitTest dma_1kb_inc_tests[] = {
 	cmocka_unit_test(test_dma_sram_size_1kb),
@@ -139,22 +88,6 @@ const struct CMUnitTest dma_1kb_inc_tests[] = {
 	cmocka_unit_test(test_dma_sram_size_14kb),
 	cmocka_unit_test(test_dma_sram_size_15kb),
 
-	cmocka_unit_test(test_dma_sram_size_1kb_huge_pages),
-	cmocka_unit_test(test_dma_sram_size_2kb_huge_pages),
-	cmocka_unit_test(test_dma_sram_size_3kb_huge_pages),
-	cmocka_unit_test(test_dma_sram_size_4kb_huge_pages),
-	cmocka_unit_test(test_dma_sram_size_5kb_huge_pages),
-	cmocka_unit_test(test_dma_sram_size_6kb_huge_pages),
-	cmocka_unit_test(test_dma_sram_size_7kb_huge_pages),
-	cmocka_unit_test(test_dma_sram_size_8kb_huge_pages),
-	cmocka_unit_test(test_dma_sram_size_9kb_huge_pages),
-	cmocka_unit_test(test_dma_sram_size_10kb_huge_pages),
-	cmocka_unit_test(test_dma_sram_size_11kb_huge_pages),
-	cmocka_unit_test(test_dma_sram_size_12kb_huge_pages),
-	cmocka_unit_test(test_dma_sram_size_13kb_huge_pages),
-	cmocka_unit_test(test_dma_sram_size_14kb_huge_pages),
-	cmocka_unit_test(test_dma_sram_size_15kb_huge_pages),
-
 	cmocka_unit_test(test_dma_ddr_size_1kb),
 	cmocka_unit_test(test_dma_ddr_size_2kb),
 	cmocka_unit_test(test_dma_ddr_size_3kb),
@@ -170,22 +103,6 @@ const struct CMUnitTest dma_1kb_inc_tests[] = {
 	cmocka_unit_test(test_dma_ddr_size_13kb),
 	cmocka_unit_test(test_dma_ddr_size_14kb),
 	cmocka_unit_test(test_dma_ddr_size_15kb),
-
-	cmocka_unit_test(test_dma_ddr_size_1kb_huge_pages),
-	cmocka_unit_test(test_dma_ddr_size_2kb_huge_pages),
-	cmocka_unit_test(test_dma_ddr_size_3kb_huge_pages),
-	cmocka_unit_test(test_dma_ddr_size_4kb_huge_pages),
-	cmocka_unit_test(test_dma_ddr_size_5kb_huge_pages),
-	cmocka_unit_test(test_dma_ddr_size_6kb_huge_pages),
-	cmocka_unit_test(test_dma_ddr_size_7kb_huge_pages),
-	cmocka_unit_test(test_dma_ddr_size_8kb_huge_pages),
-	cmocka_unit_test(test_dma_ddr_size_9kb_huge_pages),
-	cmocka_unit_test(test_dma_ddr_size_10kb_huge_pages),
-	cmocka_unit_test(test_dma_ddr_size_11kb_huge_pages),
-	cmocka_unit_test(test_dma_ddr_size_12kb_huge_pages),
-	cmocka_unit_test(test_dma_ddr_size_13kb_huge_pages),
-	cmocka_unit_test(test_dma_ddr_size_14kb_huge_pages),
-	cmocka_unit_test(test_dma_ddr_size_15kb_huge_pages),
 };
 
 int main(void)
