@@ -33,16 +33,16 @@
 #include <errno.h>
 #include <unistd.h>
 
-DMA_1KB_INC_DDR(test_dma_ddr_size_65536KB, state, 65536 * 1024)
-DMA_1KB_INC_DDR(test_dma_ddr_size_131072KB, state, 131072 * 1024)
-DMA_1KB_INC_DDR(test_dma_ddr_size_196608KB, state, 196608 * 1024)
-DMA_1KB_INC_DDR(test_dma_ddr_size_262144KB, state, 262144 * 1024)
+DMA_1KB_INC_DDR(test_dma_ddr_size_64MB, state, 64 * 1024 * 1024)
+DMA_1KB_INC_DDR(test_dma_ddr_size_128MB, state, 128 * 1024 * 1024)
+DMA_1KB_INC_DDR(test_dma_ddr_size_192MB, state, 192 * 1024 * 1024)
+DMA_1KB_INC_DDR(test_dma_ddr_size_256MB, state, 256 * 1024 * 1024)
 
 const struct CMUnitTest dma_64MB_inc_tests[] = {
-	cmocka_unit_test(test_dma_ddr_size_65536KB),
-	cmocka_unit_test(test_dma_ddr_size_131072KB),
-	cmocka_unit_test(test_dma_ddr_size_196608KB),
-	cmocka_unit_test(test_dma_ddr_size_262144KB),
+	cmocka_unit_test(test_dma_ddr_size_64MB),
+	cmocka_unit_test(test_dma_ddr_size_128MB),
+	cmocka_unit_test(test_dma_ddr_size_192MB),
+	cmocka_unit_test(test_dma_ddr_size_256MB),
 };
 
 int main(void)
