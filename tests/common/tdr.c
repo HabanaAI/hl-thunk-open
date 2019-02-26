@@ -68,8 +68,12 @@ const struct CMUnitTest tdr_tests[] = {
 
 int main(void)
 {
-	char *test_names_to_run;
+	char *test_names_to_run, *run_disabled_tests;
 	int rc;
+
+	run_disabled_tests = getenv("HLTHUNK_DISABLED_TESTS");
+	if (!run_disabled_tests || strcmp(run_disabled_tests, "1"))
+		return 0;
 
 	test_names_to_run = getenv("HLTHUNK_TESTS_NAMES");
 	if (test_names_to_run)
