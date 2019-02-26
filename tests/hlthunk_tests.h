@@ -93,6 +93,8 @@ struct hltests_asic_funcs {
 				enum hltests_goya_dma_direction dma_dir);
 	uint32_t (*get_dma_down_qid)(uint8_t stream);
 	uint32_t (*get_dma_up_qid)(uint8_t stream);
+	uint32_t (*get_dma_dram_to_sram_qid)(uint8_t stream);
+	uint32_t (*get_dma_sram_to_dram_qid)(uint8_t stream);
 	uint32_t (*get_tpc_qid)(uint8_t tpc_id, uint8_t stream);
 	uint32_t (*get_mme_qid)(uint8_t mme_id, uint8_t stream);
 
@@ -230,6 +232,8 @@ uint32_t hltests_add_monitor_and_fence(int fd, void *buffer, uint32_t buf_off,
 
 uint32_t hltests_get_dma_down_qid(int fd, uint8_t stream);
 uint32_t hltests_get_dma_up_qid(int fd, uint8_t stream);
+uint32_t hltests_get_dma_dram_to_sram_qid(int fd, uint8_t stream);
+uint32_t hltests_get_dma_sram_to_dram_qid(int fd, uint8_t stream);
 uint32_t hltests_get_tpc_qid(int fd, uint8_t tpc_id, uint8_t stream);
 uint32_t hltests_get_mme_qid(int fd, uint8_t mme_id, uint8_t stream);
 

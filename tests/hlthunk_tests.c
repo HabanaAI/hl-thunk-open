@@ -1055,6 +1055,22 @@ uint32_t hltests_get_dma_up_qid(int fd, uint8_t stream)
 	return asic->get_dma_up_qid(stream);
 }
 
+uint32_t hltests_get_dma_dram_to_sram_qid(int fd, uint8_t stream)
+{
+	const struct hltests_asic_funcs *asic =
+				get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->get_dma_dram_to_sram_qid(stream);
+}
+
+uint32_t hltests_get_dma_sram_to_dram_qid(int fd, uint8_t stream)
+{
+	const struct hltests_asic_funcs *asic =
+				get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->get_dma_sram_to_dram_qid(stream);
+}
+
 uint32_t hltests_get_tpc_qid(int fd, uint8_t tpc_id, uint8_t stream)
 {
 	const struct hltests_asic_funcs *asic =
