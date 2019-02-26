@@ -925,7 +925,8 @@ out:
 	return rc;
 }
 
-int hltests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us)
+int _hltests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us,
+				uint32_t expected_status)
 {
 	uint32_t status;
 	int rc;
@@ -934,10 +935,16 @@ int hltests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us)
 	if (rc)
 		return rc;
 
-	if (status != HL_WAIT_CS_STATUS_COMPLETED)
+	if (status != expected_status)
 		return -EINVAL;
 
 	return 0;
+}
+
+int hltests_wait_for_cs(int fd, uint64_t seq)
+{
+	return _hltests_wait_for_cs(fd, seq, WAIT_FOR_CS_DEFAULT_TIMEOUT,
+					HL_WAIT_CS_STATUS_COMPLETED);
 }
 
 uint32_t hltests_add_nop_pkt(int fd, void *buffer, uint32_t buf_off,
@@ -1160,8 +1167,7 @@ int hltests_mem_compare(void *ptr1, void *ptr2, uint64_t size)
 void hltests_dma_transfer(int fd, uint32_t queue_index, bool eb, bool mb,
 				uint64_t src_addr, uint64_t dst_addr,
 				uint32_t size,
-				enum hltests_goya_dma_direction dma_dir,
-				uint64_t timeout_us)
+				enum hltests_goya_dma_direction dma_dir)
 {
 	uint32_t offset = 0;
 	void *ptr;
@@ -1172,8 +1178,7 @@ void hltests_dma_transfer(int fd, uint32_t queue_index, bool eb, bool mb,
 	offset = hltests_add_dma_pkt(fd, ptr, offset, eb, mb, src_addr,
 						dst_addr, size, dma_dir);
 
-	hltests_submit_and_wait_cs(fd, ptr, offset, queue_index, timeout_us,
-					true);
+	hltests_submit_and_wait_cs(fd, ptr, offset, queue_index, true);
 }
 
 int hltests_dma_test(void **state, bool is_ddr, uint64_t size)
@@ -1220,13 +1225,12 @@ int hltests_dma_test(void **state, bool is_ddr, uint64_t size)
 	/* DMA: host->device */
 	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, 0), 0, 1,
 			host_src_addr, (uint64_t) (uintptr_t) device_addr,
-			size, dma_dir_down, WAIT_FOR_CS_DEFAULT_TIMEOUT);
+			size, dma_dir_down);
 
 	/* DMA: device->host */
 	hltests_dma_transfer(fd, hltests_get_dma_up_qid(fd, 0),	0, 1,
 				(uint64_t) (uintptr_t) device_addr,
-				host_dst_addr, size, dma_dir_up,
-				WAIT_FOR_CS_DEFAULT_TIMEOUT);
+				host_dst_addr, size, dma_dir_up);
 
 	/* Compare host memories */
 	rc = hltests_mem_compare(src_ptr, dst_ptr, size);
@@ -1247,8 +1251,7 @@ int hltests_dma_test(void **state, bool is_ddr, uint64_t size)
 }
 
 void hltests_submit_and_wait_cs(int fd, void *cb_ptr, uint32_t cb_size,
-				uint32_t queue_index, uint64_t timeout_us,
-				bool destroy_cb)
+				uint32_t queue_index, bool destroy_cb)
 {
 	struct hltests_cs_chunk execute_arr[1];
 	uint64_t seq = 0;
@@ -1261,7 +1264,7 @@ void hltests_submit_and_wait_cs(int fd, void *cb_ptr, uint32_t cb_size,
 	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, false, &seq);
 	assert_int_equal(rc, 0);
 
-	rc = hltests_wait_for_cs(fd, seq, timeout_us);
+	rc = hltests_wait_for_cs(fd, seq);
 	assert_int_equal(rc, 0);
 
 	if (destroy_cb) {

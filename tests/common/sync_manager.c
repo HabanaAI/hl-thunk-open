@@ -87,8 +87,7 @@ static void test_sm(void **state, bool is_tpc, bool is_wait)
 	/* DMA of data host->sram */
 	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, 0), false, true,
 				src_data_device_va, device_data_address,
-				dma_size, GOYA_DMA_HOST_TO_SRAM,
-				WAIT_FOR_CS_DEFAULT_TIMEOUT);
+				dma_size, GOYA_DMA_HOST_TO_SRAM);
 
 	/* Create internal CB for the engine */
 	engine_cb = hltests_create_cb(fd, 64, false, cb_engine_address);
@@ -101,35 +100,31 @@ static void test_sm(void **state, bool is_tpc, bool is_wait)
 	/* DMA of cb engine host->sram */
 	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, 0), 0, 1,
 				engine_cb_device_va, cb_engine_address,
-				engine_cb_size, GOYA_DMA_HOST_TO_SRAM,
-				WAIT_FOR_CS_DEFAULT_TIMEOUT);
+				engine_cb_size, GOYA_DMA_HOST_TO_SRAM);
 
 	/* Create CB for DMA that clears SOB 0 */
-	ext_cb = hltests_create_cb(tests_state->fd, getpagesize(), true, 0);
+	ext_cb = hltests_create_cb(fd, getpagesize(), true, 0);
 	assert_ptr_not_equal(ext_cb, NULL);
 
-	offset = hltests_add_set_sob_pkt(tests_state->fd, ext_cb, 0, false,
-						true, 0, 0);
+	offset = hltests_add_set_sob_pkt(fd, ext_cb, 0, false, true, 0, 0);
 
-	hltests_submit_and_wait_cs(tests_state->fd, ext_cb, offset,
-				hltests_get_dma_down_qid(tests_state->fd, 0),
-				WAIT_FOR_CS_DEFAULT_TIMEOUT, false);
+	hltests_submit_and_wait_cs(fd, ext_cb, offset,
+					hltests_get_dma_down_qid(fd, 0), false);
 
 	/* Create CB for DMA that waits on internal engine and then performs
 	 * a DMA down to the data address on the sram
 	 */
-	offset = hltests_add_monitor_and_fence(tests_state->fd, ext_cb, 0,
-				hltests_get_dma_up_qid(tests_state->fd, 0),
-				false, 0, 0, 0);
+	offset = hltests_add_monitor_and_fence(fd, ext_cb, 0,
+						hltests_get_dma_up_qid(fd, 0),
+						false, 0, 0, 0);
 
-	offset = hltests_add_dma_pkt(tests_state->fd, ext_cb, offset, false,
-					false, device_data_address,
-					dst_data_device_va, dma_size,
-					GOYA_DMA_SRAM_TO_HOST);
+	offset = hltests_add_dma_pkt(fd, ext_cb, offset, false, false,
+					device_data_address, dst_data_device_va,
+					dma_size, GOYA_DMA_SRAM_TO_HOST);
 
 	execute_arr[0].cb_ptr = ext_cb;
 	execute_arr[0].cb_size = offset;
-	execute_arr[0].queue_index = hltests_get_dma_up_qid(tests_state->fd, 0);
+	execute_arr[0].queue_index = hltests_get_dma_up_qid(fd, 0);
 
 	execute_arr[1].cb_ptr = engine_cb;
 	execute_arr[1].cb_size = engine_cb_size;
@@ -144,7 +139,7 @@ static void test_sm(void **state, bool is_tpc, bool is_wait)
 	if (is_wait) {
 		uint32_t i, err_cnt = 0;
 
-		rc = hltests_wait_for_cs(fd, seq, WAIT_FOR_CS_DEFAULT_TIMEOUT);
+		rc = hltests_wait_for_cs(fd, seq);
 		assert_int_equal(rc, 0);
 
 		rc = hltests_destroy_cb(fd, ext_cb);
@@ -305,7 +300,7 @@ static void test_sm_pingpong_qman(void **state, bool is_tpc)
 	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 3, true, &seq);
 	assert_int_equal(rc, 0);
 
-	rc = hltests_wait_for_cs(fd, seq, WAIT_FOR_CS_DEFAULT_TIMEOUT);
+	rc = hltests_wait_for_cs(fd, seq);
 	assert_int_equal(rc, 0);
 
 	rc = hltests_destroy_cb(fd, engine_cb);
@@ -504,7 +499,7 @@ static void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 3, true, &seq);
 	assert_int_equal(rc, 0);
 
-	rc = hltests_wait_for_cs(fd, seq, WAIT_FOR_CS_DEFAULT_TIMEOUT);
+	rc = hltests_wait_for_cs(fd, seq);
 	assert_int_equal(rc, 0);
 
 	/* Compare host memories */

@@ -193,7 +193,7 @@ void test_lin_dma_4_queues(void **state)
 	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 4, true, &seq);
 	assert_int_equal(rc, 0);
 
-	rc = hltests_wait_for_cs(fd, seq, WAIT_FOR_CS_DEFAULT_TIMEOUT);
+	rc = hltests_wait_for_cs(fd, seq);
 	assert_int_equal(rc, 0);
 
 	/* Compare host memories */
