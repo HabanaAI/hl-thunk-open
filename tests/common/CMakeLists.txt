@@ -17,6 +17,7 @@ set(COMMON_UNIT_TESTS
     dma_4MB_inc
     dma_64MB_inc
     sync_manager
+    tdr
 )
 
 foreach(_UNIT_TEST ${COMMON_UNIT_TESTS})
