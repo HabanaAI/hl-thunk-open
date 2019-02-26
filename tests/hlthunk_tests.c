@@ -1026,6 +1026,16 @@ uint32_t hltests_add_dma_pkt(int fd, void *buffer, uint32_t buf_off,
 					size, dma_dir);
 }
 
+uint32_t hltests_add_cp_dma_pkt(int fd, void *buffer, uint32_t buf_off,
+				bool eb, bool mb, uint64_t src_addr,
+				uint32_t size)
+{
+	const struct hltests_asic_funcs *asic =
+			get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->add_cp_dma_pkt(buffer, buf_off, eb, mb, src_addr, size);
+}
+
 uint32_t hltests_add_monitor_and_fence(int fd, void *buffer, uint32_t buf_off,
 					uint8_t queue_id, bool cmdq_fence,
 					uint32_t so_id, uint32_t mon_id,

@@ -333,6 +333,202 @@ static void test_sm_pingpong_qman(void **state, bool is_tpc)
 	hltests_free_host_mem(fd, dst_data);
 }
 
+static void test_sm_pingpong_cmdq(void **state, bool is_tpc)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct hlthunk_hw_ip_info hw_ip;
+	struct hltests_cs_chunk restore_arr[1], execute_arr[3];
+	void *host_src, *host_dst, *engine_cmdq_cb, *engine_qman_cb,
+		*restore_cb, *dmadown_cb, *dmaup_cb;
+	uint64_t seq, host_src_device_va, host_dst_device_va, device_data_addr,
+		engine_cmdq_cb_sram_addr, engine_cmdq_cb_device_va,
+		engine_qman_cb_sram_addr, engine_qman_cb_device_va;
+	uint32_t engine_qid, dma_size, page_size, engine_cmdq_cb_size,
+		engine_qman_cb_size, restore_cb_size, dmadown_cb_size,
+		dmaup_cb_size;
+	int rc, fd = tests_state->fd;
+
+	/* SRAM MAP (base + ):
+	 * - 0x1000               : data
+	 * - 0x1000 + page_size   : engine's internal CB (CMDQ)
+	 * - 0x1000 + 2*page_size : engine's internal CB (QMAN)
+	 *
+	 * Test Description:
+	 * - First QMAN DMA transfers data from host to SRAM and then signals
+	 *   SOB0.
+	 * - Engine QMAN process CP_DMA packet and transfer internal CB to CMDQ.
+	 * - Engine CMDQ fences on SOB0, processes NOP packet, and then signals
+	 *   SOB1.
+	 * - Second QMAN DMA fences on SOB1 and then transfers data from SRAM to
+	 *   host.
+	 * - Setup CB is used to clear SOB 0-1 and to DMA the internal CBs to
+	 *   SRAM.
+	 */
+
+	dma_size = 4;
+	page_size = sysconf(_SC_PAGESIZE);
+
+	/* Set engine queue ID and SRAM addresses */
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+
+	if (is_tpc) {
+		/* Find first available TPC */
+		uint8_t tpc_id;
+		for (tpc_id = 0 ;
+			(!(hw_ip.tpc_enabled_mask & (0x1 << tpc_id))) &&
+			(tpc_id < hltests_get_tpc_cnt(fd)) ; tpc_id++);
+
+		assert_in_range(tpc_id, 0, hltests_get_tpc_cnt(fd) - 1);
+
+		engine_qid = hltests_get_tpc_qid(fd, tpc_id, 0);
+	} else {
+		engine_qid = hltests_get_mme_qid(fd, 0, 0);
+	}
+
+	device_data_addr = hw_ip.sram_base_address + 0x1000;
+	engine_cmdq_cb_sram_addr = device_data_addr + page_size;
+	engine_qman_cb_sram_addr = engine_cmdq_cb_sram_addr + page_size;
+
+	/* Allocate two buffers on the host for data transfers */
+	host_src = hltests_allocate_host_mem(fd, dma_size, false);
+	assert_non_null(host_src);
+	hltests_fill_rand_values(host_src, dma_size);
+	host_src_device_va = hltests_get_device_va_for_host_ptr(fd, host_src);
+
+	host_dst = hltests_allocate_host_mem(fd, dma_size, false);
+	assert_non_null(host_dst);
+	memset(host_dst, 0, dma_size);
+	host_dst_device_va = hltests_get_device_va_for_host_ptr(fd, host_dst);
+
+	/* Internal CB for engine CMDQ: fence on SOB0 + NOP + signal SOB1 */
+	engine_cmdq_cb = hltests_create_cb(fd, page_size, false,
+						engine_cmdq_cb_sram_addr);
+	assert_ptr_not_equal(engine_cmdq_cb, NULL);
+	engine_cmdq_cb_device_va = hltests_get_device_va_for_host_ptr(fd,
+								engine_cmdq_cb);
+	engine_cmdq_cb_size = 0;
+	engine_cmdq_cb_size = hltests_add_monitor_and_fence(fd, engine_cmdq_cb,
+							engine_cmdq_cb_size,
+							engine_qid, true, 0, 0,
+							0);
+	engine_cmdq_cb_size = hltests_add_nop_pkt(fd, engine_cmdq_cb,
+							engine_cmdq_cb_size,
+							false, true);
+	engine_cmdq_cb_size = hltests_add_write_to_sob_pkt(fd, engine_cmdq_cb,
+							engine_cmdq_cb_size,
+							false, false, 1, 1, 1);
+
+	/* Internal CB for engine QMAN: CP_DMA */
+	engine_qman_cb = hltests_create_cb(fd, page_size, false,
+						engine_qman_cb_sram_addr);
+	assert_ptr_not_equal(engine_qman_cb, NULL);
+	engine_qman_cb_device_va = hltests_get_device_va_for_host_ptr(fd,
+								engine_qman_cb);
+	engine_qman_cb_size = 0;
+	engine_qman_cb_size = hltests_add_cp_dma_pkt(fd, engine_qman_cb,
+						engine_qman_cb_size, false,
+						false, engine_cmdq_cb_sram_addr,
+						engine_cmdq_cb_size);
+
+	/* Setup CB: Clear SOB 0-1 + DMA the internal CBs to SRAM */
+	restore_cb =  hltests_create_cb(fd, page_size, true, 0);
+	assert_ptr_not_equal(restore_cb, NULL);
+	restore_cb_size = 0;
+	restore_cb_size = hltests_add_set_sob_pkt(fd, restore_cb,
+							restore_cb_size, false,
+							false, 0, 0);
+	restore_cb_size = hltests_add_set_sob_pkt(fd, restore_cb,
+							restore_cb_size, false,
+							true, 1, 0);
+	restore_cb_size = hltests_add_dma_pkt(fd, restore_cb, restore_cb_size,
+						false, true,
+						engine_cmdq_cb_device_va,
+						engine_cmdq_cb_sram_addr,
+						engine_cmdq_cb_size,
+						GOYA_DMA_HOST_TO_SRAM);
+	restore_cb_size = hltests_add_dma_pkt(fd, restore_cb, restore_cb_size,
+						false, true,
+						engine_qman_cb_device_va,
+						engine_qman_cb_sram_addr,
+						engine_qman_cb_size,
+						GOYA_DMA_HOST_TO_SRAM);
+
+	/* CB for first QMAN DMA:
+	 * Transfer data from host to SRAM + signal SOB0.
+	 */
+	dmadown_cb = hltests_create_cb(fd, page_size, true, 0);
+	assert_ptr_not_equal(dmadown_cb, NULL);
+	dmadown_cb_size = 0;
+	dmadown_cb_size = hltests_add_dma_pkt(fd, dmadown_cb, dmadown_cb_size,
+						false, false,
+						host_src_device_va,
+						device_data_addr, dma_size,
+						GOYA_DMA_HOST_TO_SRAM);
+	dmadown_cb_size = hltests_add_write_to_sob_pkt(fd, dmadown_cb,
+							dmadown_cb_size, true,
+							false, 0, 1, 1);
+
+	/* CB for second QMAN DMA:
+	 * Fence on SOB1 + transfer data from SRAM to host.
+	 */
+	dmaup_cb = hltests_create_cb(fd, page_size, true, 0);
+	assert_ptr_not_equal(dmaup_cb, NULL);
+	dmaup_cb_size = 0;
+	dmaup_cb_size = hltests_add_monitor_and_fence(fd, dmaup_cb,
+						dmaup_cb_size,
+						hltests_get_dma_up_qid(fd, 0),
+						false, 1, 1, 0);
+	dmaup_cb_size = hltests_add_dma_pkt(fd, dmaup_cb, dmaup_cb_size,
+						false, true, device_data_addr,
+						host_dst_device_va, dma_size,
+						GOYA_DMA_SRAM_TO_HOST);
+
+	/* Submit CS and wait for completion */
+	restore_arr[0].cb_ptr = restore_cb;
+	restore_arr[0].cb_size = restore_cb_size;
+	restore_arr[0].queue_index = hltests_get_dma_down_qid(fd, 0);
+
+	execute_arr[0].cb_ptr = dmadown_cb;
+	execute_arr[0].cb_size = dmadown_cb_size;
+	execute_arr[0].queue_index = hltests_get_dma_down_qid(fd, 0);
+
+	execute_arr[1].cb_ptr = engine_qman_cb;
+	execute_arr[1].cb_size = engine_qman_cb_size;
+	execute_arr[1].queue_index = engine_qid;
+
+	execute_arr[2].cb_ptr = dmaup_cb;
+	execute_arr[2].cb_size = dmaup_cb_size;
+	execute_arr[2].queue_index = hltests_get_dma_up_qid(fd, 0);
+
+	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 3, true, &seq);
+	assert_int_equal(rc, 0);
+
+	rc = hltests_wait_for_cs(fd, seq, WAIT_FOR_CS_DEFAULT_TIMEOUT);
+	assert_int_equal(rc, 0);
+
+	/* Compare host memories */
+	rc = hltests_mem_compare(host_src, host_dst, dma_size);
+	assert_int_equal(rc, 0);
+
+	/* Cleanup */
+	rc = hltests_destroy_cb(fd, engine_cmdq_cb);
+	assert_int_equal(rc, 0);
+	rc = hltests_destroy_cb(fd, engine_qman_cb);
+	assert_int_equal(rc, 0);
+	rc = hltests_destroy_cb(fd, restore_cb);
+	assert_int_equal(rc, 0);
+	rc = hltests_destroy_cb(fd, dmadown_cb);
+	assert_int_equal(rc, 0);
+	rc = hltests_destroy_cb(fd, dmaup_cb);
+	assert_int_equal(rc, 0);
+
+	rc = hltests_free_host_mem(fd, host_dst);
+	assert_int_equal(rc, 0);
+	rc = hltests_free_host_mem(fd, host_src);
+	assert_int_equal(rc, 0);
+}
+
 void test_sm_tpc(void **state)
 {
 	test_sm(state, true, true);
@@ -353,11 +549,23 @@ void test_sm_pingpong_mme_qman(void **state)
 	test_sm_pingpong_qman(state, false);
 }
 
+void test_sm_pingpong_tpc_cmdq(void **state)
+{
+	test_sm_pingpong_cmdq(state, true);
+}
+
+void test_sm_pingpong_mme_cmdq(void **state)
+{
+	test_sm_pingpong_cmdq(state, false);
+}
+
 const struct CMUnitTest sm_tests[] = {
 	cmocka_unit_test(test_sm_tpc),
 	cmocka_unit_test(test_sm_mme),
 	cmocka_unit_test(test_sm_pingpong_tpc_qman),
 	cmocka_unit_test(test_sm_pingpong_mme_qman),
+	cmocka_unit_test(test_sm_pingpong_tpc_cmdq),
+	cmocka_unit_test(test_sm_pingpong_mme_cmdq),
 };
 
 int main(void)

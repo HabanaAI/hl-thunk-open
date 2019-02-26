@@ -91,6 +91,9 @@ struct hltests_asic_funcs {
 				bool mb, uint64_t src_addr,
 				uint64_t dst_addr, uint32_t size,
 				enum hltests_goya_dma_direction dma_dir);
+	uint32_t (*add_cp_dma_pkt)(void *buffer, uint32_t buf_off, bool eb,
+					bool mb, uint64_t src_addr,
+					uint32_t size);
 	uint32_t (*get_dma_down_qid)(uint8_t stream);
 	uint32_t (*get_dma_up_qid)(uint8_t stream);
 	uint32_t (*get_dma_dram_to_sram_qid)(uint8_t stream);
@@ -224,6 +227,10 @@ uint32_t hltests_add_dma_pkt(int fd, void *buffer, uint32_t buf_off,
 				bool eb, bool mb, uint64_t src_addr,
 				uint64_t dst_addr, uint32_t size,
 				enum hltests_goya_dma_direction dma_dir);
+
+uint32_t hltests_add_cp_dma_pkt(int fd, void *buffer, uint32_t buf_off,
+				bool eb, bool mb, uint64_t src_addr,
+				uint32_t size);
 
 uint32_t hltests_add_monitor_and_fence(int fd, void *buffer, uint32_t buf_off,
 					uint8_t queue_id, bool cmdq_fence,

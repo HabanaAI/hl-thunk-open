@@ -172,6 +172,22 @@ static uint32_t goya_add_dma_pkt(void *buffer, uint32_t buf_off, bool eb,
 						sizeof(packet));
 }
 
+static uint32_t goya_add_cp_dma_pkt(void *buffer, uint32_t buf_off, bool eb,
+				bool mb, uint64_t src_addr,uint32_t size)
+{
+	struct packet_cp_dma packet = {};
+
+	packet.opcode = PACKET_CP_DMA;
+	packet.eng_barrier = eb;
+	packet.msg_barrier = mb;
+	packet.reg_barrier = 1;
+	packet.src_addr = src_addr;
+	packet.tsize = size;
+
+	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
+						sizeof(packet));
+}
+
 static uint32_t goya_tests_add_monitor_and_fence(void *buffer, uint32_t buf_off,
 					uint8_t queue_id, bool cmdq_fence,
 					uint32_t so_id, uint32_t mon_id,
@@ -343,6 +359,7 @@ static const struct hltests_asic_funcs goya_funcs = {
 	.add_set_sob_pkt = goya_add_set_sob_pkt,
 	.add_fence_pkt = goya_add_fence_pkt,
 	.add_dma_pkt = goya_add_dma_pkt,
+	.add_cp_dma_pkt = goya_add_cp_dma_pkt,
 	.get_dma_down_qid = goya_get_dma_down_qid,
 	.get_dma_up_qid = goya_get_dma_up_qid,
 	.get_dma_dram_to_sram_qid = goya_get_dma_dram_to_sram_qid,

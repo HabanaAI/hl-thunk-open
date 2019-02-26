@@ -106,7 +106,8 @@ void test_lin_dma_4_queues(void **state)
 					restore_cb_size, false, true, 2, 0);
 
 	/* CB for first QMAN DMA:
-	 * Transfer data from host to DRAM + signal SOB0 */
+	 * Transfer data from host to DRAM + signal SOB0.
+	 */
 	dma_cb[0] = hltests_create_cb(fd, page_size, true, 0);
 	assert_ptr_not_equal(dma_cb[0], NULL);
 
@@ -118,7 +119,8 @@ void test_lin_dma_4_queues(void **state)
 					dma_cb_size[0], true, false, 0, 1, 1);
 
 	/* CB for second QMAN DMA:
-	 * Fence on SOB0 + transfer data from DRAM to SRAM + signal SOB1 */
+	 * Fence on SOB0 + transfer data from DRAM to SRAM + signal SOB1.
+	 */
 	dma_cb[1] = hltests_create_cb(fd, page_size, true, 0);
 	assert_ptr_not_equal(dma_cb[1], NULL);
 
@@ -135,7 +137,8 @@ void test_lin_dma_4_queues(void **state)
 					dma_cb_size[1], true, false, 1, 1, 1);
 
 	/* CB for third QMAN DMA:
-	 * Fence on SOB1 + transfer data from SRAM to DRAM + signal SOB2 */
+	 * Fence on SOB1 + transfer data from SRAM to DRAM + signal SOB2.
+	 */
 	dma_cb[2] = hltests_create_cb(fd, page_size, true, 0);
 	assert_ptr_not_equal(dma_cb[2], NULL);
 
@@ -151,7 +154,8 @@ void test_lin_dma_4_queues(void **state)
 					dma_cb_size[2], true, false, 2, 1, 1);
 
 	/* CB for forth QMAN DMA:
-	 * Fence on SOB2 + transfer data from DRAM to host */
+	 * Fence on SOB2 + transfer data from DRAM to host.
+	 */
 	dma_cb[3] = hltests_create_cb(fd, page_size, true, 0);
 	assert_ptr_not_equal(dma_cb[3], NULL);
 
