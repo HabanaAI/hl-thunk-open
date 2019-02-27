@@ -79,10 +79,11 @@ struct hlthunk_hw_ip_info {
 
 /* TODO: split this function into several "logic" functions */
 hlthunk_public int hlthunk_get_hw_ip_info(int fd,
-		struct hlthunk_hw_ip_info *hw_ip);
+					struct hlthunk_hw_ip_info *hw_ip);
 
 hlthunk_public int hlthunk_request_command_buffer(int fd, uint32_t cb_size,
-		uint64_t *cb_handle);
+							uint64_t *cb_handle);
+
 hlthunk_public int hlthunk_destroy_command_buffer(int fd, uint64_t cb_handle);
 
 struct hlthunk_cs_in {
@@ -99,10 +100,10 @@ struct hlthunk_cs_out {
 };
 
 hlthunk_public int hlthunk_command_submission(int fd, struct hlthunk_cs_in *in,
-		struct hlthunk_cs_out *out);
+						struct hlthunk_cs_out *out);
 
 hlthunk_public int hlthunk_wait_for_cs(int fd, uint64_t seq,
-		uint64_t timeout_us, uint32_t *status);
+					uint64_t timeout_us, uint32_t *status);
 
 hlthunk_public enum hl_pci_ids hlthunk_get_device_type_from_fd(int fd);
 
