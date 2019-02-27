@@ -112,7 +112,9 @@ struct hl_cb_in {
 	__u64 cb_handle;
 	/* HL_CB_OP_* */
 	__u32 op;
-	/* Size of CB. Minimum requested size must be PAGE_SIZE */
+	/* Size of CB. Maximum size is 2MB. The minimum size that will be
+	 * allocated, regardless of this parameter's value, is PAGE_SIZE
+	 */
 	__u32 cb_size;
 	/* Context ID - Currently not in use */
 	__u32 ctx_id;
@@ -237,8 +239,7 @@ struct hl_mem_in {
 		/* HL_MEM_OP_ALLOC- allocate device memory */
 		struct {
 			/* Size to alloc */
-			__u32 mem_size;
-			__u32 pad;
+			__u64 mem_size;
 		} alloc;
 
 		/* HL_MEM_OP_FREE - free device memory */
@@ -278,8 +279,7 @@ struct hl_mem_in {
 			 */
 			__u64 hint_addr;
 			/* Size of allocated host memory */
-			__u32 mem_size;
-			__u32 pad;
+			__u64 mem_size;
 		} map_host;
 
 		/* HL_MEM_OP_UNMAP - unmap host memory */
@@ -466,6 +466,12 @@ struct hl_debug_args {
  * are DMA queues which transfer data from/to the Host. All other queues are
  * internal. The driver will get completion notifications from the device only
  * on JOBS which are enqueued in the external queues.
+ *
+ * For jobs on external queues, the user needs to create command buffers
+ * through the CB ioctl and give the CB's handle to the CS ioctl. For jobs on
+ * internal queues, the user needs to prepare a "command buffer" with packets
+ * on either the SRAM or DRAM, and give the device address of that buffer to
+ * the CS ioctl.
  *
  * This IOCTL is asynchronous in regard to the actual execution of the CS. This
  * means it returns immediately after ALL the JOBS were enqueued on their
