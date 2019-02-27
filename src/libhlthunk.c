@@ -121,7 +121,7 @@ hlthunk_public int hlthunk_close(int fd)
 }
 
 hlthunk_public int hlthunk_get_hw_ip_info(int fd,
-		struct hlthunk_hw_ip_info *hw_ip)
+					struct hlthunk_hw_ip_info *hw_ip)
 {
 	struct hl_info_args args = {};
 	struct hl_info_hw_ip_info hl_hw_ip = {};
@@ -158,7 +158,7 @@ hlthunk_public int hlthunk_get_hw_ip_info(int fd,
 }
 
 hlthunk_public int hlthunk_request_command_buffer(int fd, uint32_t cb_size,
-		uint64_t *cb_handle)
+							uint64_t *cb_handle)
 {
 	union hl_cb_args args = {};
 	int rc;
@@ -189,7 +189,7 @@ hlthunk_public int hlthunk_destroy_command_buffer(int fd, uint64_t cb_handle)
 }
 
 hlthunk_public int hlthunk_command_submission(int fd, struct hlthunk_cs_in *in,
-		struct hlthunk_cs_out *out)
+						struct hlthunk_cs_out *out)
 {
 	union hl_cs_args args = {};
 	struct hl_cs_in *hl_in;
@@ -215,7 +215,7 @@ hlthunk_public int hlthunk_command_submission(int fd, struct hlthunk_cs_in *in,
 }
 
 hlthunk_public int hlthunk_wait_for_cs(int fd, uint64_t seq,
-		uint64_t timeout_us, uint32_t *status)
+					uint64_t timeout_us, uint32_t *status)
 {
 	union hl_wait_cs_args args = {};
 	struct hl_wait_cs_in *hl_in;
