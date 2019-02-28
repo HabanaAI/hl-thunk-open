@@ -3,6 +3,7 @@
 project(libhl-thunk-tests C)
 
 set(HLTHUNK_TESTS_LIBRARY hlthunk-tests)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")
 
 include_directories(
     ${CMOCKA_INCLUDE_DIR}
