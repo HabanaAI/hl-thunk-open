@@ -197,8 +197,8 @@ static void test_sm_pingpong_qman(void **state, bool is_tpc)
 	 * 0x2000 : engine's internal CB (we only use upper CP in this test)
 	 *
 	 * Test description:
-	 * QMAN DMA1 will transfer data to device and then signal the Engine's
-	 * QMAN. It will signal QMAN DMA2 that will transfer the data from the
+	 * DMA1 QMAN will transfer data to device and then signal the Engine's
+	 * QMAN. It will signal DMA2 QMAN that will transfer the data from the
 	 * device to the host.
 	 * Setup CB will be used to clear SOB and to download the Engine's CB
 	 * to the SRAM
@@ -349,12 +349,12 @@ static void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 	 * - 0x1000 + 2*page_size : engine's internal CB (QMAN)
 	 *
 	 * Test Description:
-	 * - First QMAN DMA transfers data from host to SRAM and then signals
+	 * - First DMA QMAN transfers data from host to SRAM and then signals
 	 *   SOB0.
 	 * - Engine QMAN process CP_DMA packet and transfer internal CB to CMDQ.
 	 * - Engine CMDQ fences on SOB0, processes NOP packet, and then signals
 	 *   SOB1.
-	 * - Second QMAN DMA fences on SOB1 and then transfers data from SRAM to
+	 * - Second DMA QMAN fences on SOB1 and then transfers data from SRAM to
 	 *   host.
 	 * - Setup CB is used to clear SOB 0-1 and to DMA the internal CBs to
 	 *   SRAM.
@@ -449,7 +449,7 @@ static void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 						engine_qman_cb_size,
 						GOYA_DMA_HOST_TO_SRAM);
 
-	/* CB for first QMAN DMA:
+	/* CB for first DMA QMAN:
 	 * Transfer data from host to SRAM + signal SOB0.
 	 */
 	dmadown_cb = hltests_create_cb(fd, page_size, true, 0);
@@ -464,7 +464,7 @@ static void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 							dmadown_cb_size, true,
 							false, 0, 1, 1);
 
-	/* CB for second QMAN DMA:
+	/* CB for second DMA QMAN:
 	 * Fence on SOB1 + transfer data from SRAM to host.
 	 */
 	dmaup_cb = hltests_create_cb(fd, page_size, true, 0);

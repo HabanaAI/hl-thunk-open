@@ -35,6 +35,114 @@
 #include <errno.h>
 #include <unistd.h>
 
+static void test_qman_write_to_protected_register(void **state, bool is_tpc)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct hlthunk_hw_ip_info hw_ip;
+	struct hltests_cs_chunk restore_arr[1], execute_arr[2];
+	void *engine_cb, *restore_cb, *dma_cb;
+	uint64_t cfg_address, engine_cb_sram_addr, engine_cb_device_va, seq;
+	uint32_t page_size, engine_qid, engine_cb_size, restore_cb_size,
+		dma_cb_size, val;
+	int rc, fd = tests_state->fd;
+
+	/* SRAM MAP (base + ):
+	 * - 0x3000 : engine's internal CB
+	 *
+	 * Test Description:
+	 * - Engine QMAN tries to write to protected register and then signals
+	 *   SOB0.
+	 * - DMA QMAN fences on SOB0.
+	 * - Setup CB is used to clear SOB0 and to DMA the internal CBs to SRAM.
+	 * - The test verifies that the write is not performed.
+	 */
+
+	cfg_address = CFG_BASE + mmDMA_QM_4_PQ_BASE_HI;
+	page_size = sysconf(_SC_PAGESIZE);
+
+	/* Set engine queue ID and SRAM addresses */
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+
+	if (is_tpc) {
+		/* Find first available TPC */
+		uint8_t tpc_id;
+		for (tpc_id = 0 ;
+			(!(hw_ip.tpc_enabled_mask & (0x1 << tpc_id))) &&
+			(tpc_id < hltests_get_tpc_cnt(fd)) ; tpc_id++);
+
+		assert_in_range(tpc_id, 0, hltests_get_tpc_cnt(fd) - 1);
+
+		engine_qid = hltests_get_tpc_qid(fd, tpc_id, 0);
+	} else {
+		engine_qid = hltests_get_mme_qid(fd, 0, 0);
+	}
+
+	engine_cb_sram_addr = hw_ip.sram_base_address + 0x3000;
+
+	/* Internal CB for engine QMAN: MSG_LONG + signal SOB0 */
+	engine_cb = hltests_create_cb(fd, page_size, false,
+					engine_cb_sram_addr);
+	assert_ptr_not_equal(engine_cb, NULL);
+	engine_cb_device_va = hltests_get_device_va_for_host_ptr(fd, engine_cb);
+	engine_cb_size = 0;
+	engine_cb_size = hltests_add_msg_long_pkt(fd, engine_cb, engine_cb_size,
+					false, false, cfg_address, 0x789a0ded);
+	engine_cb_size = hltests_add_write_to_sob_pkt(fd, engine_cb,
+					engine_cb_size, false, true, 0, 1, 1);
+
+	/* Setup CB: Clear SOB0 + DMA the internal CB to SRAM */
+	restore_cb =  hltests_create_cb(fd, page_size, true, 0);
+	assert_ptr_not_equal(restore_cb, NULL);
+	restore_cb_size = 0;
+	restore_cb_size = hltests_add_set_sob_pkt(fd, restore_cb,
+					restore_cb_size, false, false, 0, 0);
+	restore_cb_size = hltests_add_dma_pkt(fd, restore_cb, restore_cb_size,
+					false, true, engine_cb_device_va,
+					engine_cb_sram_addr, engine_cb_size,
+					GOYA_DMA_HOST_TO_SRAM);
+
+	/* CB for DMA QMAN: Fence on SOB0 */
+	dma_cb = hltests_create_cb(fd, page_size, true, 0);
+	assert_ptr_not_equal(dma_cb, NULL);
+	dma_cb_size = 0;
+	dma_cb_size = hltests_add_monitor_and_fence(fd, dma_cb, dma_cb_size,
+						hltests_get_dma_down_qid(fd, 0),
+						false, 0, 0, 0);
+
+	/* Submit CS and wait for completion */
+	restore_arr[0].cb_ptr = restore_cb;
+	restore_arr[0].cb_size = restore_cb_size;
+	restore_arr[0].queue_index = hltests_get_dma_down_qid(fd, 0);
+
+	execute_arr[0].cb_ptr = engine_cb;
+	execute_arr[0].cb_size = engine_cb_size;
+	execute_arr[0].queue_index = engine_qid;
+
+	execute_arr[1].cb_ptr = dma_cb;
+	execute_arr[1].cb_size = dma_cb_size;
+	execute_arr[1].queue_index = hltests_get_dma_down_qid(fd, 0);
+
+	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 2, true, &seq);
+	assert_int_equal(rc, 0);
+
+	rc = _hltests_wait_for_cs(fd, seq, WAIT_FOR_CS_DEFAULT_TIMEOUT,
+					HL_WAIT_CS_STATUS_BUSY);
+	assert_int_equal(rc, 0);
+
+	/* Cleanup */
+	rc = hltests_destroy_cb(fd, engine_cb);
+	assert_int_equal(rc, 0);
+	rc = hltests_destroy_cb(fd, restore_cb);
+	assert_int_equal(rc, 0);
+	rc = hltests_destroy_cb(fd, dma_cb);
+	assert_int_equal(rc, 0);
+
+	/* Verify that the protected register wasn't written */
+	val = hltests_debugfs_read(fd, cfg_address);
+	assert_int_not_equal(val, 0x789a0ded);
+}
+
 void test_debugfs_sram_read_write(void **state)
 {
 	struct hltests_state *tests_state =
@@ -88,9 +196,21 @@ void test_write_to_cfg_space(void **state)
 	assert_int_not_equal(val, 0xbaba0ded);
 }
 
+void test_tpc_qman_write_to_protected_register(void **state)
+{
+	test_qman_write_to_protected_register(state, true);
+}
+
+void test_mme_qman_write_to_protected_register(void **state)
+{
+	test_qman_write_to_protected_register(state, false);
+}
+
 const struct CMUnitTest root_tests[] = {
 	cmocka_unit_test(test_debugfs_sram_read_write),
 	cmocka_unit_test(test_write_to_cfg_space),
+	cmocka_unit_test(test_tpc_qman_write_to_protected_register),
+	cmocka_unit_test(test_mme_qman_write_to_protected_register),
 };
 
 int main(void)

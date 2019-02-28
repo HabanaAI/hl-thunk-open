@@ -59,13 +59,13 @@ void test_lin_dma_4_queues(void **state)
 	 * - 0x1000: data
 	 *
 	 * Test Description:
-	 * - First QMAN DMA transfers data from host to DRAM and then signals
+	 * - First DMA QMAN transfers data from host to DRAM and then signals
 	 *   SOB0.
-	 * - Second QMAN DMA fences on SOB0, transfers data from DRAM to SRAM,
+	 * - Second DMA QMAN fences on SOB0, transfers data from DRAM to SRAM,
 	 *   and then signals SOB1.
-	 * - Third QMAN DMA fences on SOB1, transfers data from SRAM to DRAM,
+	 * - Third DMA QMAN fences on SOB1, transfers data from SRAM to DRAM,
 	 *   and then signals SOB2.
-	 * - Forth QMAN DMA fences on SOB2 and then transfers data from DRAM to
+	 * - Forth DMA QMAN fences on SOB2 and then transfers data from DRAM to
 	 *   host.
 	 * - Setup CB is used to clear SOB 0-2.
 	 */
@@ -105,7 +105,7 @@ void test_lin_dma_4_queues(void **state)
 	restore_cb_size = hltests_add_set_sob_pkt(fd, restore_cb,
 					restore_cb_size, false, true, 2, 0);
 
-	/* CB for first QMAN DMA:
+	/* CB for first DMA QMAN:
 	 * Transfer data from host to DRAM + signal SOB0.
 	 */
 	dma_cb[0] = hltests_create_cb(fd, page_size, true, 0);
@@ -118,7 +118,7 @@ void test_lin_dma_4_queues(void **state)
 	dma_cb_size[0] = hltests_add_write_to_sob_pkt(fd, dma_cb[0],
 					dma_cb_size[0], true, false, 0, 1, 1);
 
-	/* CB for second QMAN DMA:
+	/* CB for second DMA QMAN:
 	 * Fence on SOB0 + transfer data from DRAM to SRAM + signal SOB1.
 	 */
 	dma_cb[1] = hltests_create_cb(fd, page_size, true, 0);
@@ -136,7 +136,7 @@ void test_lin_dma_4_queues(void **state)
 	dma_cb_size[1] = hltests_add_write_to_sob_pkt(fd, dma_cb[1],
 					dma_cb_size[1], true, false, 1, 1, 1);
 
-	/* CB for third QMAN DMA:
+	/* CB for third DMA QMAN:
 	 * Fence on SOB1 + transfer data from SRAM to DRAM + signal SOB2.
 	 */
 	dma_cb[2] = hltests_create_cb(fd, page_size, true, 0);
@@ -153,7 +153,7 @@ void test_lin_dma_4_queues(void **state)
 	dma_cb_size[2] = hltests_add_write_to_sob_pkt(fd, dma_cb[2],
 					dma_cb_size[2], true, false, 2, 1, 1);
 
-	/* CB for forth QMAN DMA:
+	/* CB for forth DMA QMAN:
 	 * Fence on SOB2 + transfer data from DRAM to host.
 	 */
 	dma_cb[3] = hltests_create_cb(fd, page_size, true, 0);
