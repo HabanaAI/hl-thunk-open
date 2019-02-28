@@ -32,18 +32,6 @@
 #include <cmocka.h>
 #include <stdio.h>
 
-void test_open_device_failure(void **state)
-{
-	(void) state; /* unused */
-	int fd, ret;
-
-	fd = hlthunk_open(NULL);
-	assert_in_range(fd, 0, INT_MAX);
-	ret = hlthunk_open(NULL);
-	assert_in_range(ret, INT_MIN, -1);
-	hlthunk_close(fd);
-}
-
 void test_open_device_success(void **state)
 {
 	(void) state; /* unused */
@@ -55,7 +43,6 @@ void test_open_device_success(void **state)
 }
 
 const struct CMUnitTest open_device_tests[] = {
-	cmocka_unit_test(test_open_device_failure),
 	cmocka_unit_test(test_open_device_success),
 };
 
