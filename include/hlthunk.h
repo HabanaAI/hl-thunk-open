@@ -41,25 +41,6 @@ extern "C" {
 #define HLTHUNK_NODE_PRIMARY		0
 #define HLTHUNK_NODE_MAX		1
 
-hlthunk_public void *hlthunk_random_create(unsigned long seed);
-hlthunk_public void hlthunk_random_destroy(void *state);
-hlthunk_public unsigned long hlthunk_random(void *state);
-hlthunk_public double hlthunk_random_double(void *state);
-
-hlthunk_public void* hlthunk_hash_create(void);
-hlthunk_public int hlthunk_hash_destroy(void *t);
-hlthunk_public int hlthunk_hash_lookup(void *t, unsigned long key, void **value);
-hlthunk_public int hlthunk_hash_insert(void *t, unsigned long key, void *value);
-hlthunk_public int hlthunk_hash_delete(void *t, unsigned long key);
-hlthunk_public int hlthunk_hash_next(void *t, unsigned long *key, void **value);
-hlthunk_public int hlthunk_hash_first(void *t, unsigned long *key, void **value);
-
-hlthunk_public void* hlthunk_malloc(int size);
-hlthunk_public void hlthunk_free(void *pt);
-
-hlthunk_public int hlthunk_open(const char *busid);
-hlthunk_public int hlthunk_close(int fd);
-
 struct hlthunk_hw_ip_info {
 	uint64_t sram_base_address;
 	uint64_t dram_base_address;
@@ -77,15 +58,6 @@ struct hlthunk_hw_ip_info {
 	uint8_t armcp_version[HL_INFO_VERSION_MAX_LEN];
 };
 
-/* TODO: split this function into several "logic" functions */
-hlthunk_public int hlthunk_get_hw_ip_info(int fd,
-					struct hlthunk_hw_ip_info *hw_ip);
-
-hlthunk_public int hlthunk_request_command_buffer(int fd, uint32_t cb_size,
-							uint64_t *cb_handle);
-
-hlthunk_public int hlthunk_destroy_command_buffer(int fd, uint64_t cb_handle);
-
 struct hlthunk_cs_in {
 	void *chunks_restore;
 	void *chunks_execute;
@@ -99,16 +71,25 @@ struct hlthunk_cs_out {
 	uint32_t status;
 };
 
+hlthunk_public int hlthunk_open(const char *busid);
+hlthunk_public int hlthunk_close(int fd);
+hlthunk_public enum hl_pci_ids hlthunk_get_device_type_from_fd(int fd);
+
+/* TODO: split the INFO functions into several "logic" functions */
+hlthunk_public int hlthunk_get_hw_ip_info(int fd,
+					struct hlthunk_hw_ip_info *hw_ip);
+hlthunk_public int hlthunk_get_info(int fd, struct hl_info_args *info);
+
+hlthunk_public int hlthunk_request_command_buffer(int fd, uint32_t cb_size,
+							uint64_t *cb_handle);
+
+hlthunk_public int hlthunk_destroy_command_buffer(int fd, uint64_t cb_handle);
+
 hlthunk_public int hlthunk_command_submission(int fd, struct hlthunk_cs_in *in,
 						struct hlthunk_cs_out *out);
 
 hlthunk_public int hlthunk_wait_for_cs(int fd, uint64_t seq,
 					uint64_t timeout_us, uint32_t *status);
-
-hlthunk_public enum hl_pci_ids hlthunk_get_device_type_from_fd(int fd);
-
-/* TODO: replace the following wrapper functions with suitable API functions */
-hlthunk_public int hlthunk_get_info(int fd, struct hl_info_args *info);
 
 hlthunk_public uint64_t hlthunk_device_memory_alloc(int fd, uint64_t size,
 						bool contiguous, bool shared);
@@ -123,6 +104,26 @@ hlthunk_public uint64_t hlthunk_host_memory_map(int fd, void *host_virt_addr,
 
 hlthunk_public int hlthunk_memory_unmap(int fd, uint64_t device_virt_addr);
 hlthunk_public int hlthunk_debug(int fd, struct hl_debug_args *debug);
+
+hlthunk_public void* hlthunk_malloc(int size);
+hlthunk_public void hlthunk_free(void *pt);
+
+/* Functions for random number generation */
+
+hlthunk_public void *hlthunk_random_create(unsigned long seed);
+hlthunk_public void hlthunk_random_destroy(void *state);
+hlthunk_public unsigned long hlthunk_random(void *state);
+hlthunk_public double hlthunk_random_double(void *state);
+
+/* Functions for hash table implementation */
+
+hlthunk_public void* hlthunk_hash_create(void);
+hlthunk_public int hlthunk_hash_destroy(void *t);
+hlthunk_public int hlthunk_hash_lookup(void *t, unsigned long key, void **value);
+hlthunk_public int hlthunk_hash_insert(void *t, unsigned long key, void *value);
+hlthunk_public int hlthunk_hash_delete(void *t, unsigned long key);
+hlthunk_public int hlthunk_hash_next(void *t, unsigned long *key, void **value);
+hlthunk_public int hlthunk_hash_first(void *t, unsigned long *key, void **value);
 
 #ifdef __cplusplus
 }   //extern "C"
