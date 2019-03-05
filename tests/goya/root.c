@@ -24,6 +24,7 @@
 #include "hlthunk.h"
 #include "hlthunk_tests.h"
 #include "goya/goya.h"
+#include "goya/asic_reg/goya_regs.h"
 
 #include <stdarg.h>
 #include <stddef.h>
