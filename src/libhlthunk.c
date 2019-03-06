@@ -344,7 +344,7 @@ hlthunk_public uint64_t hlthunk_host_memory_map(int fd, void *host_virt_addr,
 	int rc;
 
 	ioctl_args.in.map_host.host_virt_addr = (uint64_t) host_virt_addr;
-	ioctl_args.in.map_host.mem_size = (uint32_t) host_size;
+	ioctl_args.in.map_host.mem_size = host_size;
 	ioctl_args.in.map_host.hint_addr = hint_addr;
 	ioctl_args.in.flags = HL_MEM_USERPTR;
 	ioctl_args.in.op = HL_MEM_OP_MAP;
