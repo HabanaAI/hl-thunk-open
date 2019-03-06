@@ -1143,7 +1143,7 @@ int hltests_mem_compare(void *ptr1, void *ptr2, uint64_t size)
 	for (i = 0 ; i < rounddown_aligned_size && err_cnt < 10 ;
 		i += sizeof(uint64_t), p1++, p2++) {
 		if (*p1 != *p2) {
-			printf("[%p]: 0x%"PRIu64" <--> [%p]: 0x%"PRIu64"\n",
+			printf("[%p]: 0x%"PRIx64" <--> [%p]: 0x%"PRIx64"\n",
 				p1, *p1, p2, *p2);
 			err_cnt++;
 		}
