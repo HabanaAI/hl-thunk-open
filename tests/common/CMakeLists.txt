@@ -16,6 +16,7 @@ set(COMMON_UNIT_TESTS
     dma_1MB_inc
     dma_4MB_inc
     dma_64MB_inc
+    memory
     sync_manager
     tdr
 )
