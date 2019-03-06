@@ -42,7 +42,6 @@ void test_map_bigger_than_4GB(void **state)
 	uint64_t host_src_addr, host_dst_addr, total_size = (1ull << 30) * 5,
 		dma_size = 1 << 29, offset = 0;
 	uint32_t dma_dir_down, dma_dir_up;
-	bool is_huge = total_size > 32 * 1024;
 	int rc, fd = tests_state->fd;
 
 	/* Sanity and memory allocation */
@@ -58,25 +57,25 @@ void test_map_bigger_than_4GB(void **state)
 	dma_dir_down = GOYA_DMA_HOST_TO_DRAM;
 	dma_dir_up = GOYA_DMA_DRAM_TO_HOST;
 
-	src_ptr = hltests_allocate_host_mem(fd, total_size, is_huge);
+	src_ptr = hltests_allocate_host_mem(fd, total_size, false);
 	assert_non_null(src_ptr);
 	hltests_fill_rand_values(src_ptr, total_size);
 	host_src_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
 
-	dst_ptr = hltests_allocate_host_mem(fd, dma_size, is_huge);
+	dst_ptr = hltests_allocate_host_mem(fd, dma_size, false);
 	assert_non_null(dst_ptr);
 	memset(dst_ptr, 0, dma_size);
 	host_dst_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
 
 	while (offset < total_size) {
 		/* DMA: host->device */
-		hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, 0), 0, 1,
-			(host_src_addr + offset),
+		hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, 0, 0), 0,
+			1, (host_src_addr + offset),
 			(uint64_t) (uintptr_t) device_addr, dma_size,
 			dma_dir_down);
 
 		/* DMA: device->host */
-		hltests_dma_transfer(fd, hltests_get_dma_up_qid(fd, 0),	0, 1,
+		hltests_dma_transfer(fd, hltests_get_dma_up_qid(fd, 0, 0), 0, 1,
 			(uint64_t) (uintptr_t) device_addr, host_dst_addr,
 			dma_size, dma_dir_up);
 
