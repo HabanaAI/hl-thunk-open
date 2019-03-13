@@ -320,7 +320,7 @@ static int debugfs_close(int fd)
 uint32_t hltests_debugfs_read(int fd, uint64_t full_address)
 {
 	struct hltests_device *hdev;
-	char addr_str[64] = {0}, value[64] = {0};
+	char addr_str[64] = "", value[64] = "";
 	ssize_t size;
 
 	hdev = get_hdev_from_fd(fd);
@@ -344,7 +344,7 @@ uint32_t hltests_debugfs_read(int fd, uint64_t full_address)
 void hltests_debugfs_write(int fd, uint64_t full_address, uint32_t val)
 {
 	struct hltests_device *hdev;
-	char addr_str[64] = {0}, val_str[64] = {0};
+	char addr_str[64] = "", val_str[64] = "";
 	ssize_t size;
 
 	hdev = get_hdev_from_fd(fd);
@@ -850,8 +850,8 @@ int hltests_submit_cs(int fd,
 {
 	struct hltests_device *hdev;
 	struct hl_cs_chunk *chunks_restore = NULL, *chunks_execute = NULL;
-	struct hlthunk_cs_in cs_in = {};
-	struct hlthunk_cs_out cs_out = {};
+	struct hlthunk_cs_in cs_in;
+	struct hlthunk_cs_out cs_out;
 	uint32_t size, i;
 	int rc = 0;
 
@@ -900,12 +900,14 @@ int hltests_submit_cs(int fd,
 
 	}
 
+	memset(&cs_in, 0, sizeof(cs_in));
 	cs_in.chunks_restore = chunks_restore;
 	cs_in.chunks_execute = chunks_execute;
 	cs_in.num_chunks_restore = restore_arr_size;
 	cs_in.num_chunks_execute = execute_arr_size;
 	cs_in.flags = force_restore ? HL_CS_FLAGS_FORCE_RESTORE : 0x0;
 
+	memset(&cs_out, 0, sizeof(cs_out));
 	rc = hlthunk_command_submission(fd, &cs_in, &cs_out);
 	if (rc)
 		goto free_chunks_execute;

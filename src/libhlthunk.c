@@ -123,12 +123,15 @@ hlthunk_public int hlthunk_close(int fd)
 hlthunk_public int hlthunk_get_hw_ip_info(int fd,
 					struct hlthunk_hw_ip_info *hw_ip)
 {
-	struct hl_info_args args = {};
-	struct hl_info_hw_ip_info hl_hw_ip = {};
+	struct hl_info_args args;
+	struct hl_info_hw_ip_info hl_hw_ip;
 	int rc;
 
 	if (!hw_ip)
 		return -EINVAL;
+
+	memset(&args, 0, sizeof(args));
+	memset(&hl_hw_ip, 0, sizeof(hl_hw_ip));
 
 	args.op = HL_INFO_HW_IP_INFO;
 	args.return_pointer = (__u64) (uintptr_t) &hl_hw_ip;
@@ -160,12 +163,13 @@ hlthunk_public int hlthunk_get_hw_ip_info(int fd,
 hlthunk_public int hlthunk_request_command_buffer(int fd, uint32_t cb_size,
 							uint64_t *cb_handle)
 {
-	union hl_cb_args args = {};
+	union hl_cb_args args;
 	int rc;
 
 	if (!cb_handle)
 		return -EINVAL;
 
+	memset(&args, 0, sizeof(args));
 	args.in.op = HL_CB_OP_CREATE;
 	args.in.cb_size = cb_size;
 
@@ -180,8 +184,9 @@ hlthunk_public int hlthunk_request_command_buffer(int fd, uint32_t cb_size,
 
 hlthunk_public int hlthunk_destroy_command_buffer(int fd, uint64_t cb_handle)
 {
-	union hl_cb_args args = {};
+	union hl_cb_args args;
 
+	memset(&args, 0, sizeof(args));
 	args.in.op = HL_CB_OP_DESTROY;
 	args.in.cb_handle = cb_handle;
 
@@ -191,10 +196,12 @@ hlthunk_public int hlthunk_destroy_command_buffer(int fd, uint64_t cb_handle)
 hlthunk_public int hlthunk_command_submission(int fd, struct hlthunk_cs_in *in,
 						struct hlthunk_cs_out *out)
 {
-	union hl_cs_args args = {};
+	union hl_cs_args args;
 	struct hl_cs_in *hl_in;
 	struct hl_cs_out *hl_out;
 	int rc;
+
+	memset(&args, 0, sizeof(args));
 
 	hl_in = &args.in;
 	hl_in->chunks_restore = (__u64) (uintptr_t) in->chunks_restore;
@@ -217,10 +224,12 @@ hlthunk_public int hlthunk_command_submission(int fd, struct hlthunk_cs_in *in,
 hlthunk_public int hlthunk_wait_for_cs(int fd, uint64_t seq,
 					uint64_t timeout_us, uint32_t *status)
 {
-	union hl_wait_cs_args args = {};
+	union hl_wait_cs_args args;
 	struct hl_wait_cs_in *hl_in;
 	struct hl_wait_cs_out *hl_out;
 	int rc;
+
+	memset(&args, 0, sizeof(args));
 
 	hl_in = &args.in;
 	hl_in->seq = seq;
@@ -238,8 +247,9 @@ hlthunk_public int hlthunk_wait_for_cs(int fd, uint64_t seq,
 
 hlthunk_public enum hl_pci_ids hlthunk_get_device_type_from_fd(int fd)
 {
-	struct hlthunk_hw_ip_info hw_ip = {};
+	struct hlthunk_hw_ip_info hw_ip;
 
+	memset(&hw_ip, 0, sizeof(hw_ip));
 	if (hlthunk_get_hw_ip_info(fd, &hw_ip))
 		return PCI_IDS_INVALID;
 
@@ -264,9 +274,10 @@ hlthunk_public int hlthunk_get_info(int fd, struct hl_info_args *info)
 hlthunk_public uint64_t hlthunk_device_memory_alloc(int fd, uint64_t size,
 						bool contiguous, bool shared)
 {
-	union hl_mem_args ioctl_args = {0};
+	union hl_mem_args ioctl_args;
 	int rc;
 
+	memset(&ioctl_args, 0, sizeof(ioctl_args));
 	ioctl_args.in.alloc.mem_size = (uint32_t) size;
 	if (contiguous)
 		ioctl_args.in.flags |= HL_MEM_CONTIGUOUS;
@@ -290,8 +301,9 @@ hlthunk_public uint64_t hlthunk_device_memory_alloc(int fd, uint64_t size,
  */
 hlthunk_public int hlthunk_device_memory_free(int fd, uint64_t handle)
 {
-	union hl_mem_args ioctl_args = {0};
+	union hl_mem_args ioctl_args;
 
+	memset(&ioctl_args, 0, sizeof(ioctl_args));
 	ioctl_args.in.free.handle = handle;
 	ioctl_args.in.op = HL_MEM_OP_FREE;
 
@@ -311,9 +323,10 @@ hlthunk_public int hlthunk_device_memory_free(int fd, uint64_t handle)
 hlthunk_public uint64_t hlthunk_device_memory_map(int fd, uint64_t handle,
 							uint64_t hint_addr)
 {
-	union hl_mem_args ioctl_args = {0};
+	union hl_mem_args ioctl_args;
 	int rc;
 
+	memset(&ioctl_args, 0, sizeof(ioctl_args));
 	ioctl_args.in.map_device.hint_addr = hint_addr;
 	ioctl_args.in.map_device.handle = handle;
 	ioctl_args.in.op = HL_MEM_OP_MAP;
@@ -340,9 +353,10 @@ hlthunk_public uint64_t hlthunk_host_memory_map(int fd, void *host_virt_addr,
 						uint64_t hint_addr,
 						uint64_t host_size)
 {
-	union hl_mem_args ioctl_args = {0};
+	union hl_mem_args ioctl_args;
 	int rc;
 
+	memset(&ioctl_args, 0, sizeof(ioctl_args));
 	ioctl_args.in.map_host.host_virt_addr = (uint64_t) host_virt_addr;
 	ioctl_args.in.map_host.mem_size = host_size;
 	ioctl_args.in.map_host.hint_addr = hint_addr;
@@ -366,8 +380,9 @@ hlthunk_public uint64_t hlthunk_host_memory_map(int fd, void *host_virt_addr,
  */
 hlthunk_public int hlthunk_memory_unmap(int fd, uint64_t device_virt_addr)
 {
-	union hl_mem_args ioctl_args = {0};
+	union hl_mem_args ioctl_args;
 
+	memset(&ioctl_args, 0, sizeof(ioctl_args));
 	ioctl_args.in.unmap.device_virt_addr = device_virt_addr;
 	ioctl_args.in.op = HL_MEM_OP_UNMAP;
 

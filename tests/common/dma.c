@@ -176,7 +176,7 @@ void test_dma_4_queues(void **state)
 	struct hltests_cs_chunk restore_arr[1], execute_arr[4];
 	void *host_src, *host_dst, *dram_addr[2], *restore_cb, *dma_cb[4];
 	uint64_t host_src_device_va, host_dst_device_va, sram_addr, seq;
-	uint32_t dma_size, page_size, restore_cb_size = 0, dma_cb_size[4] = {};
+	uint32_t dma_size, page_size, restore_cb_size = 0, dma_cb_size[4];
 	int rc, fd = tests_state->fd, i;
 
 	/* SRAM MAP (base + ):
@@ -196,6 +196,7 @@ void test_dma_4_queues(void **state)
 
 	dma_size = 128;
 	page_size = sysconf(_SC_PAGESIZE);
+	memset(dma_cb_size, 0, sizeof(dma_cb_size));
 
 	/* Allocate memory on host and DRAM and set the SRAM address */
 	host_src = hltests_allocate_host_mem(fd, dma_size, false);
