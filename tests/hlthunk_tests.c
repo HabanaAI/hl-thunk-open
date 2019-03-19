@@ -1258,6 +1258,16 @@ int hltests_dma_test(void **state, bool is_ddr, uint64_t size)
 	return 0;
 }
 
+/**
+ * This function submits a single command buffer for a specific queue, and
+ * waits for it.
+ * @param fd file descriptor of the device
+ * @param cb_ptr a pointer to the command buffer
+ * @param cb_size the size of the command buffer
+ * @param queue_index the allocated queue for the command submission
+ * @param destroy_cb true if CB should be destroyed, false otherwise
+ * @return void
+ */
 void hltests_submit_and_wait_cs(int fd, void *cb_ptr, uint32_t cb_size,
 				uint32_t queue_index, bool destroy_cb)
 {

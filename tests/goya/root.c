@@ -207,11 +207,40 @@ void test_mme_qman_write_to_protected_register(void **state)
 	test_qman_write_to_protected_register(state, false);
 }
 
+void test_write_to_mmTPC_PLL_CLK_RLX_0_from_qman(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	uint32_t val_orig, val, page_size = sysconf(_SC_PAGESIZE), offset = 0;
+	void *ptr;
+	int fd = tests_state->fd;
+
+	val_orig = hltests_debugfs_read(fd, CFG_BASE + mmTPC_PLL_CLK_RLX_0);
+
+	hltests_debugfs_write(fd, CFG_BASE + mmTPC_PLL_CLK_RLX_0, 0x300030);
+	val = hltests_debugfs_read(fd, CFG_BASE + mmTPC_PLL_CLK_RLX_0);
+	assert_int_equal(val, 0x300030);
+
+	ptr = hltests_create_cb(fd, page_size, true, 0);
+	assert_ptr_not_equal(ptr, NULL);
+
+	offset = hltests_add_msg_long_pkt(fd, ptr, offset, false, false,
+			CFG_BASE + mmTPC_PLL_CLK_RLX_0, 0x400040);
+
+	hltests_submit_and_wait_cs(fd, ptr, offset,
+				hltests_get_dma_down_qid(fd, 0, 0), true);
+
+	val = hltests_debugfs_read(fd, CFG_BASE + mmTPC_PLL_CLK_RLX_0);
+	assert_int_equal(val, 0x400040);
+
+	hltests_debugfs_write(fd, CFG_BASE + mmTPC_PLL_CLK_RLX_0, val_orig);
+}
+
 const struct CMUnitTest root_tests[] = {
 	cmocka_unit_test(test_debugfs_sram_read_write),
 	cmocka_unit_test(test_write_to_cfg_space),
 	cmocka_unit_test(test_tpc_qman_write_to_protected_register),
 	cmocka_unit_test(test_mme_qman_write_to_protected_register),
+	cmocka_unit_test(test_write_to_mmTPC_PLL_CLK_RLX_0_from_qman)
 };
 
 int main(void)
