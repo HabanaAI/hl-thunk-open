@@ -1291,20 +1291,29 @@ void hltests_submit_and_wait_cs(int fd, void *cb_ptr, uint32_t cb_size,
 	}
 }
 
+static bool is_dev_idle_and_operational(int fd)
+{
+	enum hl_device_status dev_status;
+	bool is_idle;
+
+	is_idle = hlthunk_is_device_idle(fd);
+	dev_status = hlthunk_get_device_status_info(fd);
+
+	return (is_idle && dev_status == HL_DEVICE_STATUS_OPERATIONAL);
+}
+
 int hl_tests_ensure_device_operational(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int fd = tests_state->fd;
-	int fd_for_timeout_locked = 0;
+	int fd_for_timeout_locked = 0, rc;
 	unsigned int timeout_locked = 5, i;
-	enum hl_device_status dev_status;
 
-	dev_status = hlthunk_get_device_status_info(fd);
-	if (dev_status == HL_DEVICE_STATUS_OPERATIONAL)
+	if (is_dev_idle_and_operational(fd))
 		return 0;
 
-	fd_for_timeout_locked = 
-		open("/sys/module/habanalabs/parameters/timeout_locked", 
+	fd_for_timeout_locked =
+		open("/sys/module/habanalabs/parameters/timeout_locked",
 								O_RDONLY);
 
 	if (fd_for_timeout_locked < 0) {
@@ -1312,13 +1321,19 @@ int hl_tests_ensure_device_operational(void **state)
 		return errno;
 	}
 
-	read(fd_for_timeout_locked, &timeout_locked, sizeof(timeout_locked));
+	rc = read(fd_for_timeout_locked, &timeout_locked,
+					sizeof(timeout_locked));
+	if (rc < 0) {
+		printf("Failed to read timeout_locked\n");
+		close(fd_for_timeout_locked);
+		return errno;
+	}
+
 	close(fd_for_timeout_locked);
 
 	for (i = 0 ; i <= timeout_locked ; i++) {
 		sleep(1);
-		dev_status = hlthunk_get_device_status_info(fd);
-		if (dev_status == HL_DEVICE_STATUS_OPERATIONAL)
+		if (is_dev_idle_and_operational(fd))
 			return 0;
 	}
 
