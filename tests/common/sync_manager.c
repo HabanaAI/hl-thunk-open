@@ -549,12 +549,16 @@ void test_sm_pingpong_mme_cmdq(void **state)
 }
 
 const struct CMUnitTest sm_tests[] = {
-	cmocka_unit_test(test_sm_tpc),
-	cmocka_unit_test(test_sm_mme),
-	cmocka_unit_test(test_sm_pingpong_tpc_qman),
-	cmocka_unit_test(test_sm_pingpong_mme_qman),
-	cmocka_unit_test(test_sm_pingpong_tpc_cmdq),
-	cmocka_unit_test(test_sm_pingpong_mme_cmdq),
+	cmocka_unit_test_setup(test_sm_tpc, hl_tests_ensure_device_operational),
+	cmocka_unit_test_setup(test_sm_mme, hl_tests_ensure_device_operational),
+	cmocka_unit_test_setup(test_sm_pingpong_tpc_qman,
+				hl_tests_ensure_device_operational),
+	cmocka_unit_test_setup(test_sm_pingpong_mme_qman,
+				hl_tests_ensure_device_operational),
+	cmocka_unit_test_setup(test_sm_pingpong_tpc_cmdq,
+				hl_tests_ensure_device_operational),
+	cmocka_unit_test_setup(test_sm_pingpong_mme_cmdq,
+				hl_tests_ensure_device_operational),
 };
 
 int main(void)

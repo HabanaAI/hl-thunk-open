@@ -177,7 +177,6 @@ hlthunk_public enum hl_device_status hlthunk_get_device_status_info(int fd)
 		return rc;
 
 	return hl_dev_status.status;
-
 }
 
 hlthunk_public int hlthunk_request_command_buffer(int fd, uint32_t cb_size,

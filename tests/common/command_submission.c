@@ -101,9 +101,11 @@ void test_cs_msg_long_2000(void **state)
 }
 
 const struct CMUnitTest cs_tests[] = {
-	cmocka_unit_test(test_cs_nop),
-	cmocka_unit_test(test_cs_msg_long),
-	cmocka_unit_test(test_cs_msg_long_2000),
+	cmocka_unit_test_setup(test_cs_nop, hl_tests_ensure_device_operational),
+	cmocka_unit_test_setup(test_cs_msg_long,
+					hl_tests_ensure_device_operational),
+	cmocka_unit_test_setup(test_cs_msg_long_2000,
+					hl_tests_ensure_device_operational),
 };
 
 int main(void)

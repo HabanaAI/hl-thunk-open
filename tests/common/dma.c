@@ -361,11 +361,16 @@ void test_dma_512_threads(void **state)
 }
 
 const struct CMUnitTest dma_tests[] = {
-	cmocka_unit_test(test_dma_entire_sram_random),
-	cmocka_unit_test(test_dma_4_queues),
-	cmocka_unit_test(test_dma_8_threads),
-	cmocka_unit_test(test_dma_64_threads),
-	cmocka_unit_test(test_dma_512_threads),
+	cmocka_unit_test_setup(test_dma_entire_sram_random,
+			hl_tests_ensure_device_operational),
+	cmocka_unit_test_setup(test_dma_4_queues,
+			hl_tests_ensure_device_operational),
+	cmocka_unit_test_setup(test_dma_8_threads,
+			hl_tests_ensure_device_operational),
+	cmocka_unit_test_setup(test_dma_64_threads,
+			hl_tests_ensure_device_operational),
+	cmocka_unit_test_setup(test_dma_512_threads,
+			hl_tests_ensure_device_operational),
 };
 
 int main(void)

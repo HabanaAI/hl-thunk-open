@@ -1290,3 +1290,38 @@ void hltests_submit_and_wait_cs(int fd, void *cb_ptr, uint32_t cb_size,
 		assert_int_equal(rc, 0);
 	}
 }
+
+int hl_tests_ensure_device_operational(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	int fd = tests_state->fd;
+	int fd_for_timeout_locked = 0;
+	unsigned int timeout_locked = 5, i;
+	enum hl_device_status dev_status;
+
+	dev_status = hlthunk_get_device_status_info(fd);
+	if (dev_status == HL_DEVICE_STATUS_OPERATIONAL)
+		return 0;
+
+	fd_for_timeout_locked = 
+		open("/sys/module/habanalabs/parameters/timeout_locked", 
+								O_RDONLY);
+
+	if (fd_for_timeout_locked < 0) {
+		printf("Failed to open timeout_locked\n");
+		return errno;
+	}
+
+	read(fd_for_timeout_locked, &timeout_locked, sizeof(timeout_locked));
+	close(fd_for_timeout_locked);
+
+	for (i = 0 ; i <= timeout_locked ; i++) {
+		sleep(1);
+		dev_status = hlthunk_get_device_status_info(fd);
+		if (dev_status == HL_DEVICE_STATUS_OPERATIONAL)
+			return 0;
+	}
+
+	/*if we got here it means that something is broken*/
+	exit(-1);
+}

@@ -99,7 +99,8 @@ void test_map_bigger_than_4GB(void **state)
 }
 
 const struct CMUnitTest memory_tests[] = {
-	cmocka_unit_test(test_map_bigger_than_4GB),
+	cmocka_unit_test_setup(test_map_bigger_than_4GB,
+				hl_tests_ensure_device_operational),
 };
 
 int main(void)

@@ -197,6 +197,8 @@ int hltests_wait_for_cs(int fd, uint64_t seq);
 void hltests_submit_and_wait_cs(int fd, void *cb_ptr, uint32_t cb_size,
 				uint32_t queue_index, bool destroy_cb);
 
+int hl_tests_ensure_device_operational(void **state);
+
 /* ASIC functions */
 uint32_t hltests_add_nop_pkt(int fd, void *buffer, uint32_t buf_off,
 					bool eb, bool mb);
