@@ -79,6 +79,7 @@ hlthunk_public enum hl_pci_ids hlthunk_get_device_type_from_fd(int fd);
 hlthunk_public int hlthunk_get_hw_ip_info(int fd,
 					struct hlthunk_hw_ip_info *hw_ip);
 hlthunk_public enum hl_device_status hlthunk_get_device_status_info(int fd);
+hlthunk_public bool hlthunk_is_device_idle(int fd);
 hlthunk_public int hlthunk_get_info(int fd, struct hl_info_args *info);
 
 hlthunk_public int hlthunk_request_command_buffer(int fd, uint32_t cb_size,

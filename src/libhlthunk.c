@@ -179,6 +179,25 @@ hlthunk_public enum hl_device_status hlthunk_get_device_status_info(int fd)
 	return hl_dev_status.status;
 }
 
+hlthunk_public bool hlthunk_is_device_idle(int fd)
+{
+	struct hl_info_args args;
+	struct hl_info_hw_idle hl_hw_idle;
+	int rc;
+
+	memset(&args, 0, sizeof(args));
+
+	args.op = HL_INFO_HW_IDLE;
+	args.return_pointer = (__u64) (uintptr_t) &hl_hw_idle;
+	args.return_size = sizeof(hl_hw_idle);
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	if (rc)
+		return false;
+
+	return hl_hw_idle.is_idle;
+}
+
 hlthunk_public int hlthunk_request_command_buffer(int fd, uint32_t cb_size,
 							uint64_t *cb_handle)
 {
