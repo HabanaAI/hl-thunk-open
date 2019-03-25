@@ -160,6 +160,26 @@ hlthunk_public int hlthunk_get_hw_ip_info(int fd,
 	return 0;
 }
 
+hlthunk_public enum hl_device_status hlthunk_get_device_status_info(int fd)
+{
+	struct hl_info_args args;
+	struct hl_info_device_status hl_dev_status;
+	int rc;
+
+	memset(&args, 0, sizeof(args));
+
+	args.op = HL_INFO_DEVICE_STATUS;
+	args.return_pointer = (__u64) (uintptr_t) &hl_dev_status;
+	args.return_size = sizeof(hl_dev_status);
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	if (rc)
+		return rc;
+
+	return hl_dev_status.status;
+
+}
+
 hlthunk_public int hlthunk_request_command_buffer(int fd, uint32_t cb_size,
 							uint64_t *cb_handle)
 {
