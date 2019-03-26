@@ -1306,8 +1306,9 @@ int hl_tests_ensure_device_operational(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int fd = tests_state->fd;
-	int fd_for_timeout_locked = 0, rc;
-	unsigned int timeout_locked = 5, i;
+	int fd_for_timeout_locked, rc;
+	unsigned int timeout_locked, i;
+	char tmp_buff[4] = {0};
 
 	if (is_dev_idle_and_operational(fd))
 		return 0;
@@ -1321,8 +1322,7 @@ int hl_tests_ensure_device_operational(void **state)
 		return errno;
 	}
 
-	rc = read(fd_for_timeout_locked, &timeout_locked,
-					sizeof(timeout_locked));
+	rc = read(fd_for_timeout_locked, &tmp_buff, sizeof(tmp_buff) - 1);
 	if (rc < 0) {
 		printf("Failed to read timeout_locked\n");
 		close(fd_for_timeout_locked);
@@ -1330,7 +1330,7 @@ int hl_tests_ensure_device_operational(void **state)
 	}
 
 	close(fd_for_timeout_locked);
-
+	sscanf(tmp_buff, "%d", &timeout_locked);
 	for (i = 0 ; i <= timeout_locked ; i++) {
 		sleep(1);
 		if (is_dev_idle_and_operational(fd))
