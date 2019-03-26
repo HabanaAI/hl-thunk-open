@@ -34,13 +34,21 @@
 #include <errno.h>
 #include <unistd.h>
 
+/**
+ * This test checks that a mapping of more than 4GB is successful. This big size
+ * enforces the KMD to store it in a u64 variable rather than u32 variable.
+ * In addition the test performs DMA transfers to verify that the mapping is
+ * correct.
+ * The DMA size shouldn't be too big to avoid too big command buffers.
+ * @param state contains the open file descriptor.
+ */
 void test_map_bigger_than_4GB(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
 	void *device_addr, *src_ptr, *dst_ptr;
 	uint64_t host_src_addr, host_dst_addr, total_size = (1ull << 30) * 5,
-		dma_size = 1 << 29, offset = 0;
+		dma_size = 1 << 26, offset = 0;
 	uint32_t dma_dir_down, dma_dir_up;
 	int rc, fd = tests_state->fd;
 
