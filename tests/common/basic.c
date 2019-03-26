@@ -43,8 +43,7 @@ void test_open_device_success(void **state)
 }
 
 const struct CMUnitTest open_device_tests[] = {
-	cmocka_unit_test_setup(test_open_device_success,
-				hl_tests_ensure_device_operational)
+	cmocka_unit_test(test_open_device_success)
 };
 
 int main(void)

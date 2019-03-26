@@ -66,6 +66,10 @@ DMA_1KB_INC_DDR(test_dma_ddr_size_15MB, state, 15 * 1024 * 1024)
 const struct CMUnitTest dma_1MB_inc_tests[] = {
 	cmocka_unit_test_setup(test_dma_sram_size_2MB,
 			hl_tests_ensure_device_operational),
+	cmocka_unit_test_setup(test_dma_sram_size_3MB,
+			hl_tests_ensure_device_operational),
+	cmocka_unit_test_setup(test_dma_sram_size_4MB,
+			hl_tests_ensure_device_operational),
 	cmocka_unit_test_setup(test_dma_sram_size_5MB,
 			hl_tests_ensure_device_operational),
 	cmocka_unit_test_setup(test_dma_sram_size_6MB,
