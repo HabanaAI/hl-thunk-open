@@ -75,6 +75,9 @@ void test_map_bigger_than_4GB(void **state)
 	memset(dst_ptr, 0, dma_size);
 	host_dst_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
 
+	/* We don't need to transfer the entire size.
+	 * Do a sample DMA every 512MB
+	 */
 	while (offset < total_size) {
 		/* DMA: host->device */
 		hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, 0, 0), 0,
@@ -93,7 +96,7 @@ void test_map_bigger_than_4GB(void **state)
 				dst_ptr, dma_size);
 		assert_int_equal(rc, 0);
 
-		offset += dma_size;
+		offset += (1ull << 29);
 	}
 
 	/* Cleanup */
