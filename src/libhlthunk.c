@@ -47,23 +47,8 @@ static int hlthunk_ioctl(int fd, unsigned long request, void *arg)
 	return ret;
 }
 
-static const char* hlthunk_get_device_name_by_type(int type)
+static int hlthunk_open_by_busid(const char *busid)
 {
-	switch (type) {
-	case HLTHUNK_NODE_PRIMARY:
-		return HLTHUNK_DEV_NAME_PRIMARY;
-	default:
-		return NULL;
-	}
-}
-
-static int hlthunk_open_by_busid(const char *busid, int type)
-{
-	const char *dev_name = hlthunk_get_device_name_by_type(type);
-
-	if (!dev_name)
-		return -1;
-
 	return -1;
 }
 
@@ -78,17 +63,36 @@ static int hlthunk_open_minor(int minor, const char *dev_name)
 	return -errno;
 }
 
-static int hlthunk_open_device(int type)
+static enum hlthunk_device_name hlthunk_get_device_name_from_fd(int fd)
+{
+	enum hl_pci_ids device_id = hlthunk_get_device_id_from_fd(fd);
+
+	switch (device_id) {
+	case PCI_IDS_GOYA:
+	case PCI_IDS_GOYA_SIMULATOR:
+		return HLTHUNK_DEVICE_GOYA;
+		break;
+	default:
+		printf("Invalid device type %d\n", device_id);
+		break;
+	}
+
+	return HLTHUNK_DEVICE_INVALID;
+}
+
+static int hlthunk_open_device_by_name(enum hlthunk_device_name device_name)
 {
 	int fd, i;
-	const char *dev_name = hlthunk_get_device_name_by_type(type);
 
-	if (!dev_name)
-		return -1;
-
-	for (i = 0 ; i < HLTHUNK_MAX_MINOR ; i++)
-		if ((fd = hlthunk_open_minor(i, dev_name)) >= 0)
-			return fd;
+	for (i = 0 ; i < HLTHUNK_MAX_MINOR ; i++) {
+		fd = hlthunk_open_minor(i, HLTHUNK_DEV_NAME_PRIMARY);
+		if (fd >= 0) {
+			if (hlthunk_get_device_name_from_fd(fd) ==
+								device_name)
+				return fd;
+			hlthunk_close(fd);
+		}
+	}
 
 	return -1;
 }
@@ -104,15 +108,16 @@ hlthunk_public void hlthunk_free(void *pt)
 		free(pt);
 }
 
-hlthunk_public int hlthunk_open(const char *busid)
+hlthunk_public int hlthunk_open(enum hlthunk_device_name device_name,
+				const char *busid)
 {
 	if (busid) {
-		int fd = hlthunk_open_by_busid(busid, HLTHUNK_NODE_PRIMARY);
+		int fd = hlthunk_open_by_busid(busid);
 		if (fd >= 0)
 			return fd;
 	}
 
-	return hlthunk_open_device(HLTHUNK_NODE_PRIMARY);
+	return hlthunk_open_device_by_name(device_name);
 }
 
 hlthunk_public int hlthunk_close(int fd)
@@ -283,7 +288,7 @@ hlthunk_public int hlthunk_wait_for_cs(int fd, uint64_t seq,
 	return 0;
 }
 
-hlthunk_public enum hl_pci_ids hlthunk_get_device_type_from_fd(int fd)
+hlthunk_public enum hl_pci_ids hlthunk_get_device_id_from_fd(int fd)
 {
 	struct hlthunk_hw_ip_info hw_ip;
 

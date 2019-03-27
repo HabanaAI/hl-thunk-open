@@ -30,6 +30,7 @@
 enum hl_pci_ids {
 	PCI_IDS_INVALID		= 0x0000, /* PCI device ID 0 is not legal */
 	PCI_IDS_GOYA		= 0x0001,
+	PCI_IDS_GOYA_SIMULATOR	= 0xff01
 };
 
 #endif /* PCI_IDS_H */

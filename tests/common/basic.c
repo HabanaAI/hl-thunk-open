@@ -37,7 +37,7 @@ void test_open_device_success(void **state)
 	(void) state; /* unused */
 	int fd;
 
-	fd = hlthunk_open(NULL);
+	fd = hlthunk_open(HLTHUNK_DEVICE_GOYA, NULL);
 	assert_in_range(fd, 0, INT_MAX);
 	hlthunk_close(fd);
 }

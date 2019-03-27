@@ -156,12 +156,12 @@ int hltests_open(const char *busid)
 {
 	int fd, rc;
 	struct hltests_device *hdev;
-	enum hl_pci_ids device_type;
+	enum hl_pci_ids device_id;
 	khint_t k;
 
 	pthread_mutex_lock(&table_lock);
 
-	rc = fd = hlthunk_open(busid);
+	rc = fd = hlthunk_open(HLTHUNK_DEVICE_GOYA, busid);
 	if (fd < 0)
 		goto out;
 
@@ -185,14 +185,14 @@ int hltests_open(const char *busid)
 	k = kh_put(ptr, dev_table, fd, &rc);
 	kh_val(dev_table, k) = hdev;
 
-	device_type = hlthunk_get_device_type_from_fd(fd);
+	device_id = hlthunk_get_device_id_from_fd(fd);
 
-	switch (device_type) {
+	switch (device_id) {
 	case PCI_IDS_GOYA:
 		goya_tests_set_asic_funcs(hdev);
 		break;
 	default:
-		printf("Invalid device type %d\n", device_type);
+		printf("Invalid device type %d\n", device_id);
 		rc = -ENXIO;
 		goto remove_device;
 		break;

@@ -38,9 +38,6 @@ extern "C" {
 #define HLTHUNK_MAX_MINOR		16
 #define HLTHUNK_DEV_NAME_PRIMARY	"/dev/hl%d"
 
-#define HLTHUNK_NODE_PRIMARY		0
-#define HLTHUNK_NODE_MAX		1
-
 struct hlthunk_hw_ip_info {
 	uint64_t sram_base_address;
 	uint64_t dram_base_address;
@@ -71,9 +68,15 @@ struct hlthunk_cs_out {
 	uint32_t status;
 };
 
-hlthunk_public int hlthunk_open(const char *busid);
+enum hlthunk_device_name {
+	HLTHUNK_DEVICE_GOYA,
+	HLTHUNK_DEVICE_INVALID
+};
+
+hlthunk_public int hlthunk_open(enum hlthunk_device_name device_name,
+				const char *busid);
 hlthunk_public int hlthunk_close(int fd);
-hlthunk_public enum hl_pci_ids hlthunk_get_device_type_from_fd(int fd);
+hlthunk_public enum hl_pci_ids hlthunk_get_device_id_from_fd(int fd);
 
 /* TODO: split the INFO functions into several "logic" functions */
 hlthunk_public int hlthunk_get_hw_ip_info(int fd,
