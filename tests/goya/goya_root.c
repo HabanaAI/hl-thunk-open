@@ -253,6 +253,9 @@ int main(void)
 	char *test_names_to_run;
 	int rc;
 
+	if (hltests_get_device_name() != HLTHUNK_DEVICE_GOYA)
+		return 0;
+
 	if (access("/sys/kernel/debug", R_OK))
 		return 0;
 

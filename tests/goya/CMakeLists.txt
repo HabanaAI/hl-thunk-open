@@ -8,7 +8,8 @@ include_directories(
 )
 
 set(GOYA_UNIT_TESTS
-    root
+    goya_root
+    goya_dma
 )
 
 foreach(_UNIT_TEST ${GOYA_UNIT_TESTS})

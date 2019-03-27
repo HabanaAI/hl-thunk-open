@@ -27,6 +27,7 @@
 #include "goya/goya_packets.h"
 #include "goya/asic_reg/goya_regs.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -182,7 +183,7 @@ static uint32_t goya_add_cp_dma_pkt(void *buffer, uint32_t buf_off, bool eb,
 						sizeof(packet));
 }
 
-static uint32_t goya_tests_add_monitor_and_fence(void *buffer, uint32_t buf_off,
+static uint32_t goya_add_monitor_and_fence(void *buffer, uint32_t buf_off,
 					uint8_t dcore_id, uint8_t queue_id,
 					bool cmdq_fence, uint32_t so_id,
 					uint32_t mon_id, uint64_t mon_address)
@@ -346,8 +347,30 @@ static uint8_t goya_get_tpc_cnt(uint8_t dcore_id)
 	return TPC_MAX_NUM;
 }
 
+static void goya_dram_pool_init(struct hltests_device *hdev)
+{
+
+}
+
+static void goya_dram_pool_fini(struct hltests_device *hdev)
+{
+
+}
+
+static int goya_dram_pool_alloc(struct hltests_device *hdev, uint64_t size,
+				uint64_t *return_addr)
+{
+	return -EFAULT;
+}
+
+static void goya_dram_pool_free(struct hltests_device *hdev, uint64_t addr,
+					uint64_t size)
+{
+
+}
+
 static const struct hltests_asic_funcs goya_funcs = {
-	.add_monitor_and_fence = goya_tests_add_monitor_and_fence,
+	.add_monitor_and_fence = goya_add_monitor_and_fence,
 	.add_nop_pkt = goya_add_nop_pkt,
 	.add_msg_long_pkt = goya_add_msg_long_pkt,
 	.add_msg_short_pkt = goya_add_msg_short_pkt,
@@ -364,6 +387,10 @@ static const struct hltests_asic_funcs goya_funcs = {
 	.get_tpc_qid = goya_get_tpc_qid,
 	.get_mme_qid = goya_get_mme_qid,
 	.get_tpc_cnt = goya_get_tpc_cnt,
+	.dram_pool_init = goya_dram_pool_init,
+	.dram_pool_fini = goya_dram_pool_fini,
+	.dram_pool_alloc = goya_dram_pool_alloc,
+	.dram_pool_free = goya_dram_pool_free
 };
 
 void goya_tests_set_asic_funcs(struct hltests_device *hdev)

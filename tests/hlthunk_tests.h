@@ -24,6 +24,7 @@
 #ifndef HLTHUNK_TESTS_H
 #define HLTHUNK_TESTS_H
 
+#include "hlthunk.h"
 #include "khash.h"
 
 #include <stdint.h>
@@ -31,7 +32,7 @@
 #include <sys/mman.h>
 #include <stdbool.h>
 
-#define WAIT_FOR_CS_DEFAULT_TIMEOUT	1000000 /* 1 sec */
+#define WAIT_FOR_CS_DEFAULT_TIMEOUT	5000000 /* 5 sec */
 
 #define DMA_1KB_INC_SRAM(func_name, state, size) \
 	void func_name(void **state) { hltests_dma_test(state, false, size); }
@@ -59,6 +60,21 @@ enum hltests_goya_dma_direction {
 
 struct hltests_state {
 	int fd;
+};
+
+struct hltests_device {
+	const struct hltests_asic_funcs *asic_funcs;
+	khash_t(ptr64) *mem_table_host;
+	pthread_mutex_t mem_table_host_lock;
+	khash_t(ptr64) *mem_table_device;
+	pthread_mutex_t mem_table_device_lock;
+	khash_t(ptr64) *cb_table;
+	pthread_mutex_t cb_table_lock;
+	void *priv;
+	int fd;
+	int refcnt;
+	int debugfs_addr_fd;
+	int debugfs_data_fd;
 };
 
 struct hltests_asic_funcs {
@@ -103,6 +119,12 @@ struct hltests_asic_funcs {
 	uint32_t (*get_mme_qid)(uint8_t dcore_id, uint8_t mme_id,
 				uint8_t stream);
 	uint8_t (*get_tpc_cnt)(uint8_t dcore_id);
+	void (*dram_pool_init)(struct hltests_device *hdev);
+	void (*dram_pool_fini)(struct hltests_device *hdev);
+	int (*dram_pool_alloc)(struct hltests_device *hdev, uint64_t size,
+				uint64_t *return_addr);
+	void (*dram_pool_free)(struct hltests_device *hdev, uint64_t addr,
+				uint64_t size);
 };
 
 struct hltests_memory {
@@ -114,6 +136,7 @@ struct hltests_memory {
 	uint64_t size;
 	bool is_huge;
 	bool is_host;
+	bool is_pool;
 };
 
 struct hltests_cb {
@@ -129,24 +152,12 @@ struct hltests_cs_chunk {
 	uint32_t queue_index;
 };
 
-struct hltests_device {
-	const struct hltests_asic_funcs *asic_funcs;
-	khash_t(ptr64) *mem_table_host;
-	pthread_mutex_t mem_table_host_lock;
-	khash_t(ptr64) *mem_table_device;
-	pthread_mutex_t mem_table_device_lock;
-	khash_t(ptr64) *cb_table;
-	pthread_mutex_t cb_table_lock;
-	int fd;
-	int refcnt;
-	int debugfs_addr_fd;
-	int debugfs_data_fd;
-};
-
 int hltests_init(void);
 void hltests_fini(void);
 int hltests_open(const char *busid);
 int hltests_close(int fd);
+
+enum hlthunk_device_name hltests_get_device_name(void);
 
 void* hltests_cb_mmap(int fd, size_t len, off_t offset);
 int hltests_cb_munmap(void *addr, size_t length);
@@ -253,5 +264,11 @@ uint32_t hltests_get_mme_qid(int fd, uint8_t dcore_id, uint8_t mme_id,
 uint8_t hltests_get_tpc_cnt(int fd, uint8_t dcore_id);
 
 void goya_tests_set_asic_funcs(struct hltests_device *hdev);
+
+/* Generic memory addresses pool */
+void *hltests_mem_pool_init(uint64_t start_addr, uint64_t size, uint64_t order);
+void hltests_mem_pool_fini(void *data);
+int hltests_mem_pool_alloc(void *data, uint64_t size, uint64_t *addr);
+void hltests_mem_pool_free(void *data, uint64_t addr, uint64_t size);
 
 #endif /* HLTHUNK_TESTS_H */

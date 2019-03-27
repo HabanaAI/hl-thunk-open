@@ -37,9 +37,10 @@ void test_open_device_success(void **state)
 	(void) state; /* unused */
 	int fd;
 
-	fd = hlthunk_open(HLTHUNK_DEVICE_GOYA, NULL);
+	fd = hlthunk_open(hltests_get_device_name(), NULL);
+
 	assert_in_range(fd, 0, INT_MAX);
-	hlthunk_close(fd);
+	assert_int_equal(hlthunk_close(fd), 0);
 }
 
 const struct CMUnitTest open_device_tests[] = {

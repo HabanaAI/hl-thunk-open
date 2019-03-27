@@ -22,7 +22,6 @@
  */
 
 #include "hlthunk_tests.h"
-#include "hlthunk.h"
 #include "specs/pci_ids.h"
 #include "mersenne-twister.h"
 
@@ -44,6 +43,14 @@
 
 #include <setjmp.h>
 #include <cmocka.h>
+
+typedef struct {
+	pthread_mutex_t lock;
+	uint64_t start;
+	uint32_t page_size;
+	uint32_t pool_npages;
+	uint8_t *pool;
+} mem_pool_t;
 
 static pthread_mutex_t table_lock = PTHREAD_MUTEX_INITIALIZER;
 static khash_t(ptr) *dev_table;
@@ -152,6 +159,20 @@ void hltests_fini(void)
 		kh_destroy(ptr, dev_table);
 }
 
+enum hlthunk_device_name hltests_get_device_name(void)
+{
+	char *device_name = getenv("HLTHUNK_DEVICE_NAME");
+	if (!device_name)
+		device_name = "Goya";
+
+	if (!strcmp(device_name, "Goya"))
+		return HLTHUNK_DEVICE_GOYA;
+
+	printf("Invalid device name %s\n", device_name);
+
+	return HLTHUNK_DEVICE_INVALID;
+}
+
 int hltests_open(const char *busid)
 {
 	int fd, rc;
@@ -161,7 +182,7 @@ int hltests_open(const char *busid)
 
 	pthread_mutex_lock(&table_lock);
 
-	rc = fd = hlthunk_open(HLTHUNK_DEVICE_GOYA, busid);
+	rc = fd = hlthunk_open(hltests_get_device_name(), busid);
 	if (fd < 0)
 		goto out;
 
@@ -197,6 +218,8 @@ int hltests_open(const char *busid)
 		goto remove_device;
 		break;
 	}
+
+	hdev->asic_funcs->dram_pool_init(hdev);
 
 	hdev->debugfs_addr_fd = -1;
 	hdev->debugfs_data_fd = -1;
@@ -243,6 +266,8 @@ int hltests_close(int fd)
 		pthread_mutex_unlock(&table_lock);
 		return 0;
 	}
+
+	hdev->asic_funcs->dram_pool_fini(hdev);
 
 	destroy_mem_maps(hdev);
 
@@ -536,6 +561,7 @@ free_mem_struct:
  */
 void* hltests_allocate_device_mem(int fd, uint64_t size)
 {
+	const struct hltests_asic_funcs *asic;
 	struct hltests_device *hdev;
 	struct hltests_memory *mem;
 	khint_t k;
@@ -545,6 +571,8 @@ void* hltests_allocate_device_mem(int fd, uint64_t size)
 	if (!hdev)
 		return NULL;
 
+	asic = hdev->asic_funcs;
+
 	mem = hlthunk_malloc(sizeof(struct hltests_memory));
 	if (!mem)
 		return NULL;
@@ -552,20 +580,28 @@ void* hltests_allocate_device_mem(int fd, uint64_t size)
 	mem->is_host = false;
 	mem->size = size;
 
-	mem->device_handle = hlthunk_device_memory_alloc(fd, size, false,
-							false);
+	if (!asic->dram_pool_alloc(hdev, size, &mem->device_virt_addr)) {
+		mem->is_pool = true;
+	} else {
+		mem->is_pool = false;
+		mem->device_handle = hlthunk_device_memory_alloc(fd, size,
+								false,
+								false);
 
-	if (!mem->device_handle) {
-		printf("Failed to allocate %lu bytes of device memory\n", size);
-		goto free_mem_struct;
-	}
+		if (!mem->device_handle) {
+			printf(
+				"Failed to allocate %lu bytes of device memory\n",
+					size);
+			goto free_mem_struct;
+		}
 
-	mem->device_virt_addr = hlthunk_device_memory_map(fd,
+		mem->device_virt_addr = hlthunk_device_memory_map(fd,
 							mem->device_handle, 0);
 
-	if (!mem->device_virt_addr) {
-		printf("Failed to map device memory allocation\n");
-		goto free_allocation;
+		if (!mem->device_virt_addr) {
+			printf("Failed to map device memory allocation\n");
+			goto free_allocation;
+		}
 	}
 
 	pthread_mutex_lock(&hdev->mem_table_device_lock);
@@ -640,6 +676,7 @@ int hltests_free_host_mem(int fd, void *vaddr)
  */
 int hltests_free_device_mem(int fd, void *vaddr)
 {
+	const struct hltests_asic_funcs *asic;
 	struct hltests_device *hdev;
 	struct hltests_memory *mem;
 	khint_t k;
@@ -648,6 +685,8 @@ int hltests_free_device_mem(int fd, void *vaddr)
 	hdev = get_hdev_from_fd(fd);
 	if (!hdev)
 		return -ENODEV;
+
+	asic = hdev->asic_funcs;
 
 	pthread_mutex_lock(&hdev->mem_table_device_lock);
 
@@ -662,13 +701,18 @@ int hltests_free_device_mem(int fd, void *vaddr)
 
 	pthread_mutex_unlock(&hdev->mem_table_device_lock);
 
-	rc = hlthunk_memory_unmap(fd, mem->device_virt_addr);
-	if (rc) {
-		printf("Failed to unmap device memory\n");
-		return rc;
-	}
+	if (mem->is_pool) {
+		asic->dram_pool_free(hdev, mem->device_virt_addr,
+						mem->size);
+	} else {
+		rc = hlthunk_memory_unmap(fd, mem->device_virt_addr);
+		if (rc) {
+			printf("Failed to unmap device memory\n");
+			return rc;
+		}
 
-	hlthunk_device_memory_free(fd, mem->device_handle);
+		hlthunk_device_memory_free(fd, mem->device_handle);
+	}
 
 	hlthunk_free(mem);
 
@@ -1213,7 +1257,8 @@ int hltests_dma_test(void **state, bool is_ddr, uint64_t size)
 		dma_dir_down = GOYA_DMA_HOST_TO_DRAM;
 		dma_dir_up = GOYA_DMA_DRAM_TO_HOST;
 	} else {
-		assert_in_range(size, 1, hw_ip.sram_size);
+		if (size < 1 || size > hw_ip.sram_size)
+			return 0;
 		device_addr = (void *) (uintptr_t) hw_ip.sram_base_address;
 
 		dma_dir_down = GOYA_DMA_HOST_TO_SRAM;
@@ -1339,4 +1384,104 @@ int hl_tests_ensure_device_operational(void **state)
 
 	/*if we got here it means that something is broken*/
 	exit(-1);
+}
+
+void *hltests_mem_pool_init(uint64_t start_addr, uint64_t size, uint64_t order)
+{
+	mem_pool_t *mem_pool;
+	uint64_t page_size;
+	int rc;
+
+	page_size = 1 << order;
+
+	if (size < page_size) {
+		printf("pool size should be at least one order size\n");
+		return NULL;
+	}
+
+	mem_pool = calloc(1, sizeof(mem_pool_t));
+	if (!mem_pool)
+		return NULL;
+
+	mem_pool->start = start_addr;
+	mem_pool->page_size = page_size;
+	mem_pool->pool_npages = (size + (page_size - 1)) >> order;
+	mem_pool->pool = calloc(mem_pool->pool_npages, 1);
+	if (!mem_pool->pool)
+		goto free_struct;
+
+	rc = pthread_mutex_init(&mem_pool->lock, NULL);
+	if (rc)
+		goto free_pool;
+
+	return mem_pool;
+
+free_pool:
+	free(mem_pool->pool);
+free_struct:
+	free(mem_pool);
+
+	return NULL;
+}
+
+void hltests_mem_pool_fini(void *data)
+{
+	mem_pool_t *mem_pool = (mem_pool_t *) data;
+	pthread_mutex_destroy(&mem_pool->lock);
+	free(mem_pool->pool);
+	free(mem_pool);
+}
+
+int hltests_mem_pool_alloc(void *data, uint64_t size, uint64_t *addr)
+{
+	mem_pool_t *mem_pool = (mem_pool_t *) data;
+	uint32_t needed_npages, curr_npages = 0, i, j, k;
+	bool found = false;
+
+	needed_npages = (size + mem_pool->page_size - 1) / mem_pool->page_size;
+
+	pthread_mutex_lock(&mem_pool->lock);
+
+	for (i = 0 ; i < mem_pool->pool_npages ; i++) {
+		for (j = i ; j < mem_pool->pool_npages ; j++) {
+			if (mem_pool->pool[j]) {
+				i = j;
+				break;
+			}
+
+			curr_npages++;
+
+			if (curr_npages == needed_npages) {
+				for (k = i ; k <= j ; k++)
+					mem_pool->pool[k] = 1;
+
+				found = true;
+				break;
+			}
+		}
+
+		if (found) {
+			*addr = mem_pool->start + i * mem_pool->page_size;
+			break;
+		}
+
+	}
+
+	pthread_mutex_unlock(&mem_pool->lock);
+
+	return found ? 0 : -ENOMEM;
+}
+
+void hltests_mem_pool_free(void *data, uint64_t addr, uint64_t size)
+{
+	mem_pool_t *mem_pool = (mem_pool_t *) data;
+	uint32_t start_page = (addr - mem_pool->start) / mem_pool->page_size,
+			npages = size / mem_pool->page_size, i;
+
+	pthread_mutex_lock(&mem_pool->lock);
+
+	for (i = start_page ; i < (start_page + npages) ; i++)
+		mem_pool->pool[i] = 0;
+
+	pthread_mutex_unlock(&mem_pool->lock);
 }
