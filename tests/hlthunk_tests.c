@@ -389,6 +389,30 @@ void hltests_debugfs_write(int fd, uint64_t full_address, uint32_t val)
 		printf("Failed to write to debugfs data fd [rc %zd]\n", size);
 }
 
+static int hltests_is_mmu(bool *mmu_enable)
+{
+	int fd_mmu;
+	char c;
+
+	fd_mmu = open("/sys/module/habanalabs/parameters/mmu_enable", O_RDONLY);
+	if (fd_mmu < 0) {
+		printf("Failed to open mmu_enable\n");
+		return errno;
+	}
+
+	if (read(fd_mmu, &c, 1) <= 0) {
+		printf("Failed to read mmu_enable\n");
+		close(fd_mmu);
+		return errno;
+	}
+
+	close(fd_mmu);
+
+	*mmu_enable = c == '1';
+
+	return 0;
+}
+
 int hltests_setup(void **state)
 {
 	struct hltests_state *tests_state;
@@ -411,16 +435,27 @@ int hltests_setup(void **state)
 		goto fini_tests;
 	}
 
+	rc = hltests_is_mmu(&tests_state->mmu);
+	if (rc) {
+		printf("Failed to detect if MMU is enabled on device %d, %d\n",
+			tests_state->fd, rc);
+		goto close_fd;
+	}
+
 	*state = tests_state;
 
 	seed(time(NULL));
 
 	return 0;
 
+close_fd:
+	if (hltests_close(tests_state->fd))
+		printf("Problem in closing FD, ignoring...\n");
 fini_tests:
 	hltests_fini();
 free_state:
 	hlthunk_free(tests_state);
+
 	return rc;
 }
 

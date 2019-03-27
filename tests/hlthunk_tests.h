@@ -60,6 +60,7 @@ enum hltests_goya_dma_direction {
 
 struct hltests_state {
 	int fd;
+	bool mmu;
 };
 
 struct hltests_device {
