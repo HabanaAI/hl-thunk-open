@@ -70,13 +70,13 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 		uint8_t tpc_id;
 		for (tpc_id = 0 ;
 			(!(hw_ip.tpc_enabled_mask & (0x1 << tpc_id))) &&
-			(tpc_id < hltests_get_tpc_cnt(fd)) ; tpc_id++);
+			(tpc_id < hltests_get_tpc_cnt(fd, 0)) ; tpc_id++);
 
-		assert_in_range(tpc_id, 0, hltests_get_tpc_cnt(fd) - 1);
+		assert_in_range(tpc_id, 0, hltests_get_tpc_cnt(fd, 0) - 1);
 
-		engine_qid = hltests_get_tpc_qid(fd, tpc_id, 0);
+		engine_qid = hltests_get_tpc_qid(fd, 0, tpc_id, 0);
 	} else {
-		engine_qid = hltests_get_mme_qid(fd, 0, 0);
+		engine_qid = hltests_get_mme_qid(fd, 0, 0, 0);
 	}
 
 	engine_cb_sram_addr = hw_ip.sram_base_address + 0x3000;
@@ -97,7 +97,7 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 	assert_ptr_not_equal(restore_cb, NULL);
 	restore_cb_size = 0;
 	restore_cb_size = hltests_add_set_sob_pkt(fd, restore_cb,
-					restore_cb_size, false, false, 0, 0);
+					restore_cb_size, false, false, 0, 0, 0);
 	restore_cb_size = hltests_add_dma_pkt(fd, restore_cb, restore_cb_size,
 					false, true, engine_cb_device_va,
 					engine_cb_sram_addr, engine_cb_size,
@@ -107,14 +107,14 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 	dma_cb = hltests_create_cb(fd, page_size, true, 0);
 	assert_ptr_not_equal(dma_cb, NULL);
 	dma_cb_size = 0;
-	dma_cb_size = hltests_add_monitor_and_fence(fd, dma_cb, dma_cb_size,
-						hltests_get_dma_down_qid(fd, 0),
-						false, 0, 0, 0);
+	dma_cb_size = hltests_add_monitor_and_fence(fd, dma_cb, dma_cb_size, 0,
+					hltests_get_dma_down_qid(fd, 0, 0),
+					false, 0, 0, 0);
 
 	/* Submit CS and wait for completion */
 	restore_arr[0].cb_ptr = restore_cb;
 	restore_arr[0].cb_size = restore_cb_size;
-	restore_arr[0].queue_index = hltests_get_dma_down_qid(fd, 0);
+	restore_arr[0].queue_index = hltests_get_dma_down_qid(fd, 0, 0);
 
 	execute_arr[0].cb_ptr = engine_cb;
 	execute_arr[0].cb_size = engine_cb_size;
@@ -122,7 +122,7 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 
 	execute_arr[1].cb_ptr = dma_cb;
 	execute_arr[1].cb_size = dma_cb_size;
-	execute_arr[1].queue_index = hltests_get_dma_down_qid(fd, 0);
+	execute_arr[1].queue_index = hltests_get_dma_down_qid(fd, 0, 0);
 
 	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 2, true, &seq);
 	assert_int_equal(rc, 0);
@@ -181,7 +181,7 @@ void test_write_to_cfg_space(void **state)
 
 	execute_arr[0].cb_ptr = ptr;
 	execute_arr[0].cb_size = offset;
-	execute_arr[0].queue_index = hltests_get_dma_down_qid(fd, 0);
+	execute_arr[0].queue_index = hltests_get_dma_down_qid(fd, 0, 0);
 
 	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, false, &seq);
 	assert_int_equal(rc, 0);

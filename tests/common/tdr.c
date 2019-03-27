@@ -50,7 +50,7 @@ void test_tdr_deadlock(void **state)
 
 	execute_arr[0].cb_ptr = ptr;
 	execute_arr[0].cb_size = offset;
-	execute_arr[0].queue_index = hltests_get_dma_down_qid(fd, 0);
+	execute_arr[0].queue_index = hltests_get_dma_down_qid(fd, 0, 0);
 
 	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, false, &seq);
 	assert_int_equal(rc, 0);

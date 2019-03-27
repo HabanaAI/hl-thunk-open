@@ -969,13 +969,14 @@ uint32_t hltests_add_msg_long_pkt(int fd, void *buffer, uint32_t buf_off,
 }
 
 uint32_t hltests_add_msg_short_pkt(int fd, void *buffer, uint32_t buf_off,
-					bool eb, bool mb, uint16_t address,
-					uint32_t value)
+					bool eb, bool mb, uint8_t base,
+					uint16_t address, uint32_t value)
 {
 	const struct hltests_asic_funcs *asic =
 			get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->add_msg_short_pkt(buffer, buf_off, eb, mb, address, value);
+	return asic->add_msg_short_pkt(buffer, buf_off, eb, mb, base, address,
+					value);
 }
 
 uint32_t hltests_add_arm_monitor_pkt(int fd, void *buffer,
@@ -1003,13 +1004,14 @@ uint32_t hltests_add_write_to_sob_pkt(int fd, void *buffer, uint32_t buf_off,
 }
 
 uint32_t hltests_add_set_sob_pkt(int fd, void *buffer, uint32_t buf_off,
-					bool eb, bool mb, uint16_t sob_id,
-					uint32_t value)
+					bool eb, bool mb, uint8_t dcore_id,
+					uint16_t sob_id, uint32_t value)
 {
 	const struct hltests_asic_funcs *asic =
 			get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->add_set_sob_pkt(buffer, buf_off, eb, mb, sob_id, value);
+	return asic->add_set_sob_pkt(buffer, buf_off, eb, mb, dcore_id, sob_id,
+					value);
 }
 
 uint32_t hltests_add_fence_pkt(int fd, void *buffer, uint32_t buf_off,
@@ -1046,72 +1048,76 @@ uint32_t hltests_add_cp_dma_pkt(int fd, void *buffer, uint32_t buf_off,
 }
 
 uint32_t hltests_add_monitor_and_fence(int fd, void *buffer, uint32_t buf_off,
-					uint8_t queue_id, bool cmdq_fence,
-					uint32_t so_id, uint32_t mon_id,
-					uint64_t mon_address)
+					uint8_t dcore_id, uint8_t queue_id,
+					bool cmdq_fence, uint32_t so_id,
+					uint32_t mon_id, uint64_t mon_address)
 {
 	const struct hltests_asic_funcs *asic =
 			get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->add_monitor_and_fence(buffer, buf_off, queue_id,
+	return asic->add_monitor_and_fence(buffer, buf_off, dcore_id, queue_id,
 						cmdq_fence, so_id, mon_id,
 						mon_address);
 }
 
-uint32_t hltests_get_dma_down_qid(int fd, uint8_t stream)
+uint32_t hltests_get_dma_down_qid(int fd, uint8_t dcore_id, uint8_t stream)
 {
 	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->get_dma_down_qid(stream);
+	return asic->get_dma_down_qid(dcore_id, stream);
 }
 
-uint32_t hltests_get_dma_up_qid(int fd, uint8_t stream)
+uint32_t hltests_get_dma_up_qid(int fd, uint8_t dcore_id, uint8_t stream)
 {
 	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->get_dma_up_qid(stream);
+	return asic->get_dma_up_qid(dcore_id, stream);
 }
 
-uint32_t hltests_get_dma_dram_to_sram_qid(int fd, uint8_t stream)
+uint32_t hltests_get_dma_dram_to_sram_qid(int fd, uint8_t dcore_id,
+						uint8_t stream)
 {
 	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->get_dma_dram_to_sram_qid(stream);
+	return asic->get_dma_dram_to_sram_qid(dcore_id, stream);
 }
 
-uint32_t hltests_get_dma_sram_to_dram_qid(int fd, uint8_t stream)
+uint32_t hltests_get_dma_sram_to_dram_qid(int fd, uint8_t dcore_id,
+						uint8_t stream)
 {
 	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->get_dma_sram_to_dram_qid(stream);
+	return asic->get_dma_sram_to_dram_qid(dcore_id, stream);
 }
 
-uint32_t hltests_get_tpc_qid(int fd, uint8_t tpc_id, uint8_t stream)
+uint32_t hltests_get_tpc_qid(int fd, uint8_t dcore_id, uint8_t tpc_id,
+				uint8_t stream)
 {
 	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->get_tpc_qid(tpc_id, stream);
+	return asic->get_tpc_qid(dcore_id, tpc_id, stream);
 }
 
-uint32_t hltests_get_mme_qid(int fd, uint8_t mme_id, uint8_t stream)
+uint32_t hltests_get_mme_qid(int fd, uint8_t dcore_id, uint8_t mme_id,
+				uint8_t stream)
 {
 	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->get_mme_qid(mme_id, stream);
+	return asic->get_mme_qid(dcore_id, mme_id, stream);
 }
 
-uint8_t hltests_get_tpc_cnt(int fd)
+uint8_t hltests_get_tpc_cnt(int fd, uint8_t dcore_id)
 {
 	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->get_tpc_cnt();
+	return asic->get_tpc_cnt(dcore_id);
 }
 
 void hltests_fill_rand_values(void *ptr, uint32_t size)
@@ -1225,12 +1231,12 @@ int hltests_dma_test(void **state, bool is_ddr, uint64_t size)
 	host_dst_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
 
 	/* DMA: host->device */
-	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, 0), 0, 1,
+	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, 0, 0), 0, 1,
 			host_src_addr, (uint64_t) (uintptr_t) device_addr,
 			size, dma_dir_down);
 
 	/* DMA: device->host */
-	hltests_dma_transfer(fd, hltests_get_dma_up_qid(fd, 0),	0, 1,
+	hltests_dma_transfer(fd, hltests_get_dma_up_qid(fd, 0, 0), 0, 1,
 				(uint64_t) (uintptr_t) device_addr,
 				host_dst_addr, size, dma_dir_up);
 

@@ -63,16 +63,16 @@ struct hltests_state {
 
 struct hltests_asic_funcs {
 	uint32_t (*add_monitor_and_fence)(void *buffer, uint32_t buf_off,
-					uint8_t queue_id, bool cmdq_fence,
-					uint32_t so_id, uint32_t mon_id,
-					uint64_t mon_address);
+					uint8_t dcore_id, uint8_t queue_id,
+					bool cmdq_fence, uint32_t so_id,
+					uint32_t mon_id, uint64_t mon_address);
 	uint32_t (*add_nop_pkt)(void *buffer, uint32_t buf_off, bool eb,
 				bool mb);
 	uint32_t (*add_msg_long_pkt)(void *buffer, uint32_t buf_off, bool eb,
 					bool mb, uint64_t address,
 					uint32_t value);
 	uint32_t (*add_msg_short_pkt)(void *buffer, uint32_t buf_off, bool eb,
-					bool mb, uint16_t address,
+					bool mb, uint8_t base, uint16_t address,
 					uint32_t value);
 	uint32_t (*add_arm_monitor_pkt)(void *buffer, uint32_t buf_off, bool eb,
 					bool mb, uint16_t address,
@@ -81,9 +81,9 @@ struct hltests_asic_funcs {
 	uint32_t (*add_write_to_sob_pkt)(void *buffer, uint32_t buf_off,
 					bool eb, bool mb, uint16_t sob_id,
 					uint16_t value, uint8_t mode);
-	uint32_t (*add_set_sob_pkt)(void *buffer, uint32_t buf_off,
-					bool eb, bool mb, uint16_t sob_id,
-					uint32_t value);
+	uint32_t (*add_set_sob_pkt)(void *buffer, uint32_t buf_off, bool eb,
+					bool mb, uint8_t dcore_id,
+					uint16_t sob_id, uint32_t value);
 	uint32_t (*add_fence_pkt)(void *buffer, uint32_t buf_off, bool eb,
 					bool mb, uint8_t dec_val,
 					uint8_t gate_val, uint8_t fence_id);
@@ -94,14 +94,15 @@ struct hltests_asic_funcs {
 	uint32_t (*add_cp_dma_pkt)(void *buffer, uint32_t buf_off, bool eb,
 					bool mb, uint64_t src_addr,
 					uint32_t size);
-	uint32_t (*get_dma_down_qid)(uint8_t stream);
-	uint32_t (*get_dma_up_qid)(uint8_t stream);
-	uint32_t (*get_dma_dram_to_sram_qid)(uint8_t stream);
-	uint32_t (*get_dma_sram_to_dram_qid)(uint8_t stream);
-	uint32_t (*get_tpc_qid)(uint8_t tpc_id, uint8_t stream);
-	uint32_t (*get_mme_qid)(uint8_t mme_id, uint8_t stream);
-
-	uint8_t (*get_tpc_cnt)(void);
+	uint32_t (*get_dma_down_qid)(uint8_t dcore_id, uint8_t stream);
+	uint32_t (*get_dma_up_qid)(uint8_t dcore_id, uint8_t stream);
+	uint32_t (*get_dma_dram_to_sram_qid)(uint8_t dcore_id, uint8_t stream);
+	uint32_t (*get_dma_sram_to_dram_qid)(uint8_t dcore_id, uint8_t stream);
+	uint32_t (*get_tpc_qid)(uint8_t dcore_id, uint8_t tpc_id,
+				uint8_t stream);
+	uint32_t (*get_mme_qid)(uint8_t dcore_id, uint8_t mme_id,
+				uint8_t stream);
+	uint8_t (*get_tpc_cnt)(uint8_t dcore_id);
 };
 
 struct hltests_memory {
@@ -203,8 +204,8 @@ uint32_t hltests_add_msg_long_pkt(int fd, void *buffer, uint32_t buf_off,
 					bool eb, bool mb, uint64_t address,
 					uint32_t value);
 uint32_t hltests_add_msg_short_pkt(int fd, void *buffer, uint32_t buf_off,
-					bool eb, bool mb, uint16_t address,
-					uint32_t value);
+					bool eb, bool mb, uint8_t base,
+					uint16_t address, uint32_t value);
 uint32_t hltests_add_arm_monitor_pkt(int fd, void *buffer,
 					uint32_t buf_off, bool eb, bool mb,
 					uint16_t address, uint32_t value,
@@ -216,8 +217,8 @@ uint32_t hltests_add_write_to_sob_pkt(int fd, void *buffer, uint32_t buf_off,
 					uint16_t value, uint8_t mode);
 
 uint32_t hltests_add_set_sob_pkt(int fd, void *buffer, uint32_t buf_off,
-					bool eb, bool mb, uint16_t sob_id,
-					uint32_t value);
+					bool eb, bool mb, uint8_t dcore_id,
+					uint16_t sob_id, uint32_t value);
 
 uint32_t hltests_add_fence_pkt(int fd, void *buffer, uint32_t buf_off,
 					bool eb, bool mb, uint8_t dec_val,
@@ -233,18 +234,21 @@ uint32_t hltests_add_cp_dma_pkt(int fd, void *buffer, uint32_t buf_off,
 				uint32_t size);
 
 uint32_t hltests_add_monitor_and_fence(int fd, void *buffer, uint32_t buf_off,
-					uint8_t queue_id, bool cmdq_fence,
-					uint32_t so_id, uint32_t mon_id,
-					uint64_t mon_address);
+					uint8_t dcore_id, uint8_t queue_id,
+					bool cmdq_fence, uint32_t so_id,
+					uint32_t mon_id, uint64_t mon_address);
 
-uint32_t hltests_get_dma_down_qid(int fd, uint8_t stream);
-uint32_t hltests_get_dma_up_qid(int fd, uint8_t stream);
-uint32_t hltests_get_dma_dram_to_sram_qid(int fd, uint8_t stream);
-uint32_t hltests_get_dma_sram_to_dram_qid(int fd, uint8_t stream);
-uint32_t hltests_get_tpc_qid(int fd, uint8_t tpc_id, uint8_t stream);
-uint32_t hltests_get_mme_qid(int fd, uint8_t mme_id, uint8_t stream);
-
-uint8_t hltests_get_tpc_cnt(int fd);
+uint32_t hltests_get_dma_down_qid(int fd, uint8_t dcore_id, uint8_t stream);
+uint32_t hltests_get_dma_up_qid(int fd, uint8_t dcore_id, uint8_t stream);
+uint32_t hltests_get_dma_dram_to_sram_qid(int fd, uint8_t dcore_id,
+						uint8_t stream);
+uint32_t hltests_get_dma_sram_to_dram_qid(int fd, uint8_t dcore_id,
+						uint8_t stream);
+uint32_t hltests_get_tpc_qid(int fd, uint8_t dcore_id, uint8_t tpc_id,
+				uint8_t stream);
+uint32_t hltests_get_mme_qid(int fd, uint8_t dcore_id, uint8_t mme_id,
+				uint8_t stream);
+uint8_t hltests_get_tpc_cnt(int fd, uint8_t dcore_id);
 
 void goya_tests_set_asic_funcs(struct hltests_device *hdev);
 

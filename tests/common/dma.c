@@ -66,7 +66,7 @@ static void *dma_thread_start(void *args)
 
 	/* DMA DOWN queue ID is used here also for UP */
 	hltests_submit_and_wait_cs(params->fd, ptr, offset,
-				hltests_get_dma_down_qid(params->fd, 0), true);
+			hltests_get_dma_down_qid(params->fd, 0, 0), true);
 
 	/* Compare host memories */
 	rc = hltests_mem_compare(params->host_src, params->host_dst,
@@ -224,11 +224,11 @@ void test_dma_4_queues(void **state)
 	assert_ptr_not_equal(restore_cb, NULL);
 
 	restore_cb_size = hltests_add_set_sob_pkt(fd, restore_cb,
-					restore_cb_size, false, false, 0, 0);
+					restore_cb_size, false, false, 0, 0, 0);
 	restore_cb_size = hltests_add_set_sob_pkt(fd, restore_cb,
-					restore_cb_size, false, true, 1, 0);
+					restore_cb_size, false, true, 0, 1, 0);
 	restore_cb_size = hltests_add_set_sob_pkt(fd, restore_cb,
-					restore_cb_size, false, true, 2, 0);
+					restore_cb_size, false, true, 0, 2, 0);
 
 	/* CB for first DMA QMAN:
 	 * Transfer data from host to DRAM + signal SOB0.
@@ -250,9 +250,9 @@ void test_dma_4_queues(void **state)
 	assert_ptr_not_equal(dma_cb[1], NULL);
 
 	dma_cb_size[1] = hltests_add_monitor_and_fence(fd, dma_cb[1],
-					dma_cb_size[1],
-					hltests_get_dma_dram_to_sram_qid(fd, 0),
-					false, 0, 0, 0);
+				dma_cb_size[1], 0,
+				hltests_get_dma_dram_to_sram_qid(fd, 0, 0),
+				false, 0, 0, 0);
 	dma_cb_size[1] = hltests_add_dma_pkt(fd, dma_cb[1], dma_cb_size[1],
 					false, true,
 					(uint64_t) (uintptr_t) dram_addr[0],
@@ -268,9 +268,9 @@ void test_dma_4_queues(void **state)
 	assert_ptr_not_equal(dma_cb[2], NULL);
 
 	dma_cb_size[2] = hltests_add_monitor_and_fence(fd, dma_cb[2],
-					dma_cb_size[2],
-					hltests_get_dma_sram_to_dram_qid(fd, 0),
-					false, 1, 1, 0);
+				dma_cb_size[2], 0,
+				hltests_get_dma_sram_to_dram_qid(fd, 0, 0),
+				false, 1, 1, 0);
 	dma_cb_size[2] = hltests_add_dma_pkt(fd, dma_cb[2], dma_cb_size[2],
 					false, true, sram_addr,
 					(uint64_t) (uintptr_t) dram_addr[1],
@@ -285,8 +285,8 @@ void test_dma_4_queues(void **state)
 	assert_ptr_not_equal(dma_cb[3], NULL);
 
 	dma_cb_size[3] = hltests_add_monitor_and_fence(fd, dma_cb[3],
-					dma_cb_size[3],
-					hltests_get_dma_up_qid(fd, 0),
+					dma_cb_size[3], 0,
+					hltests_get_dma_up_qid(fd, 0, 0),
 					false, 2, 2, 0);
 	dma_cb_size[3] = hltests_add_dma_pkt(fd, dma_cb[3], dma_cb_size[3],
 					false, true,
@@ -297,23 +297,23 @@ void test_dma_4_queues(void **state)
 	/* Submit CS and wait for completion */
 	restore_arr[0].cb_ptr = restore_cb;
 	restore_arr[0].cb_size = restore_cb_size;
-	restore_arr[0].queue_index = hltests_get_dma_down_qid(fd, 0);
+	restore_arr[0].queue_index = hltests_get_dma_down_qid(fd, 0, 0);
 
 	execute_arr[0].cb_ptr = dma_cb[0];
 	execute_arr[0].cb_size = dma_cb_size[0];
-	execute_arr[0].queue_index = hltests_get_dma_down_qid(fd, 0);
+	execute_arr[0].queue_index = hltests_get_dma_down_qid(fd, 0, 0);
 
 	execute_arr[1].cb_ptr = dma_cb[1];
 	execute_arr[1].cb_size = dma_cb_size[1];
-	execute_arr[1].queue_index = hltests_get_dma_dram_to_sram_qid(fd, 0);
+	execute_arr[1].queue_index = hltests_get_dma_dram_to_sram_qid(fd, 0, 0);
 
 	execute_arr[2].cb_ptr = dma_cb[2];
 	execute_arr[2].cb_size = dma_cb_size[2];
-	execute_arr[2].queue_index = hltests_get_dma_sram_to_dram_qid(fd, 0);
+	execute_arr[2].queue_index = hltests_get_dma_sram_to_dram_qid(fd, 0, 0);
 
 	execute_arr[3].cb_ptr = dma_cb[3];
 	execute_arr[3].cb_size = dma_cb_size[3];
-	execute_arr[3].queue_index = hltests_get_dma_up_qid(fd, 0);
+	execute_arr[3].queue_index = hltests_get_dma_up_qid(fd, 0, 0);
 
 	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 4, true, &seq);
 	assert_int_equal(rc, 0);

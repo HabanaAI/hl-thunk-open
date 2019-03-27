@@ -64,15 +64,16 @@ static uint32_t goya_add_msg_long_pkt(void *buffer, uint32_t buf_off, bool eb,
 }
 
 static uint32_t goya_add_msg_short_pkt(void *buffer, uint32_t buf_off, bool eb,
-					bool mb, uint16_t address,
+					bool mb, uint8_t base, uint16_t address,
 					uint32_t value)
 {
 	struct packet_msg_short packet;
 
 	memset(&packet, 0, sizeof(packet));
 	packet.opcode = PACKET_MSG_SHORT;
-	packet.msg_addr_offset = address;
 	packet.value = value;
+	packet.base = base;
+	packet.msg_addr_offset = address;
 	packet.eng_barrier = eb;
 	packet.msg_barrier = mb;
 	packet.reg_barrier = 1;
@@ -87,20 +88,15 @@ static uint32_t goya_add_arm_monitor_pkt(void *buffer, uint32_t buf_off,
 					uint16_t sync_val, uint16_t sync_id)
 {
 	struct packet_msg_short packet;
+	uint8_t base = 0; /* monitor base address */
 
-	memset(&packet, 0, sizeof(packet));
-	packet.opcode = PACKET_MSG_SHORT;
-	packet.msg_addr_offset = address;
-	packet.value = value;
-	packet.eng_barrier = eb;
-	packet.msg_barrier = mb;
-	packet.reg_barrier = 1;
+	memset(&packet, 0, sizeof(packet.value));
+	packet.mon_arm_register.sync_id = sync_id;
 	packet.mon_arm_register.mode = mon_mode;
 	packet.mon_arm_register.sync_value = sync_val;
-	packet.mon_arm_register.sync_id = sync_id;
 
-	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
-						sizeof(packet));
+	return goya_add_msg_short_pkt(buffer, buf_off, eb, mb, base, address,
+					packet.value);
 }
 
 static uint32_t goya_add_write_to_sob_pkt(void *buffer, uint32_t buf_off,
@@ -108,36 +104,24 @@ static uint32_t goya_add_write_to_sob_pkt(void *buffer, uint32_t buf_off,
 					uint16_t value, uint8_t mode)
 {
 	struct packet_msg_short packet;
+	uint16_t address = sob_id * 4;
+	uint8_t base = 1; /* syn object base address */
 
-	memset(&packet, 0, sizeof(packet));
-	packet.opcode = PACKET_MSG_SHORT;
-	packet.msg_addr_offset = sob_id * 4;
-	packet.base = 1; /* SOB base */
-	packet.so_upd.mode = mode;
+	memset(&packet, 0, sizeof(packet.value));
 	packet.so_upd.sync_value = value;
-	packet.eng_barrier = eb;
-	packet.msg_barrier = mb;
-	packet.reg_barrier = 1;
+	packet.so_upd.mode = mode;
 
-	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
-						sizeof(packet));
+	return goya_add_msg_short_pkt(buffer, buf_off, eb, mb, base, address,
+					packet.value);
 }
 
 static uint32_t goya_add_set_sob_pkt(void *buffer, uint32_t buf_off, bool eb,
-				bool mb, uint16_t sob_id, uint32_t value)
+					bool mb, uint8_t dcore_id,
+					uint16_t sob_id, uint32_t value)
 {
-	struct packet_msg_long packet;
+	uint64_t address = CFG_BASE + mmSYNC_MNGR_SOB_OBJ_0 + sob_id * 4;
 
-	memset(&packet, 0, sizeof(packet));
-	packet.opcode = PACKET_MSG_LONG;
-	packet.addr = CFG_BASE + mmSYNC_MNGR_SOB_OBJ_0 + sob_id * 4;
-	packet.value = value;
-	packet.eng_barrier = eb;
-	packet.msg_barrier = mb;
-	packet.reg_barrier = 1;
-
-	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
-						sizeof(packet));
+	return goya_add_msg_long_pkt(buffer, buf_off, eb, mb, address, value);
 }
 
 static uint32_t goya_add_fence_pkt(void *buffer, uint32_t buf_off, bool eb,
@@ -199,13 +183,14 @@ static uint32_t goya_add_cp_dma_pkt(void *buffer, uint32_t buf_off, bool eb,
 }
 
 static uint32_t goya_tests_add_monitor_and_fence(void *buffer, uint32_t buf_off,
-					uint8_t queue_id, bool cmdq_fence,
-					uint32_t so_id, uint32_t mon_id,
-					uint64_t mon_address)
+					uint8_t dcore_id, uint8_t queue_id,
+					bool cmdq_fence, uint32_t so_id,
+					uint32_t mon_id, uint64_t mon_address)
 {
 	uint64_t address, monitor_base;
 	uint32_t fence_addr = 0;
 	uint16_t msg_addr_offset;
+	uint8_t base = 0; /* monitor base address */
 
 	switch (queue_id)
 	{
@@ -296,13 +281,13 @@ static uint32_t goya_tests_add_monitor_and_fence(void *buffer, uint32_t buf_off,
 	/* First monitor config packet: low address of the sync */
 	msg_addr_offset = (mmSYNC_MNGR_MON_PAY_ADDRL_0 + mon_id * 4) -
 								monitor_base;
-	buf_off = goya_add_msg_short_pkt(buffer, buf_off, false, true,
+	buf_off = goya_add_msg_short_pkt(buffer, buf_off, false, true, base,
 					msg_addr_offset, (uint32_t) address);
 
 	/* Second config packet: high address of the sync */
 	msg_addr_offset = (mmSYNC_MNGR_MON_PAY_ADDRH_0 + mon_id * 4) -
 								monitor_base;
-	buf_off = goya_add_msg_short_pkt(buffer, buf_off, false, true,
+	buf_off = goya_add_msg_short_pkt(buffer, buf_off, false, true, base,
 				msg_addr_offset, (uint32_t) (address >> 32));
 
 	/* Third config packet: the payload, i.e. what to write when the sync
@@ -310,7 +295,7 @@ static uint32_t goya_tests_add_monitor_and_fence(void *buffer, uint32_t buf_off,
 	 */
 	msg_addr_offset = (mmSYNC_MNGR_MON_PAY_DATA_0 + mon_id * 4) -
 								monitor_base;
-	buf_off = goya_add_msg_short_pkt(buffer, buf_off, false, true,
+	buf_off = goya_add_msg_short_pkt(buffer, buf_off, false, true, base,
 					msg_addr_offset, 1);
 
 	/* Fourth config packet: bind the monitor to a sync object */
@@ -324,37 +309,39 @@ static uint32_t goya_tests_add_monitor_and_fence(void *buffer, uint32_t buf_off,
 	return buf_off;
 }
 
-static uint32_t goya_get_dma_down_qid(uint8_t stream)
+static uint32_t goya_get_dma_down_qid(uint8_t decore_id, uint8_t stream)
 {
 	return GOYA_QUEUE_ID_DMA_1;
 }
 
-static uint32_t goya_get_dma_up_qid(uint8_t stream)
+static uint32_t goya_get_dma_up_qid(uint8_t decore_id, uint8_t stream)
 {
 	return GOYA_QUEUE_ID_DMA_2;
 }
 
-static uint32_t goya_get_dma_dram_to_sram_qid(uint8_t stream)
+static uint32_t goya_get_dma_dram_to_sram_qid(uint8_t decore_id, uint8_t stream)
 {
 	return GOYA_QUEUE_ID_DMA_3;
 }
 
-static uint32_t goya_get_dma_sram_to_dram_qid(uint8_t stream)
+static uint32_t goya_get_dma_sram_to_dram_qid(uint8_t decore_id, uint8_t stream)
 {
 	return GOYA_QUEUE_ID_DMA_4;
 }
 
-static uint32_t goya_get_tpc_qid(uint8_t tpc_id, uint8_t stream)
+static uint32_t goya_get_tpc_qid(uint8_t decore_id, uint8_t tpc_id,
+					uint8_t stream)
 {
 	return GOYA_QUEUE_ID_TPC0 + tpc_id;
 }
 
-static uint32_t goya_get_mme_qid(uint8_t mme_id, uint8_t stream)
+static uint32_t goya_get_mme_qid(uint8_t decore_id, uint8_t mme_id,
+					uint8_t stream)
 {
 	return GOYA_QUEUE_ID_MME;
 }
 
-static uint8_t goya_get_tpc_cnt(void)
+static uint8_t goya_get_tpc_cnt(uint8_t dcore_id)
 {
 	return TPC_MAX_NUM;
 }
