@@ -210,6 +210,12 @@ void hltests_submit_and_wait_cs(int fd, void *cb_ptr, uint32_t cb_size,
 
 int hl_tests_ensure_device_operational(void **state);
 
+/* Generic memory addresses pool */
+void *hltests_mem_pool_init(uint64_t start_addr, uint64_t size, uint64_t order);
+void hltests_mem_pool_fini(void *data);
+int hltests_mem_pool_alloc(void *data, uint64_t size, uint64_t *addr);
+void hltests_mem_pool_free(void *data, uint64_t addr, uint64_t size);
+
 /* ASIC functions */
 uint32_t hltests_add_nop_pkt(int fd, void *buffer, uint32_t buf_off,
 					bool eb, bool mb);
@@ -264,11 +270,5 @@ uint32_t hltests_get_mme_qid(int fd, uint8_t dcore_id, uint8_t mme_id,
 uint8_t hltests_get_tpc_cnt(int fd, uint8_t dcore_id);
 
 void goya_tests_set_asic_funcs(struct hltests_device *hdev);
-
-/* Generic memory addresses pool */
-void *hltests_mem_pool_init(uint64_t start_addr, uint64_t size, uint64_t order);
-void hltests_mem_pool_fini(void *data);
-int hltests_mem_pool_alloc(void *data, uint64_t size, uint64_t *addr);
-void hltests_mem_pool_free(void *data, uint64_t addr, uint64_t size);
 
 #endif /* HLTHUNK_TESTS_H */
