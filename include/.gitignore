@@ -1,0 +1,7 @@
+specs/hl_boot_if.h
+specs/qman_if.h
+specs/simulator.h
+specs/armcp_if.h
+specs/goya/goya_async_events.h
+specs/goya/goya_fw_if.h
+specs/goya/goya_simulator.h
