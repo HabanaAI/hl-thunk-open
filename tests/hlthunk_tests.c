@@ -1383,6 +1383,7 @@ int hl_tests_ensure_device_operational(void **state)
 	}
 
 	/*if we got here it means that something is broken*/
+	printf("ERROR! Something broke in the device, stop running tests\n");
 	exit(-1);
 }
 
