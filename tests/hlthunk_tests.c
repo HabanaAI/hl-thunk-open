@@ -1340,8 +1340,15 @@ static bool is_dev_idle_and_operational(int fd)
 {
 	enum hl_device_status dev_status;
 	bool is_idle;
+	enum hl_pci_ids device_id;
 
-	is_idle = hlthunk_is_device_idle(fd);
+	/* TODO: Remove when is_idle function is implemented on simulator */
+	device_id = hlthunk_get_device_id_from_fd(fd);
+	if (device_id == PCI_IDS_GOYA_SIMULATOR)
+		is_idle = true;
+	else
+		is_idle = hlthunk_is_device_idle(fd);
+
 	dev_status = hlthunk_get_device_status_info(fd);
 
 	return (is_idle && dev_status == HL_DEVICE_STATUS_OPERATIONAL);
