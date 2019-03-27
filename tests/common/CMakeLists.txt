@@ -19,6 +19,7 @@ set(COMMON_UNIT_TESTS
     memory
     sync_manager
     tdr
+    dma_perf
 )
 
 foreach(_UNIT_TEST ${COMMON_UNIT_TESTS})
