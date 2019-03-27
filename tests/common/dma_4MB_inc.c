@@ -43,15 +43,15 @@ DMA_1KB_INC_SRAM(test_dma_sram_size_40MB, state, 40 * 1024 * 1024)
 DMA_1KB_INC_SRAM(test_dma_sram_size_44MB, state, 44 * 1024 * 1024)
 DMA_1KB_INC_SRAM(test_dma_sram_size_48MB, state, 48 * 1024 * 1024)
 
-DMA_1KB_INC_DDR(test_dma_ddr_size_16MB, state, 16 * 1024 * 1024)
-DMA_1KB_INC_DDR(test_dma_ddr_size_20MB, state, 20 * 1024 * 1024)
-DMA_1KB_INC_DDR(test_dma_ddr_size_24MB, state, 24 * 1024 * 1024)
-DMA_1KB_INC_DDR(test_dma_ddr_size_28MB, state, 28 * 1024 * 1024)
-DMA_1KB_INC_DDR(test_dma_ddr_size_32MB, state, 32 * 1024 * 1024)
-DMA_1KB_INC_DDR(test_dma_ddr_size_36MB, state, 36 * 1024 * 1024)
-DMA_1KB_INC_DDR(test_dma_ddr_size_40MB, state, 40 * 1024 * 1024)
-DMA_1KB_INC_DDR(test_dma_ddr_size_44MB, state, 44 * 1024 * 1024)
-DMA_1KB_INC_DDR(test_dma_ddr_size_48MB, state, 48 * 1024 * 1024)
+DMA_1KB_INC_DRAM(test_dma_dram_size_16MB, state, 16 * 1024 * 1024)
+DMA_1KB_INC_DRAM(test_dma_dram_size_20MB, state, 20 * 1024 * 1024)
+DMA_1KB_INC_DRAM(test_dma_dram_size_24MB, state, 24 * 1024 * 1024)
+DMA_1KB_INC_DRAM(test_dma_dram_size_28MB, state, 28 * 1024 * 1024)
+DMA_1KB_INC_DRAM(test_dma_dram_size_32MB, state, 32 * 1024 * 1024)
+DMA_1KB_INC_DRAM(test_dma_dram_size_36MB, state, 36 * 1024 * 1024)
+DMA_1KB_INC_DRAM(test_dma_dram_size_40MB, state, 40 * 1024 * 1024)
+DMA_1KB_INC_DRAM(test_dma_dram_size_44MB, state, 44 * 1024 * 1024)
+DMA_1KB_INC_DRAM(test_dma_dram_size_48MB, state, 48 * 1024 * 1024)
 
 const struct CMUnitTest dma_4MB_inc_tests[] = {
 	cmocka_unit_test_setup(test_dma_sram_size_16MB,
@@ -73,23 +73,23 @@ const struct CMUnitTest dma_4MB_inc_tests[] = {
 	cmocka_unit_test_setup(test_dma_sram_size_48MB,
 			hl_tests_ensure_device_operational),
 
-	cmocka_unit_test_setup(test_dma_ddr_size_16MB,
+	cmocka_unit_test_setup(test_dma_dram_size_16MB,
 			hl_tests_ensure_device_operational),
-	cmocka_unit_test_setup(test_dma_ddr_size_20MB,
+	cmocka_unit_test_setup(test_dma_dram_size_20MB,
 			hl_tests_ensure_device_operational),
-	cmocka_unit_test_setup(test_dma_ddr_size_24MB,
+	cmocka_unit_test_setup(test_dma_dram_size_24MB,
 			hl_tests_ensure_device_operational),
-	cmocka_unit_test_setup(test_dma_ddr_size_28MB,
+	cmocka_unit_test_setup(test_dma_dram_size_28MB,
 			hl_tests_ensure_device_operational),
-	cmocka_unit_test_setup(test_dma_ddr_size_32MB,
+	cmocka_unit_test_setup(test_dma_dram_size_32MB,
 			hl_tests_ensure_device_operational),
-	cmocka_unit_test_setup(test_dma_ddr_size_36MB,
+	cmocka_unit_test_setup(test_dma_dram_size_36MB,
 			hl_tests_ensure_device_operational),
-	cmocka_unit_test_setup(test_dma_ddr_size_40MB,
+	cmocka_unit_test_setup(test_dma_dram_size_40MB,
 			hl_tests_ensure_device_operational),
-	cmocka_unit_test_setup(test_dma_ddr_size_44MB,
+	cmocka_unit_test_setup(test_dma_dram_size_44MB,
 			hl_tests_ensure_device_operational),
-	cmocka_unit_test_setup(test_dma_ddr_size_48MB,
+	cmocka_unit_test_setup(test_dma_dram_size_48MB,
 			hl_tests_ensure_device_operational),
 };
 

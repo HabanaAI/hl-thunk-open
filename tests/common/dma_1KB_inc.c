@@ -49,21 +49,21 @@ DMA_1KB_INC_SRAM(test_dma_sram_size_13KB, state, 13 * 1024)
 DMA_1KB_INC_SRAM(test_dma_sram_size_14KB, state, 14 * 1024)
 DMA_1KB_INC_SRAM(test_dma_sram_size_15KB, state, 15 * 1024)
 
-DMA_1KB_INC_DDR(test_dma_ddr_size_1KB, state, 1 * 1024)
-DMA_1KB_INC_DDR(test_dma_ddr_size_2KB, state, 2 * 1024)
-DMA_1KB_INC_DDR(test_dma_ddr_size_3KB, state, 3 * 1024)
-DMA_1KB_INC_DDR(test_dma_ddr_size_4KB, state, 4 * 1024)
-DMA_1KB_INC_DDR(test_dma_ddr_size_5KB, state, 5 * 1024)
-DMA_1KB_INC_DDR(test_dma_ddr_size_6KB, state, 6 * 1024)
-DMA_1KB_INC_DDR(test_dma_ddr_size_7KB, state, 7 * 1024)
-DMA_1KB_INC_DDR(test_dma_ddr_size_8KB, state, 8 * 1024)
-DMA_1KB_INC_DDR(test_dma_ddr_size_9KB, state, 9 * 1024)
-DMA_1KB_INC_DDR(test_dma_ddr_size_10KB, state, 10 * 1024)
-DMA_1KB_INC_DDR(test_dma_ddr_size_11KB, state, 11 * 1024)
-DMA_1KB_INC_DDR(test_dma_ddr_size_12KB, state, 12 * 1024)
-DMA_1KB_INC_DDR(test_dma_ddr_size_13KB, state, 13 * 1024)
-DMA_1KB_INC_DDR(test_dma_ddr_size_14KB, state, 14 * 1024)
-DMA_1KB_INC_DDR(test_dma_ddr_size_15KB, state, 15 * 1024)
+DMA_1KB_INC_DRAM(test_dma_dram_size_1KB, state, 1 * 1024)
+DMA_1KB_INC_DRAM(test_dma_dram_size_2KB, state, 2 * 1024)
+DMA_1KB_INC_DRAM(test_dma_dram_size_3KB, state, 3 * 1024)
+DMA_1KB_INC_DRAM(test_dma_dram_size_4KB, state, 4 * 1024)
+DMA_1KB_INC_DRAM(test_dma_dram_size_5KB, state, 5 * 1024)
+DMA_1KB_INC_DRAM(test_dma_dram_size_6KB, state, 6 * 1024)
+DMA_1KB_INC_DRAM(test_dma_dram_size_7KB, state, 7 * 1024)
+DMA_1KB_INC_DRAM(test_dma_dram_size_8KB, state, 8 * 1024)
+DMA_1KB_INC_DRAM(test_dma_dram_size_9KB, state, 9 * 1024)
+DMA_1KB_INC_DRAM(test_dma_dram_size_10KB, state, 10 * 1024)
+DMA_1KB_INC_DRAM(test_dma_dram_size_11KB, state, 11 * 1024)
+DMA_1KB_INC_DRAM(test_dma_dram_size_12KB, state, 12 * 1024)
+DMA_1KB_INC_DRAM(test_dma_dram_size_13KB, state, 13 * 1024)
+DMA_1KB_INC_DRAM(test_dma_dram_size_14KB, state, 14 * 1024)
+DMA_1KB_INC_DRAM(test_dma_dram_size_15KB, state, 15 * 1024)
 
 const struct CMUnitTest dma_1KB_inc_tests[] = {
 	cmocka_unit_test_setup(test_dma_sram_size_1KB,
@@ -97,35 +97,35 @@ const struct CMUnitTest dma_1KB_inc_tests[] = {
 	cmocka_unit_test_setup(test_dma_sram_size_15KB,
 			hl_tests_ensure_device_operational),
 
-	cmocka_unit_test_setup(test_dma_ddr_size_1KB,
+	cmocka_unit_test_setup(test_dma_dram_size_1KB,
 			hl_tests_ensure_device_operational),
-	cmocka_unit_test_setup(test_dma_ddr_size_2KB,
+	cmocka_unit_test_setup(test_dma_dram_size_2KB,
 			hl_tests_ensure_device_operational),
-	cmocka_unit_test_setup(test_dma_ddr_size_3KB,
+	cmocka_unit_test_setup(test_dma_dram_size_3KB,
 			hl_tests_ensure_device_operational),
-	cmocka_unit_test_setup(test_dma_ddr_size_4KB,
+	cmocka_unit_test_setup(test_dma_dram_size_4KB,
 			hl_tests_ensure_device_operational),
-	cmocka_unit_test_setup(test_dma_ddr_size_5KB,
+	cmocka_unit_test_setup(test_dma_dram_size_5KB,
 			hl_tests_ensure_device_operational),
-	cmocka_unit_test_setup(test_dma_ddr_size_6KB,
+	cmocka_unit_test_setup(test_dma_dram_size_6KB,
 			hl_tests_ensure_device_operational),
-	cmocka_unit_test_setup(test_dma_ddr_size_7KB,
+	cmocka_unit_test_setup(test_dma_dram_size_7KB,
 			hl_tests_ensure_device_operational),
-	cmocka_unit_test_setup(test_dma_ddr_size_8KB,
+	cmocka_unit_test_setup(test_dma_dram_size_8KB,
 			hl_tests_ensure_device_operational),
-	cmocka_unit_test_setup(test_dma_ddr_size_9KB,
+	cmocka_unit_test_setup(test_dma_dram_size_9KB,
 			hl_tests_ensure_device_operational),
-	cmocka_unit_test_setup(test_dma_ddr_size_10KB,
+	cmocka_unit_test_setup(test_dma_dram_size_10KB,
 			hl_tests_ensure_device_operational),
-	cmocka_unit_test_setup(test_dma_ddr_size_11KB,
+	cmocka_unit_test_setup(test_dma_dram_size_11KB,
 			hl_tests_ensure_device_operational),
-	cmocka_unit_test_setup(test_dma_ddr_size_12KB,
+	cmocka_unit_test_setup(test_dma_dram_size_12KB,
 			hl_tests_ensure_device_operational),
-	cmocka_unit_test_setup(test_dma_ddr_size_13KB,
+	cmocka_unit_test_setup(test_dma_dram_size_13KB,
 			hl_tests_ensure_device_operational),
-	cmocka_unit_test_setup(test_dma_ddr_size_14KB,
+	cmocka_unit_test_setup(test_dma_dram_size_14KB,
 			hl_tests_ensure_device_operational),
-	cmocka_unit_test_setup(test_dma_ddr_size_15KB,
+	cmocka_unit_test_setup(test_dma_dram_size_15KB,
 			hl_tests_ensure_device_operational),
 };
 
