@@ -56,26 +56,71 @@ typedef struct {
 static void *dma_thread_start(void *args)
 {
 	struct dma_thread_params *params = (struct dma_thread_params *) args;
-	uint32_t page_size = sysconf(_SC_PAGESIZE), offset = 0;
-	void *ptr;
-	int rc;
+	struct hltests_cs_chunk execute_arr[2];
+	uint32_t page_size = sysconf(_SC_PAGESIZE), cb_size[2] = {0};
+	uint64_t seq;
+	void *cb[2];
+	int rc, i, fd = params->fd;
 
-	ptr = hltests_create_cb(params->fd, page_size, true, 0);
-	if (!ptr)
-		return NULL;
+	for (i = 0 ; i < 2 ; i++) {
+		cb[i] = hltests_create_cb(fd, page_size, true, 0);
+		if (!cb[i])
+			return NULL;
+	}
 
-	offset = hltests_add_dma_pkt(params->fd, ptr, offset, true, true,
+	/* fence on SOB0, clear it, do DMA down and write to SOB1 */
+	cb_size[0] = hltests_add_monitor_and_fence(fd, cb[0], cb_size[0], 0,
+					hltests_get_dma_down_qid(fd, 0, 0),
+					false, 0, 0, 0);
+
+	cb_size[0] = hltests_add_set_sob_pkt(fd, cb[0], cb_size[0], true,
+					true, 0, 0, 0);
+
+	cb_size[0] = hltests_add_dma_pkt(fd, cb[0], cb_size[0], true, true,
 					params->host_src_device_va,
 					params->device_addr, params->size,
 					GOYA_DMA_HOST_TO_DRAM);
-	offset = hltests_add_dma_pkt(params->fd, ptr, offset, true, true,
+
+	cb_size[0] = hltests_add_write_to_sob_pkt(fd, cb[0], cb_size[0], true,
+					true, 1, 1, 1);
+
+	/* fence on SOB1, clear it, do DMA up and write to SOB0 */
+	cb_size[1] = hltests_add_monitor_and_fence(fd, cb[1], cb_size[1], 0,
+					hltests_get_dma_up_qid(fd, 0, 0),
+					false, 1, 1, 0);
+
+	cb_size[1] = hltests_add_set_sob_pkt(fd, cb[1], cb_size[1], true,
+					true, 0, 1, 0);
+
+	cb_size[1] = hltests_add_dma_pkt(fd, cb[1], cb_size[1], true, true,
 					params->device_addr,
 					params->host_dst_device_va,
 					params->size, GOYA_DMA_DRAM_TO_HOST);
 
-	/* DMA DOWN queue ID is used here also for UP */
-	hltests_submit_and_wait_cs(params->fd, ptr, offset,
-			hltests_get_dma_down_qid(params->fd, 0, 0), true);
+	cb_size[1] = hltests_add_write_to_sob_pkt(fd, cb[1], cb_size[1], true,
+					true, 0, 1, 1);
+
+	execute_arr[0].cb_ptr = cb[0];
+	execute_arr[0].cb_size = cb_size[0];
+	execute_arr[0].queue_index = hltests_get_dma_down_qid(params->fd, 0, 0);
+
+	execute_arr[1].cb_ptr = cb[1];
+	execute_arr[1].cb_size = cb_size[1];
+	execute_arr[1].queue_index = hltests_get_dma_up_qid(params->fd, 0, 0);
+
+	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 2, false, &seq);
+	if (rc)
+		return NULL;
+
+	rc = hltests_wait_for_cs(fd, seq);
+	if (rc)
+		return NULL;
+
+	for (i = 0 ; i < 2 ; i++) {
+		rc = hltests_destroy_cb(fd, cb[i]);
+		if (rc)
+			return NULL;
+	}
 
 	/* Compare host memories */
 	rc = hltests_mem_compare(params->host_src, params->host_dst,
@@ -92,8 +137,8 @@ static void test_dma_threads(void **state, uint32_t num_of_threads)
 	struct hlthunk_hw_ip_info hw_ip;
 	struct dma_thread_params *thread_params;
 	pthread_t *thread_id;
-	void *dram_addr, *retval;
-	uint32_t i, dma_size = 28;
+	void *dram_addr, *retval, *cb;
+	uint32_t i, dma_size = 28, cb_size = 0;
 	int rc, fd = tests_state->fd;
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
@@ -136,6 +181,17 @@ static void test_dma_threads(void **state, uint32_t num_of_threads)
 		thread_params[i].size = dma_size;
 		thread_params[i].fd = fd;
 	}
+
+	/* clear SOB1 and set SOB0 to 1 so the first DMA thread will run */
+	cb = hltests_create_cb(fd, getpagesize(), true, 0);
+	assert_non_null(cb);
+
+	cb_size = hltests_add_set_sob_pkt(fd, cb, cb_size, true, true, 0, 0, 1);
+
+	cb_size = hltests_add_set_sob_pkt(fd, cb, cb_size, true, true, 0, 1, 0);
+
+	hltests_submit_and_wait_cs(fd, cb, cb_size,
+				hltests_get_dma_down_qid(fd, 0, 0), true);
 
 	/* Create and execute threads */
 	for (i = 0 ; i < num_of_threads ; i++) {
