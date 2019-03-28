@@ -90,13 +90,14 @@ void hltest_host_sram_transfer_perf(void **state)
 	struct hlthunk_hw_ip_info hw_ip;
 	void *src_ptr;
 	uint64_t host_addr,sram_addr;
-	uint32_t size = 50 * 1024 * 1024;
+	uint32_t size;
 	int rc, fd = tests_state->fd;
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
 	sram_addr = hw_ip.sram_base_address;
+	size = hw_ip.sram_size;
 	src_ptr = hltests_allocate_host_mem(fd, size, true);
 	assert_non_null(src_ptr);
 
@@ -105,6 +106,8 @@ void hltest_host_sram_transfer_perf(void **state)
 	host_sram_perf_outcome = hltests_transfer_perf(fd,
 			hltests_get_dma_down_qid(fd, 0, 0),
 			host_addr, sram_addr, size, GOYA_DMA_HOST_TO_SRAM);
+
+	hltests_free_host_mem(fd, src_ptr);
 }
 
 void hltest_sram_host_transfer_perf(void **state)
@@ -113,13 +116,15 @@ void hltest_sram_host_transfer_perf(void **state)
 	struct hlthunk_hw_ip_info hw_ip;
 	void *dst_ptr;
 	uint64_t host_addr,sram_addr;
-	uint32_t size = 50 * 1024 * 1024;
+	uint32_t size;
 	int rc, fd = tests_state->fd;
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
 	sram_addr = hw_ip.sram_base_address;
+	size = hw_ip.sram_size;
+
 	dst_ptr = hltests_allocate_host_mem(fd, size, true);
 	assert_non_null(dst_ptr);
 
@@ -192,13 +197,14 @@ void hltest_sram_dram_transfer_perf(void **state)
 	struct hlthunk_hw_ip_info hw_ip;
 	void *dram_addr;
 	uint64_t sram_addr;
-	uint32_t size = 50 * 1024 * 1024;
+	uint32_t size;
 	int rc, fd = tests_state->fd;
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
 	sram_addr = hw_ip.sram_base_address;
+	size = hw_ip.sram_size;
 
 	assert_int_equal(hw_ip.dram_enabled, 1);
 	assert_in_range(size, 1, hw_ip.dram_size);
@@ -217,13 +223,14 @@ void hltest_dram_sram_transfer_perf(void **state)
 	struct hlthunk_hw_ip_info hw_ip;
 	void *dram_addr;
 	uint64_t sram_addr;
-	uint32_t size = 50 * 1024 * 1024;
+	uint32_t size;
 	int rc, fd = tests_state->fd;
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
 	sram_addr = hw_ip.sram_base_address;
+	size = hw_ip.sram_size;
 
 	assert_int_equal(hw_ip.dram_enabled, 1);
 	assert_in_range(size, 1, hw_ip.dram_size);
