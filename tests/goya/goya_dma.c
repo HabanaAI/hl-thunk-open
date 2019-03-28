@@ -85,7 +85,7 @@ void test_dma_4_queues(void **state)
 	sram_addr = hw_ip.sram_base_address + 0x1000;
 
 	/* Setup CB: clear SOB 0-2 */
-	restore_cb =  hltests_create_cb(fd, page_size, true, 0);
+	restore_cb = hltests_create_cb(fd, page_size, true, 0);
 	assert_ptr_not_equal(restore_cb, NULL);
 
 	restore_cb_size = hltests_add_set_sob_pkt(fd, restore_cb,
