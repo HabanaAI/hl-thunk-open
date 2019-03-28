@@ -139,8 +139,8 @@ static void test_sm(void **state, bool is_tpc, bool is_wait)
 	if (is_wait) {
 		uint32_t i, err_cnt = 0;
 
-		rc = hltests_wait_for_cs(fd, seq);
-		assert_int_equal(rc, 0);
+		rc = hltests_wait_for_cs_until_not_busy(fd, seq);
+		assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
 
 		rc = hltests_destroy_cb(fd, ext_cb);
 		assert_int_equal(rc, 0);
@@ -294,8 +294,8 @@ static void test_sm_pingpong_qman(void **state, bool is_tpc)
 	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 3, true, &seq);
 	assert_int_equal(rc, 0);
 
-	rc = hltests_wait_for_cs(fd, seq);
-	assert_int_equal(rc, 0);
+	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
+	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
 
 	rc = hltests_destroy_cb(fd, engine_cb);
 	assert_int_equal(rc, 0);
@@ -493,8 +493,8 @@ static void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 3, true, &seq);
 	assert_int_equal(rc, 0);
 
-	rc = hltests_wait_for_cs(fd, seq);
-	assert_int_equal(rc, 0);
+	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
+	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
 
 	/* Compare host memories */
 	rc = hltests_mem_compare(host_src, host_dst, dma_size);

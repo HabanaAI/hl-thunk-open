@@ -202,9 +202,8 @@ void hltests_dma_transfer(int fd, uint32_t queue_index, bool eb, bool mb,
 
 int hltests_dma_test(void **state, bool is_ddr, uint64_t size);
 
-int _hltests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us,
-				uint32_t expected_status);
-int hltests_wait_for_cs(int fd, uint64_t seq);
+int hltests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us);
+int hltests_wait_for_cs_until_not_busy(int fd, uint64_t seq);
 
 void hltests_submit_and_wait_cs(int fd, void *cb_ptr, uint32_t cb_size,
 				uint32_t queue_index, bool destroy_cb);

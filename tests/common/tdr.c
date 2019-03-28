@@ -55,8 +55,8 @@ void test_tdr_deadlock(void **state)
 	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, false, &seq);
 	assert_int_equal(rc, 0);
 
-	rc = hltests_wait_for_cs(fd, seq);
-	assert_int_not_equal(rc, 0);
+	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
+	assert_int_not_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
 
 	rc = hltests_destroy_cb(fd, ptr);
 	assert_int_equal(rc, 0);

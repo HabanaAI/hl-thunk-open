@@ -183,8 +183,8 @@ void test_dma_4_queues(void **state)
 	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 4, true, &seq);
 	assert_int_equal(rc, 0);
 
-	rc = hltests_wait_for_cs(fd, seq);
-	assert_int_equal(rc, 0);
+	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
+	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
 
 	/* Compare host memories */
 	rc = hltests_mem_compare(host_src, host_dst, dma_size);

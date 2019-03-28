@@ -1006,8 +1006,7 @@ out:
 	return rc;
 }
 
-int _hltests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us,
-				uint32_t expected_status)
+int hltests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us)
 {
 	uint32_t status;
 	int rc;
@@ -1016,16 +1015,19 @@ int _hltests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us,
 	if (rc)
 		return rc;
 
-	if (status != expected_status)
-		return -EINVAL;
-
-	return 0;
+	return status;
 }
 
-int hltests_wait_for_cs(int fd, uint64_t seq)
+int hltests_wait_for_cs_until_not_busy(int fd, uint64_t seq)
 {
-	return _hltests_wait_for_cs(fd, seq, WAIT_FOR_CS_DEFAULT_TIMEOUT,
-					HL_WAIT_CS_STATUS_COMPLETED);
+	int status;
+
+	do {
+		status = hltests_wait_for_cs(fd, seq,
+					WAIT_FOR_CS_DEFAULT_TIMEOUT);
+	} while (status == HL_WAIT_CS_STATUS_BUSY);
+
+	return status;
 }
 
 uint32_t hltests_add_nop_pkt(int fd, void *buffer, uint32_t buf_off,
@@ -1362,8 +1364,8 @@ void hltests_submit_and_wait_cs(int fd, void *cb_ptr, uint32_t cb_size,
 	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, false, &seq);
 	assert_int_equal(rc, 0);
 
-	rc = hltests_wait_for_cs(fd, seq);
-	assert_int_equal(rc, 0);
+	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
+	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
 
 	if (destroy_cb) {
 		rc = hltests_destroy_cb(fd, cb_ptr);

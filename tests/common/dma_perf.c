@@ -71,8 +71,8 @@ static double hltests_transfer_perf(int fd, uint32_t queue_index,
 		assert_int_equal(rc, 0);
 	}
 
-	rc = hltests_wait_for_cs(fd, seq);
-	assert_int_equal(rc, 0);
+	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
+	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
 
 	clock_gettime(CLOCK_MONOTONIC_RAW, &end);
 	time_diff = (end.tv_nsec - begin.tv_nsec) / 1000000000.0 +

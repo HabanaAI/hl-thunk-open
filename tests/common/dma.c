@@ -112,9 +112,8 @@ static void *dma_thread_start(void *args)
 	if (rc)
 		return NULL;
 
-	rc = hltests_wait_for_cs(fd, seq);
-	if (rc)
-		return NULL;
+	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
+	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
 
 	for (i = 0 ; i < 2 ; i++) {
 		rc = hltests_destroy_cb(fd, cb[i]);
@@ -315,8 +314,8 @@ void test_dma_entire_dram_random(void **state)
 	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, true, &seq);
 	assert_int_equal(rc, 0);
 
-	rc = hltests_wait_for_cs(fd, seq);
-	assert_int_equal(rc, 0);
+	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
+	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
 
 	rc = hltests_destroy_cb(fd, cb);
 	assert_int_equal(rc, 0);
@@ -342,8 +341,8 @@ void test_dma_entire_dram_random(void **state)
 	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, true, &seq);
 	assert_int_equal(rc, 0);
 
-	rc = hltests_wait_for_cs(fd, seq);
-	assert_int_equal(rc, 0);
+	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
+	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
 
 	rc = hltests_destroy_cb(fd, cb);
 	assert_int_equal(rc, 0);

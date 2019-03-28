@@ -127,9 +127,8 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 2, true, &seq);
 	assert_int_equal(rc, 0);
 
-	rc = _hltests_wait_for_cs(fd, seq, WAIT_FOR_CS_DEFAULT_TIMEOUT,
-					HL_WAIT_CS_STATUS_BUSY);
-	assert_int_equal(rc, 0);
+	rc = hltests_wait_for_cs(fd, seq, WAIT_FOR_CS_DEFAULT_TIMEOUT);
+	assert_int_equal(rc, HL_WAIT_CS_STATUS_BUSY);
 
 	/* Cleanup */
 	rc = hltests_destroy_cb(fd, engine_cb);
@@ -186,9 +185,8 @@ void test_write_to_cfg_space(void **state)
 	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, false, &seq);
 	assert_int_equal(rc, 0);
 
-	rc = _hltests_wait_for_cs(fd, seq, WAIT_FOR_CS_DEFAULT_TIMEOUT,
-					HL_WAIT_CS_STATUS_BUSY);
-	assert_int_equal(rc, 0);
+	rc = hltests_wait_for_cs(fd, seq, WAIT_FOR_CS_DEFAULT_TIMEOUT);
+	assert_int_equal(rc, HL_WAIT_CS_STATUS_BUSY);
 
 	rc = hltests_destroy_cb(fd, ptr);
 	assert_int_equal(rc, 0);
