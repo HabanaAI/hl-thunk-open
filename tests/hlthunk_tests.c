@@ -50,6 +50,8 @@ static khash_t(ptr) *dev_table;
 
 static enum hlthunk_device_name asic_name_for_testing = HLTHUNK_DEVICE_INVALID;
 
+int run_disabled_tests = 0;
+
 static struct hltests_device* get_hdev_from_fd(int fd)
 {
 	struct hltests_device *hdev;
@@ -1537,6 +1539,8 @@ void hltests_parser(int argc, const char **argv, const char * const* usage,
 		OPT_HELP(),
 		OPT_GROUP("Basic options"),
 		OPT_BOOLEAN('l', "list", &list, "list tests"),
+		OPT_BOOLEAN('d', "disabled", &run_disabled_tests,
+			"run disabled tests"),
 		OPT_STRING(0, "asic", &asic,
 			"run tests on asic (goya)"),
 		OPT_STRING('s', "test", &test, "name of specific test to run"),

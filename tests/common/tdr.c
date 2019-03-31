@@ -34,6 +34,8 @@
 #include <errno.h>
 #include <unistd.h>
 
+extern int run_disabled_tests;
+
 void test_tdr_deadlock(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
@@ -74,14 +76,11 @@ static const char *const usage[] = {
 
 int main(int argc, const char **argv)
 {
-	char *run_disabled_tests;
-
-	run_disabled_tests = getenv("HLTHUNK_DISABLED_TESTS");
-	if (!run_disabled_tests || strcmp(run_disabled_tests, "1"))
-		return 0;
-
 	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_INVALID, tdr_tests,
 			sizeof(tdr_tests) / sizeof((tdr_tests)[0]));
+
+	if (!run_disabled_tests)
+		return 0;
 
 	return cmocka_run_group_tests(tdr_tests, hltests_setup,
 					hltests_teardown);
