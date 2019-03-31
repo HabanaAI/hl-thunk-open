@@ -67,10 +67,14 @@ const struct CMUnitTest tdr_tests[] = {
 				hl_tests_ensure_device_operational),
 };
 
-int main(void)
+static const char *const usage[] = {
+    "tdr [options]",
+    NULL,
+};
+
+int main(int argc, const char **argv)
 {
 	char *test_names_to_run, *run_disabled_tests;
-	int rc;
 
 	run_disabled_tests = getenv("HLTHUNK_DISABLED_TESTS");
 	if (!run_disabled_tests || strcmp(run_disabled_tests, "1"))
@@ -80,7 +84,8 @@ int main(void)
 	if (test_names_to_run)
 		cmocka_set_test_filter(test_names_to_run);
 
-	rc = cmocka_run_group_tests(tdr_tests, hltests_setup, hltests_teardown);
+	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_INVALID);
 
-	return rc;
+	return cmocka_run_group_tests(tdr_tests, hltests_setup,
+					hltests_teardown);
 }

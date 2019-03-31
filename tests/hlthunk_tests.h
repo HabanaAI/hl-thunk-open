@@ -32,6 +32,11 @@
 #include <sys/mman.h>
 #include <stdbool.h>
 
+#include <stdarg.h>
+#include <stddef.h>
+#include <setjmp.h>
+#include <cmocka.h>
+
 #define WAIT_FOR_CS_DEFAULT_TIMEOUT	5000000 /* 5 sec */
 
 #define DMA_1KB_INC_SRAM(func_name, state, size) \
@@ -153,12 +158,14 @@ struct hltests_cs_chunk {
 	uint32_t queue_index;
 };
 
+void hltests_parser(int argc, const char **argv, const char * const* usage,
+			enum hlthunk_device_name expected_device);
 int hltests_init(void);
 void hltests_fini(void);
 int hltests_open(const char *busid);
 int hltests_close(int fd);
 
-enum hlthunk_device_name hltests_get_device_name(void);
+enum hlthunk_device_name hltests_validate_device_name(const char *device_name);
 
 void* hltests_cb_mmap(int fd, size_t len, off_t offset);
 int hltests_cb_munmap(void *addr, size_t length);

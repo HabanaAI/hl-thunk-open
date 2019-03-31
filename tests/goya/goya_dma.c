@@ -215,20 +215,21 @@ const struct CMUnitTest dma_tests[] = {
 				hl_tests_ensure_device_operational)
 };
 
-int main(void)
+static const char *const usage[] = {
+    "goya_dma [options]",
+    NULL,
+};
+
+int main(int argc, const char **argv)
 {
 	char *test_names_to_run;
-	int rc;
-
-	if (hltests_get_device_name() != HLTHUNK_DEVICE_GOYA)
-		return 0;
 
 	test_names_to_run = getenv("HLTHUNK_TESTS_NAMES");
 	if (test_names_to_run)
 		cmocka_set_test_filter(test_names_to_run);
 
-	rc = cmocka_run_group_tests(dma_tests, hltests_setup,
-					hltests_teardown);
+	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_GOYA);
 
-	return rc;
+	return cmocka_run_group_tests(dma_tests, hltests_setup,
+					hltests_teardown);
 }

@@ -24,11 +24,7 @@
 #include "hlthunk_tests.h"
 #include "specs/pci_ids.h"
 #include "mersenne-twister.h"
-
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "argparse.h"
 
 #include <stdio.h>
 #include <errno.h>
@@ -41,9 +37,6 @@
 #include <time.h>
 #include <inttypes.h>
 
-#include <setjmp.h>
-#include <cmocka.h>
-
 typedef struct {
 	pthread_mutex_t lock;
 	uint64_t start;
@@ -54,6 +47,8 @@ typedef struct {
 
 static pthread_mutex_t table_lock = PTHREAD_MUTEX_INITIALIZER;
 static khash_t(ptr) *dev_table;
+
+static enum hlthunk_device_name asic_name_for_testing = HLTHUNK_DEVICE_INVALID;
 
 static struct hltests_device* get_hdev_from_fd(int fd)
 {
@@ -159,13 +154,12 @@ void hltests_fini(void)
 		kh_destroy(ptr, dev_table);
 }
 
-enum hlthunk_device_name hltests_get_device_name(void)
+enum hlthunk_device_name hltests_validate_device_name(const char *device_name)
 {
-	char *device_name = getenv("HLTHUNK_DEVICE_NAME");
 	if (!device_name)
-		device_name = "Goya";
+		device_name = "goya";
 
-	if (!strcmp(device_name, "Goya"))
+	if (!strcmp(device_name, "goya"))
 		return HLTHUNK_DEVICE_GOYA;
 
 	printf("Invalid device name %s\n", device_name);
@@ -182,7 +176,7 @@ int hltests_open(const char *busid)
 
 	pthread_mutex_lock(&table_lock);
 
-	rc = fd = hlthunk_open(hltests_get_device_name(), busid);
+	rc = fd = hlthunk_open(asic_name_for_testing, busid);
 	if (fd < 0)
 		goto out;
 
@@ -1529,4 +1523,31 @@ void hltests_mem_pool_free(void *data, uint64_t addr, uint64_t size)
 		mem_pool->pool[i] = 0;
 
 	pthread_mutex_unlock(&mem_pool->lock);
+}
+
+void hltests_parser(int argc, const char **argv, const char * const* usage,
+			enum hlthunk_device_name expected_device)
+{
+	const char *asic = NULL;
+
+	struct argparse_option options[] = {
+		OPT_HELP(),
+		OPT_GROUP("Basic options"),
+		OPT_STRING(0, "asic", &asic,
+			"run tests on asic (goya)"),
+		OPT_END(),
+	};
+
+	struct argparse argparse;
+	argparse_init(&argparse, options, usage, 0);
+	argparse_describe(&argparse, "\nRun tests using hl-thunk", NULL);
+	argc = argparse_parse(&argparse, argc, argv);
+
+	asic_name_for_testing = hltests_validate_device_name(asic);
+	if (asic_name_for_testing == HLTHUNK_DEVICE_INVALID)
+		exit(-1);
+
+	if ((expected_device != HLTHUNK_DEVICE_INVALID) &&
+				(asic_name_for_testing != expected_device))
+		exit(0);
 }

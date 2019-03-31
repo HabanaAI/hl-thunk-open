@@ -258,7 +258,12 @@ const struct CMUnitTest dma_perf_tests[] = {
 				hl_tests_ensure_device_operational),
 };
 
-int main(void)
+static const char *const usage[] = {
+    "dma_perf [options]",
+    NULL,
+};
+
+int main(int argc, const char **argv)
 {
 	char *test_names_to_run;
 	int rc;
@@ -267,19 +272,22 @@ int main(void)
 	if (test_names_to_run)
 		cmocka_set_test_filter(test_names_to_run);
 
+	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_INVALID);
+
 	rc = cmocka_run_group_tests(dma_perf_tests, hltests_setup,
 					hltests_teardown);
 
-	printf("========\n");
-	printf("RESULTS:\n");
-	printf("========\n");
-	printf("HOST->SRAM %lf GB/Sec\n", host_sram_perf_outcome);
-	printf("SRAM->HOST %lf GB/Sec\n", sram_host_perf_outcome);
-	printf("HOST->DRAM %lf GB/Sec\n", host_dram_perf_outcome);
-	printf("DRAM->HOST %lf GB/Sec\n", dram_host_perf_outcome);
-	printf("SRAM->DRAM %lf GB/Sec\n", sram_dram_perf_outcome);
-	printf("DRAM->SRAM %lf GB/Sec\n", dram_sram_perf_outcome);
-
+	if (!rc) {
+		printf("========\n");
+		printf("RESULTS:\n");
+		printf("========\n");
+		printf("HOST->SRAM %lf GB/Sec\n", host_sram_perf_outcome);
+		printf("SRAM->HOST %lf GB/Sec\n", sram_host_perf_outcome);
+		printf("HOST->DRAM %lf GB/Sec\n", host_dram_perf_outcome);
+		printf("DRAM->HOST %lf GB/Sec\n", dram_host_perf_outcome);
+		printf("SRAM->DRAM %lf GB/Sec\n", sram_dram_perf_outcome);
+		printf("DRAM->SRAM %lf GB/Sec\n", dram_sram_perf_outcome);
+	}
 
 	return rc;
 }
