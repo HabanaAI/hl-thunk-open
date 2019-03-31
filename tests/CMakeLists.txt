@@ -13,6 +13,7 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/src/klib
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/argparse
 )
 
 set(HLTHUNK_TESTS_LINK_LIBRARIES
@@ -22,8 +23,9 @@ set(HLTHUNK_TESTS_LINK_LIBRARIES
 # create test library
 add_library(${HLTHUNK_TESTS_LIBRARY}
             STATIC
-                hlthunk_tests.c
-                hlthunk_tests_goya.c)
+            hlthunk_tests.c
+            hlthunk_tests_goya.c
+            argparse/argparse.c)
 target_link_libraries(${HLTHUNK_TESTS_LIBRARY} ${HLTHUNK_TESTS_LINK_LIBRARIES})
 
 set(TEST_TARGET_LIBRARIES
