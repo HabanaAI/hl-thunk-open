@@ -574,7 +574,8 @@ int main(int argc, const char **argv)
 	if (test_names_to_run)
 		cmocka_set_test_filter(test_names_to_run);
 
-	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_INVALID);
+	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_INVALID, sm_tests,
+			sizeof(sm_tests) / sizeof((sm_tests)[0]));
 
 	return cmocka_run_group_tests(sm_tests, hltests_setup,
 					hltests_teardown);

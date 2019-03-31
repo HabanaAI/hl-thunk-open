@@ -1526,15 +1526,18 @@ void hltests_mem_pool_free(void *data, uint64_t addr, uint64_t size)
 }
 
 void hltests_parser(int argc, const char **argv, const char * const* usage,
-			enum hlthunk_device_name expected_device)
+			enum hlthunk_device_name expected_device,
+			const struct CMUnitTest * const tests, int num_tests)
 {
 	const char *asic = NULL;
+	int list = 0;
 
 	struct argparse_option options[] = {
 		OPT_HELP(),
 		OPT_GROUP("Basic options"),
 		OPT_STRING(0, "asic", &asic,
 			"run tests on asic (goya)"),
+		OPT_BOOLEAN('l', "list", &list, "list tests"),
 		OPT_END(),
 	};
 
@@ -1546,6 +1549,15 @@ void hltests_parser(int argc, const char **argv, const char * const* usage,
 	asic_name_for_testing = hltests_validate_device_name(asic);
 	if (asic_name_for_testing == HLTHUNK_DEVICE_INVALID)
 		exit(-1);
+
+	if (list) {
+		printf("\nList of tests:");
+		printf("\n-----------------\n\n");
+		for (int i = 0 ; i < num_tests ; i++)
+			printf("%s\n", tests[i].name);
+		printf("\n");
+		exit(0);
+	}
 
 	if ((expected_device != HLTHUNK_DEVICE_INVALID) &&
 				(asic_name_for_testing != expected_device))

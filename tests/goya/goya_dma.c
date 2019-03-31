@@ -210,7 +210,7 @@ void test_dma_4_queues(void **state)
 	assert_int_equal(rc, 0);
 }
 
-const struct CMUnitTest dma_tests[] = {
+const struct CMUnitTest goya_dma_tests[] = {
 	cmocka_unit_test_setup(test_dma_4_queues,
 				hl_tests_ensure_device_operational)
 };
@@ -228,8 +228,9 @@ int main(int argc, const char **argv)
 	if (test_names_to_run)
 		cmocka_set_test_filter(test_names_to_run);
 
-	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_GOYA);
+	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_GOYA, goya_dma_tests,
+			sizeof(goya_dma_tests) / sizeof((goya_dma_tests)[0]));
 
-	return cmocka_run_group_tests(dma_tests, hltests_setup,
+	return cmocka_run_group_tests(goya_dma_tests, hltests_setup,
 					hltests_teardown);
 }

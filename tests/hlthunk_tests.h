@@ -159,7 +159,8 @@ struct hltests_cs_chunk {
 };
 
 void hltests_parser(int argc, const char **argv, const char * const* usage,
-			enum hlthunk_device_name expected_device);
+			enum hlthunk_device_name expected_device,
+			const struct CMUnitTest * tests, int num_tests);
 int hltests_init(void);
 void hltests_fini(void);
 int hltests_open(const char *busid);

@@ -272,7 +272,9 @@ int main(int argc, const char **argv)
 	if (test_names_to_run)
 		cmocka_set_test_filter(test_names_to_run);
 
-	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_INVALID);
+	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_INVALID,
+			dma_perf_tests,
+			sizeof(dma_perf_tests) / sizeof((dma_perf_tests)[0]));
 
 	rc = cmocka_run_group_tests(dma_perf_tests, hltests_setup,
 					hltests_teardown);

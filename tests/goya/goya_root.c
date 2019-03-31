@@ -233,7 +233,7 @@ void test_write_to_mmTPC_PLL_CLK_RLX_0_from_qman(void **state)
 	hltests_debugfs_write(fd, CFG_BASE + mmTPC_PLL_CLK_RLX_0, val_orig);
 }
 
-const struct CMUnitTest root_tests[] = {
+const struct CMUnitTest goya_root_tests[] = {
 	cmocka_unit_test_setup(test_debugfs_sram_read_write,
 					hl_tests_ensure_device_operational),
 	cmocka_unit_test_setup(test_write_to_cfg_space,
@@ -262,8 +262,9 @@ int main(int argc, const char **argv)
 	if (test_names_to_run)
 		cmocka_set_test_filter(test_names_to_run);
 
-	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_GOYA);
+	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_GOYA, goya_root_tests,
+			sizeof(goya_root_tests) / sizeof((goya_root_tests)[0]));
 
-	return cmocka_run_group_tests(root_tests, hltests_root_setup,
+	return cmocka_run_group_tests(goya_root_tests, hltests_root_setup,
 					hltests_root_teardown);
 }
