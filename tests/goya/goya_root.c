@@ -253,14 +253,8 @@ static const char *const usage[] = {
 
 int main(int argc, const char **argv)
 {
-	char *test_names_to_run;
-
 	if (access("/sys/kernel/debug", R_OK))
 		return 0;
-
-	test_names_to_run = getenv("HLTHUNK_TESTS_NAMES");
-	if (test_names_to_run)
-		cmocka_set_test_filter(test_names_to_run);
 
 	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_GOYA, goya_root_tests,
 			sizeof(goya_root_tests) / sizeof((goya_root_tests)[0]));

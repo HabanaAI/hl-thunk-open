@@ -118,12 +118,6 @@ static const char *const usage[] = {
 
 int main(int argc, const char **argv)
 {
-	char *test_names_to_run;
-
-	test_names_to_run = getenv("HLTHUNK_TESTS_NAMES");
-	if (test_names_to_run)
-		cmocka_set_test_filter(test_names_to_run);
-
 	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_INVALID,
 		dma_128KB_inc_tests,
 		sizeof(dma_128KB_inc_tests) / sizeof((dma_128KB_inc_tests)[0]));

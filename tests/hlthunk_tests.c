@@ -1530,14 +1530,16 @@ void hltests_parser(int argc, const char **argv, const char * const* usage,
 			const struct CMUnitTest * const tests, int num_tests)
 {
 	const char *asic = NULL;
+	const char *test = NULL;
 	int list = 0;
 
 	struct argparse_option options[] = {
 		OPT_HELP(),
 		OPT_GROUP("Basic options"),
+		OPT_BOOLEAN('l', "list", &list, "list tests"),
 		OPT_STRING(0, "asic", &asic,
 			"run tests on asic (goya)"),
-		OPT_BOOLEAN('l', "list", &list, "list tests"),
+		OPT_STRING('s', "test", &test, "name of specific test to run"),
 		OPT_END(),
 	};
 
@@ -1562,4 +1564,7 @@ void hltests_parser(int argc, const char **argv, const char * const* usage,
 	if ((expected_device != HLTHUNK_DEVICE_INVALID) &&
 				(asic_name_for_testing != expected_device))
 		exit(0);
+
+	if (test)
+		cmocka_set_test_filter(test);
 }

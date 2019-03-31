@@ -74,15 +74,11 @@ static const char *const usage[] = {
 
 int main(int argc, const char **argv)
 {
-	char *test_names_to_run, *run_disabled_tests;
+	char *run_disabled_tests;
 
 	run_disabled_tests = getenv("HLTHUNK_DISABLED_TESTS");
 	if (!run_disabled_tests || strcmp(run_disabled_tests, "1"))
 		return 0;
-
-	test_names_to_run = getenv("HLTHUNK_TESTS_NAMES");
-	if (test_names_to_run)
-		cmocka_set_test_filter(test_names_to_run);
 
 	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_INVALID, tdr_tests,
 			sizeof(tdr_tests) / sizeof((tdr_tests)[0]));
