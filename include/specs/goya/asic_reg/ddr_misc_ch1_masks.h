@@ -110,4 +110,3 @@
 #define DDR_MISC_CH1_CFG_DONE_CFG_DONE_MASK                          0x1
 
 #endif /* ASIC_REG_DDR_MISC_CH1_MASKS_H_ */
-

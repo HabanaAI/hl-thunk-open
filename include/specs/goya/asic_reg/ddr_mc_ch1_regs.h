@@ -266,4 +266,3 @@
 #define mmDDR_MC_CH1_SBRWDATA1                                       0x740F30
 
 #endif /* ASIC_REG_DDR_MC_CH1_REGS_H_ */
-

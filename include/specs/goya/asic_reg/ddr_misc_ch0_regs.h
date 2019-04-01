@@ -74,4 +74,3 @@
 #define mmDDR_MISC_CH0_CFG_DONE                                      0x648200
 
 #endif /* ASIC_REG_DDR_MISC_CH0_REGS_H_ */
-
