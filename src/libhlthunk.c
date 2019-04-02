@@ -108,14 +108,19 @@ hlthunk_public void hlthunk_free(void *pt)
 		free(pt);
 }
 
+/**
+ * This function opens the habanalabs device according to specified busid, or
+ * according to the device name, if busid is NULL. If busid is specifies but
+ * the device can't be opened, the function fails.
+ * @param device_name name of the device that the user wants to open
+ * @param busid pci address of the device on the host pci bus
+ * @return file descriptor handle or negative value in case of error
+ */
 hlthunk_public int hlthunk_open(enum hlthunk_device_name device_name,
 				const char *busid)
 {
-	if (busid) {
-		int fd = hlthunk_open_by_busid(busid);
-		if (fd >= 0)
-			return fd;
-	}
+	if (busid)
+		return hlthunk_open_by_busid(busid);
 
 	return hlthunk_open_device_by_name(device_name);
 }
