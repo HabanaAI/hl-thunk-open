@@ -26,6 +26,7 @@
 
 #include "hlthunk.h"
 #include "khash.h"
+#include "pci_ids.h"
 
 #include <stdint.h>
 #include <sys/types.h>
@@ -81,6 +82,7 @@ struct hltests_device {
 	int refcnt;
 	int debugfs_addr_fd;
 	int debugfs_data_fd;
+	enum hl_pci_ids device_id;
 };
 
 struct hltests_asic_funcs {
@@ -278,5 +280,8 @@ uint32_t hltests_get_mme_qid(int fd, uint8_t dcore_id, uint8_t mme_id,
 uint8_t hltests_get_tpc_cnt(int fd, uint8_t dcore_id);
 
 void goya_tests_set_asic_funcs(struct hltests_device *hdev);
+
+bool is_simulator(int fd);
+bool is_goya(int fd);
 
 #endif /* HLTHUNK_TESTS_H */

@@ -173,7 +173,6 @@ int hltests_open(const char *busid)
 {
 	int fd, rc;
 	struct hltests_device *hdev;
-	enum hl_pci_ids device_id;
 	khint_t k;
 
 	pthread_mutex_lock(&table_lock);
@@ -202,14 +201,14 @@ int hltests_open(const char *busid)
 	k = kh_put(ptr, dev_table, fd, &rc);
 	kh_val(dev_table, k) = hdev;
 
-	device_id = hlthunk_get_device_id_from_fd(fd);
+	hdev->device_id = hlthunk_get_device_id_from_fd(fd);
 
-	switch (device_id) {
+	switch (hdev->device_id) {
 	case PCI_IDS_GOYA:
 		goya_tests_set_asic_funcs(hdev);
 		break;
 	default:
-		printf("Invalid device type %d\n", device_id);
+		printf("Invalid device type %d\n", hdev->device_id);
 		rc = -ENXIO;
 		goto remove_device;
 		break;
@@ -1571,4 +1570,25 @@ void hltests_parser(int argc, const char **argv, const char * const* usage,
 
 	if (test)
 		cmocka_set_test_filter(test);
+}
+
+bool is_simulator(int fd)
+{
+	struct hltests_device *hdev = get_hdev_from_fd(fd);
+
+	if (hdev->device_id == PCI_IDS_GOYA_SIMULATOR)
+		return true;
+
+	return false;
+}
+
+bool is_goya(int fd)
+{
+	struct hltests_device *hdev = get_hdev_from_fd(fd);
+
+	if (hdev->device_id == PCI_IDS_GOYA_SIMULATOR ||
+			hdev->device_id == PCI_IDS_GOYA)
+		return true;
+
+	return false;
 }
