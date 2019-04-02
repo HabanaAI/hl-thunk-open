@@ -33,8 +33,12 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
+#include <dirent.h>
+#include <linux/limits.h>
 
 int hlthunk_debug_level = HLTHUNK_DEBUG_LEVEL_NA;
+#define BUSID_WITHOUT_DOMAIN_LEN	7
+#define BUSID_WITH_DOMAIN_LEN		12
 
 static int hlthunk_ioctl(int fd, unsigned long request, void *arg)
 {
@@ -47,11 +51,6 @@ static int hlthunk_ioctl(int fd, unsigned long request, void *arg)
 	return ret;
 }
 
-static int hlthunk_open_by_busid(const char *busid)
-{
-	return -1;
-}
-
 static int hlthunk_open_minor(int minor, const char *dev_name)
 {
 	char buf[64];
@@ -61,6 +60,74 @@ static int hlthunk_open_minor(int minor, const char *dev_name)
 	if ((fd = open(buf, O_RDWR | O_CLOEXEC, 0)) >= 0)
 		return fd;
 	return -errno;
+}
+
+static int hlthunk_open_by_busid(const char *busid)
+{
+	const char *base_path = "/sys/class/habanalabs/";
+	char *substr_ptr;
+	struct dirent *entry;
+	uint32_t device_index;
+	const char *device_prefix = "hl";
+	const char *virtual_device_prefix = "hlv";
+	const char *sim_device_prefix = "hls";
+	const char *pci_bus_prefix = "pci_addr";
+	char pci_bus_file_name[PATH_MAX];
+	char read_busid[16], buf[64], full_busid[16];
+	int fd, dev_fd, rc;
+
+	if (strlen(busid) == BUSID_WITHOUT_DOMAIN_LEN)
+		snprintf(full_busid, BUSID_WITH_DOMAIN_LEN, "0000:%s", busid);
+	else
+		strncpy(full_busid, busid, BUSID_WITH_DOMAIN_LEN);
+
+	full_busid[BUSID_WITH_DOMAIN_LEN] = '\0';
+	DIR *dir = opendir(base_path);
+
+	if (dir == NULL) {
+		printf("Failed to open habanalabs directory\n");
+		return errno;
+	}
+
+	while ((entry = readdir(dir)) != NULL) {
+		if (strstr(entry->d_name, virtual_device_prefix) != NULL)
+			// Ignoring "hlv" entry-name
+			continue;
+		else if (strstr(entry->d_name, sim_device_prefix) != NULL)
+			// Ignoring "hls" entry-name
+			continue;
+
+		substr_ptr = strstr(entry->d_name, device_prefix);
+		if (substr_ptr != NULL)
+			device_index = atoi(substr_ptr + 2);
+		else
+			continue;
+
+		sprintf(pci_bus_file_name, "%s%s/%s", base_path,
+					entry->d_name, pci_bus_prefix);
+
+		fd = open(pci_bus_file_name, O_RDONLY);
+		if (fd < 0) {
+			printf("failed to open pci_addr\n");
+			continue;
+		}
+		rc = read(fd, read_busid, BUSID_WITH_DOMAIN_LEN);
+		if (rc < 0) {
+			printf("failed to read pci_addr\n");
+			close(fd);
+			continue;
+		}
+		read_busid[BUSID_WITH_DOMAIN_LEN] = '\0';
+		close(fd);
+
+		if (!strcmp(read_busid, full_busid)) {
+			closedir(dir);
+			return hlthunk_open_minor(device_index,
+					HLTHUNK_DEV_NAME_PRIMARY);
+		}
+	}
+	closedir(dir);
+	return -1;
 }
 
 static enum hlthunk_device_name hlthunk_get_device_name_from_fd(int fd)
