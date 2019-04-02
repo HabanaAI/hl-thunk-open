@@ -115,8 +115,8 @@ const struct CMUnitTest memory_tests[] = {
 };
 
 static const char *const usage[] = {
-    "memory [options]",
-    NULL,
+	"memory [options]",
+	NULL,
 };
 
 int main(int argc, const char **argv)

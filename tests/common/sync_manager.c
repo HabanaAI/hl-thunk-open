@@ -562,8 +562,8 @@ const struct CMUnitTest sm_tests[] = {
 };
 
 static const char *const usage[] = {
-    "sync_manager [options]",
-    NULL,
+	"sync_manager [options]",
+	NULL,
 };
 
 int main(int argc, const char **argv)

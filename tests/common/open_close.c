@@ -32,56 +32,38 @@
 #include <cmocka.h>
 #include <stdio.h>
 #include <errno.h>
-#include <unistd.h>
 
-extern int run_disabled_tests;
-
-void test_tdr_deadlock(void **state)
+void test_open_by_busid(void **state)
 {
-	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	struct hltests_cs_chunk execute_arr[1];
-	void *ptr;
-	uint64_t seq = 0;
-	uint32_t page_size = sysconf(_SC_PAGESIZE), offset = 0;
-	int rc, fd = tests_state->fd;
+	const char *pciaddr = hltests_get_parser_pciaddr();
 
-	ptr = hltests_create_cb(fd, page_size, true, 0);
-	assert_ptr_not_equal(ptr, NULL);
+	if (!pciaddr) {
+		printf("Test is skipped because pci address wasn't given\n");
+		return;
+	}
 
-	offset = hltests_add_fence_pkt(fd, ptr, offset, false, false, 1, 1, 0);
+	if (hltests_setup(state)) {
+		printf("Failed to open device with pci address %s\n", pciaddr);
+		return;
+	}
 
-	execute_arr[0].cb_ptr = ptr;
-	execute_arr[0].cb_size = offset;
-	execute_arr[0].queue_index = hltests_get_dma_down_qid(fd, 0, 0);
-
-	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, false, &seq);
-	assert_int_equal(rc, 0);
-
-	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
-	assert_int_not_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
-
-	rc = hltests_destroy_cb(fd, ptr);
-	assert_int_equal(rc, 0);
+	hltests_teardown(state);
 }
 
-const struct CMUnitTest tdr_tests[] = {
-	cmocka_unit_test_setup(test_tdr_deadlock,
-				hl_tests_ensure_device_operational),
+const struct CMUnitTest open_close_tests[] = {
+	cmocka_unit_test(test_open_by_busid),
 };
 
 static const char *const usage[] = {
-	"tdr [options]",
+	"open_close [options]",
 	NULL,
 };
 
 int main(int argc, const char **argv)
 {
-	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_INVALID, tdr_tests,
-			sizeof(tdr_tests) / sizeof((tdr_tests)[0]));
+	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_INVALID,
+		open_close_tests,
+		sizeof(open_close_tests) / sizeof((open_close_tests)[0]));
 
-	if (!run_disabled_tests)
-		return 0;
-
-	return cmocka_run_group_tests(tdr_tests, hltests_setup,
-					hltests_teardown);
+	return cmocka_run_group_tests(open_close_tests, NULL, NULL);
 }

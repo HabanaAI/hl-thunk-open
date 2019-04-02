@@ -247,8 +247,8 @@ const struct CMUnitTest goya_root_tests[] = {
 };
 
 static const char *const usage[] = {
-    "goya_root [options]",
-    NULL,
+	"goya_root [options]",
+	NULL,
 };
 
 int main(int argc, const char **argv)

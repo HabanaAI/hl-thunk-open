@@ -112,8 +112,8 @@ const struct CMUnitTest dma_128KB_inc_tests[] = {
 };
 
 static const char *const usage[] = {
-    "dma_128KB_inc [options]",
-    NULL,
+	"dma_128KB_inc [options]",
+	NULL,
 };
 
 int main(int argc, const char **argv)

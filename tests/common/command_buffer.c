@@ -105,8 +105,8 @@ const struct CMUnitTest cb_tests[] = {
 };
 
 static const char *const usage[] = {
-    "command_buffer [options]",
-    NULL,
+	"command_buffer [options]",
+	NULL,
 };
 
 int main(int argc, const char **argv)
