@@ -50,9 +50,10 @@ static double hltests_transfer_perf(int fd, uint32_t queue_index,
 	struct timespec begin, end;
 	struct hltests_cs_chunk execute_arr[1];
 	uint64_t seq = 0;
-	int rc, num_of_transfers = 300, i;
+	int rc, num_of_transfers, i;
 	double time_diff;
 
+	num_of_transfers = is_simulator(fd) ? 30 : 300;
 	ptr = hltests_create_cb(fd, getpagesize(), true, 0);
 	assert_ptr_not_equal(ptr, NULL);
 	offset = hltests_add_dma_pkt(fd, ptr, offset,
