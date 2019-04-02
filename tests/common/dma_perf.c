@@ -134,6 +134,7 @@ void hltest_sram_host_transfer_perf(void **state)
 	sram_host_perf_outcome = hltests_transfer_perf(fd,
 			hltests_get_dma_up_qid(fd, 0, 0),
 			sram_addr, host_addr, size, GOYA_DMA_SRAM_TO_HOST);
+	hltests_free_host_mem(fd, dst_ptr);
 }
 
 void hltest_host_dram_transfer_perf(void **state)
@@ -162,6 +163,8 @@ void hltest_host_dram_transfer_perf(void **state)
 			hltests_get_dma_down_qid(fd, 0, 0),host_addr,
 			(uint64_t) (uintptr_t) dram_addr,
 			size, GOYA_DMA_HOST_TO_DRAM);
+	hltests_free_host_mem(fd, src_ptr);
+	hltests_free_device_mem(fd, dram_addr);
 }
 
 void hltest_dram_host_transfer_perf(void **state)
@@ -190,6 +193,8 @@ void hltest_dram_host_transfer_perf(void **state)
 			hltests_get_dma_up_qid(fd, 0, 0),
 			(uint64_t) (uintptr_t) dram_addr, host_addr, size,
 			GOYA_DMA_DRAM_TO_HOST);
+	hltests_free_host_mem(fd, dst_ptr);
+	hltests_free_device_mem(fd, dram_addr);
 }
 
 void hltest_sram_dram_transfer_perf(void **state)
@@ -216,6 +221,8 @@ void hltest_sram_dram_transfer_perf(void **state)
 			hltests_get_dma_sram_to_dram_qid(fd, 0, 0), sram_addr,
 			(uint64_t) (uintptr_t) dram_addr, size,
 			GOYA_DMA_SRAM_TO_DRAM);
+
+	hltests_free_device_mem(fd, dram_addr);
 }
 
 void hltest_dram_sram_transfer_perf(void **state)
@@ -242,6 +249,8 @@ void hltest_dram_sram_transfer_perf(void **state)
 			hltests_get_dma_dram_to_sram_qid(fd, 0, 0),
 			(uint64_t) (uintptr_t) dram_addr, sram_addr,
 			size, GOYA_DMA_DRAM_TO_SRAM);
+
+	hltests_free_device_mem(fd, dram_addr);
 }
 
 const struct CMUnitTest dma_perf_tests[] = {
