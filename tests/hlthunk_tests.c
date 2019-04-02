@@ -51,6 +51,7 @@ static khash_t(ptr) *dev_table;
 static enum hlthunk_device_name asic_name_for_testing = HLTHUNK_DEVICE_INVALID;
 
 int run_disabled_tests = 0;
+char *pciaddr;
 
 static struct hltests_device* get_hdev_from_fd(int fd)
 {
@@ -423,7 +424,7 @@ int hltests_setup(void **state)
 		goto free_state;
 	}
 
-	tests_state->fd = hltests_open(NULL);
+	tests_state->fd = hltests_open(pciaddr);
 	if (tests_state->fd < 0) {
 		printf("Failed to open device %d\n", tests_state->fd);
 		rc = tests_state->fd;
@@ -1543,6 +1544,7 @@ void hltests_parser(int argc, const char **argv, const char * const* usage,
 		OPT_STRING('a', "asic", &asic,
 			"run tests on asic (goya)"),
 		OPT_STRING('s', "test", &test, "name of specific test to run"),
+		OPT_STRING('p', "pciaddr", &pciaddr, "pci address of device"),
 		OPT_END(),
 	};
 
