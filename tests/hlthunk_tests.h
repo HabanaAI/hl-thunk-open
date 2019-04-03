@@ -220,7 +220,7 @@ int hltests_wait_for_cs_until_not_busy(int fd, uint64_t seq);
 void hltests_submit_and_wait_cs(int fd, void *cb_ptr, uint32_t cb_size,
 				uint32_t queue_index, bool destroy_cb);
 
-int hl_tests_ensure_device_operational(void **state);
+int hltests_ensure_device_operational(void **state);
 
 /* Generic memory addresses pool */
 void *hltests_mem_pool_init(uint64_t start_addr, uint64_t size, uint64_t order);
@@ -283,7 +283,7 @@ uint8_t hltests_get_tpc_cnt(int fd, uint8_t dcore_id);
 
 void goya_tests_set_asic_funcs(struct hltests_device *hdev);
 
-bool is_simulator(int fd);
-bool is_goya(int fd);
+bool hltests_is_simulator(int fd);
+bool hltests_is_goya(int fd);
 
 #endif /* HLTHUNK_TESTS_H */

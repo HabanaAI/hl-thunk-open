@@ -212,7 +212,7 @@ void test_dma_4_queues(void **state)
 
 const struct CMUnitTest goya_dma_tests[] = {
 	cmocka_unit_test_setup(test_dma_4_queues,
-				hl_tests_ensure_device_operational)
+				hltests_ensure_device_operational)
 };
 
 static const char *const usage[] = {

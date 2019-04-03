@@ -40,13 +40,13 @@ DMA_1KB_INC_DRAM(test_dma_dram_size_256MB, state, 256 * 1024 * 1024)
 
 const struct CMUnitTest dma_64MB_inc_tests[] = {
 	cmocka_unit_test_setup(test_dma_dram_size_64MB,
-			hl_tests_ensure_device_operational),
+			hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_dma_dram_size_128MB,
-			hl_tests_ensure_device_operational),
+			hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_dma_dram_size_192MB,
-			hl_tests_ensure_device_operational),
+			hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_dma_dram_size_256MB,
-			hl_tests_ensure_device_operational),
+			hltests_ensure_device_operational),
 };
 
 static const char *const usage[] = {

@@ -51,7 +51,7 @@ static double hltests_transfer_perf(int fd, uint32_t queue_index,
 	int rc, num_of_transfers, i;
 	double time_diff;
 
-	num_of_transfers = is_simulator(fd) ? 30 : 300;
+	num_of_transfers = hltests_is_simulator(fd) ? 30 : 300;
 	ptr = hltests_create_cb(fd, getpagesize(), true, 0);
 	assert_ptr_not_equal(ptr, NULL);
 	offset = hltests_add_dma_pkt(fd, ptr, offset,
@@ -249,7 +249,7 @@ static double indirect_transfer_perf_test(int fd,
 	sram_addr = hw_ip.sram_base_address;
 	size = hw_ip.sram_size - 0x3000;
 
-	num_of_transfers = is_simulator(fd) ? 1 : 300;
+	num_of_transfers = hltests_is_simulator(fd) ? 1 : 300;
 	page_size = getpagesize();
 
 	lower_cb_offset =
@@ -319,7 +319,7 @@ void hltest_sram_dram_transfer_perf(void **state)
 	dram_addr = hltests_allocate_device_mem(fd, size);
 	assert_non_null(dram_addr);
 
-	if (is_goya(fd))
+	if (hltests_is_goya(fd))
 		sram_dram_perf_outcome = hltests_transfer_perf(fd,
 			hltests_get_dma_sram_to_dram_qid(fd, 0, 0), sram_addr,
 			(uint64_t) (uintptr_t) dram_addr, size,
@@ -354,7 +354,7 @@ void hltest_dram_sram_transfer_perf(void **state)
 	dram_addr = hltests_allocate_device_mem(fd, size);
 	assert_non_null(dram_addr);
 
-	if (is_goya(fd))
+	if (hltests_is_goya(fd))
 		dram_sram_perf_outcome = hltests_transfer_perf(fd,
 			hltests_get_dma_dram_to_sram_qid(fd, 0, 0),
 			(uint64_t) (uintptr_t) dram_addr, sram_addr,
@@ -371,17 +371,17 @@ void hltest_dram_sram_transfer_perf(void **state)
 
 const struct CMUnitTest dma_perf_tests[] = {
 	cmocka_unit_test_setup(hltest_host_sram_transfer_perf,
-				hl_tests_ensure_device_operational),
+				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(hltest_sram_host_transfer_perf,
-				hl_tests_ensure_device_operational),
+				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(hltest_host_dram_transfer_perf,
-				hl_tests_ensure_device_operational),
+				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(hltest_dram_host_transfer_perf,
-				hl_tests_ensure_device_operational),
+				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(hltest_sram_dram_transfer_perf,
-				hl_tests_ensure_device_operational),
+				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(hltest_dram_sram_transfer_perf,
-				hl_tests_ensure_device_operational),
+				hltests_ensure_device_operational),
 };
 
 static const char *const usage[] = {

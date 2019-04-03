@@ -91,17 +91,17 @@ void test_cb_skip_unmap_and_destroy(void **state)
 
 const struct CMUnitTest cb_tests[] = {
 	cmocka_unit_test_setup(test_cb_mmap,
-				hl_tests_ensure_device_operational),
+				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_cb_unaligned_size,
-				hl_tests_ensure_device_operational),
+				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_cb_small_unaligned_odd_size,
-				hl_tests_ensure_device_operational),
+				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_cb_unaligned_odd_size,
-				hl_tests_ensure_device_operational),
+				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_cb_skip_unmap,
-				hl_tests_ensure_device_operational),
+				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_cb_skip_unmap_and_destroy,
-				hl_tests_ensure_device_operational),
+				hltests_ensure_device_operational),
 };
 
 static const char *const usage[] = {

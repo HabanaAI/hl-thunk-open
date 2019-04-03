@@ -235,15 +235,15 @@ void test_write_to_mmTPC_PLL_CLK_RLX_0_from_qman(void **state)
 
 const struct CMUnitTest goya_root_tests[] = {
 	cmocka_unit_test_setup(test_debugfs_sram_read_write,
-					hl_tests_ensure_device_operational),
+					hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_write_to_cfg_space,
-					hl_tests_ensure_device_operational),
+					hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_tpc_qman_write_to_protected_register,
-					hl_tests_ensure_device_operational),
+					hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_mme_qman_write_to_protected_register,
-					hl_tests_ensure_device_operational),
+					hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_write_to_mmTPC_PLL_CLK_RLX_0_from_qman,
-					hl_tests_ensure_device_operational)
+					hltests_ensure_device_operational)
 };
 
 static const char *const usage[] = {

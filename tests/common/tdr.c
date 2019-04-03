@@ -66,7 +66,7 @@ void test_tdr_deadlock(void **state)
 
 const struct CMUnitTest tdr_tests[] = {
 	cmocka_unit_test_setup(test_tdr_deadlock,
-				hl_tests_ensure_device_operational),
+				hltests_ensure_device_operational),
 };
 
 static const char *const usage[] = {

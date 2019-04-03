@@ -385,7 +385,7 @@ void hltests_debugfs_write(int fd, uint64_t full_address, uint32_t val)
 		printf("Failed to write to debugfs data fd [rc %zd]\n", size);
 }
 
-static int hltests_is_mmu(bool *mmu_enable)
+static int is_mmu_enabled(bool *mmu_enable)
 {
 	int fd_mmu;
 	char c;
@@ -431,7 +431,7 @@ int hltests_setup(void **state)
 		goto fini_tests;
 	}
 
-	rc = hltests_is_mmu(&tests_state->mmu);
+	rc = is_mmu_enabled(&tests_state->mmu);
 	if (rc) {
 		printf("Failed to detect if MMU is enabled on device %d, %d\n",
 			tests_state->fd, rc);
@@ -1387,7 +1387,7 @@ static bool is_dev_idle_and_operational(int fd)
 	return (is_idle && dev_status == HL_DEVICE_STATUS_OPERATIONAL);
 }
 
-int hl_tests_ensure_device_operational(void **state)
+int hltests_ensure_device_operational(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int fd = tests_state->fd;
@@ -1580,7 +1580,7 @@ const char *hltests_get_parser_pciaddr(void)
 	return parser_pciaddr;
 }
 
-bool is_simulator(int fd)
+bool hltests_is_simulator(int fd)
 {
 	struct hltests_device *hdev = get_hdev_from_fd(fd);
 
@@ -1590,7 +1590,7 @@ bool is_simulator(int fd)
 	return false;
 }
 
-bool is_goya(int fd)
+bool hltests_is_goya(int fd)
 {
 	struct hltests_device *hdev = get_hdev_from_fd(fd);
 
