@@ -1,24 +1,8 @@
+// SPDX-License-Identifier: MIT
+
 /*
- * Copyright (c) 2019 HabanaLabs Ltd.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- *
+ * Copyright 2019 HabanaLabs, Ltd.
+ * All Rights Reserved.
  */
 
 #include "hlthunk.h"
@@ -54,9 +38,10 @@ static void test_sm(void **state, bool is_tpc, bool is_wait)
 	if (is_tpc) {
 		/* Find first available TPC */
 		uint8_t tpc_id;
-		for (tpc_id = 0 ;
+		for (tpc_id = 0;
 			(!(hw_ip.tpc_enabled_mask & (0x1 << tpc_id))) &&
-			(tpc_id < hltests_get_tpc_cnt(fd, 0)) ; tpc_id++);
+			(tpc_id < hltests_get_tpc_cnt(fd, 0));)
+			tpc_id++;
 
 		assert_in_range(tpc_id, 0, hltests_get_tpc_cnt(fd, 0) - 1);
 
@@ -181,9 +166,10 @@ static void test_sm_pingpong_qman(void **state, bool is_tpc)
 	if (is_tpc) {
 		/* Find first available TPC */
 		uint8_t tpc_id;
-		for (tpc_id = 0 ;
+		for (tpc_id = 0;
 			(!(hw_ip.tpc_enabled_mask & (0x1 << tpc_id))) &&
-			(tpc_id < hltests_get_tpc_cnt(fd, 0)) ; tpc_id++);
+			(tpc_id < hltests_get_tpc_cnt(fd, 0));)
+			tpc_id++;
 
 		assert_in_range(tpc_id, 0, hltests_get_tpc_cnt(fd, 0) - 1);
 
@@ -364,9 +350,10 @@ static void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 	if (is_tpc) {
 		/* Find first available TPC */
 		uint8_t tpc_id;
-		for (tpc_id = 0 ;
+		for (tpc_id = 0;
 			(!(hw_ip.tpc_enabled_mask & (0x1 << tpc_id))) &&
-			(tpc_id < hltests_get_tpc_cnt(fd, 0)) ; tpc_id++);
+			(tpc_id < hltests_get_tpc_cnt(fd, 0));)
+			tpc_id++;
 
 		assert_in_range(tpc_id, 0, hltests_get_tpc_cnt(fd, 0) - 1);
 

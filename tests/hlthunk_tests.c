@@ -1,24 +1,8 @@
+// SPDX-License-Identifier: MIT
+
 /*
- * Copyright (c) 2019 HabanaLabs Ltd.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- *
+ * Copyright 2019 HabanaLabs, Ltd.
+ * All Rights Reserved.
  */
 
 #include "hlthunk_tests.h"
@@ -37,23 +21,15 @@
 #include <time.h>
 #include <inttypes.h>
 
-typedef struct {
-	pthread_mutex_t lock;
-	uint64_t start;
-	uint32_t page_size;
-	uint32_t pool_npages;
-	uint8_t *pool;
-} mem_pool_t;
-
 static pthread_mutex_t table_lock = PTHREAD_MUTEX_INITIALIZER;
-static khash_t(ptr) *dev_table;
+static khash_t(ptr) * dev_table;
 
 static enum hlthunk_device_name asic_name_for_testing = HLTHUNK_DEVICE_INVALID;
 
-int run_disabled_tests = 0;
+int run_disabled_tests;
 const char *parser_pciaddr;
 
-static struct hltests_device* get_hdev_from_fd(int fd)
+static struct hltests_device *get_hdev_from_fd(int fd)
 {
 	struct hltests_device *hdev;
 	khint_t k;
@@ -212,7 +188,6 @@ int hltests_open(const char *busid)
 		printf("Invalid device type %d\n", hdev->device_id);
 		rc = -ENXIO;
 		goto remove_device;
-		break;
 	}
 
 	hdev->asic_funcs->dram_pool_init(hdev);
@@ -279,7 +254,7 @@ int hltests_close(int fd)
 	return 0;
 }
 
-void* hltests_cb_mmap(int fd, size_t length, off_t offset)
+void *hltests_cb_mmap(int fd, size_t length, off_t offset)
 {
 	return mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd,
 			offset);
@@ -499,7 +474,7 @@ int hltests_root_teardown(void **state)
 	return hltests_teardown(state);
 }
 
-static void* allocate_huge_mem(uint64_t size)
+static void *allocate_huge_mem(uint64_t size)
 {
 	int mmapFlags = MAP_HUGE_2MB | MAP_HUGETLB | MAP_SHARED | MAP_ANONYMOUS;
 	int prot = PROT_READ | PROT_WRITE;
@@ -508,7 +483,7 @@ static void* allocate_huge_mem(uint64_t size)
 	vaddr = mmap(0, size, prot, mmapFlags, -1, 0);
 
 	if (vaddr == MAP_FAILED) {
-		printf("Failed to allocate %lu of host memory with huge pages\n",
+		printf("Failed to allocate %lu host memory with huge pages\n",
 			size);
 		return NULL;
 	}
@@ -525,7 +500,7 @@ static void* allocate_huge_mem(uint64_t size)
  * @param huge whether to use huge pages for the memory allocation
  * @return pointer to the host memory. NULL is returned upon failure
  */
-void* hltests_allocate_host_mem(int fd, uint64_t size, bool huge)
+void *hltests_allocate_host_mem(int fd, uint64_t size, bool huge)
 {
 	struct hltests_device *hdev;
 	struct hltests_memory *mem;
@@ -590,7 +565,7 @@ free_mem_struct:
  * @return pointer to the device memory. This pointer can NOT be dereferenced
  * directly from the host. NULL is returned upon failure
  */
-void* hltests_allocate_device_mem(int fd, uint64_t size)
+void *hltests_allocate_device_mem(int fd, uint64_t size)
 {
 	const struct hltests_asic_funcs *asic;
 	struct hltests_device *hdev;
@@ -795,7 +770,7 @@ uint64_t hltests_get_device_va_for_host_ptr(int fd, void *vaddr)
  * @return virtual address of the CB in the user process VA space, or NULL for
  *         failure
  */
-void* hltests_create_cb(int fd, uint32_t cb_size, bool is_external,
+void *hltests_create_cb(int fd, uint32_t cb_size, bool is_external,
 				uint64_t cb_internal_sram_address)
 {
 	struct hltests_device *hdev;
@@ -1225,7 +1200,7 @@ int hltests_mem_compare(void *ptr1, void *ptr2, uint64_t size)
 	rounddown_aligned_size = size & ~(sizeof(uint64_t) - 1);
 	remainder = size - rounddown_aligned_size;
 
-	for (i = 0 ; i < rounddown_aligned_size && err_cnt < 10 ;
+	for (i = 0 ; i < rounddown_aligned_size && err_cnt < 10;
 		i += sizeof(uint64_t), p1++, p2++) {
 		if (*p1 != *p2) {
 			printf("[%p]: 0x%"PRIx64" <--> [%p]: 0x%"PRIx64"\n",
@@ -1429,7 +1404,7 @@ int hltests_ensure_device_operational(void **state)
 
 void *hltests_mem_pool_init(uint64_t start_addr, uint64_t size, uint64_t order)
 {
-	mem_pool_t *mem_pool;
+	struct mem_pool *mem_pool;
 	uint64_t page_size;
 	int rc;
 
@@ -1440,7 +1415,7 @@ void *hltests_mem_pool_init(uint64_t start_addr, uint64_t size, uint64_t order)
 		return NULL;
 	}
 
-	mem_pool = calloc(1, sizeof(mem_pool_t));
+	mem_pool = calloc(1, sizeof(struct mem_pool));
 	if (!mem_pool)
 		return NULL;
 
@@ -1467,7 +1442,8 @@ free_struct:
 
 void hltests_mem_pool_fini(void *data)
 {
-	mem_pool_t *mem_pool = (mem_pool_t *) data;
+	struct mem_pool *mem_pool = (struct mem_pool *) data;
+
 	pthread_mutex_destroy(&mem_pool->lock);
 	free(mem_pool->pool);
 	free(mem_pool);
@@ -1475,7 +1451,7 @@ void hltests_mem_pool_fini(void *data)
 
 int hltests_mem_pool_alloc(void *data, uint64_t size, uint64_t *addr)
 {
-	mem_pool_t *mem_pool = (mem_pool_t *) data;
+	struct mem_pool *mem_pool = (struct mem_pool *) data;
 	uint32_t needed_npages, curr_npages = 0, i, j, k;
 	bool found = false;
 
@@ -1515,7 +1491,7 @@ int hltests_mem_pool_alloc(void *data, uint64_t size, uint64_t *addr)
 
 void hltests_mem_pool_free(void *data, uint64_t addr, uint64_t size)
 {
-	mem_pool_t *mem_pool = (mem_pool_t *) data;
+	struct mem_pool *mem_pool = (struct mem_pool *) data;
 	uint32_t start_page = (addr - mem_pool->start) / mem_pool->page_size,
 			npages = size / mem_pool->page_size, i;
 
@@ -1531,6 +1507,7 @@ void hltests_parser(int argc, const char **argv, const char * const* usage,
 			enum hlthunk_device_name expected_device,
 			const struct CMUnitTest * const tests, int num_tests)
 {
+	struct argparse argparse;
 	const char *asic = NULL;
 	const char *test = NULL;
 	int list = 0;
@@ -1549,7 +1526,6 @@ void hltests_parser(int argc, const char **argv, const char * const* usage,
 		OPT_END(),
 	};
 
-	struct argparse argparse;
 	argparse_init(&argparse, options, usage, 0);
 	argparse_describe(&argparse, "\nRun tests using hl-thunk", NULL);
 	argc = argparse_parse(&argparse, argc, argv);

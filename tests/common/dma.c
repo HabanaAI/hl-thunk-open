@@ -1,24 +1,8 @@
+// SPDX-License-Identifier: MIT
+
 /*
- * Copyright (c) 2019 HabanaLabs Ltd.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- *
+ * Copyright 2019 HabanaLabs, Ltd.
+ * All Rights Reserved.
  */
 
 #include "hlthunk.h"
@@ -45,13 +29,13 @@ struct dma_thread_params {
 	int fd;
 };
 
-typedef struct {
+struct dma_chunk {
 	void *input;
 	void *output;
 	uint64_t input_device_va;
 	uint64_t output_device_va;
 	uint64_t dram_addr;
-} dma_chunk;
+};
 
 static void *dma_thread_start(void *args)
 {
@@ -231,8 +215,9 @@ void test_dma_entire_dram_random(void **state)
 	uint32_t dma_size = 1 << 14; /* 16KB */
 	uint32_t zone_size = 1 << 23; /* 8MB */
 	uint32_t dram_size, offset, cb_size = 0, vec_len, packets_size;
-	kvec_t(dma_chunk) array;
-	dma_chunk chunk;
+
+	kvec_t(struct dma_chunk) array;
+	struct dma_chunk chunk;
 	int i, rc, fd = tests_state->fd;
 
 	/*
@@ -262,8 +247,7 @@ void test_dma_entire_dram_random(void **state)
 	dram_addr = hw_ip.dram_base_address;
 	dram_addr_end = hw_ip.dram_base_address + dram_size - 1;
 
-	while (dram_addr < (dram_addr_end - dma_size))
-	{
+	while (dram_addr < (dram_addr_end - dma_size)) {
 		buf[0] = hltests_allocate_host_mem(fd, dma_size, false);
 		assert_non_null(buf[0]);
 		hltests_fill_rand_values(buf[0], dma_size);
@@ -278,16 +262,16 @@ void test_dma_entire_dram_random(void **state)
 
 		/* need an offset inside a zone and aligned to 8B */
 		offset = (offset & (zone_size - 1)) & ~0x7;
-	        if (offset > (zone_size - dma_size - 1))
-	            offset -= dma_size;
+		if (offset > (zone_size - dma_size - 1))
+			offset -= dma_size;
 
-	        chunk.input = buf[0];
-	        chunk.output = buf[1];
-	        chunk.input_device_va = device_va[0];
-	        chunk.output_device_va = device_va[1];
-	        chunk.dram_addr = dram_addr + offset;
+		chunk.input = buf[0];
+		chunk.output = buf[1];
+		chunk.input_device_va = device_va[0];
+		chunk.output_device_va = device_va[1];
+		chunk.dram_addr = dram_addr + offset;
 
-		kv_push(dma_chunk, array, chunk);
+		kv_push(struct dma_chunk, array, chunk);
 
 		dram_addr += zone_size;
 	}

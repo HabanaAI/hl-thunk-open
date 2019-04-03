@@ -1,24 +1,8 @@
+// SPDX-License-Identifier: MIT
+
 /*
- * Copyright (c) 2019 HabanaLabs Ltd.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- *
+ * Copyright 2019 HabanaLabs, Ltd.
+ * All Rights Reserved.
  */
 
 #include "hlthunk.h"
@@ -88,7 +72,7 @@ void hltest_host_sram_transfer_perf(void **state)
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
 	void *src_ptr;
-	uint64_t host_addr,sram_addr;
+	uint64_t host_addr, sram_addr;
 	uint32_t size;
 	int rc, fd = tests_state->fd;
 
@@ -114,7 +98,7 @@ void hltest_sram_host_transfer_perf(void **state)
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
 	void *dst_ptr;
-	uint64_t host_addr,sram_addr;
+	uint64_t host_addr, sram_addr;
 	uint32_t size;
 	int rc, fd = tests_state->fd;
 
@@ -158,7 +142,7 @@ void hltest_host_dram_transfer_perf(void **state)
 	host_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
 
 	host_dram_perf_outcome = hltests_transfer_perf(fd,
-			hltests_get_dma_down_qid(fd, 0, 0),host_addr,
+			hltests_get_dma_down_qid(fd, 0, 0), host_addr,
 			(uint64_t) (uintptr_t) dram_addr,
 			size, GOYA_DMA_HOST_TO_DRAM);
 	hltests_free_host_mem(fd, src_ptr);
