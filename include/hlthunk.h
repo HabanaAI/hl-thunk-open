@@ -1,23 +1,7 @@
-/*
- * Copyright (c) 2019 HabanaLabs Ltd.
+/* SPDX-License-Identifier: MIT
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
+ * Copyright 2019 HabanaLabs, Ltd.
+ * All Rights Reserved.
  *
  */
 
@@ -110,7 +94,7 @@ hlthunk_public uint64_t hlthunk_host_memory_map(int fd, void *host_virt_addr,
 hlthunk_public int hlthunk_memory_unmap(int fd, uint64_t device_virt_addr);
 hlthunk_public int hlthunk_debug(int fd, struct hl_debug_args *debug);
 
-hlthunk_public void* hlthunk_malloc(int size);
+hlthunk_public void *hlthunk_malloc(int size);
 hlthunk_public void hlthunk_free(void *pt);
 
 /* Functions for random number generation */
@@ -122,13 +106,15 @@ hlthunk_public double hlthunk_random_double(void *state);
 
 /* Functions for hash table implementation */
 
-hlthunk_public void* hlthunk_hash_create(void);
+hlthunk_public void *hlthunk_hash_create(void);
 hlthunk_public int hlthunk_hash_destroy(void *t);
-hlthunk_public int hlthunk_hash_lookup(void *t, unsigned long key, void **value);
+hlthunk_public int hlthunk_hash_lookup(void *t, unsigned long key,
+					void **value);
 hlthunk_public int hlthunk_hash_insert(void *t, unsigned long key, void *value);
 hlthunk_public int hlthunk_hash_delete(void *t, unsigned long key);
 hlthunk_public int hlthunk_hash_next(void *t, unsigned long *key, void **value);
-hlthunk_public int hlthunk_hash_first(void *t, unsigned long *key, void **value);
+hlthunk_public int hlthunk_hash_first(void *t, unsigned long *key,
+					void **value);
 
 #ifdef __cplusplus
 }   //extern "C"

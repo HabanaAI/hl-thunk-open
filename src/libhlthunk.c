@@ -1,24 +1,8 @@
+// SPDX-License-Identifier: MIT
+
 /*
- * Copyright (c) 2019 HabanaLabs Ltd.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- *
+ * Copyright 2019 HabanaLabs, Ltd.
+ * All Rights Reserved.
  */
 
 #include "libhlthunk.h"
@@ -57,7 +41,8 @@ static int hlthunk_open_minor(int minor, const char *dev_name)
 	int fd;
 
 	sprintf(buf, dev_name, minor);
-	if ((fd = open(buf, O_RDWR | O_CLOEXEC, 0)) >= 0)
+	fd = open(buf, O_RDWR | O_CLOEXEC, 0);
+	if (fd >= 0)
 		return fd;
 	return -errno;
 }
@@ -138,7 +123,6 @@ static enum hlthunk_device_name hlthunk_get_device_name_from_fd(int fd)
 	case PCI_IDS_GOYA:
 	case PCI_IDS_GOYA_SIMULATOR:
 		return HLTHUNK_DEVICE_GOYA;
-		break;
 	default:
 		printf("Invalid device type %d\n", device_id);
 		break;
@@ -164,7 +148,7 @@ static int hlthunk_open_device_by_name(enum hlthunk_device_name device_name)
 	return -1;
 }
 
-hlthunk_public void* hlthunk_malloc(int size)
+hlthunk_public void *hlthunk_malloc(int size)
 {
 	return calloc(1, size);
 }
