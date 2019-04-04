@@ -35,7 +35,7 @@ static double hltests_transfer_perf(int fd, uint32_t queue_index,
 	int rc, num_of_transfers, i;
 	double time_diff;
 
-	num_of_transfers = hltests_is_simulator(fd) ? 30 : 300;
+	num_of_transfers = hltests_is_simulator(fd) ? 10 : 300;
 	ptr = hltests_create_cb(fd, getpagesize(), true, 0);
 	assert_ptr_not_equal(ptr, NULL);
 	offset = hltests_add_dma_pkt(fd, ptr, offset,
@@ -233,7 +233,7 @@ static double indirect_transfer_perf_test(int fd,
 	sram_addr = hw_ip.sram_base_address;
 	size = hw_ip.sram_size - 0x3000;
 
-	num_of_transfers = hltests_is_simulator(fd) ? 1 : 300;
+	num_of_transfers = hltests_is_simulator(fd) ? 10 : 300;
 	page_size = getpagesize();
 
 	lower_cb_offset =
