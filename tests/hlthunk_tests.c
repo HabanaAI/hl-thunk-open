@@ -1556,6 +1556,11 @@ const char *hltests_get_parser_pciaddr(void)
 	return parser_pciaddr;
 }
 
+int hltests_get_parser_run_disabled_tests(void)
+{
+	return run_disabled_tests;
+}
+
 bool hltests_is_simulator(int fd)
 {
 	struct hltests_device *hdev = get_hdev_from_fd(fd);

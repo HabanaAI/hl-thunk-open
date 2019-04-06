@@ -162,6 +162,9 @@ void hltests_parser(int argc, const char **argv, const char * const* usage,
 			enum hlthunk_device_name expected_device,
 			const struct CMUnitTest * const tests, int num_tests);
 const char *hltests_get_parser_pciaddr(void);
+int hltests_get_parser_run_disabled_tests(void);
+bool hltests_is_simulator(int fd);
+bool hltests_is_goya(int fd);
 
 int hltests_init(void);
 void hltests_fini(void);
@@ -280,8 +283,5 @@ uint32_t hltests_get_mme_qid(int fd, uint8_t dcore_id, uint8_t mme_id,
 uint8_t hltests_get_tpc_cnt(int fd, uint8_t dcore_id);
 
 void goya_tests_set_asic_funcs(struct hltests_device *hdev);
-
-bool hltests_is_simulator(int fd);
-bool hltests_is_goya(int fd);
 
 #endif /* HLTHUNK_TESTS_H */
