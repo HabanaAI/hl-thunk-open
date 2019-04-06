@@ -46,8 +46,32 @@ void test_tdr_deadlock(void **state)
 	assert_int_equal(rc, 0);
 }
 
+void test_endless_memory_ioctl(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	uint32_t page_size = sysconf(_SC_PAGESIZE);
+	void *src_ptr;
+	int rc, fd = tests_state->fd;
+
+	/* Don't check return value because we don't want the test to finish
+	 * when the driver returns error
+	 */
+
+	while (1) {
+		src_ptr = hltests_allocate_host_mem(fd, page_size, false);
+
+		usleep(1000);
+
+		rc = hltests_free_host_mem(fd, src_ptr);
+
+		usleep(1000);
+	}
+}
+
 const struct CMUnitTest debug_tests[] = {
 	cmocka_unit_test_setup(test_tdr_deadlock,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_endless_memory_ioctl,
 				hltests_ensure_device_operational),
 };
 
