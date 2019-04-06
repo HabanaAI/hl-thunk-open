@@ -48,24 +48,24 @@ void test_tdr_deadlock(void **state)
 	assert_int_equal(rc, 0);
 }
 
-const struct CMUnitTest tdr_tests[] = {
+const struct CMUnitTest debug_tests[] = {
 	cmocka_unit_test_setup(test_tdr_deadlock,
 				hltests_ensure_device_operational),
 };
 
 static const char *const usage[] = {
-	"tdr [options]",
+	"debug [options]",
 	NULL,
 };
 
 int main(int argc, const char **argv)
 {
-	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_INVALID, tdr_tests,
-			sizeof(tdr_tests) / sizeof((tdr_tests)[0]));
+	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_INVALID, debug_tests,
+			sizeof(debug_tests) / sizeof((debug_tests)[0]));
 
 	if (!run_disabled_tests)
 		return 0;
 
-	return cmocka_run_group_tests(tdr_tests, hltests_setup,
+	return cmocka_run_group_tests(debug_tests, hltests_setup,
 					hltests_teardown);
 }

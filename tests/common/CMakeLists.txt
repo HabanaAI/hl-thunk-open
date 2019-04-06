@@ -18,7 +18,7 @@ set(COMMON_UNIT_TESTS
     dma_64MB_inc
     memory
     sync_manager
-    tdr
+    debug
     dma_perf
 )
 
