@@ -183,7 +183,7 @@ static void test_dma_threads(void **state, uint32_t num_of_threads)
 		assert_int_equal(rc, 0);
 	}
 
-	/* Waits for the termination of the threads */
+	/* Wait for the termination of the threads */
 	for (i = 0 ; i < num_of_threads ; i++) {
 		rc = pthread_join(thread_id[i], &retval);
 		assert_int_equal(rc, 0);
