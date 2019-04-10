@@ -68,10 +68,34 @@ void test_endless_memory_ioctl(void **state)
 	}
 }
 
+void test_print_hw_ip_info(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct hlthunk_hw_ip_info hw_ip;
+	int rc, fd = tests_state->fd;
+
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+
+	printf("\nDevice information:");
+	printf("\n-----------------------");
+	printf("\nDevice id        : 0x%x", hw_ip.device_id);
+	printf("\nDRAM enabled     : %d", hw_ip.dram_enabled);
+	printf("\nDRAM base address: 0x%lx", hw_ip.dram_base_address);
+	printf("\nDRAM size        : %lu (0x%lx)", hw_ip.dram_size,
+							hw_ip.dram_size);
+	printf("\nSRAM base address: 0x%lx", hw_ip.sram_base_address);
+	printf("\nSRAM size        : %u (0x%x)", hw_ip.sram_size,
+							hw_ip.sram_size);
+	printf("\n\n");
+}
+
 const struct CMUnitTest debug_tests[] = {
 	cmocka_unit_test_setup(test_tdr_deadlock,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_endless_memory_ioctl,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_print_hw_ip_info,
 				hltests_ensure_device_operational),
 };
 
