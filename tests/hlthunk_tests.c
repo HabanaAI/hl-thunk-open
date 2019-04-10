@@ -585,10 +585,11 @@ void *hltests_allocate_device_mem(int fd, uint64_t size)
 
 	mem->is_host = false;
 	mem->size = size;
+	mem->is_pool = true;
 
-	if (!asic->dram_pool_alloc(hdev, size, &mem->device_virt_addr)) {
-		mem->is_pool = true;
-	} else {
+	rc = asic->dram_pool_alloc(hdev, size, &mem->device_virt_addr);
+
+	if (rc) {
 		mem->is_pool = false;
 		mem->device_handle = hlthunk_device_memory_alloc(fd, size,
 								false,
@@ -597,7 +598,7 @@ void *hltests_allocate_device_mem(int fd, uint64_t size)
 		if (!mem->device_handle) {
 			printf(
 				"Failed to allocate %lu bytes of device memory\n",
-					size);
+				size);
 			goto free_mem_struct;
 		}
 
