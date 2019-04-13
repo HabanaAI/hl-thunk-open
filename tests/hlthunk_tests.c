@@ -180,8 +180,8 @@ int hltests_open(const char *busid)
 
 	hdev->device_id = hlthunk_get_device_id_from_fd(fd);
 
-	switch (hdev->device_id) {
-	case PCI_IDS_GOYA:
+	switch (hlthunk_get_device_name_from_fd(fd)) {
+	case HLTHUNK_DEVICE_GOYA:
 		goya_tests_set_asic_funcs(hdev);
 		break;
 	default:
