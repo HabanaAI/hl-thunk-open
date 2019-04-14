@@ -61,6 +61,7 @@ hlthunk_public int hlthunk_open(enum hlthunk_device_name device_name,
 				const char *busid);
 hlthunk_public int hlthunk_close(int fd);
 hlthunk_public enum hl_pci_ids hlthunk_get_device_id_from_fd(int fd);
+hlthunk_public enum hlthunk_device_name hlthunk_get_device_name_from_fd(int fd);
 
 /* TODO: split the INFO functions into several "logic" functions */
 hlthunk_public int hlthunk_get_hw_ip_info(int fd,

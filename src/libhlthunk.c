@@ -115,7 +115,7 @@ static int hlthunk_open_by_busid(const char *busid)
 	return -1;
 }
 
-static enum hlthunk_device_name hlthunk_get_device_name_from_fd(int fd)
+hlthunk_public enum hlthunk_device_name hlthunk_get_device_name_from_fd(int fd)
 {
 	enum hl_pci_ids device_id = hlthunk_get_device_id_from_fd(fd);
 
