@@ -45,6 +45,8 @@ void test_dma_4_queues(void **state)
 
 	dma_size = 128;
 	page_size = sysconf(_SC_PAGESIZE);
+	assert_in_range(page_size, PAGE_SIZE_4KB, PAGE_SIZE_64KB);
+
 	memset(dma_cb_size, 0, sizeof(dma_cb_size));
 
 	/* Allocate memory on host and DRAM and set the SRAM address */

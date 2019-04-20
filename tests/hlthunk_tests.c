@@ -1392,13 +1392,16 @@ int hltests_ensure_device_operational(void **state)
 
 	close(fd_for_timeout_locked);
 	sscanf(tmp_buff, "%d", &timeout_locked);
+	if (timeout_locked > 1000)
+		timeout_locked = 1000;
+
 	for (i = 0 ; i <= timeout_locked ; i++) {
 		sleep(1);
 		if (is_dev_idle_and_operational(fd))
 			return 0;
 	}
 
-	/*if we got here it means that something is broken*/
+	/* If we got here it means that something is broken */
 	printf("ERROR! Something broke in the device, stop running tests\n");
 	exit(-1);
 }
@@ -1408,6 +1411,8 @@ void *hltests_mem_pool_init(uint64_t start_addr, uint64_t size, uint64_t order)
 	struct mem_pool *mem_pool;
 	uint64_t page_size;
 	int rc;
+
+	assert_in_range(order, PAGE_SHIFT_4KB, PAGE_SHIFT_16MB);
 
 	page_size = 1 << order;
 

@@ -24,6 +24,16 @@
 
 #define WAIT_FOR_CS_DEFAULT_TIMEOUT	5000000 /* 5 sec */
 
+#define PAGE_SHIFT_4KB			12
+#define PAGE_SHIFT_64KB			16
+#define PAGE_SHIFT_2MB			21
+#define PAGE_SHIFT_16MB			24
+
+#define PAGE_SIZE_4KB			(1UL << PAGE_SHIFT_4KB)
+#define PAGE_SIZE_64KB			(1UL << PAGE_SHIFT_64KB)
+#define PAGE_SIZE_2MB			(1UL << PAGE_SHIFT_2MB)
+#define PAGE_SIZE_16MB			(1UL << PAGE_SHIFT_16MB)
+
 #define DMA_1KB_INC_SRAM(func_name, state, size) \
 	void func_name(void **state) { hltests_dma_test(state, false, size); }
 #define DMA_1KB_INC_DRAM(func_name, state, size) \

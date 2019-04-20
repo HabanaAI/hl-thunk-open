@@ -342,6 +342,7 @@ static void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 
 	dma_size = 4;
 	page_size = sysconf(_SC_PAGESIZE);
+	assert_in_range(page_size, PAGE_SIZE_4KB, PAGE_SIZE_64KB);
 
 	/* Set engine queue ID and SRAM addresses */
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);

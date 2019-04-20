@@ -44,6 +44,7 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 
 	cfg_address = CFG_BASE + mmDMA_QM_4_PQ_BASE_HI;
 	page_size = sysconf(_SC_PAGESIZE);
+	assert_in_range(page_size, PAGE_SIZE_4KB, PAGE_SIZE_64KB);
 
 	/* Set engine queue ID and SRAM addresses */
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
@@ -153,6 +154,8 @@ void test_write_to_cfg_space(void **state)
 	void *ptr;
 	int rc, fd = tests_state->fd;
 
+	assert_in_range(page_size, PAGE_SIZE_4KB, PAGE_SIZE_64KB);
+
 	hltests_debugfs_write(fd, cfg_address, 0x55555555);
 	val = hltests_debugfs_read(fd, cfg_address);
 	assert_int_equal(val, 0x55555555);
@@ -196,6 +199,8 @@ void test_write_to_mmTPC_PLL_CLK_RLX_0_from_qman(void **state)
 	uint32_t val_orig, val, page_size = sysconf(_SC_PAGESIZE), offset = 0;
 	void *ptr;
 	int fd = tests_state->fd;
+
+	assert_in_range(page_size, PAGE_SIZE_4KB, PAGE_SIZE_64KB);
 
 	val_orig = hltests_debugfs_read(fd, CFG_BASE + mmTPC_PLL_CLK_RLX_0);
 

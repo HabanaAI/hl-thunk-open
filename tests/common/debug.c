@@ -27,6 +27,8 @@ void test_tdr_deadlock(void **state)
 	uint32_t page_size = sysconf(_SC_PAGESIZE), offset = 0;
 	int rc, fd = tests_state->fd;
 
+	assert_in_range(page_size, PAGE_SIZE_4KB, PAGE_SIZE_64KB);
+
 	ptr = hltests_create_cb(fd, page_size, true, 0);
 	assert_ptr_not_equal(ptr, NULL);
 
@@ -52,6 +54,8 @@ void test_endless_memory_ioctl(void **state)
 	uint32_t page_size = sysconf(_SC_PAGESIZE);
 	void *src_ptr;
 	int rc, fd = tests_state->fd;
+
+	assert_in_range(page_size, PAGE_SIZE_4KB, PAGE_SIZE_64KB);
 
 	/* Don't check return value because we don't want the test to finish
 	 * when the driver returns error

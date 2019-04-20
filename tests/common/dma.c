@@ -46,6 +46,8 @@ static void *dma_thread_start(void *args)
 	void *cb[2];
 	int rc, i, fd = params->fd;
 
+	assert_in_range(page_size, PAGE_SIZE_4KB, PAGE_SIZE_64KB);
+
 	for (i = 0 ; i < 2 ; i++) {
 		cb[i] = hltests_create_cb(fd, page_size, true, 0);
 		if (!cb[i])
