@@ -226,8 +226,10 @@ void test_dma_entire_dram_random(void **state)
 	 * This test uses specific DRAM addresses, hence needs MMU to be
 	 * disabled
 	 */
-	if (tests_state->mmu)
+	if (tests_state->mmu) {
+		printf("Test is skipped because MMU is enabled\n");
 		return;
+	}
 
 	kv_init(array);
 
