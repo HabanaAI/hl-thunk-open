@@ -377,7 +377,7 @@ hlthunk_public uint64_t hlthunk_device_memory_alloc(int fd, uint64_t size,
 	int rc;
 
 	memset(&ioctl_args, 0, sizeof(ioctl_args));
-	ioctl_args.in.alloc.mem_size = (uint32_t) size;
+	ioctl_args.in.alloc.mem_size = size;
 	if (contiguous)
 		ioctl_args.in.flags |= HL_MEM_CONTIGUOUS;
 	if (shared)
