@@ -69,8 +69,8 @@ static uint32_t goya_add_msg_short_pkt(void *buffer, uint32_t buf_off, bool eb,
 
 static uint32_t goya_add_arm_monitor_pkt(void *buffer, uint32_t buf_off,
 					bool eb, bool mb, uint16_t address,
-					uint32_t value, uint8_t mon_mode,
-					uint16_t sync_val, uint16_t sync_id)
+					uint8_t mon_mode, uint16_t sync_val,
+					uint16_t sync_id)
 {
 	struct packet_msg_short packet;
 	uint8_t base = 0; /* monitor base address */
@@ -285,7 +285,7 @@ static uint32_t goya_add_monitor_and_fence(void *buffer, uint32_t buf_off,
 	/* Fourth config packet: bind the monitor to a sync object */
 	msg_addr_offset = (mmSYNC_MNGR_MON_ARM_0 + mon_id * 4) - monitor_base;
 	buf_off = goya_add_arm_monitor_pkt(buffer, buf_off, false, true,
-					msg_addr_offset, 1, 0, 1, so_id);
+					msg_addr_offset, 0, 1, so_id);
 
 	/* Fence packet */
 	buf_off = goya_add_fence_pkt(buffer, buf_off, false, true, 1, 1, 0);
