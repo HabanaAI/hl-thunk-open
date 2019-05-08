@@ -88,7 +88,7 @@ struct hltests_device {
 struct hltests_asic_funcs {
 	uint32_t (*add_monitor_and_fence)(void *buffer, uint32_t buf_off,
 					uint8_t dcore_id, uint8_t queue_id,
-					bool cmdq_fence, uint32_t so_id,
+					bool cmdq_fence, uint32_t sob_id,
 					uint32_t mon_id, uint64_t mon_address);
 	uint32_t (*add_nop_pkt)(void *buffer, uint32_t buf_off, bool eb,
 				bool mb);
@@ -100,8 +100,8 @@ struct hltests_asic_funcs {
 					uint32_t value);
 	uint32_t (*add_arm_monitor_pkt)(void *buffer, uint32_t buf_off, bool eb,
 					bool mb, uint16_t address,
-					uint8_t mon_mode, uint16_t sync_val,
-					uint16_t sync_id);
+					uint8_t mon_mode, uint16_t sob_val,
+					uint16_t sob_id);
 	uint32_t (*add_write_to_sob_pkt)(void *buffer, uint32_t buf_off,
 					bool eb, bool mb, uint16_t sob_id,
 					uint16_t value, uint8_t mode);
@@ -251,7 +251,7 @@ uint32_t hltests_add_msg_short_pkt(int fd, void *buffer, uint32_t buf_off,
 uint32_t hltests_add_arm_monitor_pkt(int fd, void *buffer,
 					uint32_t buf_off, bool eb, bool mb,
 					uint16_t address, uint8_t mon_mode,
-					uint16_t sync_val, uint16_t sync_id);
+					uint16_t sob_val, uint16_t sob_id);
 
 uint32_t hltests_add_write_to_sob_pkt(int fd, void *buffer, uint32_t buf_off,
 					bool eb, bool mb, uint16_t sob_id,
@@ -276,7 +276,7 @@ uint32_t hltests_add_cp_dma_pkt(int fd, void *buffer, uint32_t buf_off,
 
 uint32_t hltests_add_monitor_and_fence(int fd, void *buffer, uint32_t buf_off,
 					uint8_t dcore_id, uint8_t queue_id,
-					bool cmdq_fence, uint32_t so_id,
+					bool cmdq_fence, uint32_t sob_id,
 					uint32_t mon_id, uint64_t mon_address);
 
 uint32_t hltests_get_dma_down_qid(int fd, uint8_t dcore_id, uint8_t stream);

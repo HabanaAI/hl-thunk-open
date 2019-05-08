@@ -205,7 +205,7 @@ static void test_sm_pingpong_qman(void **state, bool is_tpc)
 	dst_data_device_va = hltests_get_device_va_for_host_ptr(fd, dst_data);
 
 	/* Create internal CB for the engine. It will fence on SOB0 and signal
-	 * SOB1
+	 * SOB8
 	 */
 	engine_cb = hltests_create_cb(fd, 512, false, engine_cb_sram_addr);
 	assert_ptr_not_equal(engine_cb, NULL);
@@ -216,9 +216,9 @@ static void test_sm_pingpong_qman(void **state, bool is_tpc)
 							0, 0);
 	engine_cb_size = hltests_add_write_to_sob_pkt(fd, engine_cb,
 							engine_cb_size, false,
-							true, 1, 1, 1);
+							true, 8, 1, 1);
 
-	/* Create Setup CB that clears SOB 0 & 1, and copy the Engine's CB
+	/* Create Setup CB that clears SOB 0 & 8, and copy the Engine's CB
 	 * to the SRAM
 	 */
 	restore_cb = hltests_create_cb(fd, getpagesize(), true, 0);
@@ -227,7 +227,7 @@ static void test_sm_pingpong_qman(void **state, bool is_tpc)
 	restore_cb_size = hltests_add_set_sob_pkt(fd, restore_cb, 0, false,
 							true, 0, 0, 0);
 	restore_cb_size = hltests_add_set_sob_pkt(fd, restore_cb,
-					restore_cb_size, false, true, 0, 1, 0);
+					restore_cb_size, false, true, 0, 8, 0);
 	restore_cb_size = hltests_add_dma_pkt(fd, restore_cb, restore_cb_size,
 					false, false, engine_cb_device_va,
 					engine_cb_sram_addr, engine_cb_size,
@@ -254,7 +254,7 @@ static void test_sm_pingpong_qman(void **state, bool is_tpc)
 
 	dmaup_cb_size = hltests_add_monitor_and_fence(fd, dmaup_cb, 0, 0,
 					hltests_get_dma_up_qid(fd, 0, 0), false,
-					1, 1, 0);
+					8, 1, 0);
 
 	dmaup_cb_size = hltests_add_dma_pkt(fd, dmaup_cb, dmaup_cb_size, false,
 						true, device_data_address,
@@ -333,10 +333,10 @@ static void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 	 *   SOB0.
 	 * - Engine QMAN process CP_DMA packet and transfer internal CB to CMDQ.
 	 * - Engine CMDQ fences on SOB0, processes NOP packet, and then signals
-	 *   SOB1.
-	 * - Second DMA QMAN fences on SOB1 and then transfers data from SRAM to
+	 *   SOB8.
+	 * - Second DMA QMAN fences on SOB8 and then transfers data from SRAM to
 	 *   host.
-	 * - Setup CB is used to clear SOB 0-1 and to DMA the internal CBs to
+	 * - Setup CB is used to clear SOB 0, 8 and to DMA the internal CBs to
 	 *   SRAM.
 	 */
 
@@ -378,7 +378,7 @@ static void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 	memset(host_dst, 0, dma_size);
 	host_dst_device_va = hltests_get_device_va_for_host_ptr(fd, host_dst);
 
-	/* Internal CB for engine CMDQ: fence on SOB0 + NOP + signal SOB1 */
+	/* Internal CB for engine CMDQ: fence on SOB0 + NOP + signal SOB8 */
 	engine_cmdq_cb = hltests_create_cb(fd, page_size, false,
 						engine_cmdq_cb_sram_addr);
 	assert_ptr_not_equal(engine_cmdq_cb, NULL);
@@ -394,7 +394,7 @@ static void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 							false, true);
 	engine_cmdq_cb_size = hltests_add_write_to_sob_pkt(fd, engine_cmdq_cb,
 							engine_cmdq_cb_size,
-							false, false, 1, 1, 1);
+							false, false, 8, 1, 1);
 
 	/* Internal CB for engine QMAN: CP_DMA */
 	engine_qman_cb = hltests_create_cb(fd, page_size, false,
@@ -408,7 +408,7 @@ static void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 						false, engine_cmdq_cb_sram_addr,
 						engine_cmdq_cb_size);
 
-	/* Setup CB: Clear SOB 0-1 + DMA the internal CBs to SRAM */
+	/* Setup CB: Clear SOB 0, 8 + DMA the internal CBs to SRAM */
 	restore_cb =  hltests_create_cb(fd, page_size, true, 0);
 	assert_ptr_not_equal(restore_cb, NULL);
 	restore_cb_size = 0;
@@ -417,7 +417,7 @@ static void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 							false, 0, 0, 0);
 	restore_cb_size = hltests_add_set_sob_pkt(fd, restore_cb,
 							restore_cb_size, false,
-							true, 0, 1, 0);
+							true, 0, 8, 0);
 	restore_cb_size = hltests_add_dma_pkt(fd, restore_cb, restore_cb_size,
 						false, true,
 						engine_cmdq_cb_device_va,
@@ -447,7 +447,7 @@ static void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 							false, 0, 1, 1);
 
 	/* CB for second DMA QMAN:
-	 * Fence on SOB1 + transfer data from SRAM to host.
+	 * Fence on SOB8 + transfer data from SRAM to host.
 	 */
 	dmaup_cb = hltests_create_cb(fd, page_size, true, 0);
 	assert_ptr_not_equal(dmaup_cb, NULL);
@@ -455,7 +455,7 @@ static void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 	dmaup_cb_size = hltests_add_monitor_and_fence(fd, dmaup_cb,
 					dmaup_cb_size, 0,
 					hltests_get_dma_up_qid(fd, 0, 0),
-					false, 1, 1, 0);
+					false, 8, 1, 0);
 	dmaup_cb_size = hltests_add_dma_pkt(fd, dmaup_cb, dmaup_cb_size,
 						false, true, device_data_addr,
 						host_dst_device_va, dma_size,

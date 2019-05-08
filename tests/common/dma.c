@@ -54,7 +54,7 @@ static void *dma_thread_start(void *args)
 			return NULL;
 	}
 
-	/* fence on SOB0, clear it, do DMA down and write to SOB1 */
+	/* fence on SOB0, clear it, do DMA down and write to SOB8 */
 	cb_size[0] = hltests_add_monitor_and_fence(fd, cb[0], cb_size[0], 0,
 					hltests_get_dma_down_qid(fd, 0, 0),
 					false, 0, 0, 0);
@@ -68,15 +68,15 @@ static void *dma_thread_start(void *args)
 					GOYA_DMA_HOST_TO_DRAM);
 
 	cb_size[0] = hltests_add_write_to_sob_pkt(fd, cb[0], cb_size[0], true,
-					true, 1, 1, 1);
+					true, 8, 1, 1);
 
-	/* fence on SOB1, clear it, do DMA up and write to SOB0 */
+	/* fence on SOB8, clear it, do DMA up and write to SOB0 */
 	cb_size[1] = hltests_add_monitor_and_fence(fd, cb[1], cb_size[1], 0,
 					hltests_get_dma_up_qid(fd, 0, 0),
-					false, 1, 1, 0);
+					false, 8, 1, 0);
 
 	cb_size[1] = hltests_add_set_sob_pkt(fd, cb[1], cb_size[1], true,
-					true, 0, 1, 0);
+					true, 0, 8, 0);
 
 	cb_size[1] = hltests_add_dma_pkt(fd, cb[1], cb_size[1], true, true,
 					params->device_addr,
@@ -167,13 +167,13 @@ static void test_dma_threads(void **state, uint32_t num_of_threads)
 		thread_params[i].fd = fd;
 	}
 
-	/* clear SOB1 and set SOB0 to 1 so the first DMA thread will run */
+	/* clear SOB8 and set SOB0 to 1 so the first DMA thread will run */
 	cb = hltests_create_cb(fd, getpagesize(), true, 0);
 	assert_non_null(cb);
 
 	cb_size = hltests_add_set_sob_pkt(fd, cb, cb_size, true, true, 0, 0, 1);
 
-	cb_size = hltests_add_set_sob_pkt(fd, cb, cb_size, true, true, 0, 1, 0);
+	cb_size = hltests_add_set_sob_pkt(fd, cb, cb_size, true, true, 0, 8, 0);
 
 	hltests_submit_and_wait_cs(fd, cb, cb_size,
 				hltests_get_dma_down_qid(fd, 0, 0), true);

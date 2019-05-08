@@ -1035,13 +1035,13 @@ uint32_t hltests_add_msg_short_pkt(int fd, void *buffer, uint32_t buf_off,
 uint32_t hltests_add_arm_monitor_pkt(int fd, void *buffer,
 					uint32_t buf_off, bool eb, bool mb,
 					uint16_t address, uint8_t mon_mode,
-					uint16_t sync_val, uint16_t sync_id)
+					uint16_t sob_val, uint16_t sob_id)
 {
 	const struct hltests_asic_funcs *asic =
 			get_hdev_from_fd(fd)->asic_funcs;
 
 	return asic->add_arm_monitor_pkt(buffer, buf_off, eb, mb, address,
-					mon_mode, sync_val, sync_id);
+					mon_mode, sob_val, sob_id);
 }
 
 uint32_t hltests_add_write_to_sob_pkt(int fd, void *buffer, uint32_t buf_off,
