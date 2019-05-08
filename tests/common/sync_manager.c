@@ -325,8 +325,8 @@ static void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 
 	/* SRAM MAP (base + ):
 	 * - 0x1000               : data
-	 * - 0x1000 + page_size   : engine's internal CB (CMDQ)
-	 * - 0x1000 + 2*page_size : engine's internal CB (QMAN)
+	 * - 0x2000               : engine's internal CB (QMAN)
+	 * - 0x3000               : engine's internal CB (CMDQ)
 	 *
 	 * Test Description:
 	 * - First DMA QMAN transfers data from host to SRAM and then signals
@@ -364,8 +364,8 @@ static void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 	}
 
 	device_data_addr = hw_ip.sram_base_address + 0x1000;
-	engine_cmdq_cb_sram_addr = device_data_addr + page_size;
-	engine_qman_cb_sram_addr = engine_cmdq_cb_sram_addr + page_size;
+	engine_qman_cb_sram_addr = hw_ip.sram_base_address + 0x2000;
+	engine_cmdq_cb_sram_addr = hw_ip.sram_base_address + 0x3000;
 
 	/* Allocate two buffers on the host for data transfers */
 	host_src = hltests_allocate_host_mem(fd, dma_size, false);
