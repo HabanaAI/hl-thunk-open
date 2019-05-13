@@ -58,6 +58,16 @@ enum hltests_goya_dma_direction {
 	GOYA_DMA_ENUM_MAX
 };
 
+enum hltests_eb {
+	EB_FALSE = 0,
+	EB_TRUE
+};
+
+enum hltests_mb {
+	MB_FALSE = 0,
+	MB_TRUE
+};
+
 struct hltests_state {
 	int fd;
 	bool mmu;
@@ -166,6 +176,68 @@ struct mem_pool {
 	uint32_t page_size;
 	uint32_t pool_npages;
 	uint8_t *pool;
+};
+
+struct hltests_pkt_info {
+	int fd;
+	void *buffer;
+	uint32_t buf_off;
+	enum hltests_eb eb;
+	enum hltests_mb mb;
+	union {
+		struct {
+			uint64_t address;
+			uint32_t value;
+		} msg_long;
+		struct {
+			uint8_t base;
+			uint16_t address;
+			uint32_t value;
+		} msg_short;
+		struct {
+			uint16_t address;
+			uint8_t mon_mode;
+			uint16_t sob_val;
+			uint16_t sob_id;
+		} arm_monitor;
+		struct {
+			uint16_t sob_id;
+			uint16_t value;
+			uint8_t mode;
+		} write_to_sob;
+		struct {
+			uint8_t dcore_id;
+			uint16_t sob_id;
+			uint32_t value;
+		} set_sob;
+		struct {
+			uint8_t dec_val;
+			uint8_t gate_val;
+			uint8_t fence_id;
+		} fence;
+		struct {
+			uint64_t src_addr;
+			uint64_t dst_addr;
+			uint32_t size;
+			enum hltests_goya_dma_direction dma_dir;
+		} dma;
+		struct {
+			uint64_t src_addr;
+			uint32_t size;
+		} cp_dma;
+	};
+};
+
+struct hltests_monitor_and_fence {
+	int fd;
+	void *buffer;
+	uint32_t buf_off;
+	uint8_t dcore_id;
+	uint8_t queue_id;
+	bool cmdq_fence;
+	uint32_t sob_id;
+	uint32_t mon_id;
+	uint64_t mon_address;
 };
 
 void hltests_parser(int argc, const char **argv, const char * const* usage,
