@@ -32,6 +32,14 @@ macro_ensure_out_of_source_build("${PROJECT_NAME} requires an out of source buil
 # Copy library files to a lib sub-directory
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 
+exec_program(
+    "git"
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ARGS "rev-parse --short HEAD"
+    OUTPUT_VARIABLE GIT_SHA)
+
+add_definitions(-DHLTHUNK_GIT_SHA=${GIT_SHA})
+
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_FLAGS "-fPIC -W -Werror -Wall -Wextra -Wno-unused-parameter")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-missing-field-initializers -Wno-type-limits")

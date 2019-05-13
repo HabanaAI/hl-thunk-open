@@ -9,6 +9,14 @@
 #define LIBHLTHUNK_H
 
 #include "hlthunk.h"
+#include "specs/version.h"
+
+#define _STRINGIFY(x)	#x
+#define STRINGIFY(x)	_STRINGIFY(x)
+
+/* \40 - hack for adding space char */
+#ident STRINGIFY(hl-thunk version:\040 HL_DRIVER_MAJOR.HL_DRIVER_MINOR. \
+			HL_DRIVER_PATCHLEVEL-HLTHUNK_GIT_SHA)
 
 /* HL thunk logging usage */
 extern int hlthunk_debug_level;
