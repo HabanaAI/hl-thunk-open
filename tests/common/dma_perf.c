@@ -218,6 +218,7 @@ static double indirect_transfer_perf_test(int fd,
 		uint64_t src_addr, uint64_t dst_addr)
 {
 	struct hlthunk_hw_ip_info hw_ip;
+	struct hltests_pkt_info pkt_info;
 	void *cp_dma_cb, *cb;
 	uint64_t sram_addr, page_size, cp_dma_cb_device_va;
 	uint32_t size, cp_dma_cb_offset = 0, cb_offset = 0, lower_cb_offset;
@@ -227,6 +228,8 @@ static double indirect_transfer_perf_test(int fd,
 	struct hltests_cs_chunk execute_arr[2];
 	uint64_t seq = 0;
 	double time_diff;
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
@@ -244,9 +247,13 @@ static double indirect_transfer_perf_test(int fd,
 	cp_dma_cb = hltests_create_cb(fd, page_size, false, sram_addr + 0x2000);
 	assert_non_null(cp_dma_cb);
 	cp_dma_cb_device_va = hltests_get_device_va_for_host_ptr(fd, cp_dma_cb);
+
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.cp_dma.src_addr = sram_addr;
+	pkt_info.cp_dma.size = lower_cb_offset;
 	cp_dma_cb_offset = hltests_add_cp_dma_pkt(fd, cp_dma_cb,
-			cp_dma_cb_offset, false, false, sram_addr,
-							lower_cb_offset);
+					cp_dma_cb_offset, &pkt_info);
 
 	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, 0, 0), 0, 0,
 			cp_dma_cb_device_va, sram_addr + 0x2000,

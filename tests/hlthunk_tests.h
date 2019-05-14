@@ -179,9 +179,7 @@ struct mem_pool {
 };
 
 struct hltests_pkt_info {
-	int fd;
-	void *buffer;
-	uint32_t buf_off;
+
 	enum hltests_eb eb;
 	enum hltests_mb mb;
 	union {
@@ -304,6 +302,7 @@ void hltests_submit_and_wait_cs(int fd, void *cb_ptr, uint32_t cb_size,
 				uint32_t queue_index, bool destroy_cb);
 
 int hltests_ensure_device_operational(void **state);
+void test_sm_pingpong_cmdq(void **state, bool is_tpc);
 
 /* Generic memory addresses pool */
 void *hltests_mem_pool_init(uint64_t start_addr, uint64_t size, uint64_t order);
@@ -343,8 +342,7 @@ uint32_t hltests_add_dma_pkt(int fd, void *buffer, uint32_t buf_off,
 				enum hltests_goya_dma_direction dma_dir);
 
 uint32_t hltests_add_cp_dma_pkt(int fd, void *buffer, uint32_t buf_off,
-				bool eb, bool mb, uint64_t src_addr,
-				uint32_t size);
+				struct hltests_pkt_info *pkt_info);
 
 uint32_t hltests_add_monitor_and_fence(int fd, void *buffer, uint32_t buf_off,
 					uint8_t dcore_id, uint8_t queue_id,
