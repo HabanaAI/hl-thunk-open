@@ -334,8 +334,7 @@ uint32_t hltests_add_set_sob_pkt(int fd, void *buffer, uint32_t buf_off,
 					uint16_t sob_id, uint32_t value);
 
 uint32_t hltests_add_fence_pkt(int fd, void *buffer, uint32_t buf_off,
-					bool eb, bool mb, uint8_t dec_val,
-					uint8_t gate_val, uint8_t fence_id);
+				struct hltests_pkt_info *pkt_info);
 
 uint32_t hltests_add_dma_pkt(int fd, void *buffer, uint32_t buf_off,
 				struct hltests_pkt_info *pkt_info);

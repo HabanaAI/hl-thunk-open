@@ -23,6 +23,7 @@ void test_tdr_deadlock(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hltests_cs_chunk execute_arr[1];
+	struct hltests_pkt_info pkt_info;
 	void *ptr;
 	uint64_t seq = 0;
 	uint32_t page_size = sysconf(_SC_PAGESIZE), offset = 0;
@@ -32,8 +33,13 @@ void test_tdr_deadlock(void **state)
 
 	ptr = hltests_create_cb(fd, page_size, true, 0);
 	assert_ptr_not_equal(ptr, NULL);
-
-	offset = hltests_add_fence_pkt(fd, ptr, offset, false, false, 1, 1, 0);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.fence.dec_val = 1;
+	pkt_info.fence.gate_val = 1;
+	pkt_info.fence.fence_id = 0;
+	offset = hltests_add_fence_pkt(fd, ptr, offset, &pkt_info);
 
 	execute_arr[0].cb_ptr = ptr;
 	execute_arr[0].cb_size = offset;

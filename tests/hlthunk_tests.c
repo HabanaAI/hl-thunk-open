@@ -1069,14 +1069,16 @@ uint32_t hltests_add_set_sob_pkt(int fd, void *buffer, uint32_t buf_off,
 }
 
 uint32_t hltests_add_fence_pkt(int fd, void *buffer, uint32_t buf_off,
-					bool eb, bool mb, uint8_t dec_val,
-					uint8_t gate_val, uint8_t fence_id)
+					struct hltests_pkt_info *pkt_info)
 {
 	const struct hltests_asic_funcs *asic =
 			get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->add_fence_pkt(buffer, buf_off, eb, mb, dec_val, gate_val,
-					fence_id);
+	return asic->add_fence_pkt(buffer, buf_off, pkt_info->eb,
+						pkt_info->mb,
+						pkt_info->fence.dec_val,
+						pkt_info->fence.gate_val,
+						pkt_info->fence.fence_id);
 }
 
 uint32_t hltests_add_dma_pkt(int fd, void *buffer, uint32_t buf_off,
