@@ -1080,15 +1080,17 @@ uint32_t hltests_add_fence_pkt(int fd, void *buffer, uint32_t buf_off,
 }
 
 uint32_t hltests_add_dma_pkt(int fd, void *buffer, uint32_t buf_off,
-				bool eb, bool mb, uint64_t src_addr,
-				uint64_t dst_addr, uint32_t size,
-				enum hltests_goya_dma_direction dma_dir)
+					struct hltests_pkt_info *pkt_info)
 {
 	const struct hltests_asic_funcs *asic =
 			get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->add_dma_pkt(buffer, buf_off, eb, mb, src_addr, dst_addr,
-					size, dma_dir);
+	return asic->add_dma_pkt(buffer, buf_off, pkt_info->eb,
+						pkt_info->mb,
+						pkt_info->dma.src_addr,
+						pkt_info->dma.dst_addr,
+						pkt_info->dma.size,
+						pkt_info->dma.dma_dir);
 }
 
 uint32_t hltests_add_cp_dma_pkt(int fd, void *buffer, uint32_t buf_off,
@@ -1236,12 +1238,19 @@ void hltests_dma_transfer(int fd, uint32_t queue_index, bool eb, bool mb,
 {
 	uint32_t offset = 0;
 	void *ptr;
+	struct hltests_pkt_info pkt_info;
 
 	ptr = hltests_create_cb(fd, getpagesize(), true, 0);
 	assert_ptr_not_equal(ptr, NULL);
 
-	offset = hltests_add_dma_pkt(fd, ptr, offset, eb, mb, src_addr,
-						dst_addr, size, dma_dir);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = eb;
+	pkt_info.mb = mb;
+	pkt_info.dma.src_addr = src_addr;
+	pkt_info.dma.dst_addr = dst_addr;
+	pkt_info.dma.size = size;
+	pkt_info.dma.dma_dir = dma_dir;
+	offset = hltests_add_dma_pkt(fd, ptr, offset, &pkt_info);
 
 	hltests_submit_and_wait_cs(fd, ptr, offset, queue_index, true);
 }
@@ -1711,24 +1720,31 @@ void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 	restore_cb =  hltests_create_cb(fd, page_size, true, 0);
 	assert_ptr_not_equal(restore_cb, NULL);
 	restore_cb_size = 0;
+
 	restore_cb_size = hltests_add_set_sob_pkt(fd, restore_cb,
 							restore_cb_size, false,
 							false, 0, 0, 0);
 	restore_cb_size = hltests_add_set_sob_pkt(fd, restore_cb,
 							restore_cb_size, false,
 							true, 0, 8, 0);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.dma.src_addr = engine_cmdq_cb_device_va;
+	pkt_info.dma.dst_addr = engine_cmdq_cb_sram_addr;
+	pkt_info.dma.size = engine_cmdq_cb_size;
+	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_SRAM;
 	restore_cb_size = hltests_add_dma_pkt(fd, restore_cb, restore_cb_size,
-						false, true,
-						engine_cmdq_cb_device_va,
-						engine_cmdq_cb_sram_addr,
-						engine_cmdq_cb_size,
-						GOYA_DMA_HOST_TO_SRAM);
+						&pkt_info);
+
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.dma.src_addr = engine_qman_cb_device_va;
+	pkt_info.dma.dst_addr = engine_qman_cb_sram_addr;
+	pkt_info.dma.size = engine_qman_cb_size;
+	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_SRAM;
 	restore_cb_size = hltests_add_dma_pkt(fd, restore_cb, restore_cb_size,
-						false, true,
-						engine_qman_cb_device_va,
-						engine_qman_cb_sram_addr,
-						engine_qman_cb_size,
-						GOYA_DMA_HOST_TO_SRAM);
+						&pkt_info);
 
 	/* CB for first DMA QMAN:
 	 * Transfer data from host to SRAM + signal SOB0.
@@ -1736,11 +1752,16 @@ void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 	dmadown_cb = hltests_create_cb(fd, page_size, true, 0);
 	assert_ptr_not_equal(dmadown_cb, NULL);
 	dmadown_cb_size = 0;
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.dma.src_addr = host_src_device_va;
+	pkt_info.dma.dst_addr = device_data_addr;
+	pkt_info.dma.size = dma_size;
+	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_SRAM;
 	dmadown_cb_size = hltests_add_dma_pkt(fd, dmadown_cb, dmadown_cb_size,
-						false, false,
-						host_src_device_va,
-						device_data_addr, dma_size,
-						GOYA_DMA_HOST_TO_SRAM);
+						&pkt_info);
 	dmadown_cb_size = hltests_add_write_to_sob_pkt(fd, dmadown_cb,
 							dmadown_cb_size, true,
 							false, 0, 1, 1);
@@ -1755,10 +1776,15 @@ void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 					dmaup_cb_size, 0,
 					hltests_get_dma_up_qid(fd, 0, 0),
 					false, 8, 1, 0);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.dma.src_addr = device_data_addr;
+	pkt_info.dma.dst_addr = host_dst_device_va;
+	pkt_info.dma.size = dma_size;
+	pkt_info.dma.dma_dir = GOYA_DMA_SRAM_TO_HOST;
 	dmaup_cb_size = hltests_add_dma_pkt(fd, dmaup_cb, dmaup_cb_size,
-						false, true, device_data_addr,
-						host_dst_device_va, dma_size,
-						GOYA_DMA_SRAM_TO_HOST);
+								&pkt_info);
 
 	/* Submit CS and wait for completion */
 	restore_arr[0].cb_ptr = restore_cb;

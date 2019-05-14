@@ -31,6 +31,7 @@ static double hltests_transfer_perf(int fd, uint32_t queue_index,
 	void *ptr;
 	struct timespec begin, end;
 	struct hltests_cs_chunk execute_arr[1];
+	struct hltests_pkt_info pkt_info;
 	uint64_t seq = 0;
 	int rc, num_of_transfers, i;
 	double time_diff;
@@ -38,8 +39,14 @@ static double hltests_transfer_perf(int fd, uint32_t queue_index,
 	num_of_transfers = hltests_is_simulator(fd) ? 10 : 300;
 	ptr = hltests_create_cb(fd, getpagesize(), true, 0);
 	assert_ptr_not_equal(ptr, NULL);
-	offset = hltests_add_dma_pkt(fd, ptr, offset,
-			0, 0, src_addr, dst_addr, size, dma_dir);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.dma.src_addr = src_addr;
+	pkt_info.dma.dst_addr = dst_addr;
+	pkt_info.dma.size = size;
+	pkt_info.dma.dma_dir = dma_dir;
+	offset = hltests_add_dma_pkt(fd, ptr, offset, &pkt_info);
 
 	execute_arr[0].cb_ptr = ptr;
 	execute_arr[0].cb_size = offset;
@@ -187,6 +194,7 @@ static uint32_t setup_lower_cb_in_sram(int fd,
 	void *lower_cb;
 	uint64_t lower_cb_device_va;
 	uint32_t  lower_cb_offset = 0, i;
+	struct hltests_pkt_info pkt_info;
 
 	lower_cb =  hltests_create_cb(fd, 2 * getpagesize(),
 							false, sram_addr);
@@ -197,11 +205,17 @@ static uint32_t setup_lower_cb_in_sram(int fd,
 	lower_cb_offset = hltests_add_set_sob_pkt(fd, lower_cb,
 				lower_cb_offset, true, true, 0, 0, 0);
 
-	for (i = 0; i < num_of_transfers ; i++)
+	for (i = 0; i < num_of_transfers ; i++) {
+		memset(&pkt_info, 0, sizeof(pkt_info));
+		pkt_info.eb = EB_FALSE;
+		pkt_info.mb = MB_FALSE;
+		pkt_info.dma.src_addr = src_addr;
+		pkt_info.dma.dst_addr = dst_addr;
+		pkt_info.dma.size = size;
+		pkt_info.dma.dma_dir = dma_dir;
 		lower_cb_offset = hltests_add_dma_pkt(fd, lower_cb,
-			lower_cb_offset, 0, 0, src_addr,
-						dst_addr, size, dma_dir);
-
+						lower_cb_offset, &pkt_info);
+	}
 	lower_cb_offset = hltests_add_write_to_sob_pkt(fd,
 		lower_cb, lower_cb_offset, true, true, 0, 1, 1);
 

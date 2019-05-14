@@ -27,6 +27,7 @@ static void test_sm(void **state, bool is_tpc, bool is_wait)
 		cb_engine_address, engine_cb_device_va;
 	struct hltests_cs_chunk execute_arr[2];
 	struct hlthunk_hw_ip_info hw_ip;
+	struct hltests_pkt_info pkt_info;
 	uint32_t offset = 0, dma_size = 4, engine_cb_size;
 	int rc, engine_qid, fd = tests_state->fd;
 	uint64_t seq;
@@ -102,10 +103,14 @@ static void test_sm(void **state, bool is_tpc, bool is_wait)
 	offset = hltests_add_monitor_and_fence(fd, ext_cb, 0, 0,
 					hltests_get_dma_up_qid(fd, 0, 0), false,
 					0, 0, 0);
-
-	offset = hltests_add_dma_pkt(fd, ext_cb, offset, false, false,
-					device_data_address, dst_data_device_va,
-					dma_size, GOYA_DMA_SRAM_TO_HOST);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.dma.src_addr = device_data_address;
+	pkt_info.dma.dst_addr = dst_data_device_va;
+	pkt_info.dma.size = dma_size;
+	pkt_info.dma.dma_dir = GOYA_DMA_SRAM_TO_HOST;
+	offset = hltests_add_dma_pkt(fd, ext_cb, offset, &pkt_info);
 
 	execute_arr[0].cb_ptr = ext_cb;
 	execute_arr[0].cb_size = offset;
@@ -154,6 +159,7 @@ static void test_sm_pingpong_qman(void **state, bool is_tpc)
 		engine_cb_sram_addr, engine_cb_device_va;
 	struct hltests_cs_chunk restore_arr[1], execute_arr[3];
 	struct hlthunk_hw_ip_info hw_ip;
+	struct hltests_pkt_info pkt_info;
 	uint32_t dma_size = 4, engine_cb_size, restore_cb_size, dmadown_cb_size,
 			dmaup_cb_size, i, err_cnt = 0;
 	int rc, engine_qid, fd = tests_state->fd;
@@ -228,10 +234,16 @@ static void test_sm_pingpong_qman(void **state, bool is_tpc)
 							true, 0, 0, 0);
 	restore_cb_size = hltests_add_set_sob_pkt(fd, restore_cb,
 					restore_cb_size, false, true, 0, 8, 0);
-	restore_cb_size = hltests_add_dma_pkt(fd, restore_cb, restore_cb_size,
-					false, false, engine_cb_device_va,
-					engine_cb_sram_addr, engine_cb_size,
-					GOYA_DMA_HOST_TO_SRAM);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.dma.src_addr = engine_cb_device_va;
+	pkt_info.dma.dst_addr = engine_cb_sram_addr;
+	pkt_info.dma.size = engine_cb_size;
+	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_SRAM;
+	restore_cb_size = hltests_add_dma_pkt(fd, restore_cb,
+					restore_cb_size, &pkt_info);
 
 	/* Create CB for DMA down that downloads data to device and signal the
 	 * engine
@@ -239,9 +251,14 @@ static void test_sm_pingpong_qman(void **state, bool is_tpc)
 	dmadown_cb = hltests_create_cb(fd, getpagesize(), true, 0);
 	assert_ptr_not_equal(dmadown_cb, NULL);
 
-	dmadown_cb_size = hltests_add_dma_pkt(fd, dmadown_cb, 0, false, false,
-					src_data_device_va, device_data_address,
-					dma_size, GOYA_DMA_HOST_TO_SRAM);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.dma.src_addr = src_data_device_va;
+	pkt_info.dma.dst_addr = device_data_address;
+	pkt_info.dma.size = dma_size;
+	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_SRAM;
+	dmadown_cb_size = hltests_add_dma_pkt(fd, dmadown_cb, 0, &pkt_info);
 
 	dmadown_cb_size = hltests_add_write_to_sob_pkt(fd, dmadown_cb,
 					dmadown_cb_size, true, true, 0, 1, 1);
@@ -256,10 +273,15 @@ static void test_sm_pingpong_qman(void **state, bool is_tpc)
 					hltests_get_dma_up_qid(fd, 0, 0), false,
 					8, 1, 0);
 
-	dmaup_cb_size = hltests_add_dma_pkt(fd, dmaup_cb, dmaup_cb_size, false,
-						true, device_data_address,
-						dst_data_device_va, dma_size,
-						GOYA_DMA_SRAM_TO_HOST);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.dma.src_addr = device_data_address;
+	pkt_info.dma.dst_addr = dst_data_device_va;
+	pkt_info.dma.size = dma_size;
+	pkt_info.dma.dma_dir = GOYA_DMA_SRAM_TO_HOST;
+	dmaup_cb_size = hltests_add_dma_pkt(fd, dmaup_cb,
+					dmaup_cb_size, &pkt_info);
 
 	restore_arr[0].cb_ptr = restore_cb;
 	restore_arr[0].cb_size = restore_cb_size;

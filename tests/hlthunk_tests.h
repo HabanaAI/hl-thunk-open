@@ -338,9 +338,7 @@ uint32_t hltests_add_fence_pkt(int fd, void *buffer, uint32_t buf_off,
 					uint8_t gate_val, uint8_t fence_id);
 
 uint32_t hltests_add_dma_pkt(int fd, void *buffer, uint32_t buf_off,
-				bool eb, bool mb, uint64_t src_addr,
-				uint64_t dst_addr, uint32_t size,
-				enum hltests_goya_dma_direction dma_dir);
+				struct hltests_pkt_info *pkt_info);
 
 uint32_t hltests_add_cp_dma_pkt(int fd, void *buffer, uint32_t buf_off,
 				struct hltests_pkt_info *pkt_info);

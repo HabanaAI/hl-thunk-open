@@ -41,6 +41,7 @@ static void *dma_thread_start(void *args)
 {
 	struct dma_thread_params *params = (struct dma_thread_params *) args;
 	struct hltests_cs_chunk execute_arr[2];
+	struct hltests_pkt_info pkt_info;
 	uint32_t page_size = sysconf(_SC_PAGESIZE), cb_size[2] = {0};
 	uint64_t seq;
 	void *cb[2];
@@ -62,10 +63,14 @@ static void *dma_thread_start(void *args)
 	cb_size[0] = hltests_add_set_sob_pkt(fd, cb[0], cb_size[0], true,
 					true, 0, 0, 0);
 
-	cb_size[0] = hltests_add_dma_pkt(fd, cb[0], cb_size[0], true, true,
-					params->host_src_device_va,
-					params->device_addr, params->size,
-					GOYA_DMA_HOST_TO_DRAM);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.dma.src_addr = params->host_src_device_va;
+	pkt_info.dma.dst_addr = params->device_addr;
+	pkt_info.dma.size = params->size;
+	pkt_info.dma.dma_dir = GOYA_DMA_DRAM_TO_HOST;
+	cb_size[0] = hltests_add_dma_pkt(fd, cb[0], cb_size[0], &pkt_info);
 
 	cb_size[0] = hltests_add_write_to_sob_pkt(fd, cb[0], cb_size[0], true,
 					true, 8, 1, 1);
@@ -78,10 +83,14 @@ static void *dma_thread_start(void *args)
 	cb_size[1] = hltests_add_set_sob_pkt(fd, cb[1], cb_size[1], true,
 					true, 0, 8, 0);
 
-	cb_size[1] = hltests_add_dma_pkt(fd, cb[1], cb_size[1], true, true,
-					params->device_addr,
-					params->host_dst_device_va,
-					params->size, GOYA_DMA_DRAM_TO_HOST);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.dma.src_addr = params->device_addr;
+	pkt_info.dma.dst_addr = params->host_dst_device_va;
+	pkt_info.dma.size = params->size;
+	pkt_info.dma.dma_dir = GOYA_DMA_DRAM_TO_HOST;
+	cb_size[1] = hltests_add_dma_pkt(fd, cb[1], cb_size[1], &pkt_info);
 
 	cb_size[1] = hltests_add_write_to_sob_pkt(fd, cb[1], cb_size[1], true,
 					true, 0, 1, 1);
@@ -212,6 +221,7 @@ void test_dma_entire_dram_random(void **state)
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hltests_cs_chunk execute_arr[1];
 	struct hlthunk_hw_ip_info hw_ip;
+	struct hltests_pkt_info pkt_info;
 	void *buf[2], *cb;
 	uint64_t dram_addr, dram_addr_end, device_va[2], seq;
 	uint32_t dma_size = 1 << 14; /* 16KB */
@@ -289,10 +299,14 @@ void test_dma_entire_dram_random(void **state)
 
 	for (i = 0 ; i < vec_len ; i++) {
 		chunk = kv_A(array, i);
-		cb_size = hltests_add_dma_pkt(fd, cb, cb_size, false, true,
-					chunk.input_device_va,
-					(uint64_t) (uintptr_t) chunk.dram_addr,
-					dma_size, GOYA_DMA_HOST_TO_DRAM);
+		memset(&pkt_info, 0, sizeof(pkt_info));
+		pkt_info.eb = EB_FALSE;
+		pkt_info.mb = MB_TRUE;
+		pkt_info.dma.src_addr = chunk.input_device_va;
+		pkt_info.dma.dst_addr = (uint64_t) (uintptr_t) chunk.dram_addr;
+		pkt_info.dma.size = dma_size;
+		pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_DRAM;
+		cb_size = hltests_add_dma_pkt(fd, cb, cb_size, &pkt_info);
 	}
 
 	execute_arr[0].cb_ptr = cb;
@@ -316,10 +330,14 @@ void test_dma_entire_dram_random(void **state)
 
 	for (i = 0 ; i < vec_len ; i++) {
 		chunk = kv_A(array, i);
-		cb_size = hltests_add_dma_pkt(fd, cb, cb_size, false, true,
-					(uint64_t) (uintptr_t) chunk.dram_addr,
-					chunk.output_device_va,
-					dma_size, GOYA_DMA_DRAM_TO_HOST);
+		memset(&pkt_info, 0, sizeof(pkt_info));
+		pkt_info.eb = EB_FALSE;
+		pkt_info.mb = MB_TRUE;
+		pkt_info.dma.src_addr = (uint64_t) (uintptr_t) chunk.dram_addr;
+		pkt_info.dma.dst_addr = chunk.output_device_va;
+		pkt_info.dma.size = dma_size;
+		pkt_info.dma.dma_dir = GOYA_DMA_DRAM_TO_HOST;
+		cb_size = hltests_add_dma_pkt(fd, cb, cb_size, &pkt_info);
 	}
 
 	execute_arr[0].cb_ptr = cb;

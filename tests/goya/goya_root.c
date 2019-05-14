@@ -25,6 +25,7 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
 	struct hltests_cs_chunk restore_arr[1], execute_arr[2];
+	struct hltests_pkt_info pkt_info;
 	void *engine_cb, *restore_cb, *dma_cb;
 	uint64_t cfg_address, engine_cb_sram_addr, engine_cb_device_va, seq;
 	uint32_t page_size, engine_qid, engine_cb_size, restore_cb_size,
@@ -84,10 +85,15 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 	restore_cb_size = 0;
 	restore_cb_size = hltests_add_set_sob_pkt(fd, restore_cb,
 					restore_cb_size, false, false, 0, 0, 0);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.dma.src_addr = engine_cb_device_va;
+	pkt_info.dma.dst_addr = engine_cb_sram_addr;
+	pkt_info.dma.size = engine_cb_size;
+	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_SRAM;
 	restore_cb_size = hltests_add_dma_pkt(fd, restore_cb, restore_cb_size,
-					false, true, engine_cb_device_va,
-					engine_cb_sram_addr, engine_cb_size,
-					GOYA_DMA_HOST_TO_SRAM);
+					&pkt_info);
 
 	/* CB for DMA QMAN: Fence on SOB0 */
 	dma_cb = hltests_create_cb(fd, page_size, true, 0);
