@@ -563,10 +563,11 @@ free_mem_struct:
  * @param fd file descriptor of the device to which the function will map
  *           the memory
  * @param size how much memory to allocate
+ * @param contiguous whether the memory area will be physically contiguous
  * @return pointer to the device memory. This pointer can NOT be dereferenced
  * directly from the host. NULL is returned upon failure
  */
-void *hltests_allocate_device_mem(int fd, uint64_t size)
+void *hltests_allocate_device_mem(int fd, uint64_t size, bool contiguous)
 {
 	const struct hltests_asic_funcs *asic;
 	struct hltests_device *hdev;
@@ -593,7 +594,7 @@ void *hltests_allocate_device_mem(int fd, uint64_t size)
 	if (rc) {
 		mem->is_pool = false;
 		mem->device_handle = hlthunk_device_memory_alloc(fd, size,
-								false,
+								contiguous,
 								false);
 
 		if (!mem->device_handle) {
@@ -1263,7 +1264,7 @@ int hltests_dma_test(void **state, bool is_ddr, uint64_t size)
 		assert_int_equal(hw_ip.dram_enabled, 1);
 		assert_in_range(size, 1, hw_ip.dram_size);
 
-		device_addr = hltests_allocate_device_mem(fd, size);
+		device_addr = hltests_allocate_device_mem(fd, size, false);
 		assert_non_null(device_addr);
 
 		dma_dir_down = GOYA_DMA_HOST_TO_DRAM;

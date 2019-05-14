@@ -66,7 +66,7 @@ void test_dma_4_queues(void **state)
 	host_dst_device_va = hltests_get_device_va_for_host_ptr(fd, host_dst);
 
 	for (i = 0 ; i < 2 ; i++) {
-		dram_addr[i] = hltests_allocate_device_mem(fd, dma_size);
+		dram_addr[i] = hltests_allocate_device_mem(fd, dma_size, false);
 		assert_non_null(dram_addr[i]);
 	}
 

@@ -43,7 +43,7 @@ void test_map_bigger_than_4GB(void **state)
 	assert_int_equal(hw_ip.dram_enabled, 1);
 	assert_in_range(dma_size, 1, hw_ip.dram_size);
 
-	device_addr = hltests_allocate_device_mem(fd, dma_size);
+	device_addr = hltests_allocate_device_mem(fd, dma_size, false);
 	assert_non_null(device_addr);
 
 	dma_dir_down = GOYA_DMA_HOST_TO_DRAM;

@@ -190,9 +190,10 @@ void test_dma_custom(void **state)
 
 	is_huge = cfg.chunk_size > 32 * 1024;
 
-	device_ptr = hltests_allocate_device_mem(fd, cfg.size);
+	device_ptr = hltests_allocate_device_mem(fd, hw_ip.dram_size, true);
 	assert_non_null(device_ptr);
 	device_addr = (uint64_t) (uintptr_t) device_ptr;
+	device_addr += (cfg.dst_addr - hw_ip.dram_base_address);
 
 	src_ptr = hltests_allocate_host_mem(fd, cfg.chunk_size, is_huge);
 	assert_non_null(src_ptr);

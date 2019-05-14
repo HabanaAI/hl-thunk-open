@@ -263,7 +263,7 @@ uint32_t hltests_debugfs_read(int fd, uint64_t full_address);
 void hltests_debugfs_write(int fd, uint64_t full_address, uint32_t val);
 
 void *hltests_allocate_host_mem(int fd, uint64_t size, bool huge);
-void *hltests_allocate_device_mem(int fd, uint64_t size);
+void *hltests_allocate_device_mem(int fd, uint64_t size, bool contiguous);
 int hltests_free_host_mem(int fd, void *vaddr);
 int hltests_free_device_mem(int fd, void *vaddr);
 uint64_t hltests_get_device_va_for_host_ptr(int fd, void *vaddr);
