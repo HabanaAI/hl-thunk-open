@@ -100,6 +100,9 @@ struct dma_custom_cfg {
 	uint64_t dst_addr;
 	uint64_t size;
 	uint32_t chunk_size;
+	uint32_t value;
+	bool sequential;
+	bool random;
 };
 
 static int dma_custom_parsing_handler(void *user, const char *section,
@@ -107,14 +110,24 @@ static int dma_custom_parsing_handler(void *user, const char *section,
 {
 	struct dma_custom_cfg *cfg = (struct dma_custom_cfg *) user;
 
-	if (MATCH("dma_custom_test", "dma_dir"))
+	if (MATCH("dma_custom_test", "dma_dir")) {
 		cfg->dma_dir = atoi(value);
-	else if (MATCH("dma_custom_test", "dst_addr"))
+	} else if (MATCH("dma_custom_test", "dst_addr")) {
 		cfg->dst_addr = strtoul(value, NULL, 0);
-	else if (MATCH("dma_custom_test", "size"))
+	} else if (MATCH("dma_custom_test", "size")) {
 		cfg->size = strtoul(value, NULL, 0);
-	else
+	} else if (MATCH("dma_custom_test", "chunk_size")) {
+		cfg->chunk_size = strtoul(value, NULL, 0);
+	} else if (MATCH("dma_custom_test", "sequential")) {
+		cfg->sequential = strcmp("true", strdup(value)) ? false : true;
+		if (cfg->sequential)
+			cfg->random = false;
+	} else if (MATCH("dma_custom_test", "value")) {
+		cfg->value = strtoul(value, NULL, 0);
+		cfg->random = false;
+	} else {
 		return 0; /* unknown section/name, error */
+	}
 
 	return 1;
 }
@@ -134,24 +147,40 @@ void test_dma_custom(void **state)
 	if (!config_filename)
 		fail_msg("User didn't supply a configuration file name!\n");
 
+	cfg.random = true;
+
 	if (ini_parse(config_filename, dma_custom_parsing_handler, &cfg) < 0)
 		fail_msg("Can't load %s\n", config_filename);
-
-	cfg.chunk_size = 32 * 1024 * 1024;
 
 	printf("Configuration loaded from %s:\n", config_filename);
 	printf("dma_dir = %d, dst_addr = 0x%lx, size = %lu, chunk size = %u\n",
 		cfg.dma_dir, cfg.dst_addr, cfg.size, cfg.chunk_size);
 
+	if (cfg.random) {
+		printf("random values\n\n");
+	} else if (cfg.sequential) {
+		printf("sequential values\n\n");
+		if (cfg.chunk_size % 4)
+			fail_msg("With sequential values, chunk size must "
+				"be divisible by 4\n");
+	} else {
+		printf("fixed fill value = 0x%x\n\n", cfg.value);
+		if (cfg.chunk_size % 4)
+			fail_msg("With fixed fill value, chunk size must "
+				"be divisible by 4\n");
+	}
+
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
 	assert_int_equal(cfg.dma_dir, GOYA_DMA_HOST_TO_DRAM);
+	assert_int_equal(hw_ip.dram_enabled, 1);
 	assert_in_range(cfg.dst_addr, hw_ip.dram_base_address,
 			hw_ip.dram_base_address + hw_ip.dram_size);
 	assert_in_range(cfg.dst_addr + cfg.size, hw_ip.dram_base_address,
 			hw_ip.dram_base_address + hw_ip.dram_size);
 	assert_in_range(cfg.size, 1, hw_ip.dram_size);
+	assert_in_range(cfg.chunk_size, 1, UINT_MAX);
 
 	dma_dir_down = GOYA_DMA_HOST_TO_DRAM;
 	dma_dir_up = GOYA_DMA_DRAM_TO_HOST;
@@ -167,8 +196,17 @@ void test_dma_custom(void **state)
 
 	src_ptr = hltests_allocate_host_mem(fd, cfg.chunk_size, is_huge);
 	assert_non_null(src_ptr);
-	hltests_fill_rand_values(src_ptr, cfg.chunk_size);
 	host_src_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
+
+	if (cfg.random) {
+		hltests_fill_rand_values(src_ptr, cfg.chunk_size);
+	} else if (cfg.sequential) {
+		for (i = 0 ; i < (cfg.chunk_size / 4) ; i++)
+			((uint32_t *) src_ptr)[i] = i;
+	} else {
+		for (i = 0 ; i < (cfg.chunk_size / 4) ; i++)
+			((uint32_t *) src_ptr)[i] = cfg.value;
+	}
 
 	dst_ptr = hltests_allocate_host_mem(fd, cfg.chunk_size, is_huge);
 	assert_non_null(dst_ptr);
