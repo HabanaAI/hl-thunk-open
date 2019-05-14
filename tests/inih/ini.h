@@ -44,6 +44,8 @@ extern "C" {
 
 #include <stdio.h>
 
+#define MATCH(s, n) ((strcmp(section, s) == 0) && (strcmp(name, n) == 0))
+
 /* Nonzero if ini_handler callback should accept lineno parameter. */
 #ifndef INI_HANDLER_LINENO
 #define INI_HANDLER_LINENO 0

@@ -7,6 +7,7 @@
 
 #include "hlthunk.h"
 #include "hlthunk_tests.h"
+#include "ini.h"
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -93,6 +94,126 @@ void test_print_hw_ip_info(void **state)
 	printf("\n\n");
 }
 
+struct dma_custom_cfg {
+	enum hltests_goya_dma_direction dma_dir;
+	uint64_t src_addr;
+	uint64_t dst_addr;
+	uint64_t size;
+	uint32_t chunk_size;
+};
+
+static int dma_custom_parsing_handler(void *user, const char *section,
+					const char *name, const char *value)
+{
+	struct dma_custom_cfg *cfg = (struct dma_custom_cfg *) user;
+
+	if (MATCH("dma_custom_test", "dma_dir"))
+		cfg->dma_dir = atoi(value);
+	else if (MATCH("dma_custom_test", "dst_addr"))
+		cfg->dst_addr = strtoul(value, NULL, 0);
+	else if (MATCH("dma_custom_test", "size"))
+		cfg->size = strtoul(value, NULL, 0);
+	else
+		return 0; /* unknown section/name, error */
+
+	return 1;
+}
+
+void test_dma_custom(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	const char *config_filename = hltests_get_config_filename();
+	struct hlthunk_hw_ip_info hw_ip;
+	struct dma_custom_cfg cfg;
+	void *device_ptr, *src_ptr, *dst_ptr;
+	uint64_t device_addr, host_src_addr, host_dst_addr, offset = 0;
+	uint32_t dma_dir_down, dma_dir_up;
+	bool is_huge;
+	int i, rc, fd = tests_state->fd;
+
+	if (!config_filename)
+		fail_msg("User didn't supply a configuration file name!\n");
+
+	if (ini_parse(config_filename, dma_custom_parsing_handler, &cfg) < 0)
+		fail_msg("Can't load %s\n", config_filename);
+
+	cfg.chunk_size = 32 * 1024 * 1024;
+
+	printf("Configuration loaded from %s:\n", config_filename);
+	printf("dma_dir = %d, dst_addr = 0x%lx, size = %lu, chunk size = %u\n",
+		cfg.dma_dir, cfg.dst_addr, cfg.size, cfg.chunk_size);
+
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+
+	assert_int_equal(cfg.dma_dir, GOYA_DMA_HOST_TO_DRAM);
+	assert_in_range(cfg.dst_addr, hw_ip.dram_base_address,
+			hw_ip.dram_base_address + hw_ip.dram_size);
+	assert_in_range(cfg.dst_addr + cfg.size, hw_ip.dram_base_address,
+			hw_ip.dram_base_address + hw_ip.dram_size);
+	assert_in_range(cfg.size, 1, hw_ip.dram_size);
+
+	dma_dir_down = GOYA_DMA_HOST_TO_DRAM;
+	dma_dir_up = GOYA_DMA_DRAM_TO_HOST;
+
+	if (cfg.chunk_size > cfg.size)
+		cfg.chunk_size = cfg.size;
+
+	is_huge = cfg.chunk_size > 32 * 1024;
+
+	device_ptr = hltests_allocate_device_mem(fd, cfg.size);
+	assert_non_null(device_ptr);
+	device_addr = (uint64_t) (uintptr_t) device_ptr;
+
+	src_ptr = hltests_allocate_host_mem(fd, cfg.chunk_size, is_huge);
+	assert_non_null(src_ptr);
+	hltests_fill_rand_values(src_ptr, cfg.chunk_size);
+	host_src_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
+
+	dst_ptr = hltests_allocate_host_mem(fd, cfg.chunk_size, is_huge);
+	assert_non_null(dst_ptr);
+	memset(dst_ptr, 0, cfg.chunk_size);
+	host_dst_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
+
+	do {
+		/* DMA: host->device */
+		hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, 0, 0), 0,
+					1, host_src_addr, device_addr + offset,
+					cfg.chunk_size, dma_dir_down);
+
+		/* DMA: device->host */
+		hltests_dma_transfer(fd, hltests_get_dma_up_qid(fd, 0, 0), 0, 1,
+					device_addr + offset, host_dst_addr,
+					cfg.chunk_size, dma_dir_up);
+
+		/* Compare host memories */
+		rc = hltests_mem_compare(src_ptr, dst_ptr, cfg.chunk_size);
+		assert_int_equal(rc, 0);
+
+		printf("Finished section 0x%lx - 0x%lx\n", device_addr + offset,
+			device_addr + offset + cfg.chunk_size);
+
+		memset(dst_ptr, 0, cfg.chunk_size);
+
+		offset += cfg.chunk_size;
+
+		cfg.size -= cfg.chunk_size;
+
+		if (cfg.chunk_size > cfg.size)
+			cfg.chunk_size = cfg.size;
+
+	} while (cfg.size > 0);
+
+	/* Cleanup */
+	rc = hltests_free_host_mem(fd, dst_ptr);
+	assert_int_equal(rc, 0);
+	rc = hltests_free_host_mem(fd, src_ptr);
+	assert_int_equal(rc, 0);
+
+	rc = hltests_free_device_mem(fd, device_ptr);
+	assert_int_equal(rc, 0);
+}
+
 const struct CMUnitTest debug_tests[] = {
 	cmocka_unit_test_setup(test_tdr_deadlock,
 				hltests_ensure_device_operational),
@@ -100,6 +221,8 @@ const struct CMUnitTest debug_tests[] = {
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_print_hw_ip_info,
 				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_dma_custom,
+				hltests_ensure_device_operational)
 };
 
 static const char *const usage[] = {

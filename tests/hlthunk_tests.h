@@ -242,6 +242,7 @@ void hltests_parser(int argc, const char **argv, const char * const* usage,
 			enum hlthunk_device_name expected_device,
 			const struct CMUnitTest * const tests, int num_tests);
 const char *hltests_get_parser_pciaddr(void);
+const char *hltests_get_config_filename(void);
 int hltests_get_parser_run_disabled_tests(void);
 bool hltests_is_simulator(int fd);
 bool hltests_is_goya(int fd);

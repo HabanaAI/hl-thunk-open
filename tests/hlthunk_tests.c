@@ -28,6 +28,7 @@ static enum hlthunk_device_name asic_name_for_testing = HLTHUNK_DEVICE_INVALID;
 
 int run_disabled_tests;
 const char *parser_pciaddr;
+const char *config_filename;
 
 static struct hltests_device *get_hdev_from_fd(int fd)
 {
@@ -1531,6 +1532,8 @@ void hltests_parser(int argc, const char **argv, const char * const* usage,
 		OPT_STRING('s', "test", &test, "name of specific test to run"),
 		OPT_STRING('p', "pciaddr", &parser_pciaddr,
 			"pci address of device"),
+		OPT_STRING('c', "config", &config_filename,
+			"config filename for test(s)"),
 		OPT_END(),
 	};
 
@@ -1562,6 +1565,11 @@ void hltests_parser(int argc, const char **argv, const char * const* usage,
 const char *hltests_get_parser_pciaddr(void)
 {
 	return parser_pciaddr;
+}
+
+const char *hltests_get_config_filename(void)
+{
+	return config_filename;
 }
 
 int hltests_get_parser_run_disabled_tests(void)
