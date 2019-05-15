@@ -80,8 +80,14 @@ static void test_sm(void **state, bool is_tpc, bool is_wait)
 	assert_ptr_not_equal(engine_cb, NULL);
 	engine_cb_device_va = hltests_get_device_va_for_host_ptr(fd, engine_cb);
 
-	engine_cb_size = hltests_add_write_to_sob_pkt(fd, engine_cb, 0, false,
-							true, 0, 1, 1);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.write_to_sob.sob_id = 0;
+	pkt_info.write_to_sob.value = 1;
+	pkt_info.write_to_sob.mode = SOB_ADD;
+	engine_cb_size = hltests_add_write_to_sob_pkt(fd, engine_cb,
+								0, &pkt_info);
 
 	/* DMA of cb engine host->sram */
 	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, 0, 0), 0, 1,
@@ -226,9 +232,14 @@ static void test_sm_pingpong_qman(void **state, bool is_tpc)
 	engine_cb_size = hltests_add_monitor_and_fence(fd, engine_cb, 0, 0,
 							engine_qid, false, 0,
 							0, 0);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.write_to_sob.sob_id = 8;
+	pkt_info.write_to_sob.value = 1;
+	pkt_info.write_to_sob.mode = SOB_ADD;
 	engine_cb_size = hltests_add_write_to_sob_pkt(fd, engine_cb,
-							engine_cb_size, false,
-							true, 8, 1, 1);
+						engine_cb_size, &pkt_info);
 
 	/* Create Setup CB that clears SOB 0 & 8, and copy the Engine's CB
 	 * to the SRAM
@@ -278,8 +289,14 @@ static void test_sm_pingpong_qman(void **state, bool is_tpc)
 	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_SRAM;
 	dmadown_cb_size = hltests_add_dma_pkt(fd, dmadown_cb, 0, &pkt_info);
 
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.write_to_sob.sob_id = 0;
+	pkt_info.write_to_sob.value = 1;
+	pkt_info.write_to_sob.mode = SOB_ADD;
 	dmadown_cb_size = hltests_add_write_to_sob_pkt(fd, dmadown_cb,
-					dmadown_cb_size, true, true, 0, 1, 1);
+					dmadown_cb_size, &pkt_info);
 
 	/* Create CB for DMA up that waits on internal engine and then
 	 * performs a DMA up of the data address on the sram

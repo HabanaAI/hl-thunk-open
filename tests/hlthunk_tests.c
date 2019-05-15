@@ -1047,14 +1047,16 @@ uint32_t hltests_add_arm_monitor_pkt(int fd, void *buffer,
 }
 
 uint32_t hltests_add_write_to_sob_pkt(int fd, void *buffer, uint32_t buf_off,
-					bool eb, bool mb, uint16_t sob_id,
-					uint16_t value, uint8_t mode)
+					struct hltests_pkt_info *pkt_info)
 {
 	const struct hltests_asic_funcs *asic =
 			get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->add_write_to_sob_pkt(buffer, buf_off, eb, mb, sob_id,
-						value, mode);
+	return asic->add_write_to_sob_pkt(buffer, buf_off, pkt_info->eb,
+						pkt_info->mb,
+						pkt_info->write_to_sob.sob_id,
+						pkt_info->write_to_sob.value,
+						pkt_info->write_to_sob.mode);
 }
 
 uint32_t hltests_add_set_sob_pkt(int fd, void *buffer, uint32_t buf_off,
@@ -1701,9 +1703,15 @@ void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 	engine_cmdq_cb_size = hltests_add_nop_pkt(fd, engine_cmdq_cb,
 							engine_cmdq_cb_size,
 							false, true);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.write_to_sob.sob_id = 8;
+	pkt_info.write_to_sob.value = 1;
+	pkt_info.write_to_sob.mode = SOB_ADD;
 	engine_cmdq_cb_size = hltests_add_write_to_sob_pkt(fd, engine_cmdq_cb,
 							engine_cmdq_cb_size,
-							false, false, 8, 1, 1);
+							&pkt_info);
 
 	/* Internal CB for engine QMAN: CP_DMA */
 	engine_qman_cb = hltests_create_cb(fd, page_size, false,
@@ -1776,9 +1784,14 @@ void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_SRAM;
 	dmadown_cb_size = hltests_add_dma_pkt(fd, dmadown_cb, dmadown_cb_size,
 						&pkt_info);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.write_to_sob.sob_id = 0;
+	pkt_info.write_to_sob.value = 1;
+	pkt_info.write_to_sob.mode = SOB_ADD;
 	dmadown_cb_size = hltests_add_write_to_sob_pkt(fd, dmadown_cb,
-							dmadown_cb_size, true,
-							false, 0, 1, 1);
+						dmadown_cb_size, &pkt_info);
 
 	/* CB for second DMA QMAN:
 	 * Fence on SOB8 + transfer data from SRAM to host.

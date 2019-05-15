@@ -76,8 +76,14 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 	engine_cb_size = 0;
 	engine_cb_size = hltests_add_msg_long_pkt(fd, engine_cb, engine_cb_size,
 					false, false, cfg_address, 0x789a0ded);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.write_to_sob.sob_id = 0;
+	pkt_info.write_to_sob.value = 1;
+	pkt_info.write_to_sob.mode = SOB_ADD;
 	engine_cb_size = hltests_add_write_to_sob_pkt(fd, engine_cb,
-					engine_cb_size, false, true, 0, 1, 1);
+					engine_cb_size, &pkt_info);
 
 	/* Setup CB: Clear SOB0 + DMA the internal CB to SRAM */
 	restore_cb =  hltests_create_cb(fd, page_size, true, 0);

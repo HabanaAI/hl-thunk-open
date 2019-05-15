@@ -222,8 +222,15 @@ static uint32_t setup_lower_cb_in_sram(int fd,
 		lower_cb_offset = hltests_add_dma_pkt(fd, lower_cb,
 						lower_cb_offset, &pkt_info);
 	}
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.write_to_sob.sob_id = 0;
+	pkt_info.write_to_sob.value = 1;
+	pkt_info.write_to_sob.mode = SOB_ADD;
 	lower_cb_offset = hltests_add_write_to_sob_pkt(fd,
-		lower_cb, lower_cb_offset, true, true, 0, 1, 1);
+		lower_cb, lower_cb_offset, &pkt_info);
 
 	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, 0, 0), 0, 0,
 		lower_cb_device_va, sram_addr, lower_cb_offset,

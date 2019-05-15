@@ -73,6 +73,11 @@ struct hltests_state {
 	bool mmu;
 };
 
+enum hl_tests_write_to_sob_mod {
+	SOB_SET = 0,
+	SOB_ADD
+};
+
 struct hltests_device {
 	const struct hltests_asic_funcs *asic_funcs;
 
@@ -201,7 +206,7 @@ struct hltests_pkt_info {
 		struct {
 			uint16_t sob_id;
 			uint16_t value;
-			uint8_t mode;
+			enum hl_tests_write_to_sob_mod mode;
 		} write_to_sob;
 		struct {
 			uint8_t dcore_id;
@@ -326,8 +331,7 @@ uint32_t hltests_add_arm_monitor_pkt(int fd, void *buffer,
 					uint16_t sob_val, uint16_t sob_id);
 
 uint32_t hltests_add_write_to_sob_pkt(int fd, void *buffer, uint32_t buf_off,
-					bool eb, bool mb, uint16_t sob_id,
-					uint16_t value, uint8_t mode);
+					struct hltests_pkt_info *pkt_info);
 
 uint32_t hltests_add_set_sob_pkt(int fd, void *buffer, uint32_t buf_off,
 					struct hltests_pkt_info *pkt_info);

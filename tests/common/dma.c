@@ -77,8 +77,14 @@ static void *dma_thread_start(void *args)
 	pkt_info.dma.dma_dir = GOYA_DMA_DRAM_TO_HOST;
 	cb_size[0] = hltests_add_dma_pkt(fd, cb[0], cb_size[0], &pkt_info);
 
-	cb_size[0] = hltests_add_write_to_sob_pkt(fd, cb[0], cb_size[0], true,
-					true, 8, 1, 1);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.write_to_sob.sob_id = 8;
+	pkt_info.write_to_sob.value = 1;
+	pkt_info.write_to_sob.mode = SOB_ADD;
+	cb_size[0] = hltests_add_write_to_sob_pkt(fd, cb[0],
+					cb_size[0], &pkt_info);
 
 	/* fence on SOB8, clear it, do DMA up and write to SOB0 */
 	cb_size[1] = hltests_add_monitor_and_fence(fd, cb[1], cb_size[1], 0,
@@ -102,8 +108,14 @@ static void *dma_thread_start(void *args)
 	pkt_info.dma.dma_dir = GOYA_DMA_DRAM_TO_HOST;
 	cb_size[1] = hltests_add_dma_pkt(fd, cb[1], cb_size[1], &pkt_info);
 
-	cb_size[1] = hltests_add_write_to_sob_pkt(fd, cb[1], cb_size[1], true,
-					true, 0, 1, 1);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.write_to_sob.sob_id = 0;
+	pkt_info.write_to_sob.value = 1;
+	pkt_info.write_to_sob.mode = SOB_ADD;
+	cb_size[1] = hltests_add_write_to_sob_pkt(fd, cb[1],
+					cb_size[1], &pkt_info);
 
 	execute_arr[0].cb_ptr = cb[0];
 	execute_arr[0].cb_size = cb_size[0];

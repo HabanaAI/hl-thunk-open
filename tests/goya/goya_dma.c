@@ -120,8 +120,15 @@ void test_dma_4_queues(void **state)
 	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_DRAM;
 	dma_cb_size[0] = hltests_add_dma_pkt(fd, dma_cb[0], dma_cb_size[0],
 					&pkt_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.write_to_sob.sob_id = 0;
+	pkt_info.write_to_sob.value = 1;
+	pkt_info.write_to_sob.mode = SOB_ADD;
 	dma_cb_size[0] = hltests_add_write_to_sob_pkt(fd, dma_cb[0],
-					dma_cb_size[0], true, false, 0, 1, 1);
+					dma_cb_size[0], &pkt_info);
 
 	/* CB for second DMA QMAN:
 	 * Fence on SOB0 + transfer data from DRAM to SRAM + signal SOB1.
@@ -142,8 +149,15 @@ void test_dma_4_queues(void **state)
 	pkt_info.dma.dma_dir = GOYA_DMA_DRAM_TO_SRAM;
 	dma_cb_size[1] = hltests_add_dma_pkt(fd, dma_cb[1], dma_cb_size[1],
 					&pkt_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.write_to_sob.sob_id = 1;
+	pkt_info.write_to_sob.value = 1;
+	pkt_info.write_to_sob.mode = SOB_ADD;
 	dma_cb_size[1] = hltests_add_write_to_sob_pkt(fd, dma_cb[1],
-					dma_cb_size[1], true, false, 1, 1, 1);
+					dma_cb_size[1], &pkt_info);
 
 	/* CB for third DMA QMAN:
 	 * Fence on SOB1 + transfer data from SRAM to DRAM + signal SOB2.
@@ -164,8 +178,15 @@ void test_dma_4_queues(void **state)
 	pkt_info.dma.dma_dir = GOYA_DMA_SRAM_TO_DRAM;
 	dma_cb_size[2] = hltests_add_dma_pkt(fd, dma_cb[2], dma_cb_size[2],
 					&pkt_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.write_to_sob.sob_id = 2;
+	pkt_info.write_to_sob.value = 1;
+	pkt_info.write_to_sob.mode = SOB_ADD;
 	dma_cb_size[2] = hltests_add_write_to_sob_pkt(fd, dma_cb[2],
-					dma_cb_size[2], true, false, 2, 1, 1);
+					dma_cb_size[2], &pkt_info);
 
 	/* CB for forth DMA QMAN:
 	 * Fence on SOB2 + transfer data from DRAM to host.
