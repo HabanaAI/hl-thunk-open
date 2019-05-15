@@ -74,8 +74,14 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 	assert_ptr_not_equal(engine_cb, NULL);
 	engine_cb_device_va = hltests_get_device_va_for_host_ptr(fd, engine_cb);
 	engine_cb_size = 0;
-	engine_cb_size = hltests_add_msg_long_pkt(fd, engine_cb, engine_cb_size,
-					false, false, cfg_address, 0x789a0ded);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.msg_long.address = cfg_address;
+	pkt_info.msg_long.value = 0x789a0ded;
+	engine_cb_size = hltests_add_msg_long_pkt(fd, engine_cb,
+					engine_cb_size,	&pkt_info);
+
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_TRUE;
@@ -167,6 +173,7 @@ void test_write_to_cfg_space(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hltests_cs_chunk execute_arr[1];
+	struct hltests_pkt_info pkt_info;
 	uint64_t cfg_address = CFG_BASE + mmPSOC_GLOBAL_CONF_SCRATCHPAD_10, seq;
 	uint32_t page_size = sysconf(_SC_PAGESIZE), offset = 0, val;
 	void *ptr;
@@ -181,8 +188,12 @@ void test_write_to_cfg_space(void **state)
 	ptr = hltests_create_cb(fd, page_size, true, 0);
 	assert_ptr_not_equal(ptr, NULL);
 
-	offset = hltests_add_msg_long_pkt(fd, ptr, offset, false, false,
-						cfg_address, 0xbaba0ded);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.msg_long.address = cfg_address;
+	pkt_info.msg_long.value = 0xbaba0ded;
+	offset = hltests_add_msg_long_pkt(fd, ptr, offset, &pkt_info);
 
 	execute_arr[0].cb_ptr = ptr;
 	execute_arr[0].cb_size = offset;
@@ -214,6 +225,7 @@ void test_mme_qman_write_to_protected_register(void **state)
 void test_write_to_mmTPC_PLL_CLK_RLX_0_from_qman(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct hltests_pkt_info pkt_info;
 	uint32_t val_orig, val, page_size = sysconf(_SC_PAGESIZE), offset = 0;
 	void *ptr;
 	int fd = tests_state->fd;
@@ -229,8 +241,12 @@ void test_write_to_mmTPC_PLL_CLK_RLX_0_from_qman(void **state)
 	ptr = hltests_create_cb(fd, page_size, true, 0);
 	assert_ptr_not_equal(ptr, NULL);
 
-	offset = hltests_add_msg_long_pkt(fd, ptr, offset, false, false,
-			CFG_BASE + mmTPC_PLL_CLK_RLX_0, 0x400040);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.msg_long.address = CFG_BASE + mmTPC_PLL_CLK_RLX_0;
+	pkt_info.msg_long.value = 0x400040;
+	offset = hltests_add_msg_long_pkt(fd, ptr, offset, &pkt_info);
 
 	hltests_submit_and_wait_cs(fd, ptr, offset,
 				hltests_get_dma_down_qid(fd, 0, 0), true);

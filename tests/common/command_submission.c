@@ -40,6 +40,7 @@ void test_cs_msg_long(void **state)
 	struct hltests_state *tests_state =
 			(struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
+	struct hltests_pkt_info pkt_info;
 	uint32_t offset = 0;
 	void *ptr;
 	int rc, fd = tests_state->fd;
@@ -50,9 +51,12 @@ void test_cs_msg_long(void **state)
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
-	offset = hltests_add_msg_long_pkt(fd, ptr, offset, false, true,
-					hw_ip.sram_base_address + 0x1000,
-					0xbaba0ded);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.msg_long.address = hw_ip.sram_base_address + 0x1000;
+	pkt_info.msg_long.value = 0xbaba0ded;
+	offset = hltests_add_msg_long_pkt(fd, ptr, offset, &pkt_info);
 
 	hltests_submit_and_wait_cs(fd, ptr, offset,
 				hltests_get_dma_down_qid(fd, 0, 0), true);
@@ -64,6 +68,7 @@ void test_cs_msg_long_2000(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
+	struct hltests_pkt_info pkt_info;
 	uint32_t offset = 0;
 	void *ptr;
 	int rc, fd = tests_state->fd, i;
@@ -75,10 +80,15 @@ void test_cs_msg_long_2000(void **state)
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
-	for (i = 0 ; i < NUM_OF_MSGS ; i++)
-		offset = hltests_add_msg_long_pkt(fd, ptr, offset, false, true,
-				hw_ip.sram_base_address + 0x1000 + i * 4,
-				0x0ded0000 + i);
+	for (i = 0 ; i < NUM_OF_MSGS ; i++) {
+		memset(&pkt_info, 0, sizeof(pkt_info));
+		pkt_info.eb = EB_FALSE;
+		pkt_info.mb = MB_TRUE;
+		pkt_info.msg_long.address = hw_ip.sram_base_address +
+							0x1000 + i * 4;
+		pkt_info.msg_long.value = 0x0ded0000 + i;
+		offset = hltests_add_msg_long_pkt(fd, ptr, offset, &pkt_info);
+	}
 
 	hltests_submit_and_wait_cs(fd, ptr, offset,
 				hltests_get_dma_down_qid(fd, 0, 0), true);
