@@ -1009,7 +1009,7 @@ int hltests_wait_for_cs_until_not_busy(int fd, uint64_t seq)
 }
 
 uint32_t hltests_add_nop_pkt(int fd, void *buffer, uint32_t buf_off,
-					bool eb, bool mb)
+				enum hltests_eb eb, enum hltests_mb mb)
 {
 	const struct hltests_asic_funcs *asic =
 			get_hdev_from_fd(fd)->asic_funcs;
@@ -1717,7 +1717,7 @@ void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 							0, 0);
 	engine_cmdq_cb_size = hltests_add_nop_pkt(fd, engine_cmdq_cb,
 							engine_cmdq_cb_size,
-							false, true);
+							EB_FALSE, MB_TRUE);
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_FALSE;

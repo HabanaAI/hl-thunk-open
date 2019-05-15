@@ -29,7 +29,7 @@ void test_cs_nop(void **state)
 	ptr = hltests_create_cb(fd, getpagesize(), true, 0);
 	assert_ptr_not_equal(ptr, NULL);
 
-	offset = hltests_add_nop_pkt(fd, ptr, offset, false, false);
+	offset = hltests_add_nop_pkt(fd, ptr, offset, EB_FALSE, MB_FALSE);
 
 	hltests_submit_and_wait_cs(fd, ptr, offset,
 				hltests_get_dma_down_qid(fd, 0, 0), true);
