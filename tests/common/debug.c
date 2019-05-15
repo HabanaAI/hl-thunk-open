@@ -115,6 +115,7 @@ static int dma_custom_parsing_handler(void *user, const char *section,
 					const char *name, const char *value)
 {
 	struct dma_custom_cfg *cfg = (struct dma_custom_cfg *) user;
+	char *tmp;
 
 	if (MATCH("dma_custom_test", "dma_dir")) {
 		cfg->dma_dir = atoi(value);
@@ -125,9 +126,14 @@ static int dma_custom_parsing_handler(void *user, const char *section,
 	} else if (MATCH("dma_custom_test", "chunk_size")) {
 		cfg->chunk_size = strtoul(value, NULL, 0);
 	} else if (MATCH("dma_custom_test", "sequential")) {
-		cfg->sequential = strcmp("true", strdup(value)) ? false : true;
+		tmp = strdup(value);
+		if (!tmp)
+			return 1;
+
+		cfg->sequential = strcmp("true", tmp) ? false : true;
 		if (cfg->sequential)
 			cfg->random = false;
+		free(tmp);
 	} else if (MATCH("dma_custom_test", "value")) {
 		cfg->value = strtoul(value, NULL, 0);
 		cfg->random = false;
