@@ -170,7 +170,8 @@ static uint32_t goya_add_cp_dma_pkt(void *buffer, uint32_t buf_off, bool eb,
 static uint32_t goya_add_monitor_and_fence(void *buffer, uint32_t buf_off,
 					uint8_t dcore_id, uint8_t queue_id,
 					bool cmdq_fence, uint32_t so_id,
-					uint32_t mon_id, uint64_t mon_address)
+					uint32_t mon_id, uint64_t mon_address,
+					uint8_t dec_val, uint8_t target_val)
 {
 	uint64_t address, monitor_base;
 	uint32_t fence_addr = 0;
@@ -288,7 +289,8 @@ static uint32_t goya_add_monitor_and_fence(void *buffer, uint32_t buf_off,
 					msg_addr_offset, 0, 1, so_id);
 
 	/* Fence packet */
-	buf_off = goya_add_fence_pkt(buffer, buf_off, false, true, 1, 1, 0);
+	buf_off = goya_add_fence_pkt(buffer, buf_off, false, true, dec_val,
+					target_val, 0);
 
 	return buf_off;
 }

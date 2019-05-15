@@ -1126,14 +1126,16 @@ uint32_t hltests_add_cp_dma_pkt(int fd, void *buffer, uint32_t buf_off,
 uint32_t hltests_add_monitor_and_fence(int fd, void *buffer, uint32_t buf_off,
 					uint8_t dcore_id, uint8_t queue_id,
 					bool cmdq_fence, uint32_t so_id,
-					uint32_t mon_id, uint64_t mon_address)
+					uint32_t mon_id, uint64_t mon_address,
+					uint8_t dec_val, uint8_t target_val)
 {
 	const struct hltests_asic_funcs *asic =
 			get_hdev_from_fd(fd)->asic_funcs;
 
 	return asic->add_monitor_and_fence(buffer, buf_off, dcore_id, queue_id,
 						cmdq_fence, so_id, mon_id,
-						mon_address);
+						mon_address, dec_val,
+						target_val);
 }
 
 uint32_t hltests_get_dma_down_qid(int fd, uint8_t dcore_id, uint8_t stream)
@@ -1714,7 +1716,7 @@ void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 	engine_cmdq_cb_size = hltests_add_monitor_and_fence(fd, engine_cmdq_cb,
 							engine_cmdq_cb_size,
 							0, engine_qid, true, 0,
-							0, 0);
+							0, 0, 1, 1);
 	engine_cmdq_cb_size = hltests_add_nop_pkt(fd, engine_cmdq_cb,
 							engine_cmdq_cb_size,
 							EB_FALSE, MB_TRUE);
@@ -1817,7 +1819,7 @@ void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 	dmaup_cb_size = hltests_add_monitor_and_fence(fd, dmaup_cb,
 					dmaup_cb_size, 0,
 					hltests_get_dma_up_qid(fd, 0, 0),
-					false, 8, 1, 0);
+					false, 8, 1, 0, 1, 1);
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_TRUE;

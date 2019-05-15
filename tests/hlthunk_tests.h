@@ -109,7 +109,8 @@ struct hltests_asic_funcs {
 	uint32_t (*add_monitor_and_fence)(void *buffer, uint32_t buf_off,
 					uint8_t dcore_id, uint8_t queue_id,
 					bool cmdq_fence, uint32_t sob_id,
-					uint32_t mon_id, uint64_t mon_address);
+					uint32_t mon_id, uint64_t mon_address,
+					uint8_t dec_val, uint8_t target_val);
 	uint32_t (*add_nop_pkt)(void *buffer, uint32_t buf_off, bool eb,
 				bool mb);
 	uint32_t (*add_msg_long_pkt)(void *buffer, uint32_t buf_off, bool eb,
@@ -352,7 +353,8 @@ uint32_t hltests_add_cp_dma_pkt(int fd, void *buffer, uint32_t buf_off,
 uint32_t hltests_add_monitor_and_fence(int fd, void *buffer, uint32_t buf_off,
 					uint8_t dcore_id, uint8_t queue_id,
 					bool cmdq_fence, uint32_t sob_id,
-					uint32_t mon_id, uint64_t mon_address);
+					uint32_t mon_id, uint64_t mon_address,
+					uint8_t dec_val, uint8_t target_val);
 
 uint32_t hltests_get_dma_down_qid(int fd, uint8_t dcore_id, uint8_t stream);
 uint32_t hltests_get_dma_up_qid(int fd, uint8_t dcore_id, uint8_t stream);

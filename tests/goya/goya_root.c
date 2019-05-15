@@ -119,7 +119,7 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 	dma_cb_size = 0;
 	dma_cb_size = hltests_add_monitor_and_fence(fd, dma_cb, dma_cb_size, 0,
 					hltests_get_dma_down_qid(fd, 0, 0),
-					false, 0, 0, 0);
+					false, 0, 0, 0, 1, 1);
 
 	/* Submit CS and wait for completion */
 	restore_arr[0].cb_ptr = restore_cb;

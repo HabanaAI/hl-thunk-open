@@ -114,7 +114,7 @@ static void test_sm(void **state, bool is_tpc, bool is_wait)
 	 */
 	offset = hltests_add_monitor_and_fence(fd, ext_cb, 0, 0,
 					hltests_get_dma_up_qid(fd, 0, 0), false,
-					0, 0, 0);
+					0, 0, 0, 1, 1);
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_FALSE;
@@ -231,7 +231,7 @@ static void test_sm_pingpong_qman(void **state, bool is_tpc)
 
 	engine_cb_size = hltests_add_monitor_and_fence(fd, engine_cb, 0, 0,
 							engine_qid, false, 0,
-							0, 0);
+							0, 0, 1, 1);
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_TRUE;
@@ -306,7 +306,7 @@ static void test_sm_pingpong_qman(void **state, bool is_tpc)
 
 	dmaup_cb_size = hltests_add_monitor_and_fence(fd, dmaup_cb, 0, 0,
 					hltests_get_dma_up_qid(fd, 0, 0), false,
-					8, 1, 0);
+					8, 1, 0, 1, 1);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;

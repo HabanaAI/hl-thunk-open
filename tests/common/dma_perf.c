@@ -289,7 +289,8 @@ static double indirect_transfer_perf_test(int fd,
 	cb = hltests_create_cb(fd, page_size, true, 0);
 	assert_non_null(cb);
 	cb_offset = hltests_add_monitor_and_fence(fd, cb, cb_offset,
-			0, hltests_get_dma_down_qid(fd, 0, 0), false, 0, 0, 0);
+			0, hltests_get_dma_down_qid(fd, 0, 0), false, 0, 0, 0,
+			1, 1);
 
 	execute_arr[0].cb_ptr = cp_dma_cb;
 	execute_arr[0].cb_size = cp_dma_cb_offset;

@@ -139,7 +139,7 @@ void test_dma_4_queues(void **state)
 	dma_cb_size[1] = hltests_add_monitor_and_fence(fd, dma_cb[1],
 				dma_cb_size[1], 0,
 				hltests_get_dma_dram_to_sram_qid(fd, 0, 0),
-				false, 0, 0, 0);
+				false, 0, 0, 0, 1, 1);
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_TRUE;
@@ -168,7 +168,7 @@ void test_dma_4_queues(void **state)
 	dma_cb_size[2] = hltests_add_monitor_and_fence(fd, dma_cb[2],
 				dma_cb_size[2], 0,
 				hltests_get_dma_sram_to_dram_qid(fd, 0, 0),
-				false, 1, 1, 0);
+				false, 1, 1, 0, 1, 1);
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_TRUE;
@@ -197,7 +197,7 @@ void test_dma_4_queues(void **state)
 	dma_cb_size[3] = hltests_add_monitor_and_fence(fd, dma_cb[3],
 					dma_cb_size[3], 0,
 					hltests_get_dma_up_qid(fd, 0, 0),
-					false, 2, 2, 0);
+					false, 2, 2, 0, 1, 1);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;

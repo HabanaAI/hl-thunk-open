@@ -58,7 +58,7 @@ static void *dma_thread_start(void *args)
 	/* fence on SOB0, clear it, do DMA down and write to SOB8 */
 	cb_size[0] = hltests_add_monitor_and_fence(fd, cb[0], cb_size[0], 0,
 					hltests_get_dma_down_qid(fd, 0, 0),
-					false, 0, 0, 0);
+					false, 0, 0, 0, 1, 1);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_TRUE;
@@ -89,7 +89,7 @@ static void *dma_thread_start(void *args)
 	/* fence on SOB8, clear it, do DMA up and write to SOB0 */
 	cb_size[1] = hltests_add_monitor_and_fence(fd, cb[1], cb_size[1], 0,
 					hltests_get_dma_up_qid(fd, 0, 0),
-					false, 8, 1, 0);
+					false, 8, 1, 0, 1, 1);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_TRUE;
