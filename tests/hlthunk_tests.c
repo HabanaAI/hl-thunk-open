@@ -365,26 +365,44 @@ void hltests_debugfs_write(int fd, uint64_t full_address, uint32_t val)
 		printf("Failed to write to debugfs data fd [rc %zd]\n", size);
 }
 
-static int is_mmu_enabled(bool *mmu_enable)
+static int is_param_enabled(enum hltests_kmd_param param, bool *val)
 {
-	int fd_mmu;
-	char c;
+	int fd;
+	char c, path[100], *base_str = "/sys/module/habanalabs/parameters/",
+			*param_str;
 
-	fd_mmu = open("/sys/module/habanalabs/parameters/mmu_enable", O_RDONLY);
-	if (fd_mmu < 0) {
-		printf("Failed to open mmu_enable\n");
+	memset(path, 0, sizeof(path));
+	memcpy(path, base_str, strlen(base_str));
+
+	switch (param) {
+	case KMD_PARAM_MMU:
+		param_str = "mmu_enable";
+		break;
+	case KMD_PARAM_SECURITY:
+		param_str = "security_enable";
+		break;
+	default:
+		printf("Invalid KMD parameter %d\n", param);
 		return errno;
 	}
 
-	if (read(fd_mmu, &c, 1) <= 0) {
-		printf("Failed to read mmu_enable\n");
-		close(fd_mmu);
+	memcpy(path + strlen(base_str), param_str, strlen(param_str));
+
+	fd = open(path, O_RDONLY);
+	if (fd < 0) {
+		printf("Failed to open %s\n", path);
 		return errno;
 	}
 
-	close(fd_mmu);
+	if (read(fd, &c, 1) <= 0) {
+		printf("Failed to read %s\n", path);
+		close(fd);
+		return errno;
+	}
 
-	*mmu_enable = c == '1';
+	close(fd);
+
+	*val = c == '1';
 
 	return 0;
 }
@@ -411,9 +429,17 @@ int hltests_setup(void **state)
 		goto fini_tests;
 	}
 
-	rc = is_mmu_enabled(&tests_state->mmu);
+	rc = is_param_enabled(KMD_PARAM_MMU, &tests_state->mmu);
 	if (rc) {
 		printf("Failed to detect if MMU is enabled on device %d, %d\n",
+			tests_state->fd, rc);
+		goto close_fd;
+	}
+
+	rc = is_param_enabled(KMD_PARAM_SECURITY, &tests_state->security);
+	if (rc) {
+		printf(
+			"Failed to detect if security is enabled on device %d, %d\n",
 			tests_state->fd, rc);
 		goto close_fd;
 	}

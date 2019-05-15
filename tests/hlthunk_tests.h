@@ -75,11 +75,6 @@ enum mon_mode {
 	GREATER_OR_EQUAL
 };
 
-struct hltests_state {
-	int fd;
-	bool mmu;
-};
-
 enum hl_tests_write_to_sob_mod {
 	SOB_SET = 0,
 	SOB_ADD
@@ -117,6 +112,17 @@ struct hltests_device {
 	int debugfs_addr_fd;
 	int debugfs_data_fd;
 	enum hl_pci_ids device_id;
+};
+
+struct hltests_state {
+	int fd;
+	bool mmu;
+	bool security;
+};
+
+enum hltests_kmd_param {
+	KMD_PARAM_MMU,
+	KMD_PARAM_SECURITY
 };
 
 struct hltests_pkt_info {
