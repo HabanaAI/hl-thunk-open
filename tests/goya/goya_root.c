@@ -83,8 +83,14 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 	restore_cb =  hltests_create_cb(fd, page_size, true, 0);
 	assert_ptr_not_equal(restore_cb, NULL);
 	restore_cb_size = 0;
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.set_sob.dcore_id = 0;
+	pkt_info.set_sob.sob_id = 0;
+	pkt_info.set_sob.value = 0;
 	restore_cb_size = hltests_add_set_sob_pkt(fd, restore_cb,
-					restore_cb_size, false, false, 0, 0, 0);
+					restore_cb_size, &pkt_info);
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_TRUE;

@@ -80,12 +80,30 @@ void test_dma_4_queues(void **state)
 	restore_cb = hltests_create_cb(fd, page_size, true, 0);
 	assert_ptr_not_equal(restore_cb, NULL);
 
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.set_sob.dcore_id = 0;
+	pkt_info.set_sob.sob_id = 0;
+	pkt_info.set_sob.value = 0;
 	restore_cb_size = hltests_add_set_sob_pkt(fd, restore_cb,
-					restore_cb_size, false, false, 0, 0, 0);
+					restore_cb_size, &pkt_info);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.set_sob.dcore_id = 0;
+	pkt_info.set_sob.sob_id = 1;
+	pkt_info.set_sob.value = 0;
 	restore_cb_size = hltests_add_set_sob_pkt(fd, restore_cb,
-					restore_cb_size, false, true, 0, 1, 0);
+					restore_cb_size, &pkt_info);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.set_sob.dcore_id = 0;
+	pkt_info.set_sob.sob_id = 2;
+	pkt_info.set_sob.value = 0;
 	restore_cb_size = hltests_add_set_sob_pkt(fd, restore_cb,
-					restore_cb_size, false, true, 0, 2, 0);
+					restore_cb_size, &pkt_info);
 
 	/* CB for first DMA QMAN:
 	 * Transfer data from host to DRAM + signal SOB0.

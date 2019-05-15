@@ -60,8 +60,13 @@ static void *dma_thread_start(void *args)
 					hltests_get_dma_down_qid(fd, 0, 0),
 					false, 0, 0, 0);
 
-	cb_size[0] = hltests_add_set_sob_pkt(fd, cb[0], cb_size[0], true,
-					true, 0, 0, 0);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.set_sob.dcore_id = 0;
+	pkt_info.set_sob.sob_id = 0;
+	pkt_info.set_sob.value = 0;
+	cb_size[0] = hltests_add_set_sob_pkt(fd, cb[0], cb_size[0], &pkt_info);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_TRUE;
@@ -80,8 +85,13 @@ static void *dma_thread_start(void *args)
 					hltests_get_dma_up_qid(fd, 0, 0),
 					false, 8, 1, 0);
 
-	cb_size[1] = hltests_add_set_sob_pkt(fd, cb[1], cb_size[1], true,
-					true, 0, 8, 0);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.set_sob.dcore_id = 0;
+	pkt_info.set_sob.sob_id = 8;
+	pkt_info.set_sob.value = 0;
+	cb_size[1] = hltests_add_set_sob_pkt(fd, cb[1], cb_size[1], &pkt_info);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_TRUE;
@@ -130,6 +140,7 @@ static void test_dma_threads(void **state, uint32_t num_of_threads)
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
 	struct dma_thread_params *thread_params;
+	struct hltests_pkt_info pkt_info;
 	pthread_t *thread_id;
 	void *dram_addr, *retval, *cb;
 	uint32_t i, dma_size = 28, cb_size = 0;
@@ -180,9 +191,21 @@ static void test_dma_threads(void **state, uint32_t num_of_threads)
 	cb = hltests_create_cb(fd, getpagesize(), true, 0);
 	assert_non_null(cb);
 
-	cb_size = hltests_add_set_sob_pkt(fd, cb, cb_size, true, true, 0, 0, 1);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.set_sob.dcore_id = 0;
+	pkt_info.set_sob.sob_id = 0;
+	pkt_info.set_sob.value = 1;
+	cb_size = hltests_add_set_sob_pkt(fd, cb, cb_size, &pkt_info);
 
-	cb_size = hltests_add_set_sob_pkt(fd, cb, cb_size, true, true, 0, 8, 0);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.set_sob.dcore_id = 0;
+	pkt_info.set_sob.sob_id = 8;
+	pkt_info.set_sob.value = 0;
+	cb_size = hltests_add_set_sob_pkt(fd, cb, cb_size, &pkt_info);
 
 	hltests_submit_and_wait_cs(fd, cb, cb_size,
 				hltests_get_dma_down_qid(fd, 0, 0), true);

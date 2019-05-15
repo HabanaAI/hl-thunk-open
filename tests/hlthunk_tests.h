@@ -330,8 +330,7 @@ uint32_t hltests_add_write_to_sob_pkt(int fd, void *buffer, uint32_t buf_off,
 					uint16_t value, uint8_t mode);
 
 uint32_t hltests_add_set_sob_pkt(int fd, void *buffer, uint32_t buf_off,
-					bool eb, bool mb, uint8_t dcore_id,
-					uint16_t sob_id, uint32_t value);
+					struct hltests_pkt_info *pkt_info);
 
 uint32_t hltests_add_fence_pkt(int fd, void *buffer, uint32_t buf_off,
 				struct hltests_pkt_info *pkt_info);

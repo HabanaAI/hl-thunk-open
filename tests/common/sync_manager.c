@@ -92,7 +92,13 @@ static void test_sm(void **state, bool is_tpc, bool is_wait)
 	ext_cb = hltests_create_cb(fd, getpagesize(), true, 0);
 	assert_ptr_not_equal(ext_cb, NULL);
 
-	offset = hltests_add_set_sob_pkt(fd, ext_cb, 0, false, true, 0, 0, 0);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.set_sob.dcore_id = 0;
+	pkt_info.set_sob.sob_id = 0;
+	pkt_info.set_sob.value = 0;
+	offset = hltests_add_set_sob_pkt(fd, ext_cb, 0, &pkt_info);
 
 	hltests_submit_and_wait_cs(fd, ext_cb, offset,
 				hltests_get_dma_down_qid(fd, 0, 0), false);
@@ -230,10 +236,22 @@ static void test_sm_pingpong_qman(void **state, bool is_tpc)
 	restore_cb = hltests_create_cb(fd, getpagesize(), true, 0);
 	assert_ptr_not_equal(restore_cb, NULL);
 
-	restore_cb_size = hltests_add_set_sob_pkt(fd, restore_cb, 0, false,
-							true, 0, 0, 0);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.set_sob.dcore_id = 0;
+	pkt_info.set_sob.sob_id = 0;
+	pkt_info.set_sob.value = 0;
+	restore_cb_size = hltests_add_set_sob_pkt(fd, restore_cb, 0, &pkt_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.set_sob.dcore_id = 0;
+	pkt_info.set_sob.sob_id = 8;
+	pkt_info.set_sob.value = 0;
 	restore_cb_size = hltests_add_set_sob_pkt(fd, restore_cb,
-					restore_cb_size, false, true, 0, 8, 0);
+					restore_cb_size, &pkt_info);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;

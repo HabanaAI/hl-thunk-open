@@ -202,8 +202,14 @@ static uint32_t setup_lower_cb_in_sram(int fd,
 	lower_cb_device_va = hltests_get_device_va_for_host_ptr(fd,
 								lower_cb);
 
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.set_sob.dcore_id = 0;
+	pkt_info.set_sob.sob_id = 0;
+	pkt_info.set_sob.value = 0;
 	lower_cb_offset = hltests_add_set_sob_pkt(fd, lower_cb,
-				lower_cb_offset, true, true, 0, 0, 0);
+				lower_cb_offset, &pkt_info);
 
 	for (i = 0; i < num_of_transfers ; i++) {
 		memset(&pkt_info, 0, sizeof(pkt_info));

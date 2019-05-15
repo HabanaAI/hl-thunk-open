@@ -1058,14 +1058,16 @@ uint32_t hltests_add_write_to_sob_pkt(int fd, void *buffer, uint32_t buf_off,
 }
 
 uint32_t hltests_add_set_sob_pkt(int fd, void *buffer, uint32_t buf_off,
-					bool eb, bool mb, uint8_t dcore_id,
-					uint16_t sob_id, uint32_t value)
+					struct hltests_pkt_info *pkt_info)
 {
 	const struct hltests_asic_funcs *asic =
 			get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->add_set_sob_pkt(buffer, buf_off, eb, mb, dcore_id, sob_id,
-					value);
+	return asic->add_set_sob_pkt(buffer, buf_off, pkt_info->eb,
+						pkt_info->mb,
+						pkt_info->set_sob.dcore_id,
+						pkt_info->set_sob.sob_id,
+						pkt_info->set_sob.value);
 }
 
 uint32_t hltests_add_fence_pkt(int fd, void *buffer, uint32_t buf_off,
@@ -1723,12 +1725,22 @@ void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 	assert_ptr_not_equal(restore_cb, NULL);
 	restore_cb_size = 0;
 
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.set_sob.dcore_id = 0;
+	pkt_info.set_sob.sob_id = 0;
+	pkt_info.set_sob.value = 0;
 	restore_cb_size = hltests_add_set_sob_pkt(fd, restore_cb,
-							restore_cb_size, false,
-							false, 0, 0, 0);
+						restore_cb_size, &pkt_info);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.set_sob.dcore_id = 0;
+	pkt_info.set_sob.sob_id = 8;
+	pkt_info.set_sob.value = 0;
 	restore_cb_size = hltests_add_set_sob_pkt(fd, restore_cb,
-							restore_cb_size, false,
-							true, 0, 8, 0);
+						restore_cb_size, &pkt_info);
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_TRUE;
