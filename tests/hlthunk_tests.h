@@ -68,6 +68,11 @@ enum hltests_mb {
 	MB_TRUE
 };
 
+enum mon_mode {
+	EQUAL = 0,
+	GREATER_OR_EQUAL
+};
+
 struct hltests_state {
 	int fd;
 	bool mmu;
@@ -199,7 +204,7 @@ struct hltests_pkt_info {
 		} msg_short;
 		struct {
 			uint16_t address;
-			uint8_t mon_mode;
+			enum mon_mode mon_mode;
 			uint16_t sob_val;
 			uint16_t sob_id;
 		} arm_monitor;
@@ -325,10 +330,9 @@ uint32_t hltests_add_msg_long_pkt(int fd, void *buffer, uint32_t buf_off,
 uint32_t hltests_add_msg_short_pkt(int fd, void *buffer, uint32_t buf_off,
 					bool eb, bool mb, uint8_t base,
 					uint16_t address, uint32_t value);
-uint32_t hltests_add_arm_monitor_pkt(int fd, void *buffer,
-					uint32_t buf_off, bool eb, bool mb,
-					uint16_t address, uint8_t mon_mode,
-					uint16_t sob_val, uint16_t sob_id);
+
+uint32_t hltests_add_arm_monitor_pkt(int fd, void *buffer, uint32_t buf_off,
+					struct hltests_pkt_info *pkt_info);
 
 uint32_t hltests_add_write_to_sob_pkt(int fd, void *buffer, uint32_t buf_off,
 					struct hltests_pkt_info *pkt_info);
