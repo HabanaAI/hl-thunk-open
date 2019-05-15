@@ -30,6 +30,10 @@ int run_disabled_tests;
 const char *parser_pciaddr;
 const char *config_filename;
 
+static char asic_names[HLTHUNK_DEVICE_INVALID][10] = {
+		"Goya"
+};
+
 static struct hltests_device *get_hdev_from_fd(int fd)
 {
 	struct hltests_device *hdev;
@@ -1570,9 +1574,13 @@ void hltests_parser(int argc, const char **argv, const char * const* usage,
 		exit(0);
 	}
 
-	if ((expected_device != HLTHUNK_DEVICE_INVALID) &&
-				(asic_name_for_testing != expected_device))
+	if ((!parser_pciaddr) && (expected_device != HLTHUNK_DEVICE_INVALID) &&
+				(asic_name_for_testing != expected_device)) {
+		printf("Expected to run on device %s but detected device %s\n",
+				asic_names[expected_device],
+				asic_names[asic_name_for_testing]);
 		exit(0);
+	}
 
 	if (test)
 		cmocka_set_test_filter(test);
