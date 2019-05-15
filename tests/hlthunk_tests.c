@@ -1028,14 +1028,16 @@ uint32_t hltests_add_msg_long_pkt(int fd, void *buffer, uint32_t buf_off,
 }
 
 uint32_t hltests_add_msg_short_pkt(int fd, void *buffer, uint32_t buf_off,
-					bool eb, bool mb, uint8_t base,
-					uint16_t address, uint32_t value)
+					struct hltests_pkt_info *pkt_info)
 {
 	const struct hltests_asic_funcs *asic =
 			get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->add_msg_short_pkt(buffer, buf_off, eb, mb, base, address,
-					value);
+	return asic->add_msg_short_pkt(buffer, buf_off, pkt_info->eb,
+						pkt_info->mb,
+						pkt_info->msg_short.base,
+						pkt_info->msg_short.address,
+						pkt_info->msg_short.value);
 }
 
 uint32_t hltests_add_arm_monitor_pkt(int fd, void *buffer,
