@@ -258,10 +258,10 @@ void test_dma_entire_dram_random(void **state)
 	struct hlthunk_hw_ip_info hw_ip;
 	struct hltests_pkt_info pkt_info;
 	void *buf[2], *cb;
-	uint64_t dram_addr, dram_addr_end, device_va[2], seq;
-	uint32_t dma_size = 1 << 14; /* 16KB */
-	uint32_t zone_size = 1 << 23; /* 8MB */
-	uint32_t dram_size, offset, cb_size = 0, vec_len, packets_size;
+	uint64_t dram_size, dram_addr, dram_addr_end, device_va[2], seq;
+	uint64_t dma_size = 1 << 21; /* 2MB */
+	uint64_t zone_size = 1 << 24; /* 16MB */
+	uint32_t offset, cb_size = 0, vec_len, packets_size;
 
 	kvec_t(struct dma_chunk) array;
 	struct dma_chunk chunk;
