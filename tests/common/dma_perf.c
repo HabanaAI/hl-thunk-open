@@ -186,10 +186,9 @@ void hltest_dram_host_transfer_perf(void **state)
 	hltests_free_device_mem(fd, dram_addr);
 }
 
-static uint32_t setup_lower_cb_in_sram(int fd,
-		enum hltests_goya_dma_direction dma_dir, uint64_t src_addr,
-		uint64_t dst_addr, int num_of_transfers, uint32_t size,
-		uint64_t sram_addr)
+static uint32_t setup_lower_cb_in_sram(int fd, uint64_t src_addr,
+				uint64_t dst_addr, int num_of_transfers,
+				uint32_t size, uint64_t sram_addr)
 {
 	void *lower_cb;
 	uint64_t lower_cb_device_va;
@@ -218,7 +217,6 @@ static uint32_t setup_lower_cb_in_sram(int fd,
 		pkt_info.dma.src_addr = src_addr;
 		pkt_info.dma.dst_addr = dst_addr;
 		pkt_info.dma.size = size;
-		pkt_info.dma.dma_dir = dma_dir;
 		lower_cb_offset = hltests_add_dma_pkt(fd, lower_cb,
 						lower_cb_offset, &pkt_info);
 	}
@@ -240,9 +238,8 @@ static uint32_t setup_lower_cb_in_sram(int fd,
 	return lower_cb_offset;
 }
 
-static double indirect_transfer_perf_test(int fd,
-		enum hltests_goya_dma_direction dma_dir, uint32_t queue_index,
-		uint64_t src_addr, uint64_t dst_addr)
+static double indirect_transfer_perf_test(int fd, uint32_t queue_index,
+					uint64_t src_addr, uint64_t dst_addr)
 {
 	struct hlthunk_hw_ip_info hw_ip;
 	struct hltests_pkt_info pkt_info;
@@ -268,7 +265,7 @@ static double indirect_transfer_perf_test(int fd,
 	page_size = getpagesize();
 
 	lower_cb_offset =
-		setup_lower_cb_in_sram(fd, dma_dir, src_addr, dst_addr,
+		setup_lower_cb_in_sram(fd, src_addr, dst_addr,
 					num_of_transfers, size, sram_addr);
 
 	/* Internal CB for CP_DMA */
@@ -355,7 +352,6 @@ void hltest_sram_dram_transfer_perf(void **state)
 	else
 		sram_dram_perf_outcome =
 			indirect_transfer_perf_test(fd,
-			GOYA_DMA_SRAM_TO_DRAM,
 			hltests_get_dma_sram_to_dram_qid(fd, 0, 0),
 			sram_addr + 0x3000, (uint64_t) (uintptr_t) dram_addr);
 
@@ -390,7 +386,6 @@ void hltest_dram_sram_transfer_perf(void **state)
 	else
 		dram_sram_perf_outcome =
 			indirect_transfer_perf_test(fd,
-			GOYA_DMA_DRAM_TO_SRAM,
 			hltests_get_dma_dram_to_sram_qid(fd, 0, 0),
 			(uint64_t) (uintptr_t) dram_addr, sram_addr + 0x3000);
 
