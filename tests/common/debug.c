@@ -187,11 +187,7 @@ void test_dma_custom(void **state)
 
 	assert_int_equal(cfg.dma_dir, GOYA_DMA_HOST_TO_DRAM);
 	assert_int_equal(hw_ip.dram_enabled, 1);
-	assert_in_range(cfg.dst_addr, hw_ip.dram_base_address,
-			hw_ip.dram_base_address + hw_ip.dram_size);
-	assert_in_range(cfg.dst_addr + cfg.size, hw_ip.dram_base_address,
-			hw_ip.dram_base_address + hw_ip.dram_size);
-	assert_in_range(cfg.size, 1, hw_ip.dram_size);
+	assert_int_not_equal(cfg.size, 0);
 	assert_in_range(cfg.chunk_size, 1, UINT_MAX);
 
 	dma_dir_down = GOYA_DMA_HOST_TO_DRAM;
