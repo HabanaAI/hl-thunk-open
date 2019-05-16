@@ -24,6 +24,7 @@ void test_dma_4_queues(void **state)
 	struct hlthunk_hw_ip_info hw_ip;
 	struct hltests_cs_chunk restore_arr[1], execute_arr[4];
 	struct hltests_pkt_info pkt_info;
+	struct hltests_monitor_and_fence mon_and_fence_info;
 	void *host_src, *host_dst, *dram_addr[2], *restore_cb, *dma_cb[4];
 	uint64_t host_src_device_va, host_dst_device_va, sram_addr, seq;
 	uint32_t dma_size, page_size, restore_cb_size = 0, dma_cb_size[4];
@@ -136,10 +137,19 @@ void test_dma_4_queues(void **state)
 	dma_cb[1] = hltests_create_cb(fd, page_size, true, 0);
 	assert_ptr_not_equal(dma_cb[1], NULL);
 
+	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
+	mon_and_fence_info.dcore_id = 0;
+	mon_and_fence_info.queue_id = hltests_get_dma_dram_to_sram_qid(fd,
+									0, 0);
+	mon_and_fence_info.cmdq_fence = false;
+	mon_and_fence_info.sob_id = 0;
+	mon_and_fence_info.mon_id = 0;
+	mon_and_fence_info.mon_address = 0;
+	mon_and_fence_info.target_val = 1;
+	mon_and_fence_info.dec_val = 1;
 	dma_cb_size[1] = hltests_add_monitor_and_fence(fd, dma_cb[1],
-				dma_cb_size[1], 0,
-				hltests_get_dma_dram_to_sram_qid(fd, 0, 0),
-				false, 0, 0, 0, 1, 1);
+				dma_cb_size[1], &mon_and_fence_info);
+
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_TRUE;
@@ -165,10 +175,19 @@ void test_dma_4_queues(void **state)
 	dma_cb[2] = hltests_create_cb(fd, page_size, true, 0);
 	assert_ptr_not_equal(dma_cb[2], NULL);
 
+	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
+	mon_and_fence_info.dcore_id = 0;
+	mon_and_fence_info.queue_id = hltests_get_dma_sram_to_dram_qid(fd,
+									0, 0);
+	mon_and_fence_info.cmdq_fence = false;
+	mon_and_fence_info.sob_id = 1;
+	mon_and_fence_info.mon_id = 1;
+	mon_and_fence_info.mon_address = 0;
+	mon_and_fence_info.target_val = 1;
+	mon_and_fence_info.dec_val = 1;
 	dma_cb_size[2] = hltests_add_monitor_and_fence(fd, dma_cb[2],
-				dma_cb_size[2], 0,
-				hltests_get_dma_sram_to_dram_qid(fd, 0, 0),
-				false, 1, 1, 0, 1, 1);
+				dma_cb_size[2], &mon_and_fence_info);
+
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_TRUE;
@@ -194,10 +213,17 @@ void test_dma_4_queues(void **state)
 	dma_cb[3] = hltests_create_cb(fd, page_size, true, 0);
 	assert_ptr_not_equal(dma_cb[3], NULL);
 
+	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
+	mon_and_fence_info.dcore_id = 0;
+	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd, 0, 0);
+	mon_and_fence_info.cmdq_fence = false;
+	mon_and_fence_info.sob_id = 2;
+	mon_and_fence_info.mon_id = 2;
+	mon_and_fence_info.mon_address = 0;
+	mon_and_fence_info.target_val = 1;
+	mon_and_fence_info.dec_val = 1;
 	dma_cb_size[3] = hltests_add_monitor_and_fence(fd, dma_cb[3],
-					dma_cb_size[3], 0,
-					hltests_get_dma_up_qid(fd, 0, 0),
-					false, 2, 2, 0, 1, 1);
+					dma_cb_size[3], &mon_and_fence_info);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;

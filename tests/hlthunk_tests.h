@@ -238,15 +238,14 @@ struct hltests_pkt_info {
 };
 
 struct hltests_monitor_and_fence {
-	int fd;
-	void *buffer;
-	uint32_t buf_off;
 	uint8_t dcore_id;
 	uint8_t queue_id;
 	bool cmdq_fence;
 	uint32_t sob_id;
 	uint32_t mon_id;
 	uint64_t mon_address;
+	uint8_t dec_val; /* decrement the fence once it reach the target val */
+	uint8_t target_val;
 };
 
 void hltests_parser(int argc, const char **argv, const char * const* usage,
@@ -351,10 +350,7 @@ uint32_t hltests_add_cp_dma_pkt(int fd, void *buffer, uint32_t buf_off,
 				struct hltests_pkt_info *pkt_info);
 
 uint32_t hltests_add_monitor_and_fence(int fd, void *buffer, uint32_t buf_off,
-					uint8_t dcore_id, uint8_t queue_id,
-					bool cmdq_fence, uint32_t sob_id,
-					uint32_t mon_id, uint64_t mon_address,
-					uint8_t dec_val, uint8_t target_val);
+		struct hltests_monitor_and_fence *mon_and_fence_info);
 
 uint32_t hltests_get_dma_down_qid(int fd, uint8_t dcore_id, uint8_t stream);
 uint32_t hltests_get_dma_up_qid(int fd, uint8_t dcore_id, uint8_t stream);

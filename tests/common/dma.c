@@ -42,6 +42,7 @@ static void *dma_thread_start(void *args)
 	struct dma_thread_params *params = (struct dma_thread_params *) args;
 	struct hltests_cs_chunk execute_arr[2];
 	struct hltests_pkt_info pkt_info;
+	struct hltests_monitor_and_fence mon_and_fence_info;
 	uint32_t page_size = sysconf(_SC_PAGESIZE), cb_size[2] = {0};
 	uint64_t seq;
 	void *cb[2];
@@ -56,9 +57,17 @@ static void *dma_thread_start(void *args)
 	}
 
 	/* fence on SOB0, clear it, do DMA down and write to SOB8 */
-	cb_size[0] = hltests_add_monitor_and_fence(fd, cb[0], cb_size[0], 0,
-					hltests_get_dma_down_qid(fd, 0, 0),
-					false, 0, 0, 0, 1, 1);
+	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
+	mon_and_fence_info.dcore_id = 0;
+	mon_and_fence_info.queue_id = hltests_get_dma_down_qid(fd, 0, 0);
+	mon_and_fence_info.cmdq_fence = false;
+	mon_and_fence_info.sob_id = 0;
+	mon_and_fence_info.mon_id = 0;
+	mon_and_fence_info.mon_address = 0;
+	mon_and_fence_info.target_val = 1;
+	mon_and_fence_info.dec_val = 1;
+	cb_size[0] = hltests_add_monitor_and_fence(fd, cb[0], cb_size[0],
+							&mon_and_fence_info);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_TRUE;
@@ -87,9 +96,17 @@ static void *dma_thread_start(void *args)
 					cb_size[0], &pkt_info);
 
 	/* fence on SOB8, clear it, do DMA up and write to SOB0 */
-	cb_size[1] = hltests_add_monitor_and_fence(fd, cb[1], cb_size[1], 0,
-					hltests_get_dma_up_qid(fd, 0, 0),
-					false, 8, 1, 0, 1, 1);
+	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
+	mon_and_fence_info.dcore_id = 0;
+	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd, 0, 0);
+	mon_and_fence_info.cmdq_fence = false;
+	mon_and_fence_info.sob_id = 8;
+	mon_and_fence_info.mon_id = 1;
+	mon_and_fence_info.mon_address = 0;
+	mon_and_fence_info.target_val = 1;
+	mon_and_fence_info.dec_val = 1;
+	cb_size[1] = hltests_add_monitor_and_fence(fd, cb[1], cb_size[1],
+							&mon_and_fence_info);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_TRUE;

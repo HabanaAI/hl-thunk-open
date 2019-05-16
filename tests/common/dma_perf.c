@@ -246,6 +246,7 @@ static double indirect_transfer_perf_test(int fd,
 {
 	struct hlthunk_hw_ip_info hw_ip;
 	struct hltests_pkt_info pkt_info;
+	struct hltests_monitor_and_fence mon_and_fence_info;
 	void *cp_dma_cb, *cb;
 	uint64_t sram_addr, page_size, cp_dma_cb_device_va;
 	uint32_t size, cp_dma_cb_offset = 0, cb_offset = 0, lower_cb_offset;
@@ -288,9 +289,17 @@ static double indirect_transfer_perf_test(int fd,
 
 	cb = hltests_create_cb(fd, page_size, true, 0);
 	assert_non_null(cb);
+	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
+	mon_and_fence_info.dcore_id = 0;
+	mon_and_fence_info.queue_id = hltests_get_dma_down_qid(fd, 0, 0);
+	mon_and_fence_info.cmdq_fence = false;
+	mon_and_fence_info.sob_id = 0;
+	mon_and_fence_info.mon_id = 0;
+	mon_and_fence_info.mon_address = 0;
+	mon_and_fence_info.target_val = 1;
+	mon_and_fence_info.dec_val = 1;
 	cb_offset = hltests_add_monitor_and_fence(fd, cb, cb_offset,
-			0, hltests_get_dma_down_qid(fd, 0, 0), false, 0, 0, 0,
-			1, 1);
+							&mon_and_fence_info);
 
 	execute_arr[0].cb_ptr = cp_dma_cb;
 	execute_arr[0].cb_size = cp_dma_cb_offset;

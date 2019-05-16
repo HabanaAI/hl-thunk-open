@@ -26,6 +26,7 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 	struct hlthunk_hw_ip_info hw_ip;
 	struct hltests_cs_chunk restore_arr[1], execute_arr[2];
 	struct hltests_pkt_info pkt_info;
+	struct hltests_monitor_and_fence mon_and_fence_info;
 	void *engine_cb, *restore_cb, *dma_cb;
 	uint64_t cfg_address, engine_cb_sram_addr, engine_cb_device_va, seq;
 	uint32_t page_size, engine_qid, engine_cb_size, restore_cb_size,
@@ -117,9 +118,18 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 	dma_cb = hltests_create_cb(fd, page_size, true, 0);
 	assert_ptr_not_equal(dma_cb, NULL);
 	dma_cb_size = 0;
-	dma_cb_size = hltests_add_monitor_and_fence(fd, dma_cb, dma_cb_size, 0,
-					hltests_get_dma_down_qid(fd, 0, 0),
-					false, 0, 0, 0, 1, 1);
+
+	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
+	mon_and_fence_info.dcore_id = 0;
+	mon_and_fence_info.queue_id = hltests_get_dma_down_qid(fd, 0, 0);
+	mon_and_fence_info.cmdq_fence = false;
+	mon_and_fence_info.sob_id = 0;
+	mon_and_fence_info.mon_id = 0;
+	mon_and_fence_info.mon_address = 0;
+	mon_and_fence_info.target_val = 1;
+	mon_and_fence_info.dec_val = 1;
+	dma_cb_size = hltests_add_monitor_and_fence(fd, dma_cb,
+					dma_cb_size, &mon_and_fence_info);
 
 	/* Submit CS and wait for completion */
 	restore_arr[0].cb_ptr = restore_cb;

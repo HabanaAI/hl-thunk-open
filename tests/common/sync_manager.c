@@ -28,6 +28,7 @@ static void test_sm(void **state, bool is_tpc, bool is_wait)
 	struct hltests_cs_chunk execute_arr[2];
 	struct hlthunk_hw_ip_info hw_ip;
 	struct hltests_pkt_info pkt_info;
+	struct hltests_monitor_and_fence mon_and_fence_info;
 	uint32_t offset = 0, dma_size = 4, engine_cb_size;
 	int rc, engine_qid, fd = tests_state->fd;
 	uint64_t seq;
@@ -112,9 +113,16 @@ static void test_sm(void **state, bool is_tpc, bool is_wait)
 	/* Create CB for DMA that waits on internal engine and then performs
 	 * a DMA down to the data address on the sram
 	 */
-	offset = hltests_add_monitor_and_fence(fd, ext_cb, 0, 0,
-					hltests_get_dma_up_qid(fd, 0, 0), false,
-					0, 0, 0, 1, 1);
+	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
+	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd, 0, 0);
+	mon_and_fence_info.cmdq_fence = false;
+	mon_and_fence_info.sob_id = 0;
+	mon_and_fence_info.mon_id = 0;
+	mon_and_fence_info.mon_address = 0;
+	mon_and_fence_info.target_val = 1;
+	mon_and_fence_info.dec_val = 1;
+	offset = hltests_add_monitor_and_fence(fd, ext_cb, 0,
+						&mon_and_fence_info);
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_FALSE;
@@ -172,6 +180,7 @@ static void test_sm_pingpong_qman(void **state, bool is_tpc)
 	struct hltests_cs_chunk restore_arr[1], execute_arr[3];
 	struct hlthunk_hw_ip_info hw_ip;
 	struct hltests_pkt_info pkt_info;
+	struct hltests_monitor_and_fence mon_and_fence_info;
 	uint32_t dma_size = 4, engine_cb_size, restore_cb_size, dmadown_cb_size,
 			dmaup_cb_size, i, err_cnt = 0;
 	int rc, engine_qid, fd = tests_state->fd;
@@ -229,9 +238,17 @@ static void test_sm_pingpong_qman(void **state, bool is_tpc)
 	assert_ptr_not_equal(engine_cb, NULL);
 	engine_cb_device_va = hltests_get_device_va_for_host_ptr(fd, engine_cb);
 
-	engine_cb_size = hltests_add_monitor_and_fence(fd, engine_cb, 0, 0,
-							engine_qid, false, 0,
-							0, 0, 1, 1);
+	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
+	mon_and_fence_info.dcore_id = 0;
+	mon_and_fence_info.queue_id = engine_qid;
+	mon_and_fence_info.cmdq_fence = false;
+	mon_and_fence_info.sob_id = 0;
+	mon_and_fence_info.mon_id = 0;
+	mon_and_fence_info.mon_address = 0;
+	mon_and_fence_info.target_val = 1;
+	mon_and_fence_info.dec_val = 1;
+	engine_cb_size = hltests_add_monitor_and_fence(fd, engine_cb, 0,
+							&mon_and_fence_info);
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_TRUE;
@@ -303,10 +320,17 @@ static void test_sm_pingpong_qman(void **state, bool is_tpc)
 	 */
 	dmaup_cb = hltests_create_cb(fd, getpagesize(), true, 0);
 	assert_ptr_not_equal(dmaup_cb, NULL);
-
-	dmaup_cb_size = hltests_add_monitor_and_fence(fd, dmaup_cb, 0, 0,
-					hltests_get_dma_up_qid(fd, 0, 0), false,
-					8, 1, 0, 1, 1);
+	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
+	mon_and_fence_info.dcore_id = 0;
+	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd, 0, 0);
+	mon_and_fence_info.cmdq_fence = false;
+	mon_and_fence_info.sob_id = 8;
+	mon_and_fence_info.mon_id = 1;
+	mon_and_fence_info.mon_address = 0;
+	mon_and_fence_info.target_val = 1;
+	mon_and_fence_info.dec_val = 1;
+	dmaup_cb_size = hltests_add_monitor_and_fence(fd, dmaup_cb, 0,
+							&mon_and_fence_info);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
