@@ -195,31 +195,20 @@ static uint32_t setup_lower_cb_in_sram(int fd, uint64_t src_addr,
 	uint32_t  lower_cb_offset = 0, i;
 	struct hltests_pkt_info pkt_info;
 
-	lower_cb =  hltests_create_cb(fd, 2 * getpagesize(),
-							false, sram_addr);
+	lower_cb = hltests_allocate_host_mem(fd, 0x2000, false);
 	assert_ptr_not_equal(lower_cb, NULL);
-	lower_cb_device_va = hltests_get_device_va_for_host_ptr(fd,
-								lower_cb);
+	lower_cb_device_va = hltests_get_device_va_for_host_ptr(fd, lower_cb);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
-	pkt_info.eb = EB_TRUE;
+	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_TRUE;
-	pkt_info.set_sob.dcore_id = 0;
-	pkt_info.set_sob.sob_id = 0;
-	pkt_info.set_sob.value = 0;
-	lower_cb_offset = hltests_add_set_sob_pkt(fd, lower_cb,
-				lower_cb_offset, &pkt_info);
+	pkt_info.dma.src_addr = src_addr;
+	pkt_info.dma.dst_addr = dst_addr;
+	pkt_info.dma.size = size;
 
-	for (i = 0; i < num_of_transfers ; i++) {
-		memset(&pkt_info, 0, sizeof(pkt_info));
-		pkt_info.eb = EB_FALSE;
-		pkt_info.mb = MB_FALSE;
-		pkt_info.dma.src_addr = src_addr;
-		pkt_info.dma.dst_addr = dst_addr;
-		pkt_info.dma.size = size;
+	for (i = 0 ; i < num_of_transfers ; i++)
 		lower_cb_offset = hltests_add_dma_pkt(fd, lower_cb,
 						lower_cb_offset, &pkt_info);
-	}
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_TRUE;
@@ -227,13 +216,13 @@ static uint32_t setup_lower_cb_in_sram(int fd, uint64_t src_addr,
 	pkt_info.write_to_sob.sob_id = 0;
 	pkt_info.write_to_sob.value = 1;
 	pkt_info.write_to_sob.mode = SOB_ADD;
-	lower_cb_offset = hltests_add_write_to_sob_pkt(fd,
-		lower_cb, lower_cb_offset, &pkt_info);
+	lower_cb_offset = hltests_add_write_to_sob_pkt(fd, lower_cb,
+						lower_cb_offset, &pkt_info);
 
 	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, 0, 0), 0, 0,
-		lower_cb_device_va, sram_addr, lower_cb_offset,
-			GOYA_DMA_HOST_TO_SRAM);
-	hltests_destroy_cb(fd, lower_cb);
+				lower_cb_device_va, sram_addr,
+				lower_cb_offset, 0);
+	hltests_free_host_mem(fd, lower_cb);
 
 	return lower_cb_offset;
 }
@@ -245,7 +234,7 @@ static double indirect_transfer_perf_test(int fd, uint32_t queue_index,
 	struct hltests_pkt_info pkt_info;
 	struct hltests_monitor_and_fence mon_and_fence_info;
 	void *cp_dma_cb, *cb;
-	uint64_t sram_addr, page_size, cp_dma_cb_device_va;
+	uint64_t sram_addr, cp_dma_cb_device_va;
 	uint32_t size, cp_dma_cb_offset = 0, cb_offset = 0, lower_cb_offset;
 	int rc, num_of_transfers, i;
 
@@ -262,14 +251,24 @@ static double indirect_transfer_perf_test(int fd, uint32_t queue_index,
 	size = hw_ip.sram_size - 0x3000;
 
 	num_of_transfers = hltests_is_simulator(fd) ? 10 : 300;
-	page_size = getpagesize();
 
-	lower_cb_offset =
-		setup_lower_cb_in_sram(fd, src_addr, dst_addr,
+	lower_cb_offset = setup_lower_cb_in_sram(fd, src_addr, dst_addr,
 					num_of_transfers, size, sram_addr);
 
+	/* Clear SOB before we start */
+	cb = hltests_create_cb(fd, 0x1000, true, 0);
+	assert_non_null(cb);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.set_sob.dcore_id = 0;
+	pkt_info.set_sob.sob_id = 0;
+	pkt_info.set_sob.value = 0;
+	cb_offset = hltests_add_set_sob_pkt(fd, cb, 0, &pkt_info);
+	hltests_submit_and_wait_cs(fd, cb, cb_offset,
+				hltests_get_dma_down_qid(fd, 0, 0), true);
+
 	/* Internal CB for CP_DMA */
-	cp_dma_cb = hltests_create_cb(fd, page_size, false, sram_addr + 0x2000);
+	cp_dma_cb = hltests_create_cb(fd, 0x20, false, sram_addr + 0x2000);
 	assert_non_null(cp_dma_cb);
 	cp_dma_cb_device_va = hltests_get_device_va_for_host_ptr(fd, cp_dma_cb);
 
@@ -281,10 +280,10 @@ static double indirect_transfer_perf_test(int fd, uint32_t queue_index,
 					cp_dma_cb_offset, &pkt_info);
 
 	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, 0, 0), 0, 0,
-			cp_dma_cb_device_va, sram_addr + 0x2000,
-			cp_dma_cb_offset, GOYA_DMA_HOST_TO_SRAM);
+				cp_dma_cb_device_va, sram_addr + 0x2000,
+				cp_dma_cb_offset, 0);
 
-	cb = hltests_create_cb(fd, page_size, true, 0);
+	cb = hltests_create_cb(fd, 0x1000, true, 0);
 	assert_non_null(cb);
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
 	mon_and_fence_info.dcore_id = 0;
@@ -295,8 +294,8 @@ static double indirect_transfer_perf_test(int fd, uint32_t queue_index,
 	mon_and_fence_info.mon_address = 0;
 	mon_and_fence_info.target_val = 1;
 	mon_and_fence_info.dec_val = 1;
-	cb_offset = hltests_add_monitor_and_fence(fd, cb, cb_offset,
-							&mon_and_fence_info);
+	cb_offset = hltests_add_monitor_and_fence(fd, cb, 0,
+						&mon_and_fence_info);
 
 	execute_arr[0].cb_ptr = cp_dma_cb;
 	execute_arr[0].cb_size = cp_dma_cb_offset;
