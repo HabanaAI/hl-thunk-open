@@ -30,37 +30,35 @@ static uint32_t goya_add_nop_pkt(void *buffer, uint32_t buf_off, bool eb,
 						sizeof(packet));
 }
 
-static uint32_t goya_add_msg_long_pkt(void *buffer, uint32_t buf_off, bool eb,
-					bool mb, uint64_t address,
-					uint32_t value)
+static uint32_t goya_add_msg_long_pkt(void *buffer, uint32_t buf_off,
+					struct hltests_pkt_info *pkt_info)
 {
 	struct packet_msg_long packet;
 
 	memset(&packet, 0, sizeof(packet));
 	packet.opcode = PACKET_MSG_LONG;
-	packet.addr = address;
-	packet.value = value;
-	packet.eng_barrier = eb;
-	packet.msg_barrier = mb;
+	packet.addr = pkt_info->msg_long.address;
+	packet.value = pkt_info->msg_long.value;
+	packet.eng_barrier = pkt_info->eb;
+	packet.msg_barrier = pkt_info->mb;
 	packet.reg_barrier = 1;
 
 	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
 						sizeof(packet));
 }
 
-static uint32_t goya_add_msg_short_pkt(void *buffer, uint32_t buf_off, bool eb,
-					bool mb, uint8_t base, uint16_t address,
-					uint32_t value)
+static uint32_t goya_add_msg_short_pkt(void *buffer, uint32_t buf_off,
+		struct hltests_pkt_info *pkt_info)
 {
 	struct packet_msg_short packet;
 
 	memset(&packet, 0, sizeof(packet));
 	packet.opcode = PACKET_MSG_SHORT;
-	packet.value = value;
-	packet.base = base;
-	packet.msg_addr_offset = address;
-	packet.eng_barrier = eb;
-	packet.msg_barrier = mb;
+	packet.value = pkt_info->msg_short.value;
+	packet.base = pkt_info->msg_short.base;
+	packet.msg_addr_offset = pkt_info->msg_short.address;
+	packet.eng_barrier = pkt_info->eb;
+	packet.msg_barrier = pkt_info->mb;
 	packet.reg_barrier = 1;
 
 	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
@@ -68,117 +66,134 @@ static uint32_t goya_add_msg_short_pkt(void *buffer, uint32_t buf_off, bool eb,
 }
 
 static uint32_t goya_add_arm_monitor_pkt(void *buffer, uint32_t buf_off,
-					bool eb, bool mb, uint16_t address,
-					uint8_t mon_mode, uint16_t sync_val,
-					uint16_t sync_id)
+					struct hltests_pkt_info *pkt_info)
 {
 	struct packet_msg_short packet;
 	uint8_t base = 0; /* monitor base address */
 
-	memset(&packet, 0, sizeof(packet.value));
-	packet.mon_arm_register.sync_id = sync_id;
-	packet.mon_arm_register.mode = mon_mode;
-	packet.mon_arm_register.sync_value = sync_val;
+	memset(&packet, 0, sizeof(packet));
+	packet.mon_arm_register.sync_id = pkt_info->arm_monitor.sob_id;
+	packet.mon_arm_register.mode = pkt_info->arm_monitor.mon_mode;
+	packet.mon_arm_register.sync_value = pkt_info->arm_monitor.sob_val;
+	packet.opcode = PACKET_MSG_SHORT;
+	packet.base = base;
+	packet.msg_addr_offset = pkt_info->arm_monitor.address;
+	packet.eng_barrier = pkt_info->eb;
+	packet.msg_barrier = pkt_info->mb;
+	packet.reg_barrier = 1;
 
-	return goya_add_msg_short_pkt(buffer, buf_off, eb, mb, base, address,
-					packet.value);
+	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
+							sizeof(packet));
 }
 
 static uint32_t goya_add_write_to_sob_pkt(void *buffer, uint32_t buf_off,
-					bool eb, bool mb, uint16_t sob_id,
-					uint16_t value, uint8_t mode)
+					struct hltests_pkt_info *pkt_info)
 {
 	struct packet_msg_short packet;
-	uint16_t address = sob_id * 4;
+	uint16_t address = pkt_info->write_to_sob.sob_id * 4;
 	uint8_t base = 1; /* syn object base address */
 
 	memset(&packet, 0, sizeof(packet.value));
-	packet.so_upd.sync_value = value;
-	packet.so_upd.mode = mode;
+	packet.opcode = PACKET_MSG_SHORT;
+	packet.value = pkt_info->write_to_sob.value;
+	packet.base  = base;
+	packet.msg_addr_offset = address;
+	packet.eng_barrier = pkt_info->eb;
+	packet.msg_barrier = pkt_info->mb;
+	packet.reg_barrier = 1;
+	packet.so_upd.sync_value = pkt_info->write_to_sob.value;
+	packet.so_upd.mode = pkt_info->write_to_sob.mode;
 
-	return goya_add_msg_short_pkt(buffer, buf_off, eb, mb, base, address,
-					packet.value);
+	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
+							sizeof(packet));
 }
 
-static uint32_t goya_add_set_sob_pkt(void *buffer, uint32_t buf_off, bool eb,
-					bool mb, uint8_t dcore_id,
-					uint16_t sob_id, uint32_t value)
+static uint32_t goya_add_set_sob_pkt(void *buffer, uint32_t buf_off,
+					struct hltests_pkt_info *pkt_info)
 {
-	uint64_t address = CFG_BASE + mmSYNC_MNGR_SOB_OBJ_0 + sob_id * 4;
+	uint64_t address = CFG_BASE + mmSYNC_MNGR_SOB_OBJ_0 +
+					pkt_info->set_sob.sob_id * 4;
 
-	return goya_add_msg_long_pkt(buffer, buf_off, eb, mb, address, value);
+	struct packet_msg_long packet;
+
+	memset(&packet, 0, sizeof(packet));
+	packet.opcode = PACKET_MSG_LONG;
+	packet.addr = address;
+	packet.value = pkt_info->set_sob.value;
+	packet.eng_barrier = pkt_info->eb;
+	packet.msg_barrier = pkt_info->mb;
+	packet.reg_barrier = 1;
+
+	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
+							sizeof(packet));
 }
 
-static uint32_t goya_add_fence_pkt(void *buffer, uint32_t buf_off, bool eb,
-					bool mb, uint8_t dec_val,
-					uint8_t gate_val, uint8_t fence_id)
+static uint32_t goya_add_fence_pkt(void *buffer, uint32_t buf_off,
+					struct hltests_pkt_info *pkt_info)
 {
 	struct packet_fence packet;
 
 	memset(&packet, 0, sizeof(packet));
 	packet.opcode = PACKET_FENCE;
-	packet.dec_val = dec_val;
-	packet.gate_val = gate_val;
-	packet.id = fence_id;
-	packet.eng_barrier = eb;
-	packet.msg_barrier = mb;
+	packet.dec_val = pkt_info->fence.dec_val;
+	packet.gate_val = pkt_info->fence.gate_val;
+	packet.id = pkt_info->fence.fence_id;
+	packet.eng_barrier = pkt_info->eb;
+	packet.msg_barrier = pkt_info->mb;
 	packet.reg_barrier = 1;
 
 	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
 						sizeof(packet));
 }
 
-static uint32_t goya_add_dma_pkt(void *buffer, uint32_t buf_off, bool eb,
-			bool mb, uint64_t src_addr,
-			uint64_t dst_addr, uint32_t size,
-			enum hltests_goya_dma_direction dma_dir)
+static uint32_t goya_add_dma_pkt(void *buffer, uint32_t buf_off,
+				struct hltests_pkt_info *pkt_info)
 {
 	struct packet_lin_dma packet;
 
 	memset(&packet, 0, sizeof(packet));
 	packet.opcode = PACKET_LIN_DMA;
-	packet.eng_barrier = eb;
-	packet.msg_barrier = mb;
+	packet.eng_barrier = pkt_info->eb;
+	packet.msg_barrier = pkt_info->mb;
 	packet.reg_barrier = 1;
 	packet.weakly_ordered = 1;
-	packet.src_addr = src_addr;
-	packet.dst_addr = dst_addr;
-	packet.tsize = size;
-	packet.dma_dir = dma_dir;
+	packet.src_addr = pkt_info->dma.src_addr;
+	packet.dst_addr = pkt_info->dma.dst_addr;
+	packet.tsize = pkt_info->dma.size;
+	packet.dma_dir = pkt_info->dma.dma_dir;
 
 	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
 						sizeof(packet));
 }
 
-static uint32_t goya_add_cp_dma_pkt(void *buffer, uint32_t buf_off, bool eb,
-				bool mb, uint64_t src_addr, uint32_t size)
+static uint32_t goya_add_cp_dma_pkt(void *buffer, uint32_t buf_off,
+					struct hltests_pkt_info *pkt_info)
 {
 	struct packet_cp_dma packet;
 
 	memset(&packet, 0, sizeof(packet));
 	packet.opcode = PACKET_CP_DMA;
-	packet.eng_barrier = eb;
-	packet.msg_barrier = mb;
+	packet.eng_barrier = pkt_info->eb;
+	packet.msg_barrier = pkt_info->mb;
 	packet.reg_barrier = 1;
-	packet.src_addr = src_addr;
-	packet.tsize = size;
+	packet.src_addr = pkt_info->cp_dma.src_addr;
+	packet.tsize = pkt_info->cp_dma.size;
 
 	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
 						sizeof(packet));
 }
 
 static uint32_t goya_add_monitor_and_fence(void *buffer, uint32_t buf_off,
-					uint8_t dcore_id, uint8_t queue_id,
-					bool cmdq_fence, uint32_t so_id,
-					uint32_t mon_id, uint64_t mon_address,
-					uint8_t dec_val, uint8_t target_val)
+			struct hltests_monitor_and_fence *mon_and_fence_info)
 {
 	uint64_t address, monitor_base;
 	uint32_t fence_addr = 0;
 	uint16_t msg_addr_offset;
+	struct hltests_pkt_info pkt_info;
+	bool cmdq_fence = mon_and_fence_info->cmdq_fence;
 	uint8_t base = 0; /* monitor base address */
 
-	switch (queue_id) {
+	switch (mon_and_fence_info->queue_id) {
 	case GOYA_QUEUE_ID_DMA_0:
 		fence_addr = mmDMA_QM_0_CP_FENCE0_RDATA;
 		break;
@@ -250,11 +265,11 @@ static uint32_t goya_add_monitor_and_fence(void *buffer, uint32_t buf_off,
 		break;
 	default:
 		printf("Failed to configure fence - invalid queue ID %d\n",
-			queue_id);
+				mon_and_fence_info->queue_id);
 	}
 
-	if (mon_address)
-		address = mon_address;
+	if (mon_and_fence_info->mon_address)
+		address = mon_and_fence_info->mon_address;
 	else
 		address = CFG_BASE + fence_addr;
 
@@ -264,33 +279,62 @@ static uint32_t goya_add_monitor_and_fence(void *buffer, uint32_t buf_off,
 	monitor_base = mmSYNC_MNGR_MON_PAY_ADDRL_0;
 
 	/* First monitor config packet: low address of the sync */
-	msg_addr_offset = (mmSYNC_MNGR_MON_PAY_ADDRL_0 + mon_id * 4) -
-								monitor_base;
-	buf_off = goya_add_msg_short_pkt(buffer, buf_off, false, true, base,
-					msg_addr_offset, (uint32_t) address);
+	msg_addr_offset = (mmSYNC_MNGR_MON_PAY_ADDRL_0 +
+			mon_and_fence_info->mon_id * 4) - monitor_base;
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.msg_short.base = base;
+	pkt_info.msg_short.address = msg_addr_offset;
+	pkt_info.msg_short.value = (uint32_t) address;
+	buf_off = goya_add_msg_short_pkt(buffer, buf_off, &pkt_info);
 
 	/* Second config packet: high address of the sync */
-	msg_addr_offset = (mmSYNC_MNGR_MON_PAY_ADDRH_0 + mon_id * 4) -
-								monitor_base;
-	buf_off = goya_add_msg_short_pkt(buffer, buf_off, false, true, base,
-				msg_addr_offset, (uint32_t) (address >> 32));
+	msg_addr_offset = (mmSYNC_MNGR_MON_PAY_ADDRH_0 +
+				mon_and_fence_info->mon_id * 4) - monitor_base;
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.msg_short.base = base;
+	pkt_info.msg_short.address = msg_addr_offset;
+	pkt_info.msg_short.value = (uint32_t) (address >> 32);
+	buf_off = goya_add_msg_short_pkt(buffer, buf_off, &pkt_info);
 
 	/* Third config packet: the payload, i.e. what to write when the sync
 	 * triggers
 	 */
-	msg_addr_offset = (mmSYNC_MNGR_MON_PAY_DATA_0 + mon_id * 4) -
-								monitor_base;
-	buf_off = goya_add_msg_short_pkt(buffer, buf_off, false, true, base,
-					msg_addr_offset, 1);
+	msg_addr_offset = (mmSYNC_MNGR_MON_PAY_DATA_0 +
+				mon_and_fence_info->mon_id * 4) - monitor_base;
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.msg_short.base = base;
+	pkt_info.msg_short.address = msg_addr_offset;
+	pkt_info.msg_short.value = 1;
+	buf_off = goya_add_msg_short_pkt(buffer, buf_off, &pkt_info);
 
 	/* Fourth config packet: bind the monitor to a sync object */
-	msg_addr_offset = (mmSYNC_MNGR_MON_ARM_0 + mon_id * 4) - monitor_base;
-	buf_off = goya_add_arm_monitor_pkt(buffer, buf_off, false, true,
-					msg_addr_offset, 0, 1, so_id);
+	msg_addr_offset = (mmSYNC_MNGR_MON_ARM_0 +
+				mon_and_fence_info->mon_id * 4) - monitor_base;
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.arm_monitor.address = msg_addr_offset;
+	pkt_info.arm_monitor.mon_mode = EQUAL;
+	pkt_info.arm_monitor.sob_val = 1;
+	pkt_info.arm_monitor.sob_id = mon_and_fence_info->sob_id;
+	buf_off = goya_add_arm_monitor_pkt(buffer, buf_off, &pkt_info);
 
 	/* Fence packet */
-	buf_off = goya_add_fence_pkt(buffer, buf_off, false, true, dec_val,
-					target_val, 0);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.fence.dec_val = mon_and_fence_info->dec_val;
+	pkt_info.fence.gate_val = mon_and_fence_info->target_val;
+	pkt_info.fence.fence_id = 0;
+	buf_off = goya_add_fence_pkt(buffer, buf_off, &pkt_info);
 
 	return buf_off;
 }

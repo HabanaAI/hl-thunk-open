@@ -1023,10 +1023,7 @@ uint32_t hltests_add_msg_long_pkt(int fd, void *buffer, uint32_t buf_off,
 	const struct hltests_asic_funcs *asic =
 			get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->add_msg_long_pkt(buffer, buf_off, pkt_info->eb,
-					pkt_info->mb,
-					pkt_info->msg_long.address,
-					pkt_info->msg_long.value);
+	return asic->add_msg_long_pkt(buffer, buf_off, pkt_info);
 }
 
 uint32_t hltests_add_msg_short_pkt(int fd, void *buffer, uint32_t buf_off,
@@ -1035,11 +1032,7 @@ uint32_t hltests_add_msg_short_pkt(int fd, void *buffer, uint32_t buf_off,
 	const struct hltests_asic_funcs *asic =
 			get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->add_msg_short_pkt(buffer, buf_off, pkt_info->eb,
-						pkt_info->mb,
-						pkt_info->msg_short.base,
-						pkt_info->msg_short.address,
-						pkt_info->msg_short.value);
+	return asic->add_msg_short_pkt(buffer, buf_off, pkt_info);
 }
 
 uint32_t hltests_add_arm_monitor_pkt(int fd, void *buffer,
@@ -1049,12 +1042,7 @@ uint32_t hltests_add_arm_monitor_pkt(int fd, void *buffer,
 	const struct hltests_asic_funcs *asic =
 			get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->add_arm_monitor_pkt(buffer, buf_off, pkt_info->eb,
-					pkt_info->mb,
-					pkt_info->arm_monitor.address,
-					pkt_info->arm_monitor.mon_mode,
-					pkt_info->arm_monitor.sob_val,
-					pkt_info->arm_monitor.sob_id);
+	return asic->add_arm_monitor_pkt(buffer, buf_off, pkt_info);
 }
 
 uint32_t hltests_add_write_to_sob_pkt(int fd, void *buffer, uint32_t buf_off,
@@ -1063,11 +1051,7 @@ uint32_t hltests_add_write_to_sob_pkt(int fd, void *buffer, uint32_t buf_off,
 	const struct hltests_asic_funcs *asic =
 			get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->add_write_to_sob_pkt(buffer, buf_off, pkt_info->eb,
-						pkt_info->mb,
-						pkt_info->write_to_sob.sob_id,
-						pkt_info->write_to_sob.value,
-						pkt_info->write_to_sob.mode);
+	return asic->add_write_to_sob_pkt(buffer, buf_off, pkt_info);
 }
 
 uint32_t hltests_add_set_sob_pkt(int fd, void *buffer, uint32_t buf_off,
@@ -1076,11 +1060,7 @@ uint32_t hltests_add_set_sob_pkt(int fd, void *buffer, uint32_t buf_off,
 	const struct hltests_asic_funcs *asic =
 			get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->add_set_sob_pkt(buffer, buf_off, pkt_info->eb,
-						pkt_info->mb,
-						pkt_info->set_sob.dcore_id,
-						pkt_info->set_sob.sob_id,
-						pkt_info->set_sob.value);
+	return asic->add_set_sob_pkt(buffer, buf_off, pkt_info);
 }
 
 uint32_t hltests_add_fence_pkt(int fd, void *buffer, uint32_t buf_off,
@@ -1089,11 +1069,7 @@ uint32_t hltests_add_fence_pkt(int fd, void *buffer, uint32_t buf_off,
 	const struct hltests_asic_funcs *asic =
 			get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->add_fence_pkt(buffer, buf_off, pkt_info->eb,
-						pkt_info->mb,
-						pkt_info->fence.dec_val,
-						pkt_info->fence.gate_val,
-						pkt_info->fence.fence_id);
+	return asic->add_fence_pkt(buffer, buf_off, pkt_info);
 }
 
 uint32_t hltests_add_dma_pkt(int fd, void *buffer, uint32_t buf_off,
@@ -1102,12 +1078,7 @@ uint32_t hltests_add_dma_pkt(int fd, void *buffer, uint32_t buf_off,
 	const struct hltests_asic_funcs *asic =
 			get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->add_dma_pkt(buffer, buf_off, pkt_info->eb,
-						pkt_info->mb,
-						pkt_info->dma.src_addr,
-						pkt_info->dma.dst_addr,
-						pkt_info->dma.size,
-						pkt_info->dma.dma_dir);
+	return asic->add_dma_pkt(buffer, buf_off, pkt_info);
 }
 
 uint32_t hltests_add_cp_dma_pkt(int fd, void *buffer, uint32_t buf_off,
@@ -1117,10 +1088,7 @@ uint32_t hltests_add_cp_dma_pkt(int fd, void *buffer, uint32_t buf_off,
 			get_hdev_from_fd(fd)->asic_funcs;
 
 
-	return asic->add_cp_dma_pkt(buffer, buf_off,
-					pkt_info->eb, pkt_info->mb,
-					pkt_info->cp_dma.src_addr,
-					pkt_info->cp_dma.size);
+	return asic->add_cp_dma_pkt(buffer, buf_off, pkt_info);
 }
 
 uint32_t hltests_add_monitor_and_fence(int fd, void *buffer, uint32_t buf_off,
@@ -1129,15 +1097,7 @@ uint32_t hltests_add_monitor_and_fence(int fd, void *buffer, uint32_t buf_off,
 	const struct hltests_asic_funcs *asic =
 			get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->add_monitor_and_fence(buffer, buf_off,
-			mon_and_fence_info->dcore_id,
-			mon_and_fence_info->queue_id,
-			mon_and_fence_info->cmdq_fence,
-			mon_and_fence_info->sob_id,
-			mon_and_fence_info->mon_id,
-			mon_and_fence_info->mon_address,
-			mon_and_fence_info->dec_val,
-			mon_and_fence_info->target_val);
+	return asic->add_monitor_and_fence(buffer, buf_off, mon_and_fence_info);
 }
 
 uint32_t hltests_get_dma_down_qid(int fd, uint8_t dcore_id, uint8_t stream)
