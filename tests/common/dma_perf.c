@@ -220,8 +220,8 @@ static uint32_t setup_lower_cb_in_sram(int fd, uint64_t src_addr,
 						lower_cb_offset, &pkt_info);
 
 	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
-				0, 0, lower_cb_device_va, sram_addr,
-				lower_cb_offset, 0);
+				EB_FALSE, MB_FALSE, lower_cb_device_va,
+				sram_addr, lower_cb_offset, 0);
 	hltests_free_host_mem(fd, lower_cb);
 
 	return lower_cb_offset;
@@ -279,9 +279,9 @@ static double indirect_transfer_perf_test(int fd, uint32_t queue_index,
 	cp_dma_cb_offset = hltests_add_cp_dma_pkt(fd, cp_dma_cb,
 					cp_dma_cb_offset, &pkt_info);
 
-	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, DCORE0, DCORE0),
-				0, 0, cp_dma_cb_device_va, sram_addr + 0x2000,
-				cp_dma_cb_offset, 0);
+	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
+				EB_FALSE, MB_FALSE, cp_dma_cb_device_va,
+				sram_addr + 0x2000, cp_dma_cb_offset, 0);
 
 	cb = hltests_create_cb(fd, 0x1000, true, 0);
 	assert_non_null(cb);

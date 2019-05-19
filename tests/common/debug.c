@@ -226,13 +226,14 @@ void test_dma_custom(void **state)
 	do {
 		/* DMA: host->device */
 		hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd,
-					DCORE0, STREAM0), 0,
-					1, host_src_addr, device_addr + offset,
+					DCORE0, STREAM0), EB_FALSE, MB_TRUE,
+					host_src_addr, device_addr + offset,
 					cfg.chunk_size, dma_dir_down);
 
 		/* DMA: device->host */
 		hltests_dma_transfer(fd, hltests_get_dma_up_qid(fd, DCORE0,
-					STREAM0), 0, 1,	device_addr + offset,
+					STREAM0), EB_FALSE, MB_TRUE,
+					device_addr + offset,
 					host_dst_addr, cfg.chunk_size,
 					dma_dir_up);
 

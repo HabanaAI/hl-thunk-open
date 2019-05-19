@@ -1216,7 +1216,8 @@ int hltests_mem_compare(void *ptr1, void *ptr2, uint64_t size)
 	return err_cnt;
 }
 
-void hltests_dma_transfer(int fd, uint32_t queue_index, bool eb, bool mb,
+void hltests_dma_transfer(int fd, uint32_t queue_index, enum hltests_eb eb,
+				enum hltests_mb mb,
 				uint64_t src_addr, uint64_t dst_addr,
 				uint32_t size,
 				enum hltests_goya_dma_direction dma_dir)
@@ -1284,7 +1285,8 @@ int hltests_dma_test(void **state, bool is_ddr, uint64_t size)
 
 	/* DMA: host->device */
 	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
-			0, 1, host_src_addr, (uint64_t) (uintptr_t) device_addr,
+			EB_FALSE, MB_TRUE, host_src_addr,
+			(uint64_t) (uintptr_t) device_addr,
 			size, dma_dir_down);
 
 	/* DMA: device->host */

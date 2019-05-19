@@ -73,7 +73,7 @@ static void test_sm(void **state, bool is_tpc, bool is_wait)
 
 	/* DMA of data host->sram */
 	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
-				false, true, src_data_device_va,
+				EB_FALSE, MB_TRUE, src_data_device_va,
 				device_data_address, dma_size,
 				GOYA_DMA_HOST_TO_SRAM);
 
@@ -93,7 +93,8 @@ static void test_sm(void **state, bool is_tpc, bool is_wait)
 
 	/* DMA of cb engine host->sram */
 	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
-				0, 1, engine_cb_device_va, cb_engine_address,
+				EB_FALSE, MB_TRUE, engine_cb_device_va,
+				cb_engine_address,
 				engine_cb_size, GOYA_DMA_HOST_TO_SRAM);
 
 	/* Create CB for DMA that clears SOB 0 */
