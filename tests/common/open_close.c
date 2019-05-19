@@ -23,7 +23,7 @@ void test_open_by_busid(void **state)
 
 	if (!pciaddr) {
 		printf("Test is skipped because pci address wasn't given\n");
-		return;
+		skip();
 	}
 
 	if (hltests_setup(state)) {

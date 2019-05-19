@@ -297,7 +297,7 @@ void test_dma_entire_dram_random(void **state)
 	 */
 	if (tests_state->mmu) {
 		printf("Test is skipped because MMU is enabled\n");
-		return;
+		skip();
 	}
 
 	kv_init(array);
