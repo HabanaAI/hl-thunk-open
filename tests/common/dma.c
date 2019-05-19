@@ -83,7 +83,7 @@ static void *dma_thread_start(void *args)
 	pkt_info.dma.src_addr = params->host_src_device_va;
 	pkt_info.dma.dst_addr = params->device_addr;
 	pkt_info.dma.size = params->size;
-	pkt_info.dma.dma_dir = GOYA_DMA_DRAM_TO_HOST;
+	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_DRAM;
 	cb_size[0] = hltests_add_dma_pkt(fd, cb[0], cb_size[0], &pkt_info);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
