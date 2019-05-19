@@ -1864,3 +1864,33 @@ void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 	rc = hltests_free_host_mem(fd, host_src);
 	assert_int_equal(rc, 0);
 }
+
+void hltests_clear_sobs(int fd, enum hltests_dcore_id dcore_id,
+						uint32_t num_of_sobs)
+{
+	struct hltests_pkt_info pkt_info;
+	void *cb;
+	uint32_t cb_offset = 0, i;
+
+	cb = hltests_create_cb(fd,  MSG_LONG_SIZE * num_of_sobs, true, 0);
+	assert_non_null(cb);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.set_sob.dcore_id = dcore_id;
+	pkt_info.set_sob.value = 0;
+	for (i = 0 ; i < num_of_sobs - 1 ; i++) {
+		pkt_info.set_sob.sob_id = i * 8;
+		cb_offset = hltests_add_set_sob_pkt(fd, cb, cb_offset,
+								&pkt_info);
+	}
+	/* only the last mb should be true */
+	pkt_info.mb = MB_TRUE;
+	pkt_info.set_sob.sob_id = i * 8;
+	cb_offset = hltests_add_set_sob_pkt(fd, cb, cb_offset, &pkt_info);
+
+	hltests_submit_and_wait_cs(fd, cb, cb_offset,
+		hltests_get_dma_down_qid(fd, dcore_id, STREAM0), true);
+
+}

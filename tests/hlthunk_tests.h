@@ -34,6 +34,8 @@
 #define PAGE_SIZE_2MB			(1UL << PAGE_SHIFT_2MB)
 #define PAGE_SIZE_16MB			(1UL << PAGE_SHIFT_16MB)
 
+#define MSG_LONG_SIZE			16
+
 #define DMA_1KB_INC_SRAM(func_name, state, size) \
 	void func_name(void **state) { hltests_dma_test(state, false, size); }
 #define DMA_1KB_INC_DRAM(func_name, state, size) \
@@ -320,6 +322,9 @@ void hltests_submit_and_wait_cs(int fd, void *cb_ptr, uint32_t cb_size,
 
 int hltests_ensure_device_operational(void **state);
 void test_sm_pingpong_cmdq(void **state, bool is_tpc);
+
+void hltests_clear_sobs(int fd, enum hltests_dcore_id dcore_id,
+						uint32_t num_of_sobs);
 
 /* Generic memory addresses pool */
 void *hltests_mem_pool_init(uint64_t start_addr, uint64_t size, uint64_t order);
