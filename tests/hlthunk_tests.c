@@ -1100,7 +1100,8 @@ uint32_t hltests_add_monitor_and_fence(int fd, void *buffer, uint32_t buf_off,
 	return asic->add_monitor_and_fence(buffer, buf_off, mon_and_fence_info);
 }
 
-uint32_t hltests_get_dma_down_qid(int fd, uint8_t dcore_id, uint8_t stream)
+uint32_t hltests_get_dma_down_qid(int fd, enum hltests_dcore_id dcore_id,
+						enum hltests_stream_id stream)
 {
 	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
@@ -1108,7 +1109,8 @@ uint32_t hltests_get_dma_down_qid(int fd, uint8_t dcore_id, uint8_t stream)
 	return asic->get_dma_down_qid(dcore_id, stream);
 }
 
-uint32_t hltests_get_dma_up_qid(int fd, uint8_t dcore_id, uint8_t stream)
+uint32_t hltests_get_dma_up_qid(int fd, enum hltests_dcore_id dcore_id,
+					enum hltests_stream_id stream)
 {
 	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
@@ -1116,8 +1118,9 @@ uint32_t hltests_get_dma_up_qid(int fd, uint8_t dcore_id, uint8_t stream)
 	return asic->get_dma_up_qid(dcore_id, stream);
 }
 
-uint32_t hltests_get_dma_dram_to_sram_qid(int fd, uint8_t dcore_id,
-						uint8_t stream)
+uint32_t hltests_get_dma_dram_to_sram_qid(int fd,
+					enum hltests_dcore_id dcore_id,
+					enum hltests_stream_id stream)
 {
 	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
@@ -1125,8 +1128,9 @@ uint32_t hltests_get_dma_dram_to_sram_qid(int fd, uint8_t dcore_id,
 	return asic->get_dma_dram_to_sram_qid(dcore_id, stream);
 }
 
-uint32_t hltests_get_dma_sram_to_dram_qid(int fd, uint8_t dcore_id,
-						uint8_t stream)
+uint32_t hltests_get_dma_sram_to_dram_qid(int fd,
+					enum hltests_dcore_id dcore_id,
+					enum hltests_stream_id stream)
 {
 	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
@@ -1134,8 +1138,8 @@ uint32_t hltests_get_dma_sram_to_dram_qid(int fd, uint8_t dcore_id,
 	return asic->get_dma_sram_to_dram_qid(dcore_id, stream);
 }
 
-uint32_t hltests_get_tpc_qid(int fd, uint8_t dcore_id, uint8_t tpc_id,
-				uint8_t stream)
+uint32_t hltests_get_tpc_qid(int fd, enum hltests_dcore_id dcore_id,
+				uint8_t tpc_id,	enum hltests_stream_id stream)
 {
 	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
@@ -1143,8 +1147,8 @@ uint32_t hltests_get_tpc_qid(int fd, uint8_t dcore_id, uint8_t tpc_id,
 	return asic->get_tpc_qid(dcore_id, tpc_id, stream);
 }
 
-uint32_t hltests_get_mme_qid(int fd, uint8_t dcore_id, uint8_t mme_id,
-				uint8_t stream)
+uint32_t hltests_get_mme_qid(int fd, enum hltests_dcore_id dcore_id,
+				uint8_t mme_id,	enum hltests_stream_id stream)
 {
 	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
@@ -1279,13 +1283,13 @@ int hltests_dma_test(void **state, bool is_ddr, uint64_t size)
 	host_dst_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
 
 	/* DMA: host->device */
-	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, 0, 0), 0, 1,
-			host_src_addr, (uint64_t) (uintptr_t) device_addr,
+	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
+			0, 1, host_src_addr, (uint64_t) (uintptr_t) device_addr,
 			size, dma_dir_down);
 
 	/* DMA: device->host */
-	hltests_dma_transfer(fd, hltests_get_dma_up_qid(fd, 0, 0), 0, 1,
-				(uint64_t) (uintptr_t) device_addr,
+	hltests_dma_transfer(fd, hltests_get_dma_up_qid(fd, DCORE0, STREAM0),
+				0, 1, (uint64_t) (uintptr_t) device_addr,
 				host_dst_addr, size, dma_dir_up);
 
 	/* Compare host memories */
@@ -1649,9 +1653,9 @@ void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 			tpc_id++;
 
 		assert_in_range(tpc_id, 0, tpc_cnt - 1);
-		engine_qid = hltests_get_tpc_qid(fd, 0, tpc_id, 0);
+		engine_qid = hltests_get_tpc_qid(fd, DCORE0, tpc_id, STREAM0);
 	} else {
-		engine_qid = hltests_get_mme_qid(fd, 0, 0, 0);
+		engine_qid = hltests_get_mme_qid(fd, DCORE0, 0, STREAM0);
 	}
 
 	device_data_addr = hw_ip.sram_base_address + 0x1000;
@@ -1790,7 +1794,8 @@ void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 	dmaup_cb_size = 0;
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
 	mon_and_fence_info.dcore_id = 0;
-	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd, 0, 0);
+	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd,
+							DCORE0, STREAM0);
 	mon_and_fence_info.cmdq_fence = false;
 	mon_and_fence_info.sob_id = 8;
 	mon_and_fence_info.mon_id = 1;
@@ -1813,11 +1818,13 @@ void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 	/* Submit CS and wait for completion */
 	restore_arr[0].cb_ptr = restore_cb;
 	restore_arr[0].cb_size = restore_cb_size;
-	restore_arr[0].queue_index = hltests_get_dma_down_qid(fd, 0, 0);
+	restore_arr[0].queue_index = hltests_get_dma_down_qid(fd,
+							DCORE0, STREAM0);
 
 	execute_arr[0].cb_ptr = dmadown_cb;
 	execute_arr[0].cb_size = dmadown_cb_size;
-	execute_arr[0].queue_index = hltests_get_dma_down_qid(fd, 0, 0);
+	execute_arr[0].queue_index = hltests_get_dma_down_qid(fd,
+							DCORE0, STREAM0);
 
 	execute_arr[1].cb_ptr = engine_qman_cb;
 	execute_arr[1].cb_size = engine_qman_cb_size;
@@ -1825,7 +1832,8 @@ void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 
 	execute_arr[2].cb_ptr = dmaup_cb;
 	execute_arr[2].cb_size = dmaup_cb_size;
-	execute_arr[2].queue_index = hltests_get_dma_up_qid(fd, 0, 0);
+	execute_arr[2].queue_index = hltests_get_dma_up_qid(fd,
+							DCORE0, STREAM0);
 
 	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 3, true, &seq);
 	assert_int_equal(rc, 0);

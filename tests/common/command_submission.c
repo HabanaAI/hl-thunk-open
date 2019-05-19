@@ -32,7 +32,8 @@ void test_cs_nop(void **state)
 	offset = hltests_add_nop_pkt(fd, ptr, offset, EB_FALSE, MB_FALSE);
 
 	hltests_submit_and_wait_cs(fd, ptr, offset,
-				hltests_get_dma_down_qid(fd, 0, 0), true);
+				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
+				true);
 }
 
 void test_cs_msg_long(void **state)
@@ -59,7 +60,8 @@ void test_cs_msg_long(void **state)
 	offset = hltests_add_msg_long_pkt(fd, ptr, offset, &pkt_info);
 
 	hltests_submit_and_wait_cs(fd, ptr, offset,
-				hltests_get_dma_down_qid(fd, 0, 0), true);
+				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
+				true);
 }
 
 #define NUM_OF_MSGS	2000
@@ -91,7 +93,8 @@ void test_cs_msg_long_2000(void **state)
 	}
 
 	hltests_submit_and_wait_cs(fd, ptr, offset,
-				hltests_get_dma_down_qid(fd, 0, 0), true);
+				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
+				true);
 }
 
 const struct CMUnitTest cs_tests[] = {

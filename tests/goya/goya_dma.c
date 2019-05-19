@@ -140,7 +140,7 @@ void test_dma_4_queues(void **state)
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
 	mon_and_fence_info.dcore_id = 0;
 	mon_and_fence_info.queue_id = hltests_get_dma_dram_to_sram_qid(fd,
-									0, 0);
+							DCORE0, STREAM0);
 	mon_and_fence_info.cmdq_fence = false;
 	mon_and_fence_info.sob_id = 0;
 	mon_and_fence_info.mon_id = 0;
@@ -178,7 +178,7 @@ void test_dma_4_queues(void **state)
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
 	mon_and_fence_info.dcore_id = 0;
 	mon_and_fence_info.queue_id = hltests_get_dma_sram_to_dram_qid(fd,
-									0, 0);
+							DCORE0, STREAM0);
 	mon_and_fence_info.cmdq_fence = false;
 	mon_and_fence_info.sob_id = 1;
 	mon_and_fence_info.mon_id = 1;
@@ -238,23 +238,28 @@ void test_dma_4_queues(void **state)
 	/* Submit CS and wait for completion */
 	restore_arr[0].cb_ptr = restore_cb;
 	restore_arr[0].cb_size = restore_cb_size;
-	restore_arr[0].queue_index = hltests_get_dma_down_qid(fd, 0, 0);
+	restore_arr[0].queue_index = hltests_get_dma_down_qid(fd,
+							DCORE0, STREAM0);
 
 	execute_arr[0].cb_ptr = dma_cb[0];
 	execute_arr[0].cb_size = dma_cb_size[0];
-	execute_arr[0].queue_index = hltests_get_dma_down_qid(fd, 0, 0);
+	execute_arr[0].queue_index = hltests_get_dma_down_qid(fd,
+							DCORE0, STREAM0);
 
 	execute_arr[1].cb_ptr = dma_cb[1];
 	execute_arr[1].cb_size = dma_cb_size[1];
-	execute_arr[1].queue_index = hltests_get_dma_dram_to_sram_qid(fd, 0, 0);
+	execute_arr[1].queue_index = hltests_get_dma_dram_to_sram_qid(fd,
+							DCORE0, STREAM0);
 
 	execute_arr[2].cb_ptr = dma_cb[2];
 	execute_arr[2].cb_size = dma_cb_size[2];
-	execute_arr[2].queue_index = hltests_get_dma_sram_to_dram_qid(fd, 0, 0);
+	execute_arr[2].queue_index = hltests_get_dma_sram_to_dram_qid(fd,
+							DCORE0, STREAM0);
 
 	execute_arr[3].cb_ptr = dma_cb[3];
 	execute_arr[3].cb_size = dma_cb_size[3];
-	execute_arr[3].queue_index = hltests_get_dma_up_qid(fd, 0, 0);
+	execute_arr[3].queue_index = hltests_get_dma_up_qid(fd,
+							DCORE0, STREAM0);
 
 	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 4, true, &seq);
 	assert_int_equal(rc, 0);

@@ -83,6 +83,18 @@ enum hl_tests_write_to_sob_mod {
 	SOB_ADD
 };
 
+enum hltests_dcore_id {
+	DCORE0 = 0,
+	DCORE1
+};
+
+enum hltests_stream_id {
+	STREAM0 = 0,
+	STREAM1,
+	STREAM2,
+	STREAM3
+};
+
 struct hltests_device {
 	const struct hltests_asic_funcs *asic_funcs;
 
@@ -185,14 +197,18 @@ struct hltests_asic_funcs {
 					struct hltests_pkt_info *pkt_info);
 	uint32_t (*add_cp_dma_pkt)(void *buffer, uint32_t buf_off,
 					struct hltests_pkt_info *pkt_info);
-	uint32_t (*get_dma_down_qid)(uint8_t dcore_id, uint8_t stream);
-	uint32_t (*get_dma_up_qid)(uint8_t dcore_id, uint8_t stream);
-	uint32_t (*get_dma_dram_to_sram_qid)(uint8_t dcore_id, uint8_t stream);
-	uint32_t (*get_dma_sram_to_dram_qid)(uint8_t dcore_id, uint8_t stream);
-	uint32_t (*get_tpc_qid)(uint8_t dcore_id, uint8_t tpc_id,
-				uint8_t stream);
-	uint32_t (*get_mme_qid)(uint8_t dcore_id, uint8_t mme_id,
-				uint8_t stream);
+	uint32_t (*get_dma_down_qid)(enum hltests_dcore_id dcore_id,
+					enum hltests_stream_id stream);
+	uint32_t (*get_dma_up_qid)(enum hltests_dcore_id dcore_id,
+					enum hltests_stream_id stream);
+	uint32_t (*get_dma_dram_to_sram_qid)(enum hltests_dcore_id dcore_id,
+					enum hltests_stream_id stream);
+	uint32_t (*get_dma_sram_to_dram_qid)(enum hltests_dcore_id dcore_id,
+					enum hltests_stream_id stream);
+	uint32_t (*get_tpc_qid)(enum hltests_dcore_id dcore_id, uint8_t tpc_id,
+					enum hltests_stream_id stream);
+	uint32_t (*get_mme_qid)(enum hltests_dcore_id dcore_id, uint8_t mme_id,
+					enum hltests_stream_id stream);
 	uint8_t (*get_tpc_cnt)(uint8_t dcore_id);
 	void (*dram_pool_init)(struct hltests_device *hdev);
 	void (*dram_pool_fini)(struct hltests_device *hdev);
@@ -341,16 +357,22 @@ uint32_t hltests_add_cp_dma_pkt(int fd, void *buffer, uint32_t buf_off,
 uint32_t hltests_add_monitor_and_fence(int fd, void *buffer, uint32_t buf_off,
 		struct hltests_monitor_and_fence *mon_and_fence_info);
 
-uint32_t hltests_get_dma_down_qid(int fd, uint8_t dcore_id, uint8_t stream);
-uint32_t hltests_get_dma_up_qid(int fd, uint8_t dcore_id, uint8_t stream);
-uint32_t hltests_get_dma_dram_to_sram_qid(int fd, uint8_t dcore_id,
-						uint8_t stream);
-uint32_t hltests_get_dma_sram_to_dram_qid(int fd, uint8_t dcore_id,
-						uint8_t stream);
-uint32_t hltests_get_tpc_qid(int fd, uint8_t dcore_id, uint8_t tpc_id,
-				uint8_t stream);
-uint32_t hltests_get_mme_qid(int fd, uint8_t dcore_id, uint8_t mme_id,
-				uint8_t stream);
+uint32_t hltests_get_dma_down_qid(int fd, enum hltests_dcore_id dcore_id,
+					enum hltests_stream_id stream);
+uint32_t hltests_get_dma_up_qid(int fd, enum hltests_dcore_id dcore_id,
+					enum hltests_stream_id stream);
+uint32_t hltests_get_dma_dram_to_sram_qid(int fd,
+					enum hltests_dcore_id dcore_id,
+					enum hltests_stream_id stream);
+uint32_t hltests_get_dma_sram_to_dram_qid(int fd,
+					enum hltests_dcore_id dcore_id,
+					enum hltests_stream_id stream);
+uint32_t hltests_get_tpc_qid(int fd, enum hltests_dcore_id dcore_id,
+					uint8_t tpc_id,
+					enum hltests_stream_id stream);
+uint32_t hltests_get_mme_qid(int fd, enum hltests_dcore_id dcore_id,
+					uint8_t mme_id,
+					enum hltests_stream_id stream);
 uint8_t hltests_get_tpc_cnt(int fd, uint8_t dcore_id);
 
 void goya_tests_set_asic_funcs(struct hltests_device *hdev);

@@ -339,34 +339,38 @@ static uint32_t goya_add_monitor_and_fence(void *buffer, uint32_t buf_off,
 	return buf_off;
 }
 
-static uint32_t goya_get_dma_down_qid(uint8_t decore_id, uint8_t stream)
+static uint32_t goya_get_dma_down_qid(enum hltests_dcore_id dcore_id,
+						enum hltests_stream_id stream)
 {
 	return GOYA_QUEUE_ID_DMA_1;
 }
 
-static uint32_t goya_get_dma_up_qid(uint8_t decore_id, uint8_t stream)
+static uint32_t goya_get_dma_up_qid(enum hltests_dcore_id dcore_id,
+						enum hltests_stream_id stream)
 {
 	return GOYA_QUEUE_ID_DMA_2;
 }
 
-static uint32_t goya_get_dma_dram_to_sram_qid(uint8_t decore_id, uint8_t stream)
+static uint32_t goya_get_dma_dram_to_sram_qid(enum hltests_dcore_id dcore_id,
+						enum hltests_stream_id stream)
 {
 	return GOYA_QUEUE_ID_DMA_3;
 }
 
-static uint32_t goya_get_dma_sram_to_dram_qid(uint8_t decore_id, uint8_t stream)
+static uint32_t goya_get_dma_sram_to_dram_qid(enum hltests_dcore_id dcore_id,
+						enum hltests_stream_id stream)
 {
 	return GOYA_QUEUE_ID_DMA_4;
 }
 
-static uint32_t goya_get_tpc_qid(uint8_t decore_id, uint8_t tpc_id,
-					uint8_t stream)
+static uint32_t goya_get_tpc_qid(enum hltests_dcore_id decore_id,
+				uint8_t tpc_id,	enum hltests_stream_id stream)
 {
 	return GOYA_QUEUE_ID_TPC0 + tpc_id;
 }
 
-static uint32_t goya_get_mme_qid(uint8_t decore_id, uint8_t mme_id,
-					uint8_t stream)
+static uint32_t goya_get_mme_qid(enum hltests_dcore_id decore_id,
+				uint8_t mme_id, enum hltests_stream_id stream)
 {
 	return GOYA_QUEUE_ID_MME;
 }

@@ -47,9 +47,9 @@ static void test_sm(void **state, bool is_tpc, bool is_wait)
 
 		assert_in_range(tpc_id, 0, hltests_get_tpc_cnt(fd, 0) - 1);
 
-		engine_qid = hltests_get_tpc_qid(fd, 0, tpc_id, 0);
+		engine_qid = hltests_get_tpc_qid(fd, DCORE0, tpc_id, STREAM0);
 	} else {
-		engine_qid = hltests_get_mme_qid(fd, 0, 0, 0);
+		engine_qid = hltests_get_mme_qid(fd, DCORE0, 0, STREAM0);
 	}
 
 	/* SRAM MAP (base + )
@@ -72,9 +72,10 @@ static void test_sm(void **state, bool is_tpc, bool is_wait)
 	dst_data_device_va = hltests_get_device_va_for_host_ptr(fd, dst_data);
 
 	/* DMA of data host->sram */
-	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, 0, 0), false,
-				true, src_data_device_va, device_data_address,
-				dma_size, GOYA_DMA_HOST_TO_SRAM);
+	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
+				false, true, src_data_device_va,
+				device_data_address, dma_size,
+				GOYA_DMA_HOST_TO_SRAM);
 
 	/* Create internal CB for the engine */
 	engine_cb = hltests_create_cb(fd, 64, false, cb_engine_address);
@@ -91,8 +92,8 @@ static void test_sm(void **state, bool is_tpc, bool is_wait)
 								0, &pkt_info);
 
 	/* DMA of cb engine host->sram */
-	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, 0, 0), 0, 1,
-				engine_cb_device_va, cb_engine_address,
+	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
+				0, 1, engine_cb_device_va, cb_engine_address,
 				engine_cb_size, GOYA_DMA_HOST_TO_SRAM);
 
 	/* Create CB for DMA that clears SOB 0 */
@@ -108,13 +109,15 @@ static void test_sm(void **state, bool is_tpc, bool is_wait)
 	offset = hltests_add_set_sob_pkt(fd, ext_cb, 0, &pkt_info);
 
 	hltests_submit_and_wait_cs(fd, ext_cb, offset,
-				hltests_get_dma_down_qid(fd, 0, 0), false);
+				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
+				false);
 
 	/* Create CB for DMA that waits on internal engine and then performs
 	 * a DMA down to the data address on the sram
 	 */
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
-	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd, 0, 0);
+	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd,
+							DCORE0, STREAM0);
 	mon_and_fence_info.cmdq_fence = false;
 	mon_and_fence_info.sob_id = 0;
 	mon_and_fence_info.mon_id = 0;
@@ -134,7 +137,8 @@ static void test_sm(void **state, bool is_tpc, bool is_wait)
 
 	execute_arr[0].cb_ptr = ext_cb;
 	execute_arr[0].cb_size = offset;
-	execute_arr[0].queue_index = hltests_get_dma_up_qid(fd, 0, 0);
+	execute_arr[0].queue_index = hltests_get_dma_up_qid(fd,
+							DCORE0, STREAM0);
 
 	execute_arr[1].cb_ptr = engine_cb;
 	execute_arr[1].cb_size = engine_cb_size;
@@ -200,9 +204,9 @@ static void test_sm_pingpong_qman(void **state, bool is_tpc)
 
 		assert_in_range(tpc_id, 0, hltests_get_tpc_cnt(fd, 0) - 1);
 
-		engine_qid = hltests_get_tpc_qid(fd, 0, tpc_id, 0);
+		engine_qid = hltests_get_tpc_qid(fd, DCORE0, tpc_id, STREAM0);
 	} else {
-		engine_qid = hltests_get_mme_qid(fd, 0, 0, 0);
+		engine_qid = hltests_get_mme_qid(fd, DCORE0, 0, STREAM0);
 	}
 
 	/* SRAM MAP (base + )
@@ -322,7 +326,8 @@ static void test_sm_pingpong_qman(void **state, bool is_tpc)
 	assert_ptr_not_equal(dmaup_cb, NULL);
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
 	mon_and_fence_info.dcore_id = 0;
-	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd, 0, 0);
+	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd,
+							DCORE0, STREAM0);
 	mon_and_fence_info.cmdq_fence = false;
 	mon_and_fence_info.sob_id = 8;
 	mon_and_fence_info.mon_id = 1;
@@ -344,11 +349,13 @@ static void test_sm_pingpong_qman(void **state, bool is_tpc)
 
 	restore_arr[0].cb_ptr = restore_cb;
 	restore_arr[0].cb_size = restore_cb_size;
-	restore_arr[0].queue_index = hltests_get_dma_down_qid(fd, 0, 0);
+	restore_arr[0].queue_index = hltests_get_dma_down_qid(fd,
+							DCORE0, STREAM0);
 
 	execute_arr[0].cb_ptr = dmaup_cb;
 	execute_arr[0].cb_size = dmaup_cb_size;
-	execute_arr[0].queue_index = hltests_get_dma_up_qid(fd, 0, 0);
+	execute_arr[0].queue_index = hltests_get_dma_up_qid(fd,
+							DCORE0, STREAM0);
 
 	execute_arr[1].cb_ptr = engine_cb;
 	execute_arr[1].cb_size = engine_cb_size;
@@ -356,7 +363,8 @@ static void test_sm_pingpong_qman(void **state, bool is_tpc)
 
 	execute_arr[2].cb_ptr = dmadown_cb;
 	execute_arr[2].cb_size = dmadown_cb_size;
-	execute_arr[2].queue_index = hltests_get_dma_down_qid(fd, 0, 0);
+	execute_arr[2].queue_index = hltests_get_dma_down_qid(fd,
+							DCORE0, STREAM0);
 
 	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 3, true, &seq);
 	assert_int_equal(rc, 0);

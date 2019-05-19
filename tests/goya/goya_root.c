@@ -62,7 +62,7 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 
 		assert_in_range(tpc_id, 0, hltests_get_tpc_cnt(fd, 0) - 1);
 
-		engine_qid = hltests_get_tpc_qid(fd, 0, tpc_id, 0);
+		engine_qid = hltests_get_tpc_qid(fd, DCORE0, tpc_id, STREAM0);
 	} else {
 		engine_qid = hltests_get_mme_qid(fd, 0, 0, 0);
 	}
@@ -121,7 +121,8 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
 	mon_and_fence_info.dcore_id = 0;
-	mon_and_fence_info.queue_id = hltests_get_dma_down_qid(fd, 0, 0);
+	mon_and_fence_info.queue_id = hltests_get_dma_down_qid(fd,
+							DCORE0, STREAM0);
 	mon_and_fence_info.cmdq_fence = false;
 	mon_and_fence_info.sob_id = 0;
 	mon_and_fence_info.mon_id = 0;
@@ -134,7 +135,8 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 	/* Submit CS and wait for completion */
 	restore_arr[0].cb_ptr = restore_cb;
 	restore_arr[0].cb_size = restore_cb_size;
-	restore_arr[0].queue_index = hltests_get_dma_down_qid(fd, 0, 0);
+	restore_arr[0].queue_index = hltests_get_dma_down_qid(fd,
+							DCORE0, STREAM0);
 
 	execute_arr[0].cb_ptr = engine_cb;
 	execute_arr[0].cb_size = engine_cb_size;
@@ -142,7 +144,8 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 
 	execute_arr[1].cb_ptr = dma_cb;
 	execute_arr[1].cb_size = dma_cb_size;
-	execute_arr[1].queue_index = hltests_get_dma_down_qid(fd, 0, 0);
+	execute_arr[1].queue_index = hltests_get_dma_down_qid(fd,
+							DCORE0, STREAM0);
 
 	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 2, true, &seq);
 	assert_int_equal(rc, 0);
@@ -207,7 +210,8 @@ void test_write_to_cfg_space(void **state)
 
 	execute_arr[0].cb_ptr = ptr;
 	execute_arr[0].cb_size = offset;
-	execute_arr[0].queue_index = hltests_get_dma_down_qid(fd, 0, 0);
+	execute_arr[0].queue_index = hltests_get_dma_down_qid(fd,
+							DCORE0, STREAM0);
 
 	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, false, &seq);
 	assert_int_equal(rc, 0);
@@ -259,7 +263,8 @@ void test_write_to_mmTPC_PLL_CLK_RLX_0_from_qman(void **state)
 	offset = hltests_add_msg_long_pkt(fd, ptr, offset, &pkt_info);
 
 	hltests_submit_and_wait_cs(fd, ptr, offset,
-				hltests_get_dma_down_qid(fd, 0, 0), true);
+				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
+				true);
 
 	val = hltests_debugfs_read(fd, CFG_BASE + mmTPC_PLL_CLK_RLX_0);
 	assert_int_equal(val, 0x400040);

@@ -43,7 +43,8 @@ void test_tdr_deadlock(void **state)
 
 	execute_arr[0].cb_ptr = ptr;
 	execute_arr[0].cb_size = offset;
-	execute_arr[0].queue_index = hltests_get_dma_down_qid(fd, 0, 0);
+	execute_arr[0].queue_index = hltests_get_dma_down_qid(fd,
+							DCORE0, STREAM0);
 
 	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, false, &seq);
 	assert_int_equal(rc, 0);
@@ -224,14 +225,16 @@ void test_dma_custom(void **state)
 
 	do {
 		/* DMA: host->device */
-		hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, 0, 0), 0,
+		hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd,
+					DCORE0, STREAM0), 0,
 					1, host_src_addr, device_addr + offset,
 					cfg.chunk_size, dma_dir_down);
 
 		/* DMA: device->host */
-		hltests_dma_transfer(fd, hltests_get_dma_up_qid(fd, 0, 0), 0, 1,
-					device_addr + offset, host_dst_addr,
-					cfg.chunk_size, dma_dir_up);
+		hltests_dma_transfer(fd, hltests_get_dma_up_qid(fd, DCORE0,
+					STREAM0), 0, 1,	device_addr + offset,
+					host_dst_addr, cfg.chunk_size,
+					dma_dir_up);
 
 		/* Compare host memories */
 		rc = hltests_mem_compare(src_ptr, dst_ptr, cfg.chunk_size);
