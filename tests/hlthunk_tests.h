@@ -145,11 +145,6 @@ struct hltests_pkt_info {
 			enum hl_tests_write_to_sob_mod mode;
 		} write_to_sob;
 		struct {
-			uint8_t dcore_id;
-			uint16_t sob_id;
-			uint32_t value;
-		} set_sob;
-		struct {
 			uint8_t dec_val;
 			uint8_t gate_val;
 			uint8_t fence_id;
@@ -190,8 +185,6 @@ struct hltests_asic_funcs {
 	uint32_t (*add_arm_monitor_pkt)(void *buffer, uint32_t buf_off,
 					struct hltests_pkt_info *pkt_info);
 	uint32_t (*add_write_to_sob_pkt)(void *buffer, uint32_t buf_off,
-					struct hltests_pkt_info *pkt_info);
-	uint32_t (*add_set_sob_pkt)(void *buffer, uint32_t buf_off,
 					struct hltests_pkt_info *pkt_info);
 	uint32_t (*add_fence_pkt)(void *buffer, uint32_t buf_off,
 					struct hltests_pkt_info *pkt_info);

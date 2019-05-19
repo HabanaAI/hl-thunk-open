@@ -1054,15 +1054,6 @@ uint32_t hltests_add_write_to_sob_pkt(int fd, void *buffer, uint32_t buf_off,
 	return asic->add_write_to_sob_pkt(buffer, buf_off, pkt_info);
 }
 
-uint32_t hltests_add_set_sob_pkt(int fd, void *buffer, uint32_t buf_off,
-					struct hltests_pkt_info *pkt_info)
-{
-	const struct hltests_asic_funcs *asic =
-			get_hdev_from_fd(fd)->asic_funcs;
-
-	return asic->add_set_sob_pkt(buffer, buf_off, pkt_info);
-}
-
 uint32_t hltests_add_fence_pkt(int fd, void *buffer, uint32_t buf_off,
 					struct hltests_pkt_info *pkt_info)
 {
@@ -1731,18 +1722,19 @@ void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_FALSE;
-	pkt_info.set_sob.dcore_id = 0;
-	pkt_info.set_sob.sob_id = 0;
-	pkt_info.set_sob.value = 0;
-	restore_cb_size = hltests_add_set_sob_pkt(fd, restore_cb,
+	pkt_info.write_to_sob.sob_id = 0;
+	pkt_info.write_to_sob.value = 0;
+	pkt_info.write_to_sob.mode = SOB_SET;
+	restore_cb_size = hltests_add_write_to_sob_pkt(fd, restore_cb,
 						restore_cb_size, &pkt_info);
+
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_TRUE;
-	pkt_info.set_sob.dcore_id = 0;
-	pkt_info.set_sob.sob_id = 8;
-	pkt_info.set_sob.value = 0;
-	restore_cb_size = hltests_add_set_sob_pkt(fd, restore_cb,
+	pkt_info.write_to_sob.sob_id = 8;
+	pkt_info.write_to_sob.value = 0;
+	pkt_info.write_to_sob.mode = SOB_SET;
+	restore_cb_size = hltests_add_write_to_sob_pkt(fd, restore_cb,
 						restore_cb_size, &pkt_info);
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
@@ -1878,17 +1870,17 @@ void hltests_clear_sobs(int fd, enum hltests_dcore_id dcore_id,
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_FALSE;
-	pkt_info.set_sob.dcore_id = dcore_id;
-	pkt_info.set_sob.value = 0;
+	pkt_info.write_to_sob.value = 0;
+	pkt_info.write_to_sob.mode = SOB_SET;
 	for (i = 0 ; i < num_of_sobs - 1 ; i++) {
-		pkt_info.set_sob.sob_id = i * 8;
-		cb_offset = hltests_add_set_sob_pkt(fd, cb, cb_offset,
+		pkt_info.write_to_sob.sob_id = i * 8;
+		cb_offset = hltests_add_write_to_sob_pkt(fd, cb, cb_offset,
 								&pkt_info);
 	}
 	/* only the last mb should be true */
 	pkt_info.mb = MB_TRUE;
-	pkt_info.set_sob.sob_id = i * 8;
-	cb_offset = hltests_add_set_sob_pkt(fd, cb, cb_offset, &pkt_info);
+	pkt_info.write_to_sob.sob_id = i * 8;
+	cb_offset = hltests_add_write_to_sob_pkt(fd, cb, cb_offset, &pkt_info);
 
 	hltests_submit_and_wait_cs(fd, cb, cb_offset,
 		hltests_get_dma_down_qid(fd, dcore_id, STREAM0), true);

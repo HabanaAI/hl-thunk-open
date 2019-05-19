@@ -108,26 +108,6 @@ static uint32_t goya_add_write_to_sob_pkt(void *buffer, uint32_t buf_off,
 							sizeof(packet));
 }
 
-static uint32_t goya_add_set_sob_pkt(void *buffer, uint32_t buf_off,
-					struct hltests_pkt_info *pkt_info)
-{
-	uint64_t address = CFG_BASE + mmSYNC_MNGR_SOB_OBJ_0 +
-					pkt_info->set_sob.sob_id * 4;
-
-	struct packet_msg_long packet;
-
-	memset(&packet, 0, sizeof(packet));
-	packet.opcode = PACKET_MSG_LONG;
-	packet.addr = address;
-	packet.value = pkt_info->set_sob.value;
-	packet.eng_barrier = pkt_info->eb;
-	packet.msg_barrier = pkt_info->mb;
-	packet.reg_barrier = 1;
-
-	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
-							sizeof(packet));
-}
-
 static uint32_t goya_add_fence_pkt(void *buffer, uint32_t buf_off,
 					struct hltests_pkt_info *pkt_info)
 {
@@ -409,7 +389,6 @@ static const struct hltests_asic_funcs goya_funcs = {
 	.add_msg_short_pkt = goya_add_msg_short_pkt,
 	.add_arm_monitor_pkt = goya_add_arm_monitor_pkt,
 	.add_write_to_sob_pkt = goya_add_write_to_sob_pkt,
-	.add_set_sob_pkt = goya_add_set_sob_pkt,
 	.add_fence_pkt = goya_add_fence_pkt,
 	.add_dma_pkt = goya_add_dma_pkt,
 	.add_cp_dma_pkt = goya_add_cp_dma_pkt,
