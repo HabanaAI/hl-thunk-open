@@ -22,7 +22,7 @@ void test_dma_4_queues(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
-	struct hltests_cs_chunk restore_arr[1], execute_arr[4];
+	struct hltests_cs_chunk execute_arr[4];
 	struct hltests_pkt_info pkt_info;
 	struct hltests_monitor_and_fence mon_and_fence_info;
 	void *host_src, *host_dst, *dram_addr[2], *restore_cb, *dma_cb[4];
@@ -43,11 +43,10 @@ void test_dma_4_queues(void **state)
 	 *   SOB0.
 	 * - Second DMA QMAN fences on SOB0, transfers data from DRAM to SRAM,
 	 *   and then signals SOB1.
-	 * - Third DMA QMAN fences on SOB1, transfers data from SRAM to DRAM,
+	 * - Third DMA QMAN fences on SOB8, transfers data from SRAM to DRAM,
 	 *   and then signals SOB2.
-	 * - Forth DMA QMAN fences on SOB2 and then transfers data from DRAM to
+	 * - Forth DMA QMAN fences on SOB16 and then transfers data from DRAM to
 	 *   host.
-	 * - Setup CB is used to clear SOB 0-2.
 	 */
 
 	dma_size = 128;
@@ -77,36 +76,9 @@ void test_dma_4_queues(void **state)
 	assert_int_equal(hw_ip.dram_enabled, 1);
 	sram_addr = hw_ip.sram_base_address + 0x1000;
 
-	/* Setup CB: clear SOB 0-2 */
-	restore_cb = hltests_create_cb(fd, page_size, true, 0);
-	assert_ptr_not_equal(restore_cb, NULL);
 
-	memset(&pkt_info, 0, sizeof(pkt_info));
-	pkt_info.eb = EB_FALSE;
-	pkt_info.mb = MB_FALSE;
-	pkt_info.write_to_sob.sob_id = 0;
-	pkt_info.write_to_sob.value = 0;
-	pkt_info.write_to_sob.mode = SOB_SET;
-	restore_cb_size = hltests_add_write_to_sob_pkt(fd, restore_cb,
-					restore_cb_size, &pkt_info);
-
-	memset(&pkt_info, 0, sizeof(pkt_info));
-	pkt_info.eb = EB_FALSE;
-	pkt_info.mb = MB_TRUE;
-	pkt_info.write_to_sob.sob_id = 8;
-	pkt_info.write_to_sob.value = 0;
-	pkt_info.write_to_sob.mode = SOB_SET;
-	restore_cb_size = hltests_add_write_to_sob_pkt(fd, restore_cb,
-					restore_cb_size, &pkt_info);
-
-	memset(&pkt_info, 0, sizeof(pkt_info));
-	pkt_info.eb = EB_FALSE;
-	pkt_info.mb = MB_TRUE;
-	pkt_info.write_to_sob.sob_id = 16;
-	pkt_info.write_to_sob.value = 0;
-	pkt_info.write_to_sob.mode = SOB_SET;
-	restore_cb_size = hltests_add_write_to_sob_pkt(fd, restore_cb,
-					restore_cb_size, &pkt_info);
+	/* Setup CB: clear SOB 0, 8, 16 */
+	hltests_clear_sobs(fd, DCORE0, 3);
 
 	/* CB for first DMA QMAN:
 	 * Transfer data from host to DRAM + signal SOB0.
@@ -210,7 +182,7 @@ void test_dma_4_queues(void **state)
 					dma_cb_size[2], &pkt_info);
 
 	/* CB for forth DMA QMAN:
-	 * Fence on SOB2 + transfer data from DRAM to host.
+	 * Fence on SOB16 + transfer data from DRAM to host.
 	 */
 	dma_cb[3] = hltests_create_cb(fd, page_size, true, 0);
 	assert_ptr_not_equal(dma_cb[3], NULL);
@@ -237,12 +209,6 @@ void test_dma_4_queues(void **state)
 	dma_cb_size[3] = hltests_add_dma_pkt(fd, dma_cb[3], dma_cb_size[3],
 					&pkt_info);
 
-	/* Submit CS and wait for completion */
-	restore_arr[0].cb_ptr = restore_cb;
-	restore_arr[0].cb_size = restore_cb_size;
-	restore_arr[0].queue_index = hltests_get_dma_down_qid(fd,
-							DCORE0, STREAM0);
-
 	execute_arr[0].cb_ptr = dma_cb[0];
 	execute_arr[0].cb_size = dma_cb_size[0];
 	execute_arr[0].queue_index = hltests_get_dma_down_qid(fd,
@@ -263,7 +229,7 @@ void test_dma_4_queues(void **state)
 	execute_arr[3].queue_index = hltests_get_dma_up_qid(fd,
 							DCORE0, STREAM0);
 
-	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 4, true, &seq);
+	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 4, true, &seq);
 	assert_int_equal(rc, 0);
 
 	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
@@ -278,9 +244,6 @@ void test_dma_4_queues(void **state)
 		rc = hltests_destroy_cb(fd, dma_cb[i]);
 		assert_int_equal(rc, 0);
 	}
-
-	rc = hltests_destroy_cb(fd, restore_cb);
-	assert_int_equal(rc, 0);
 
 	for (i = 0 ; i < 2 ; i++) {
 		rc = hltests_free_device_mem(fd, dram_addr[i]);

@@ -1719,23 +1719,8 @@ void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 	assert_ptr_not_equal(restore_cb, NULL);
 	restore_cb_size = 0;
 
-	memset(&pkt_info, 0, sizeof(pkt_info));
-	pkt_info.eb = EB_FALSE;
-	pkt_info.mb = MB_FALSE;
-	pkt_info.write_to_sob.sob_id = 0;
-	pkt_info.write_to_sob.value = 0;
-	pkt_info.write_to_sob.mode = SOB_SET;
-	restore_cb_size = hltests_add_write_to_sob_pkt(fd, restore_cb,
-						restore_cb_size, &pkt_info);
+	hltests_clear_sobs(fd, DCORE0, 2);
 
-	memset(&pkt_info, 0, sizeof(pkt_info));
-	pkt_info.eb = EB_FALSE;
-	pkt_info.mb = MB_TRUE;
-	pkt_info.write_to_sob.sob_id = 8;
-	pkt_info.write_to_sob.value = 0;
-	pkt_info.write_to_sob.mode = SOB_SET;
-	restore_cb_size = hltests_add_write_to_sob_pkt(fd, restore_cb,
-						restore_cb_size, &pkt_info);
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_TRUE;

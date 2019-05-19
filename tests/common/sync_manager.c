@@ -97,25 +97,15 @@ static void test_sm(void **state, bool is_tpc, bool is_wait)
 				cb_engine_address,
 				engine_cb_size, GOYA_DMA_HOST_TO_SRAM);
 
-	/* Create CB for DMA that clears SOB 0 */
-	ext_cb = hltests_create_cb(fd, getpagesize(), true, 0);
-	assert_ptr_not_equal(ext_cb, NULL);
-
-	memset(&pkt_info, 0, sizeof(pkt_info));
-	pkt_info.eb = EB_FALSE;
-	pkt_info.mb = MB_TRUE;
-	pkt_info.write_to_sob.sob_id = 0;
-	pkt_info.write_to_sob.value = 0;
-	pkt_info.write_to_sob.mode = SOB_SET;
-	offset = hltests_add_write_to_sob_pkt(fd, ext_cb, 0, &pkt_info);
-
-	hltests_submit_and_wait_cs(fd, ext_cb, offset,
-				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
-				false);
+	/* Clear SOB 0 */
+	hltests_clear_sobs(fd, DCORE0, 1);
 
 	/* Create CB for DMA that waits on internal engine and then performs
 	 * a DMA down to the data address on the sram
 	 */
+	ext_cb = hltests_create_cb(fd, getpagesize(), true, 0);
+	assert_ptr_not_equal(ext_cb, NULL);
+
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
 	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd,
 							DCORE0, STREAM0);
@@ -186,8 +176,8 @@ static void test_sm_pingpong_qman(void **state, bool is_tpc)
 	struct hlthunk_hw_ip_info hw_ip;
 	struct hltests_pkt_info pkt_info;
 	struct hltests_monitor_and_fence mon_and_fence_info;
-	uint32_t dma_size = 4, engine_cb_size, restore_cb_size, dmadown_cb_size,
-			dmaup_cb_size, i, err_cnt = 0;
+	uint32_t dma_size = 4, engine_cb_size, restore_cb_size = 0,
+			dmadown_cb_size, dmaup_cb_size, i, err_cnt = 0;
 	int rc, engine_qid, fd = tests_state->fd;
 	uint64_t seq;
 
@@ -263,29 +253,9 @@ static void test_sm_pingpong_qman(void **state, bool is_tpc)
 	engine_cb_size = hltests_add_write_to_sob_pkt(fd, engine_cb,
 						engine_cb_size, &pkt_info);
 
-	/* Create Setup CB that clears SOB 0 & 8, and copy the Engine's CB
-	 * to the SRAM
-	 */
+	hltests_clear_sobs(fd, DCORE0, 2);
 	restore_cb = hltests_create_cb(fd, getpagesize(), true, 0);
 	assert_ptr_not_equal(restore_cb, NULL);
-
-	memset(&pkt_info, 0, sizeof(pkt_info));
-	pkt_info.eb = EB_FALSE;
-	pkt_info.mb = MB_TRUE;
-	pkt_info.write_to_sob.sob_id = 0;
-	pkt_info.write_to_sob.value = 0;
-	pkt_info.write_to_sob.mode = SOB_SET;
-	restore_cb_size = hltests_add_write_to_sob_pkt(fd, restore_cb, 0,
-								&pkt_info);
-
-	memset(&pkt_info, 0, sizeof(pkt_info));
-	pkt_info.eb = EB_FALSE;
-	pkt_info.mb = MB_TRUE;
-	pkt_info.write_to_sob.sob_id = 8;
-	pkt_info.write_to_sob.value = 0;
-	pkt_info.write_to_sob.mode = SOB_SET;
-	restore_cb_size = hltests_add_write_to_sob_pkt(fd, restore_cb,
-					restore_cb_size, &pkt_info);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;

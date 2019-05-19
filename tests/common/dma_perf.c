@@ -256,16 +256,7 @@ static double indirect_transfer_perf_test(int fd, uint32_t queue_index,
 					num_of_transfers, size, sram_addr);
 
 	/* Clear SOB before we start */
-	cb = hltests_create_cb(fd, 0x1000, true, 0);
-	assert_non_null(cb);
-
-	memset(&pkt_info, 0, sizeof(pkt_info));
-	pkt_info.write_to_sob.sob_id = 0;
-	pkt_info.write_to_sob.value = 0;
-	pkt_info.write_to_sob.mode = SOB_SET;
-	cb_offset = hltests_add_write_to_sob_pkt(fd, cb, 0, &pkt_info);
-	hltests_submit_and_wait_cs(fd, cb, cb_offset,
-				hltests_get_dma_down_qid(fd, 0, 0), true);
+	hltests_clear_sobs(fd, DCORE0, 1);
 
 	/* Internal CB for CP_DMA */
 	cp_dma_cb = hltests_create_cb(fd, 0x20, false, sram_addr + 0x2000);
