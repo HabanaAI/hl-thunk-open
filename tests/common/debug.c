@@ -151,7 +151,7 @@ void test_dma_custom(void **state)
 	const char *config_filename = hltests_get_config_filename();
 	struct hlthunk_hw_ip_info hw_ip;
 	struct dma_custom_cfg cfg;
-	void *device_ptr, *src_ptr, *dst_ptr;
+	void *device_ptr = NULL, *src_ptr, *dst_ptr;
 	uint64_t device_addr, host_src_addr, host_dst_addr, offset = 0;
 	uint32_t dma_dir_down, dma_dir_up;
 	bool is_huge;
@@ -186,23 +186,33 @@ void test_dma_custom(void **state)
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
-	assert_int_equal(cfg.dma_dir, GOYA_DMA_HOST_TO_DRAM);
 	assert_int_equal(hw_ip.dram_enabled, 1);
 	assert_int_not_equal(cfg.size, 0);
 	assert_in_range(cfg.chunk_size, 1, UINT_MAX);
 
-	dma_dir_down = GOYA_DMA_HOST_TO_DRAM;
-	dma_dir_up = GOYA_DMA_DRAM_TO_HOST;
+	dma_dir_down = cfg.dma_dir;
+	switch (cfg.dma_dir) {
+	case GOYA_DMA_HOST_TO_DRAM:
+		dma_dir_up = GOYA_DMA_DRAM_TO_HOST;
+		device_ptr = hltests_allocate_device_mem(fd,
+						hw_ip.dram_size, true);
+		assert_non_null(device_ptr);
+		device_addr = (uint64_t) (uintptr_t) device_ptr;
+		device_addr += (cfg.dst_addr - hw_ip.dram_base_address);
+		break;
+	case GOYA_DMA_HOST_TO_SRAM:
+		dma_dir_up = GOYA_DMA_SRAM_TO_HOST;
+		device_addr = cfg.dst_addr;
+		break;
+	default:
+		fail_msg("Test doesn't support DMA direction\n");
+		return;
+	}
 
 	if (cfg.chunk_size > cfg.size)
 		cfg.chunk_size = cfg.size;
 
 	is_huge = cfg.chunk_size > 32 * 1024;
-
-	device_ptr = hltests_allocate_device_mem(fd, hw_ip.dram_size, true);
-	assert_non_null(device_ptr);
-	device_addr = (uint64_t) (uintptr_t) device_ptr;
-	device_addr += (cfg.dst_addr - hw_ip.dram_base_address);
 
 	src_ptr = hltests_allocate_host_mem(fd, cfg.chunk_size, is_huge);
 	assert_non_null(src_ptr);
@@ -261,8 +271,10 @@ void test_dma_custom(void **state)
 	rc = hltests_free_host_mem(fd, src_ptr);
 	assert_int_equal(rc, 0);
 
-	rc = hltests_free_device_mem(fd, device_ptr);
-	assert_int_equal(rc, 0);
+	if (device_ptr) {
+		rc = hltests_free_device_mem(fd, device_ptr);
+		assert_int_equal(rc, 0);
+	}
 }
 
 const struct CMUnitTest debug_tests[] = {
