@@ -1884,13 +1884,13 @@ void hltests_clear_sobs(int fd, enum hltests_dcore_id dcore_id,
 	pkt_info.write_to_sob.value = 0;
 	pkt_info.write_to_sob.mode = SOB_SET;
 	for (i = 0 ; i < num_of_sobs - 1 ; i++) {
-		pkt_info.write_to_sob.sob_id = i * 8;
+		pkt_info.write_to_sob.sob_id = i;
 		cb_offset = hltests_add_write_to_sob_pkt(fd, cb, cb_offset,
 								&pkt_info);
 	}
 	/* only the last mb should be true */
 	pkt_info.mb = MB_TRUE;
-	pkt_info.write_to_sob.sob_id = i * 8;
+	pkt_info.write_to_sob.sob_id = i;
 	cb_offset = hltests_add_write_to_sob_pkt(fd, cb, cb_offset, &pkt_info);
 
 	hltests_submit_and_wait_cs(fd, cb, cb_offset,
