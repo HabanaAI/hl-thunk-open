@@ -244,7 +244,7 @@ static void test_dma_threads(void **state, uint32_t num_of_threads)
 
 	hltests_submit_and_wait_cs(fd, cb, cb_size,
 				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
-				true);
+				true, HL_WAIT_CS_STATUS_COMPLETED);
 
 	/* Create and execute threads */
 	for (i = 0 ; i < num_of_threads ; i++) {
@@ -368,20 +368,9 @@ void test_dma_entire_dram_random(void **state)
 		cb_size = hltests_add_dma_pkt(fd, cb, cb_size, &pkt_info);
 	}
 
-	execute_arr[0].cb_ptr = cb;
-	execute_arr[0].cb_size = cb_size;
-	execute_arr[0].queue_index = hltests_get_dma_down_qid(fd,
-							DCORE0, STREAM0);
-
-	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, true, &seq);
-	assert_int_equal(rc, 0);
-
-	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
-	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
-
-	rc = hltests_destroy_cb(fd, cb);
-	assert_int_equal(rc, 0);
-
+	hltests_submit_and_wait_cs(fd, cb, cb_size,
+				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
+				true, HL_WAIT_CS_STATUS_COMPLETED);
 	cb_size = 0;
 
 	/* DMA up */
@@ -400,19 +389,9 @@ void test_dma_entire_dram_random(void **state)
 		cb_size = hltests_add_dma_pkt(fd, cb, cb_size, &pkt_info);
 	}
 
-	execute_arr[0].cb_ptr = cb;
-	execute_arr[0].cb_size = cb_size;
-	execute_arr[0].queue_index = hltests_get_dma_up_qid(fd,
-							DCORE0, STREAM0);
-
-	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, true, &seq);
-	assert_int_equal(rc, 0);
-
-	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
-	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
-
-	rc = hltests_destroy_cb(fd, cb);
-	assert_int_equal(rc, 0);
+	hltests_submit_and_wait_cs(fd, cb, cb_size,
+				hltests_get_dma_up_qid(fd, DCORE0, STREAM0),
+				true, HL_WAIT_CS_STATUS_COMPLETED);
 
 	cb_size = 0;
 

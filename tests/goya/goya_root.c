@@ -207,15 +207,9 @@ void test_write_to_cfg_space(void **state)
 	execute_arr[0].cb_size = offset;
 	execute_arr[0].queue_index = hltests_get_dma_down_qid(fd,
 							DCORE0, STREAM0);
-
-	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, false, &seq);
-	assert_int_equal(rc, 0);
-
-	rc = hltests_wait_for_cs(fd, seq, WAIT_FOR_CS_DEFAULT_TIMEOUT);
-	assert_int_equal(rc, HL_WAIT_CS_STATUS_BUSY);
-
-	rc = hltests_destroy_cb(fd, ptr);
-	assert_int_equal(rc, 0);
+	hltests_submit_and_wait_cs(fd, ptr, offset,
+				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
+				true, HL_WAIT_CS_STATUS_TIMEDOUT);
 
 	val = hltests_debugfs_read(fd, cfg_address);
 	assert_int_not_equal(val, 0xbaba0ded);
@@ -259,7 +253,7 @@ void test_write_to_mmTPC_PLL_CLK_RLX_0_from_qman(void **state)
 
 	hltests_submit_and_wait_cs(fd, ptr, offset,
 				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
-				true);
+				true, HL_WAIT_CS_STATUS_COMPLETED);
 
 	val = hltests_debugfs_read(fd, CFG_BASE + mmTPC_PLL_CLK_RLX_0);
 	assert_int_equal(val, 0x400040);

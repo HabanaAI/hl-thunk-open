@@ -1016,7 +1016,7 @@ int hltests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us)
 	int rc;
 
 	rc = hlthunk_wait_for_cs(fd, seq, timeout_us, &status);
-	if (rc)
+	if (rc && errno != ETIMEDOUT && errno != EIO)
 		return rc;
 
 	return status;
@@ -1255,7 +1255,8 @@ void hltests_dma_transfer(int fd, uint32_t queue_index, enum hltests_eb eb,
 	pkt_info.dma.dma_dir = dma_dir;
 	offset = hltests_add_dma_pkt(fd, ptr, offset, &pkt_info);
 
-	hltests_submit_and_wait_cs(fd, ptr, offset, queue_index, true);
+	hltests_submit_and_wait_cs(fd, ptr, offset, queue_index,
+					true, HL_WAIT_CS_STATUS_COMPLETED);
 }
 
 int hltests_dma_test(void **state, bool is_ddr, uint64_t size)
@@ -1340,7 +1341,8 @@ int hltests_dma_test(void **state, bool is_ddr, uint64_t size)
  * @return void
  */
 void hltests_submit_and_wait_cs(int fd, void *cb_ptr, uint32_t cb_size,
-				uint32_t queue_index, bool destroy_cb)
+				uint32_t queue_index, bool destroy_cb,
+				int expected_val)
 {
 	struct hltests_cs_chunk execute_arr[1];
 	uint64_t seq = 0;
@@ -1354,7 +1356,7 @@ void hltests_submit_and_wait_cs(int fd, void *cb_ptr, uint32_t cb_size,
 	assert_int_equal(rc, 0);
 
 	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
-	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
+	assert_int_equal(rc, expected_val);
 
 	if (destroy_cb) {
 		rc = hltests_destroy_cb(fd, cb_ptr);
@@ -1894,6 +1896,7 @@ void hltests_clear_sobs(int fd, enum hltests_dcore_id dcore_id,
 	cb_offset = hltests_add_write_to_sob_pkt(fd, cb, cb_offset, &pkt_info);
 
 	hltests_submit_and_wait_cs(fd, cb, cb_offset,
-		hltests_get_dma_down_qid(fd, dcore_id, STREAM0), true);
+		hltests_get_dma_down_qid(fd, dcore_id, STREAM0),
+		true, HL_WAIT_CS_STATUS_COMPLETED);
 
 }

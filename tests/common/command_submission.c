@@ -33,7 +33,7 @@ void test_cs_nop(void **state)
 
 	hltests_submit_and_wait_cs(fd, ptr, offset,
 				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
-				true);
+				true, HL_WAIT_CS_STATUS_COMPLETED);
 }
 
 void test_cs_msg_long(void **state)
@@ -61,7 +61,7 @@ void test_cs_msg_long(void **state)
 
 	hltests_submit_and_wait_cs(fd, ptr, offset,
 				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
-				true);
+				true, HL_WAIT_CS_STATUS_COMPLETED);
 }
 
 #define NUM_OF_MSGS	2000
@@ -94,7 +94,7 @@ void test_cs_msg_long_2000(void **state)
 
 	hltests_submit_and_wait_cs(fd, ptr, offset,
 				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
-				true);
+				true, HL_WAIT_CS_STATUS_COMPLETED);
 }
 
 const struct CMUnitTest cs_tests[] = {

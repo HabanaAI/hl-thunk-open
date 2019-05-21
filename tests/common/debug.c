@@ -41,16 +41,9 @@ void test_tdr_deadlock(void **state)
 	pkt_info.fence.fence_id = 0;
 	offset = hltests_add_fence_pkt(fd, ptr, offset, &pkt_info);
 
-	execute_arr[0].cb_ptr = ptr;
-	execute_arr[0].cb_size = offset;
-	execute_arr[0].queue_index = hltests_get_dma_down_qid(fd,
-							DCORE0, STREAM0);
-
-	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, false, &seq);
-	assert_int_equal(rc, 0);
-
-	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
-	assert_int_not_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
+	hltests_submit_and_wait_cs(fd, ptr, offset,
+				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
+				false, HL_WAIT_CS_STATUS_TIMEDOUT);
 
 	/* no need to destroy the CB because the device is in reset */
 }
