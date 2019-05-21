@@ -108,6 +108,7 @@ struct dma_custom_cfg {
 	uint64_t size;
 	uint32_t chunk_size;
 	uint32_t value;
+	uint32_t read_cnt;
 	bool sequential;
 	bool random;
 };
@@ -138,6 +139,8 @@ static int dma_custom_parsing_handler(void *user, const char *section,
 	} else if (MATCH("dma_custom_test", "value")) {
 		cfg->value = strtoul(value, NULL, 0);
 		cfg->random = false;
+	} else if (MATCH("dma_custom_test", "read_cnt")) {
+		cfg->read_cnt = strtoul(value, NULL, 0);
 	} else {
 		return 0; /* unknown section/name, error */
 	}
@@ -153,14 +156,15 @@ void test_dma_custom(void **state)
 	struct dma_custom_cfg cfg;
 	void *device_ptr = NULL, *src_ptr, *dst_ptr;
 	uint64_t device_addr, host_src_addr, host_dst_addr, offset = 0;
-	uint32_t dma_dir_down, dma_dir_up;
-	bool is_huge;
+	uint32_t dma_dir_down, dma_dir_up, read_cnt;
+	bool is_huge, is_error;
 	int i, rc, fd = tests_state->fd;
 
 	if (!config_filename)
 		fail_msg("User didn't supply a configuration file name!\n");
 
 	cfg.random = true;
+	cfg.read_cnt = 1;
 
 	if (ini_parse(config_filename, dma_custom_parsing_handler, &cfg) < 0)
 		fail_msg("Can't load %s\n", config_filename);
@@ -241,15 +245,24 @@ void test_dma_custom(void **state)
 					cfg.chunk_size, dma_dir_down);
 
 		/* DMA: device->host */
-		hltests_dma_transfer(fd, hltests_get_dma_up_qid(fd, DCORE0,
-					STREAM0), EB_FALSE, MB_TRUE,
-					device_addr + offset,
-					host_dst_addr, cfg.chunk_size,
-					dma_dir_up);
+		is_error = false;
 
-		/* Compare host memories */
-		rc = hltests_mem_compare(src_ptr, dst_ptr, cfg.chunk_size);
-		assert_int_equal(rc, 0);
+		for (read_cnt = 0 ; read_cnt < cfg.read_cnt ; read_cnt++) {
+			hltests_dma_transfer(fd,
+				hltests_get_dma_up_qid(fd, DCORE0, STREAM0),
+				EB_FALSE, MB_TRUE, device_addr + offset,
+				host_dst_addr, cfg.chunk_size, dma_dir_up);
+
+			/* Compare host memories */
+			rc = hltests_mem_compare(src_ptr, dst_ptr,
+							cfg.chunk_size);
+			if (rc) {
+				printf("Failed comparison, read iteration %d\n",
+					read_cnt);
+				is_error = true;
+			}
+		}
+		assert_int_equal(is_error, false);
 
 		printf("Finished section 0x%lx - 0x%lx\n", device_addr + offset,
 			device_addr + offset + cfg.chunk_size);
