@@ -283,6 +283,46 @@ void test_dma_custom(void **state)
 	}
 }
 
+static void test_transfer_bigger_than_alloc(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	void *device_ptr, *src_ptr, *ptr;
+	struct hltests_pkt_info pkt_info;
+	uint64_t device_addr, host_src_addr, seq = 0;
+	uint64_t device_alloc_size = 2 * 1024 * 1024; /* 2MB */
+	uint64_t host_alloc_size = 8;
+	uint64_t transfer_size = 5000;
+	uint32_t offset = 0;
+	struct hltests_cs_chunk execute_arr[1];
+	int rc, fd = tests_state->fd;
+
+	device_ptr = hltests_allocate_device_mem(fd, device_alloc_size, true);
+	assert_non_null(device_ptr);
+	device_addr = (uint64_t) (uintptr_t) device_ptr;
+
+	src_ptr = hltests_allocate_host_mem(fd, host_alloc_size, false);
+	assert_non_null(src_ptr);
+	host_src_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
+
+	ptr = hltests_create_cb(fd, getpagesize(), true, 0);
+	assert_ptr_not_equal(ptr, NULL);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.dma.src_addr = host_src_addr;
+	pkt_info.dma.dst_addr = device_addr;
+	pkt_info.dma.size = transfer_size;
+	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_DRAM;
+	offset = hltests_add_dma_pkt(fd, ptr, offset, &pkt_info);
+
+	hltests_submit_and_wait_cs(fd, ptr, offset,
+				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
+				false, HL_WAIT_CS_STATUS_TIMEDOUT);
+
+	/* no need to clean up because the device is in reset */
+}
+
 const struct CMUnitTest debug_tests[] = {
 	cmocka_unit_test_setup(test_tdr_deadlock,
 				hltests_ensure_device_operational),
@@ -291,6 +331,8 @@ const struct CMUnitTest debug_tests[] = {
 	cmocka_unit_test_setup(test_print_hw_ip_info,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_dma_custom,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_transfer_bigger_than_alloc,
 				hltests_ensure_device_operational)
 };
 
