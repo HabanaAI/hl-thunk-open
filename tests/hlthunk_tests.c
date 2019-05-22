@@ -1649,9 +1649,9 @@ void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 	 * - Engine QMAN process CP_DMA packet and transfer internal CB to CMDQ.
 	 * - Engine CMDQ fences on SOB0, processes NOP packet, and then signals
 	 *   SOB8.
-	 * - Second DMA QMAN fences on SOB8 and then transfers data from SRAM to
+	 * - Second DMA QMAN fences on SOB1 and then transfers data from SRAM to
 	 *   host.
-	 * - Setup CB is used to clear SOB 0, 8 and to DMA the internal CBs to
+	 * - Setup CB is used to clear SOB 0, 1 and to DMA the internal CBs to
 	 *   SRAM.
 	 */
 
@@ -1694,7 +1694,7 @@ void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 	memset(host_dst, 0, dma_size);
 	host_dst_device_va = hltests_get_device_va_for_host_ptr(fd, host_dst);
 
-	/* Internal CB for engine CMDQ: fence on SOB0 + NOP + signal SOB8 */
+	/* Internal CB for engine CMDQ: fence on SOB0 + NOP + signal SOB1 */
 	engine_cmdq_cb = hltests_create_cb(fd, page_size, false,
 						engine_cmdq_cb_sram_addr);
 	assert_ptr_not_equal(engine_cmdq_cb, NULL);
@@ -1720,7 +1720,7 @@ void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_FALSE;
-	pkt_info.write_to_sob.sob_id = 8;
+	pkt_info.write_to_sob.sob_id = 1;
 	pkt_info.write_to_sob.value = 1;
 	pkt_info.write_to_sob.mode = SOB_ADD;
 	engine_cmdq_cb_size = hltests_add_write_to_sob_pkt(fd, engine_cmdq_cb,
@@ -1742,7 +1742,7 @@ void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 	engine_qman_cb_size = hltests_add_cp_dma_pkt(fd, engine_qman_cb,
 						engine_qman_cb_size, &pkt_info);
 
-	/* Setup CB: Clear SOB 0, 8 + DMA the internal CBs to SRAM */
+	/* Setup CB: Clear SOB 0-1 + DMA the internal CBs to SRAM */
 	restore_cb =  hltests_create_cb(fd, page_size, true, 0);
 	assert_ptr_not_equal(restore_cb, NULL);
 	restore_cb_size = 0;
@@ -1794,7 +1794,7 @@ void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 						dmadown_cb_size, &pkt_info);
 
 	/* CB for second DMA QMAN:
-	 * Fence on SOB8 + transfer data from SRAM to host.
+	 * Fence on SOB1 + transfer data from SRAM to host.
 	 */
 	dmaup_cb = hltests_create_cb(fd, page_size, true, 0);
 	assert_ptr_not_equal(dmaup_cb, NULL);
@@ -1804,7 +1804,7 @@ void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd,
 							DCORE0, STREAM0);
 	mon_and_fence_info.cmdq_fence = false;
-	mon_and_fence_info.sob_id = 8;
+	mon_and_fence_info.sob_id = 1;
 	mon_and_fence_info.mon_id = 1;
 	mon_and_fence_info.mon_address = 0;
 	mon_and_fence_info.target_val = 1;

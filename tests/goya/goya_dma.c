@@ -77,7 +77,7 @@ void test_dma_4_queues(void **state)
 	sram_addr = hw_ip.sram_base_address + 0x1000;
 
 
-	/* Setup CB: clear SOB 0, 8, 16 */
+	/* Setup CB: clear SOB 0-2 */
 	hltests_clear_sobs(fd, DCORE0, 3);
 
 	/* CB for first DMA QMAN:
@@ -137,7 +137,7 @@ void test_dma_4_queues(void **state)
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_TRUE;
 	pkt_info.mb = MB_FALSE;
-	pkt_info.write_to_sob.sob_id = 8;
+	pkt_info.write_to_sob.sob_id = 1;
 	pkt_info.write_to_sob.value = 1;
 	pkt_info.write_to_sob.mode = SOB_ADD;
 	dma_cb_size[1] = hltests_add_write_to_sob_pkt(fd, dma_cb[1],
@@ -154,7 +154,7 @@ void test_dma_4_queues(void **state)
 	mon_and_fence_info.queue_id = hltests_get_dma_sram_to_dram_qid(fd,
 							DCORE0, STREAM0);
 	mon_and_fence_info.cmdq_fence = false;
-	mon_and_fence_info.sob_id = 8;
+	mon_and_fence_info.sob_id = 1;
 	mon_and_fence_info.mon_id = 1;
 	mon_and_fence_info.mon_address = 0;
 	mon_and_fence_info.target_val = 1;
@@ -175,14 +175,14 @@ void test_dma_4_queues(void **state)
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_TRUE;
 	pkt_info.mb = MB_FALSE;
-	pkt_info.write_to_sob.sob_id = 16;
+	pkt_info.write_to_sob.sob_id = 2;
 	pkt_info.write_to_sob.value = 1;
 	pkt_info.write_to_sob.mode = SOB_ADD;
 	dma_cb_size[2] = hltests_add_write_to_sob_pkt(fd, dma_cb[2],
 					dma_cb_size[2], &pkt_info);
 
 	/* CB for forth DMA QMAN:
-	 * Fence on SOB16 + transfer data from DRAM to host.
+	 * Fence on SOB2 + transfer data from DRAM to host.
 	 */
 	dma_cb[3] = hltests_create_cb(fd, page_size, true, 0);
 	assert_ptr_not_equal(dma_cb[3], NULL);
@@ -191,7 +191,7 @@ void test_dma_4_queues(void **state)
 	mon_and_fence_info.dcore_id = 0;
 	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd, 0, 0);
 	mon_and_fence_info.cmdq_fence = false;
-	mon_and_fence_info.sob_id = 16;
+	mon_and_fence_info.sob_id = 2;
 	mon_and_fence_info.mon_id = 2;
 	mon_and_fence_info.mon_address = 0;
 	mon_and_fence_info.target_val = 1;

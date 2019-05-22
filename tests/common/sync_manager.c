@@ -227,7 +227,7 @@ static void test_sm_pingpong_qman(void **state, bool is_tpc)
 	dst_data_device_va = hltests_get_device_va_for_host_ptr(fd, dst_data);
 
 	/* Create internal CB for the engine. It will fence on SOB0 and signal
-	 * SOB8
+	 * SOB1
 	 */
 	engine_cb = hltests_create_cb(fd, 512, false, engine_cb_sram_addr);
 	assert_ptr_not_equal(engine_cb, NULL);
@@ -247,7 +247,7 @@ static void test_sm_pingpong_qman(void **state, bool is_tpc)
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_TRUE;
-	pkt_info.write_to_sob.sob_id = 8;
+	pkt_info.write_to_sob.sob_id = 1;
 	pkt_info.write_to_sob.value = 1;
 	pkt_info.write_to_sob.mode = SOB_ADD;
 	engine_cb_size = hltests_add_write_to_sob_pkt(fd, engine_cb,
@@ -301,7 +301,7 @@ static void test_sm_pingpong_qman(void **state, bool is_tpc)
 	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd,
 							DCORE0, STREAM0);
 	mon_and_fence_info.cmdq_fence = false;
-	mon_and_fence_info.sob_id = 8;
+	mon_and_fence_info.sob_id = 1;
 	mon_and_fence_info.mon_id = 1;
 	mon_and_fence_info.mon_address = 0;
 	mon_and_fence_info.target_val = 1;
