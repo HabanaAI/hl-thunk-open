@@ -335,13 +335,11 @@ hlthunk_public int hlthunk_wait_for_cs(int fd, uint64_t seq,
 	hl_in->timeout_us = timeout_us;
 
 	rc = hlthunk_ioctl(fd, HL_IOCTL_WAIT_CS, &args);
-	if (rc)
-		return rc;
 
 	hl_out = &args.out;
 	*status = hl_out->status;
 
-	return 0;
+	return rc;
 }
 
 hlthunk_public enum hl_pci_ids hlthunk_get_device_id_from_fd(int fd)
