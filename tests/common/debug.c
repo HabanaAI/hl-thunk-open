@@ -102,6 +102,7 @@ struct dma_custom_cfg {
 	uint32_t chunk_size;
 	uint32_t value;
 	uint32_t read_cnt;
+	uint32_t write_cnt;
 	bool sequential;
 	bool random;
 };
@@ -134,6 +135,8 @@ static int dma_custom_parsing_handler(void *user, const char *section,
 		cfg->random = false;
 	} else if (MATCH("dma_custom_test", "read_cnt")) {
 		cfg->read_cnt = strtoul(value, NULL, 0);
+	} else if (MATCH("dma_custom_test", "write_cnt")) {
+		cfg->write_cnt = strtoul(value, NULL, 0);
 	} else {
 		return 0; /* unknown section/name, error */
 	}
@@ -149,7 +152,7 @@ void test_dma_custom(void **state)
 	struct dma_custom_cfg cfg;
 	void *device_ptr = NULL, *src_ptr, *dst_ptr;
 	uint64_t device_addr, host_src_addr, host_dst_addr, offset = 0;
-	uint32_t dma_dir_down, dma_dir_up, read_cnt;
+	uint32_t dma_dir_down, dma_dir_up, read_cnt, write_cnt;
 	bool is_huge, is_error;
 	int i, rc, fd = tests_state->fd;
 
@@ -158,6 +161,7 @@ void test_dma_custom(void **state)
 
 	cfg.random = true;
 	cfg.read_cnt = 1;
+	cfg.write_cnt = 1;
 
 	if (ini_parse(config_filename, dma_custom_parsing_handler, &cfg) < 0)
 		fail_msg("Can't load %s\n", config_filename);
@@ -215,12 +219,10 @@ void test_dma_custom(void **state)
 	assert_non_null(src_ptr);
 	host_src_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
 
-	if (cfg.random) {
-		hltests_fill_rand_values(src_ptr, cfg.chunk_size);
-	} else if (cfg.sequential) {
+	if (cfg.sequential) {
 		for (i = 0 ; i < (cfg.chunk_size / 4) ; i++)
 			((uint32_t *) src_ptr)[i] = i;
-	} else {
+	} else if (!cfg.random) {
 		for (i = 0 ; i < (cfg.chunk_size / 4) ; i++)
 			((uint32_t *) src_ptr)[i] = cfg.value;
 	}
@@ -232,10 +234,15 @@ void test_dma_custom(void **state)
 
 	do {
 		/* DMA: host->device */
-		hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd,
+		for (write_cnt = 0 ; write_cnt < cfg.write_cnt ; write_cnt++) {
+			if (cfg.random)
+				hltests_fill_rand_values(src_ptr,
+							cfg.chunk_size);
+			hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd,
 					DCORE0, STREAM0), EB_FALSE, MB_TRUE,
 					host_src_addr, device_addr + offset,
 					cfg.chunk_size, dma_dir_down);
+		}
 
 		/* DMA: device->host */
 		is_error = false;
