@@ -531,7 +531,7 @@ static void *allocate_huge_mem(uint64_t size)
  * @param huge whether to use huge pages for the memory allocation
  * @return pointer to the host memory. NULL is returned upon failure
  */
-void *hltests_allocate_host_mem(int fd, uint64_t size, bool huge)
+void *hltests_allocate_host_mem(int fd, uint64_t size, enum hltests_huge huge)
 {
 	struct hltests_device *hdev;
 	struct hltests_memory *mem;
@@ -597,7 +597,8 @@ free_mem_struct:
  * @return pointer to the device memory. This pointer can NOT be dereferenced
  * directly from the host. NULL is returned upon failure
  */
-void *hltests_allocate_device_mem(int fd, uint64_t size, bool contiguous)
+void *hltests_allocate_device_mem(int fd, uint64_t size,
+				enum hltests_contiguous contiguous)
 {
 	const struct hltests_asic_funcs *asic;
 	struct hltests_device *hdev;
@@ -803,7 +804,8 @@ uint64_t hltests_get_device_va_for_host_ptr(int fd, void *vaddr)
  * @return virtual address of the CB in the user process VA space, or NULL for
  *         failure
  */
-void *hltests_create_cb(int fd, uint32_t cb_size, bool is_external,
+void *hltests_create_cb(int fd, uint32_t cb_size,
+				enum hltests_is_external is_external,
 				uint64_t cb_internal_sram_address)
 {
 	struct hltests_device *hdev;
@@ -832,7 +834,7 @@ void *hltests_create_cb(int fd, uint32_t cb_size, bool is_external,
 		if (cb->ptr == MAP_FAILED)
 			goto destroy_cb;
 	} else {
-		cb->ptr = hltests_allocate_host_mem(fd, cb_size, false);
+		cb->ptr = hltests_allocate_host_mem(fd, cb_size, NOT_HUGE);
 		if (!cb->ptr)
 			goto free_cb;
 		cb->cb_handle = cb_internal_sram_address;
@@ -928,7 +930,7 @@ int hltests_submit_cs(int fd,
 		uint32_t restore_arr_size,
 		struct hltests_cs_chunk *execute_arr,
 		uint32_t execute_arr_size,
-		bool force_restore,
+		enum hltests_force_restore force_restore,
 		uint64_t *seq)
 {
 	struct hltests_device *hdev;
@@ -1243,7 +1245,7 @@ void hltests_dma_transfer(int fd, uint32_t queue_index, enum hltests_eb eb,
 	void *ptr;
 	struct hltests_pkt_info pkt_info;
 
-	ptr = hltests_create_cb(fd, getpagesize(), true, 0);
+	ptr = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
 	assert_ptr_not_equal(ptr, NULL);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
@@ -1256,7 +1258,7 @@ void hltests_dma_transfer(int fd, uint32_t queue_index, enum hltests_eb eb,
 	offset = hltests_add_dma_pkt(fd, ptr, offset, &pkt_info);
 
 	hltests_submit_and_wait_cs(fd, ptr, offset, queue_index,
-					true, HL_WAIT_CS_STATUS_COMPLETED);
+				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
 }
 
 int hltests_dma_test(void **state, bool is_ddr, uint64_t size)
@@ -1277,7 +1279,8 @@ int hltests_dma_test(void **state, bool is_ddr, uint64_t size)
 		assert_int_equal(hw_ip.dram_enabled, 1);
 		assert_in_range(size, 1, hw_ip.dram_size);
 
-		device_addr = hltests_allocate_device_mem(fd, size, false);
+		device_addr = hltests_allocate_device_mem(fd, size,
+								NOT_CONTIGOUS);
 		assert_non_null(device_addr);
 
 		dma_dir_down = GOYA_DMA_HOST_TO_DRAM;
@@ -1341,7 +1344,8 @@ int hltests_dma_test(void **state, bool is_ddr, uint64_t size)
  * @return void
  */
 void hltests_submit_and_wait_cs(int fd, void *cb_ptr, uint32_t cb_size,
-				uint32_t queue_index, bool destroy_cb,
+				uint32_t queue_index,
+				enum hltests_destroy_cb destroy_cb,
 				int expected_val)
 {
 	struct hltests_cs_chunk execute_arr[1];
@@ -1352,7 +1356,8 @@ void hltests_submit_and_wait_cs(int fd, void *cb_ptr, uint32_t cb_size,
 	execute_arr[0].cb_size = cb_size;
 	execute_arr[0].queue_index = queue_index;
 
-	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, false, &seq);
+	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1,
+					FORCE_RESTORE_FALSE, &seq);
 	assert_int_equal(rc, 0);
 
 	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
@@ -1684,18 +1689,18 @@ void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 	engine_cmdq_cb_sram_addr = hw_ip.sram_base_address + 0x3000;
 
 	/* Allocate two buffers on the host for data transfers */
-	host_src = hltests_allocate_host_mem(fd, dma_size, false);
+	host_src = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
 	assert_non_null(host_src);
 	hltests_fill_rand_values(host_src, dma_size);
 	host_src_device_va = hltests_get_device_va_for_host_ptr(fd, host_src);
 
-	host_dst = hltests_allocate_host_mem(fd, dma_size, false);
+	host_dst = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
 	assert_non_null(host_dst);
 	memset(host_dst, 0, dma_size);
 	host_dst_device_va = hltests_get_device_va_for_host_ptr(fd, host_dst);
 
 	/* Internal CB for engine CMDQ: fence on SOB0 + NOP + signal SOB1 */
-	engine_cmdq_cb = hltests_create_cb(fd, page_size, false,
+	engine_cmdq_cb = hltests_create_cb(fd, page_size, INTERNAL,
 						engine_cmdq_cb_sram_addr);
 	assert_ptr_not_equal(engine_cmdq_cb, NULL);
 	engine_cmdq_cb_device_va = hltests_get_device_va_for_host_ptr(fd,
@@ -1728,7 +1733,7 @@ void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 							&pkt_info);
 
 	/* Internal CB for engine QMAN: CP_DMA */
-	engine_qman_cb = hltests_create_cb(fd, page_size, false,
+	engine_qman_cb = hltests_create_cb(fd, page_size, INTERNAL,
 						engine_qman_cb_sram_addr);
 	assert_ptr_not_equal(engine_qman_cb, NULL);
 	engine_qman_cb_device_va = hltests_get_device_va_for_host_ptr(fd,
@@ -1743,7 +1748,7 @@ void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 						engine_qman_cb_size, &pkt_info);
 
 	/* Setup CB: Clear SOB 0-1 + DMA the internal CBs to SRAM */
-	restore_cb =  hltests_create_cb(fd, page_size, true, 0);
+	restore_cb =  hltests_create_cb(fd, page_size, EXTERNAL, 0);
 	assert_ptr_not_equal(restore_cb, NULL);
 	restore_cb_size = 0;
 
@@ -1771,7 +1776,7 @@ void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 	/* CB for first DMA QMAN:
 	 * Transfer data from host to SRAM + signal SOB0.
 	 */
-	dmadown_cb = hltests_create_cb(fd, page_size, true, 0);
+	dmadown_cb = hltests_create_cb(fd, page_size, EXTERNAL, 0);
 	assert_ptr_not_equal(dmadown_cb, NULL);
 	dmadown_cb_size = 0;
 
@@ -1796,7 +1801,7 @@ void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 	/* CB for second DMA QMAN:
 	 * Fence on SOB1 + transfer data from SRAM to host.
 	 */
-	dmaup_cb = hltests_create_cb(fd, page_size, true, 0);
+	dmaup_cb = hltests_create_cb(fd, page_size, EXTERNAL, 0);
 	assert_ptr_not_equal(dmaup_cb, NULL);
 	dmaup_cb_size = 0;
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
@@ -1842,7 +1847,8 @@ void test_sm_pingpong_cmdq(void **state, bool is_tpc)
 	execute_arr[2].queue_index = hltests_get_dma_up_qid(fd,
 							DCORE0, STREAM0);
 
-	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 3, true, &seq);
+	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 3,
+						FORCE_RESTORE_TRUE, &seq);
 	assert_int_equal(rc, 0);
 
 	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
@@ -1877,7 +1883,7 @@ void hltests_clear_sobs(int fd, enum hltests_dcore_id dcore_id,
 	void *cb;
 	uint32_t cb_offset = 0, i;
 
-	cb = hltests_create_cb(fd,  MSG_LONG_SIZE * num_of_sobs, true, 0);
+	cb = hltests_create_cb(fd,  MSG_LONG_SIZE * num_of_sobs, EXTERNAL, 0);
 	assert_non_null(cb);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
@@ -1897,6 +1903,6 @@ void hltests_clear_sobs(int fd, enum hltests_dcore_id dcore_id,
 
 	hltests_submit_and_wait_cs(fd, cb, cb_offset,
 		hltests_get_dma_down_qid(fd, dcore_id, STREAM0),
-		true, HL_WAIT_CS_STATUS_COMPLETED);
+		DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
 
 }

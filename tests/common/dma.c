@@ -51,7 +51,7 @@ static void *dma_thread_start(void *args)
 	assert_in_range(page_size, PAGE_SIZE_4KB, PAGE_SIZE_64KB);
 
 	for (i = 0 ; i < 2 ; i++) {
-		cb[i] = hltests_create_cb(fd, page_size, true, 0);
+		cb[i] = hltests_create_cb(fd, page_size, EXTERNAL, 0);
 		if (!cb[i])
 			return NULL;
 	}
@@ -148,7 +148,8 @@ static void *dma_thread_start(void *args)
 	execute_arr[1].queue_index = hltests_get_dma_up_qid(params->fd,
 							DCORE0, STREAM0);
 
-	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 2, false, &seq);
+	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 2,
+					FORCE_RESTORE_FALSE, &seq);
 	if (rc)
 		return NULL;
 
@@ -196,13 +197,13 @@ static void test_dma_threads(void **state, uint32_t num_of_threads)
 	assert_non_null(thread_params);
 
 	/* Allocate memory on DRAM */
-	dram_addr = hltests_allocate_device_mem(fd, dma_size, false);
+	dram_addr = hltests_allocate_device_mem(fd, dma_size, NOT_CONTIGOUS);
 	assert_non_null(dram_addr);
 
 	/* Allocate memory on host and initiate threads parameters */
 	for (i = 0 ; i < num_of_threads ; i++) {
 		thread_params[i].host_src =
-			hltests_allocate_host_mem(fd, dma_size, false);
+			hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
 		assert_non_null(thread_params[i].host_src);
 		hltests_fill_rand_values(thread_params[i].host_src, dma_size);
 		thread_params[i].host_src_device_va =
@@ -210,7 +211,7 @@ static void test_dma_threads(void **state, uint32_t num_of_threads)
 						thread_params[i].host_src);
 
 		thread_params[i].host_dst =
-			hltests_allocate_host_mem(fd, dma_size, false);
+			hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
 		assert_non_null(thread_params[i].host_dst);
 		memset(thread_params[i].host_dst, 0, dma_size);
 		thread_params[i].host_dst_device_va =
@@ -223,7 +224,7 @@ static void test_dma_threads(void **state, uint32_t num_of_threads)
 	}
 
 	/* clear SOB8 and set SOB0 to 1 so the first DMA thread will run */
-	cb = hltests_create_cb(fd, getpagesize(), true, 0);
+	cb = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
 	assert_non_null(cb);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
@@ -244,7 +245,7 @@ static void test_dma_threads(void **state, uint32_t num_of_threads)
 
 	hltests_submit_and_wait_cs(fd, cb, cb_size,
 				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
-				true, HL_WAIT_CS_STATUS_COMPLETED);
+				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
 
 	/* Create and execute threads */
 	for (i = 0 ; i < num_of_threads ; i++) {
@@ -321,12 +322,12 @@ void test_dma_entire_dram_random(void **state)
 	dram_addr_end = hw_ip.dram_base_address + dram_size - 1;
 
 	while (dram_addr < (dram_addr_end - dma_size)) {
-		buf[0] = hltests_allocate_host_mem(fd, dma_size, false);
+		buf[0] = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
 		assert_non_null(buf[0]);
 		hltests_fill_rand_values(buf[0], dma_size);
 		device_va[0] = hltests_get_device_va_for_host_ptr(fd, buf[0]);
 
-		buf[1] = hltests_allocate_host_mem(fd, dma_size, false);
+		buf[1] = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
 		assert_non_null(buf[1]);
 		memset(buf[1], 0, dma_size);
 		device_va[1] = hltests_get_device_va_for_host_ptr(fd, buf[1]);
@@ -353,7 +354,7 @@ void test_dma_entire_dram_random(void **state)
 	packets_size = 24 * vec_len;
 
 	/* DMA down */
-	cb = hltests_create_cb(fd, packets_size, true, 0);
+	cb = hltests_create_cb(fd, packets_size, EXTERNAL, 0);
 	assert_non_null(cb);
 
 	for (i = 0 ; i < vec_len ; i++) {
@@ -370,11 +371,11 @@ void test_dma_entire_dram_random(void **state)
 
 	hltests_submit_and_wait_cs(fd, cb, cb_size,
 				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
-				true, HL_WAIT_CS_STATUS_COMPLETED);
+				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
 	cb_size = 0;
 
 	/* DMA up */
-	cb = hltests_create_cb(fd, packets_size, true, 0);
+	cb = hltests_create_cb(fd, packets_size, EXTERNAL, 0);
 	assert_non_null(cb);
 
 	for (i = 0 ; i < vec_len ; i++) {
@@ -391,7 +392,7 @@ void test_dma_entire_dram_random(void **state)
 
 	hltests_submit_and_wait_cs(fd, cb, cb_size,
 				hltests_get_dma_up_qid(fd, DCORE0, STREAM0),
-				true, HL_WAIT_CS_STATUS_COMPLETED);
+				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
 
 	cb_size = 0;
 

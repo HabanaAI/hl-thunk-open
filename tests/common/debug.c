@@ -31,7 +31,7 @@ void test_tdr_deadlock(void **state)
 
 	assert_in_range(page_size, PAGE_SIZE_4KB, PAGE_SIZE_64KB);
 
-	ptr = hltests_create_cb(fd, page_size, true, 0);
+	ptr = hltests_create_cb(fd, page_size, EXTERNAL, 0);
 	assert_ptr_not_equal(ptr, NULL);
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
@@ -43,7 +43,7 @@ void test_tdr_deadlock(void **state)
 
 	hltests_submit_and_wait_cs(fd, ptr, offset,
 				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
-				false, HL_WAIT_CS_STATUS_TIMEDOUT);
+				DESTROY_CB_FALSE, HL_WAIT_CS_STATUS_TIMEDOUT);
 
 	/* no need to destroy the CB because the device is in reset */
 }
@@ -62,7 +62,7 @@ void test_endless_memory_ioctl(void **state)
 	 */
 
 	while (1) {
-		src_ptr = hltests_allocate_host_mem(fd, page_size, false);
+		src_ptr = hltests_allocate_host_mem(fd, page_size, NOT_HUGE);
 
 		usleep(1000);
 
@@ -192,7 +192,7 @@ void test_dma_custom(void **state)
 	case GOYA_DMA_HOST_TO_DRAM:
 		dma_dir_up = GOYA_DMA_DRAM_TO_HOST;
 		device_ptr = hltests_allocate_device_mem(fd,
-						hw_ip.dram_size, true);
+						hw_ip.dram_size, CONTIGOUS);
 		assert_non_null(device_ptr);
 		device_addr = (uint64_t) (uintptr_t) device_ptr;
 		device_addr += (cfg.dst_addr - hw_ip.dram_base_address);
@@ -296,15 +296,16 @@ static void test_transfer_bigger_than_alloc(void **state)
 	struct hltests_cs_chunk execute_arr[1];
 	int rc, fd = tests_state->fd;
 
-	device_ptr = hltests_allocate_device_mem(fd, device_alloc_size, true);
+	device_ptr = hltests_allocate_device_mem(fd,
+				device_alloc_size, CONTIGOUS);
 	assert_non_null(device_ptr);
 	device_addr = (uint64_t) (uintptr_t) device_ptr;
 
-	src_ptr = hltests_allocate_host_mem(fd, host_alloc_size, false);
+	src_ptr = hltests_allocate_host_mem(fd, host_alloc_size, NOT_HUGE);
 	assert_non_null(src_ptr);
 	host_src_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
 
-	ptr = hltests_create_cb(fd, getpagesize(), true, 0);
+	ptr = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
 	assert_ptr_not_equal(ptr, NULL);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
@@ -318,7 +319,7 @@ static void test_transfer_bigger_than_alloc(void **state)
 
 	hltests_submit_and_wait_cs(fd, ptr, offset,
 				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
-				false, HL_WAIT_CS_STATUS_TIMEDOUT);
+				DESTROY_CB_FALSE, HL_WAIT_CS_STATUS_TIMEDOUT);
 
 	/* no need to clean up because the device is in reset */
 }

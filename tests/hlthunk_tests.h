@@ -92,6 +92,31 @@ enum hltests_stream_id {
 	STREAM3
 };
 
+enum hltests_is_external {
+	INTERNAL = 0,
+	EXTERNAL
+};
+
+enum hltests_destroy_cb {
+	 DESTROY_CB_FALSE = 0,
+	 DESTROY_CB_TRUE
+};
+
+enum hltests_force_restore {
+	FORCE_RESTORE_FALSE = 0,
+	FORCE_RESTORE_TRUE
+};
+
+enum hltests_huge {
+	NOT_HUGE = 0,
+	HUGE
+};
+
+enum hltests_contiguous {
+	NOT_CONTIGOUS = 0,
+	CONTIGOUS
+};
+
 struct hltests_device {
 	const struct hltests_asic_funcs *asic_funcs;
 
@@ -278,13 +303,15 @@ int hltests_debugfs_close(int fd);
 uint32_t hltests_debugfs_read(int fd, uint64_t full_address);
 void hltests_debugfs_write(int fd, uint64_t full_address, uint32_t val);
 
-void *hltests_allocate_host_mem(int fd, uint64_t size, bool huge);
-void *hltests_allocate_device_mem(int fd, uint64_t size, bool contiguous);
+void *hltests_allocate_host_mem(int fd, uint64_t size, enum hltests_huge huge);
+void *hltests_allocate_device_mem(int fd, uint64_t size,
+				enum hltests_contiguous contiguous);
 int hltests_free_host_mem(int fd, void *vaddr);
 int hltests_free_device_mem(int fd, void *vaddr);
 uint64_t hltests_get_device_va_for_host_ptr(int fd, void *vaddr);
 
-void *hltests_create_cb(int fd, uint32_t cb_size, bool is_external,
+void *hltests_create_cb(int fd, uint32_t cb_size,
+				enum hltests_is_external is_external,
 				uint64_t cb_internal_sram_address);
 int hltests_destroy_cb(int fd, void *ptr);
 uint32_t hltests_add_packet_to_cb(void *ptr, uint32_t offset, void *pkt,
@@ -293,7 +320,8 @@ uint32_t hltests_add_packet_to_cb(void *ptr, uint32_t offset, void *pkt,
 int hltests_submit_cs(int fd, struct hltests_cs_chunk *restore_arr,
 				uint32_t restore_arr_size,
 				struct hltests_cs_chunk *execute_arr,
-				uint32_t execute_arr_size, bool force_restore,
+				uint32_t execute_arr_size,
+				enum hltests_force_restore force_restore,
 				uint64_t *seq);
 
 int hltests_setup(void **state);
@@ -317,7 +345,8 @@ int hltests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us);
 int hltests_wait_for_cs_until_not_busy(int fd, uint64_t seq);
 
 void hltests_submit_and_wait_cs(int fd, void *cb_ptr, uint32_t cb_size,
-				uint32_t queue_index, bool destroy_cb,
+				uint32_t queue_index,
+				enum hltests_destroy_cb destroy_cb,
 				int expected_val);
 
 int hltests_ensure_device_operational(void **state);

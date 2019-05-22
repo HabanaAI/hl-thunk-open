@@ -43,18 +43,18 @@ void test_map_bigger_than_4GB(void **state)
 	assert_int_equal(hw_ip.dram_enabled, 1);
 	assert_in_range(dma_size, 1, hw_ip.dram_size);
 
-	device_addr = hltests_allocate_device_mem(fd, dma_size, false);
+	device_addr = hltests_allocate_device_mem(fd, dma_size, NOT_CONTIGOUS);
 	assert_non_null(device_addr);
 
 	dma_dir_down = GOYA_DMA_HOST_TO_DRAM;
 	dma_dir_up = GOYA_DMA_DRAM_TO_HOST;
 
-	src_ptr = hltests_allocate_host_mem(fd, total_size, false);
+	src_ptr = hltests_allocate_host_mem(fd, total_size, NOT_HUGE);
 	assert_non_null(src_ptr);
 	hltests_fill_rand_values(src_ptr, total_size);
 	host_src_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
 
-	dst_ptr = hltests_allocate_host_mem(fd, dma_size, false);
+	dst_ptr = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
 	assert_non_null(dst_ptr);
 	memset(dst_ptr, 0, dma_size);
 	host_dst_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);

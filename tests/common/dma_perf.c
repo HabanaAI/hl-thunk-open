@@ -37,7 +37,7 @@ static double hltests_transfer_perf(int fd, uint32_t queue_index,
 	double time_diff;
 
 	num_of_transfers = hltests_is_simulator(fd) ? 10 : 300;
-	ptr = hltests_create_cb(fd, getpagesize(), true, 0);
+	ptr = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
 	assert_ptr_not_equal(ptr, NULL);
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
@@ -57,7 +57,7 @@ static double hltests_transfer_perf(int fd, uint32_t queue_index,
 	for (i = 0 ; i <= num_of_transfers ; i++) {
 
 		rc = hltests_submit_cs(fd, NULL, 0, execute_arr,
-							1, false, &seq);
+						1, FORCE_RESTORE_FALSE, &seq);
 		assert_int_equal(rc, 0);
 	}
 
@@ -88,7 +88,7 @@ void hltest_host_sram_transfer_perf(void **state)
 
 	sram_addr = hw_ip.sram_base_address;
 	size = hw_ip.sram_size;
-	src_ptr = hltests_allocate_host_mem(fd, size, true);
+	src_ptr = hltests_allocate_host_mem(fd, size, HUGE);
 	assert_non_null(src_ptr);
 
 	host_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
@@ -115,7 +115,7 @@ void hltest_sram_host_transfer_perf(void **state)
 	sram_addr = hw_ip.sram_base_address;
 	size = hw_ip.sram_size;
 
-	dst_ptr = hltests_allocate_host_mem(fd, size, true);
+	dst_ptr = hltests_allocate_host_mem(fd, size, HUGE);
 	assert_non_null(dst_ptr);
 
 	host_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
@@ -140,10 +140,10 @@ void hltest_host_dram_transfer_perf(void **state)
 
 	assert_int_equal(hw_ip.dram_enabled, 1);
 	assert_in_range(size, 1, hw_ip.dram_size);
-	dram_addr = hltests_allocate_device_mem(fd, size, false);
+	dram_addr = hltests_allocate_device_mem(fd, size, NOT_CONTIGOUS);
 	assert_non_null(dram_addr);
 
-	src_ptr = hltests_allocate_host_mem(fd, size, true);
+	src_ptr = hltests_allocate_host_mem(fd, size, HUGE);
 	assert_non_null(src_ptr);
 
 	host_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
@@ -170,10 +170,10 @@ void hltest_dram_host_transfer_perf(void **state)
 
 	assert_int_equal(hw_ip.dram_enabled, 1);
 	assert_in_range(size, 1, hw_ip.dram_size);
-	dram_addr = hltests_allocate_device_mem(fd, size, false);
+	dram_addr = hltests_allocate_device_mem(fd, size, NOT_CONTIGOUS);
 	assert_non_null(dram_addr);
 
-	dst_ptr = hltests_allocate_host_mem(fd, size, true);
+	dst_ptr = hltests_allocate_host_mem(fd, size, HUGE);
 	assert_non_null(dst_ptr);
 
 	host_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
@@ -195,7 +195,7 @@ static uint32_t setup_lower_cb_in_sram(int fd, uint64_t src_addr,
 	uint32_t  lower_cb_offset = 0, i;
 	struct hltests_pkt_info pkt_info;
 
-	lower_cb = hltests_allocate_host_mem(fd, 0x2000, false);
+	lower_cb = hltests_allocate_host_mem(fd, 0x2000, NOT_HUGE);
 	assert_ptr_not_equal(lower_cb, NULL);
 	lower_cb_device_va = hltests_get_device_va_for_host_ptr(fd, lower_cb);
 
@@ -259,7 +259,7 @@ static double indirect_transfer_perf_test(int fd, uint32_t queue_index,
 	hltests_clear_sobs(fd, DCORE0, 1);
 
 	/* Internal CB for CP_DMA */
-	cp_dma_cb = hltests_create_cb(fd, 0x20, false, sram_addr + 0x2000);
+	cp_dma_cb = hltests_create_cb(fd, 0x20, INTERNAL, sram_addr + 0x2000);
 	assert_non_null(cp_dma_cb);
 	cp_dma_cb_device_va = hltests_get_device_va_for_host_ptr(fd, cp_dma_cb);
 
@@ -274,7 +274,7 @@ static double indirect_transfer_perf_test(int fd, uint32_t queue_index,
 				EB_FALSE, MB_FALSE, cp_dma_cb_device_va,
 				sram_addr + 0x2000, cp_dma_cb_offset, 0);
 
-	cb = hltests_create_cb(fd, 0x1000, true, 0);
+	cb = hltests_create_cb(fd, 0x1000, EXTERNAL, 0);
 	assert_non_null(cb);
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
 	mon_and_fence_info.dcore_id = 0;
@@ -300,7 +300,8 @@ static double indirect_transfer_perf_test(int fd, uint32_t queue_index,
 
 	clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
 
-	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 2, false, &seq);
+	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 2,
+					FORCE_RESTORE_FALSE, &seq);
 	assert_int_equal(rc, 0);
 
 	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
@@ -333,7 +334,7 @@ void hltest_sram_dram_transfer_perf(void **state)
 	size = hw_ip.sram_size;
 	assert_int_equal(hw_ip.dram_enabled, 1);
 	assert_in_range(size, 1, hw_ip.dram_size);
-	dram_addr = hltests_allocate_device_mem(fd, size, false);
+	dram_addr = hltests_allocate_device_mem(fd, size, NOT_CONTIGOUS);
 	assert_non_null(dram_addr);
 
 	if (hltests_is_goya(fd))
@@ -367,7 +368,7 @@ void hltest_dram_sram_transfer_perf(void **state)
 
 	assert_int_equal(hw_ip.dram_enabled, 1);
 	assert_in_range(size, 1, hw_ip.dram_size);
-	dram_addr = hltests_allocate_device_mem(fd, size, false);
+	dram_addr = hltests_allocate_device_mem(fd, size, NOT_CONTIGOUS);
 	assert_non_null(dram_addr);
 
 	if (hltests_is_goya(fd))

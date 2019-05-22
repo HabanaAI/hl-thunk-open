@@ -56,18 +56,19 @@ void test_dma_4_queues(void **state)
 	memset(dma_cb_size, 0, sizeof(dma_cb_size));
 
 	/* Allocate memory on host and DRAM and set the SRAM address */
-	host_src = hltests_allocate_host_mem(fd, dma_size, false);
+	host_src = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
 	assert_non_null(host_src);
 	hltests_fill_rand_values(host_src, dma_size);
 	host_src_device_va = hltests_get_device_va_for_host_ptr(fd, host_src);
 
-	host_dst = hltests_allocate_host_mem(fd, dma_size, false);
+	host_dst = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
 	assert_non_null(host_dst);
 	memset(host_dst, 0, dma_size);
 	host_dst_device_va = hltests_get_device_va_for_host_ptr(fd, host_dst);
 
 	for (i = 0 ; i < 2 ; i++) {
-		dram_addr[i] = hltests_allocate_device_mem(fd, dma_size, false);
+		dram_addr[i] = hltests_allocate_device_mem(fd, dma_size,
+								NOT_CONTIGOUS);
 		assert_non_null(dram_addr[i]);
 	}
 
@@ -83,7 +84,7 @@ void test_dma_4_queues(void **state)
 	/* CB for first DMA QMAN:
 	 * Transfer data from host to DRAM + signal SOB0.
 	 */
-	dma_cb[0] = hltests_create_cb(fd, page_size, true, 0);
+	dma_cb[0] = hltests_create_cb(fd, page_size, EXTERNAL, 0);
 	assert_ptr_not_equal(dma_cb[0], NULL);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
@@ -108,7 +109,7 @@ void test_dma_4_queues(void **state)
 	/* CB for second DMA QMAN:
 	 * Fence on SOB0 + transfer data from DRAM to SRAM + signal SOB1.
 	 */
-	dma_cb[1] = hltests_create_cb(fd, page_size, true, 0);
+	dma_cb[1] = hltests_create_cb(fd, page_size, EXTERNAL, 0);
 	assert_ptr_not_equal(dma_cb[1], NULL);
 
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
@@ -146,7 +147,7 @@ void test_dma_4_queues(void **state)
 	/* CB for third DMA QMAN:
 	 * Fence on SOB1 + transfer data from SRAM to DRAM + signal SOB2.
 	 */
-	dma_cb[2] = hltests_create_cb(fd, page_size, true, 0);
+	dma_cb[2] = hltests_create_cb(fd, page_size, EXTERNAL, 0);
 	assert_ptr_not_equal(dma_cb[2], NULL);
 
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
@@ -184,7 +185,7 @@ void test_dma_4_queues(void **state)
 	/* CB for forth DMA QMAN:
 	 * Fence on SOB2 + transfer data from DRAM to host.
 	 */
-	dma_cb[3] = hltests_create_cb(fd, page_size, true, 0);
+	dma_cb[3] = hltests_create_cb(fd, page_size, EXTERNAL, 0);
 	assert_ptr_not_equal(dma_cb[3], NULL);
 
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
@@ -229,7 +230,8 @@ void test_dma_4_queues(void **state)
 	execute_arr[3].queue_index = hltests_get_dma_up_qid(fd,
 							DCORE0, STREAM0);
 
-	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 4, true, &seq);
+	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 4,
+					FORCE_RESTORE_TRUE, &seq);
 	assert_int_equal(rc, 0);
 
 	rc = hltests_wait_for_cs_until_not_busy(fd, seq);

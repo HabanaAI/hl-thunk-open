@@ -70,7 +70,7 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 	engine_cb_sram_addr = hw_ip.sram_base_address + 0x3000;
 
 	/* Internal CB for engine QMAN: MSG_LONG + signal SOB0 */
-	engine_cb = hltests_create_cb(fd, page_size, false,
+	engine_cb = hltests_create_cb(fd, page_size, INTERNAL,
 					engine_cb_sram_addr);
 	assert_ptr_not_equal(engine_cb, NULL);
 	engine_cb_device_va = hltests_get_device_va_for_host_ptr(fd, engine_cb);
@@ -94,7 +94,7 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 
 	/* Setup CB: Clear SOB0 + DMA the internal CB to SRAM */
 	hltests_clear_sobs(fd, DCORE0, 1);
-	restore_cb =  hltests_create_cb(fd, page_size, true, 0);
+	restore_cb =  hltests_create_cb(fd, page_size, EXTERNAL, 0);
 	assert_ptr_not_equal(restore_cb, NULL);
 	restore_cb_size = 0;
 
@@ -110,7 +110,7 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 					&pkt_info);
 
 	/* CB for DMA QMAN: Fence on SOB0 */
-	dma_cb = hltests_create_cb(fd, page_size, true, 0);
+	dma_cb = hltests_create_cb(fd, page_size, EXTERNAL, 0);
 	assert_ptr_not_equal(dma_cb, NULL);
 	dma_cb_size = 0;
 
@@ -142,7 +142,8 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 	execute_arr[1].queue_index = hltests_get_dma_down_qid(fd,
 							DCORE0, STREAM0);
 
-	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 2, true, &seq);
+	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 2,
+						FORCE_RESTORE_FALSE, &seq);
 	assert_int_equal(rc, 0);
 
 	rc = hltests_wait_for_cs(fd, seq, WAIT_FOR_CS_DEFAULT_TIMEOUT);
@@ -193,7 +194,7 @@ void test_write_to_cfg_space(void **state)
 	val = hltests_debugfs_read(fd, cfg_address);
 	assert_int_equal(val, 0x55555555);
 
-	ptr = hltests_create_cb(fd, page_size, true, 0);
+	ptr = hltests_create_cb(fd, page_size, EXTERNAL, 0);
 	assert_ptr_not_equal(ptr, NULL);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
@@ -209,7 +210,7 @@ void test_write_to_cfg_space(void **state)
 							DCORE0, STREAM0);
 	hltests_submit_and_wait_cs(fd, ptr, offset,
 				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
-				true, HL_WAIT_CS_STATUS_TIMEDOUT);
+				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_TIMEDOUT);
 
 	val = hltests_debugfs_read(fd, cfg_address);
 	assert_int_not_equal(val, 0xbaba0ded);
@@ -241,7 +242,7 @@ void test_write_to_mmTPC_PLL_CLK_RLX_0_from_qman(void **state)
 	val = hltests_debugfs_read(fd, CFG_BASE + mmTPC_PLL_CLK_RLX_0);
 	assert_int_equal(val, 0x300030);
 
-	ptr = hltests_create_cb(fd, page_size, true, 0);
+	ptr = hltests_create_cb(fd, page_size, EXTERNAL, 0);
 	assert_ptr_not_equal(ptr, NULL);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
@@ -253,7 +254,7 @@ void test_write_to_mmTPC_PLL_CLK_RLX_0_from_qman(void **state)
 
 	hltests_submit_and_wait_cs(fd, ptr, offset,
 				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
-				true, HL_WAIT_CS_STATUS_COMPLETED);
+				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
 
 	val = hltests_debugfs_read(fd, CFG_BASE + mmTPC_PLL_CLK_RLX_0);
 	assert_int_equal(val, 0x400040);

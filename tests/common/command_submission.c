@@ -26,14 +26,14 @@ void test_cs_nop(void **state)
 	void *ptr;
 	int fd = tests_state->fd;
 
-	ptr = hltests_create_cb(fd, getpagesize(), true, 0);
+	ptr = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
 	assert_ptr_not_equal(ptr, NULL);
 
 	offset = hltests_add_nop_pkt(fd, ptr, offset, EB_FALSE, MB_FALSE);
 
 	hltests_submit_and_wait_cs(fd, ptr, offset,
 				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
-				true, HL_WAIT_CS_STATUS_COMPLETED);
+				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
 }
 
 void test_cs_msg_long(void **state)
@@ -46,7 +46,7 @@ void test_cs_msg_long(void **state)
 	void *ptr;
 	int rc, fd = tests_state->fd;
 
-	ptr = hltests_create_cb(fd, getpagesize(), true, 0);
+	ptr = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
 	assert_ptr_not_equal(ptr, NULL);
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
@@ -61,7 +61,7 @@ void test_cs_msg_long(void **state)
 
 	hltests_submit_and_wait_cs(fd, ptr, offset,
 				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
-				true, HL_WAIT_CS_STATUS_COMPLETED);
+				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
 }
 
 #define NUM_OF_MSGS	2000
@@ -76,7 +76,7 @@ void test_cs_msg_long_2000(void **state)
 	int rc, fd = tests_state->fd, i;
 
 	/* Largest packet is 24 bytes, so 32 is a good number */
-	ptr = hltests_create_cb(fd, NUM_OF_MSGS * 32, true, 0);
+	ptr = hltests_create_cb(fd, NUM_OF_MSGS * 32, EXTERNAL, 0);
 	assert_ptr_not_equal(ptr, NULL);
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
@@ -94,7 +94,7 @@ void test_cs_msg_long_2000(void **state)
 
 	hltests_submit_and_wait_cs(fd, ptr, offset,
 				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
-				true, HL_WAIT_CS_STATUS_COMPLETED);
+				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
 }
 
 const struct CMUnitTest cs_tests[] = {
