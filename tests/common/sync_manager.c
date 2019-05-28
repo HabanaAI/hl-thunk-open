@@ -165,7 +165,7 @@ static void test_sm(void **state, bool is_tpc, bool is_wait)
 	}
 }
 
-static void test_sm_pingpong_qman(void **state, bool is_tpc)
+static void test_sm_pingpong_upper_cp(void **state, bool is_tpc)
 {
 	struct hltests_state *tests_state =
 			(struct hltests_state *) *state;
@@ -381,36 +381,50 @@ void test_sm_mme(void **state)
 	test_sm(state, false, true);
 }
 
-void test_sm_pingpong_tpc_qman(void **state)
+void test_sm_pingpong_tpc_upper_cp(void **state)
 {
-	test_sm_pingpong_qman(state, true);
+	test_sm_pingpong_upper_cp(state, true);
 }
 
-void test_sm_pingpong_mme_qman(void **state)
+void test_sm_pingpong_mme_upper_cp(void **state)
 {
-	test_sm_pingpong_qman(state, false);
+	test_sm_pingpong_upper_cp(state, false);
 }
 
-void test_sm_pingpong_tpc_cmdq(void **state)
+void test_sm_pingpong_tpc_common_cp_from_sram(void **state)
 {
-	test_sm_pingpong_cmdq(state, true);
+	test_sm_pingpong_common_cp(state, true, false);
 }
 
-void test_sm_pingpong_mme_cmdq(void **state)
+void test_sm_pingpong_mme_common_cp_from_sram(void **state)
 {
-	test_sm_pingpong_cmdq(state, false);
+	test_sm_pingpong_common_cp(state, false, false);
+}
+
+void test_sm_pingpong_tpc_common_cp_from_host(void **state)
+{
+	test_sm_pingpong_common_cp(state, true, true);
+}
+
+void test_sm_pingpong_mme_common_cp_from_host(void **state)
+{
+	test_sm_pingpong_common_cp(state, false, true);
 }
 
 const struct CMUnitTest sm_tests[] = {
 	cmocka_unit_test_setup(test_sm_tpc, hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_sm_mme, hltests_ensure_device_operational),
-	cmocka_unit_test_setup(test_sm_pingpong_tpc_qman,
+	cmocka_unit_test_setup(test_sm_pingpong_tpc_upper_cp,
 				hltests_ensure_device_operational),
-	cmocka_unit_test_setup(test_sm_pingpong_mme_qman,
+	cmocka_unit_test_setup(test_sm_pingpong_mme_upper_cp,
 				hltests_ensure_device_operational),
-	cmocka_unit_test_setup(test_sm_pingpong_tpc_cmdq,
+	cmocka_unit_test_setup(test_sm_pingpong_tpc_common_cp_from_sram,
 				hltests_ensure_device_operational),
-	cmocka_unit_test_setup(test_sm_pingpong_mme_cmdq,
+	cmocka_unit_test_setup(test_sm_pingpong_mme_common_cp_from_sram,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_sm_pingpong_tpc_common_cp_from_host,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_sm_pingpong_mme_common_cp_from_host,
 				hltests_ensure_device_operational),
 };
 
