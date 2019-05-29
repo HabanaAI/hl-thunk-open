@@ -331,6 +331,8 @@ int hltests_root_teardown(void **state);
 
 void hltests_fill_rand_values(void *ptr, uint32_t size);
 
+int hltests_mem_compare_with_stop(void *ptr1, void *ptr2, uint64_t size, bool
+			stop_on_err);
 int hltests_mem_compare(void *ptr1, void *ptr2, uint64_t size);
 
 void hltests_dma_transfer(int fd, uint32_t queue_index, enum hltests_eb eb,

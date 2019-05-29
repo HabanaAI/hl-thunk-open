@@ -105,6 +105,7 @@ struct dma_custom_cfg {
 	uint32_t write_cnt;
 	bool sequential;
 	bool random;
+	bool stop_on_err;
 };
 
 static int dma_custom_parsing_handler(void *user, const char *section,
@@ -129,6 +130,13 @@ static int dma_custom_parsing_handler(void *user, const char *section,
 		cfg->sequential = strcmp("true", tmp) ? false : true;
 		if (cfg->sequential)
 			cfg->random = false;
+		free(tmp);
+	} else if (MATCH("dma_custom_test", "stop_on_err")) {
+		tmp = strdup(value);
+		if (!tmp)
+			return 1;
+
+		cfg->stop_on_err = strcmp("true", tmp) ? false : true;
 		free(tmp);
 	} else if (MATCH("dma_custom_test", "value")) {
 		cfg->value = strtoul(value, NULL, 0);
@@ -162,6 +170,7 @@ void test_dma_custom(void **state)
 	cfg.random = true;
 	cfg.read_cnt = 1;
 	cfg.write_cnt = 1;
+	cfg.stop_on_err = true;
 
 	if (ini_parse(config_filename, dma_custom_parsing_handler, &cfg) < 0)
 		fail_msg("Can't load %s\n", config_filename);
@@ -169,6 +178,9 @@ void test_dma_custom(void **state)
 	printf("Configuration loaded from %s:\n", config_filename);
 	printf("dma_dir = %d, dst_addr = 0x%lx, size = %lu, chunk size = %u\n",
 		cfg.dma_dir, cfg.dst_addr, cfg.size, cfg.chunk_size);
+	printf("read cnt = %d, write cnt = %d, stop on err = %s\n",
+		cfg.read_cnt, cfg.write_cnt,
+		(cfg.stop_on_err ? "true" : "false"));
 
 	if (cfg.random) {
 		printf("random values\n\n");
@@ -254,8 +266,9 @@ void test_dma_custom(void **state)
 				host_dst_addr, cfg.chunk_size, dma_dir_up);
 
 			/* Compare host memories */
-			rc = hltests_mem_compare(src_ptr, dst_ptr,
-							cfg.chunk_size);
+			rc = hltests_mem_compare_with_stop(src_ptr, dst_ptr,
+							cfg.chunk_size,
+							cfg.stop_on_err);
 			if (rc) {
 				printf("Failed comparison, read iteration %d\n",
 					read_cnt);

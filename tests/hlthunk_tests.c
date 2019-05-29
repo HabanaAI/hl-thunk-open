@@ -1203,21 +1203,28 @@ void hltests_fill_rand_values(void *ptr, uint32_t size)
 	}
 }
 
-int hltests_mem_compare(void *ptr1, void *ptr2, uint64_t size)
+int hltests_mem_compare_with_stop(void *ptr1, void *ptr2, uint64_t size,
+					bool stop_on_err)
 {
 	uint64_t *p1 = (uint64_t *) ptr1, *p2 = (uint64_t *) ptr2;
-	uint32_t err_cnt = 0, rounddown_aligned_size, remainder, i;
+	uint32_t err_cnt = 0, rounddown_aligned_size, remainder, i = 0;
 
 	rounddown_aligned_size = size & ~(sizeof(uint64_t) - 1);
 	remainder = size - rounddown_aligned_size;
 
-	for (i = 0 ; i < rounddown_aligned_size && err_cnt < 10;
-		i += sizeof(uint64_t), p1++, p2++) {
+	while (i < rounddown_aligned_size) {
 		if (*p1 != *p2) {
 			printf("[%p]: 0x%"PRIx64" <--> [%p]: 0x%"PRIx64"\n",
 				p1, *p1, p2, *p2);
 			err_cnt++;
 		}
+
+		i += sizeof(uint64_t);
+		p1++;
+		p2++;
+
+		if (stop_on_err && err_cnt >= 10)
+			break;
 	}
 
 	if (!remainder)
@@ -1233,6 +1240,11 @@ int hltests_mem_compare(void *ptr1, void *ptr2, uint64_t size)
 	}
 
 	return err_cnt;
+}
+
+int hltests_mem_compare(void *ptr1, void *ptr2, uint64_t size)
+{
+	return hltests_mem_compare_with_stop(ptr1, ptr2, size, true);
 }
 
 void hltests_dma_transfer(int fd, uint32_t queue_index, enum hltests_eb eb,
