@@ -107,9 +107,13 @@ static const char *const usage[] = {
 
 int main(int argc, const char **argv)
 {
+#if !defined(__powerpc__)
 	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_INVALID, memory_tests,
 			sizeof(memory_tests) / sizeof((memory_tests)[0]));
 
 	return cmocka_run_group_tests(memory_tests, hltests_setup,
 					hltests_teardown);
+#else
+	return 0;
+#endif
 }
