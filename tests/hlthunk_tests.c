@@ -1637,7 +1637,7 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 		device_data_addr,
 		engine_common_cb_sram_addr, engine_common_cb_device_va,
 		engine_upper_cb_sram_addr, engine_upper_cb_device_va;
-	uint32_t engine_qid, dma_size, page_size, engine_common_cb_size,
+	uint32_t engine_qid, dma_size, engine_common_cb_size,
 		engine_upper_cb_size, restore_cb_size, dmadown_cb_size,
 		dmaup_cb_size;
 	int rc, fd = tests_state->fd;
@@ -1671,8 +1671,6 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	 */
 
 	dma_size = 4;
-	page_size = sysconf(_SC_PAGESIZE);
-	assert_in_range(page_size, PAGE_SIZE_4KB, PAGE_SIZE_64KB);
 
 	/* Set engine queue ID and SRAM addresses */
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
@@ -1749,7 +1747,7 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 							&pkt_info);
 
 	/* Upper CB for engine: CP_DMA */
-	engine_upper_cb = hltests_create_cb(fd, page_size, INTERNAL,
+	engine_upper_cb = hltests_create_cb(fd, PAGE_SIZE_4KB, INTERNAL,
 						engine_upper_cb_sram_addr);
 	assert_ptr_not_equal(engine_upper_cb, NULL);
 	engine_upper_cb_device_va =
@@ -1770,7 +1768,7 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	hltests_clear_sobs(fd, DCORE0, 2);
 
 	/* Setup CB: DMA the internal CBs to SRAM */
-	restore_cb =  hltests_create_cb(fd, page_size, EXTERNAL, 0);
+	restore_cb =  hltests_create_cb(fd, PAGE_SIZE_4KB, EXTERNAL, 0);
 	assert_ptr_not_equal(restore_cb, NULL);
 	restore_cb_size = 0;
 
@@ -1799,7 +1797,7 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	/* CB for first DMA QMAN:
 	 * Transfer data from host to SRAM + signal SOB0.
 	 */
-	dmadown_cb = hltests_create_cb(fd, page_size, EXTERNAL, 0);
+	dmadown_cb = hltests_create_cb(fd, PAGE_SIZE_4KB, EXTERNAL, 0);
 	assert_ptr_not_equal(dmadown_cb, NULL);
 	dmadown_cb_size = 0;
 
@@ -1824,7 +1822,7 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	/* CB for second DMA QMAN:
 	 * Fence on SOB1 + transfer data from SRAM to host.
 	 */
-	dmaup_cb = hltests_create_cb(fd, page_size, EXTERNAL, 0);
+	dmaup_cb = hltests_create_cb(fd, PAGE_SIZE_4KB, EXTERNAL, 0);
 	assert_ptr_not_equal(dmaup_cb, NULL);
 	dmaup_cb_size = 0;
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
