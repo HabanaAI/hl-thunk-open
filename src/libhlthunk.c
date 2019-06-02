@@ -61,14 +61,15 @@ static int hlthunk_open_by_busid(const char *busid)
 	char read_busid[16], buf[64], full_busid[16];
 	int fd, dev_fd, rc;
 
-	if (strlen(busid) == BUSID_WITHOUT_DOMAIN_LEN)
-		snprintf(full_busid, BUSID_WITH_DOMAIN_LEN, "0000:%s", busid);
-	else
+	if (strlen(busid) == BUSID_WITHOUT_DOMAIN_LEN) {
+		snprintf(full_busid, BUSID_WITH_DOMAIN_LEN + 1, "0000:%s",
+				busid);
+	} else {
 		strncpy(full_busid, busid, BUSID_WITH_DOMAIN_LEN);
+		full_busid[BUSID_WITH_DOMAIN_LEN] = '\0';
+	}
 
-	full_busid[BUSID_WITH_DOMAIN_LEN] = '\0';
 	DIR *dir = opendir(base_path);
-
 	if (dir == NULL) {
 		printf("Failed to open habanalabs directory\n");
 		return errno;
