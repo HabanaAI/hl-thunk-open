@@ -344,6 +344,55 @@ static void test_transfer_bigger_than_alloc(void **state)
 	/* no need to clean up because the device is in reset */
 }
 
+struct map_custom_cfg {
+	uint64_t dram_size;
+};
+
+static int map_custom_parsing_handler(void *user, const char *section,
+					const char *name, const char *value)
+{
+	struct map_custom_cfg *cfg = (struct map_custom_cfg *) user;
+	char *tmp;
+
+	if (MATCH("map_custom_test", "dram_size"))
+		cfg->dram_size = strtoul(value, NULL, 0);
+	else
+		return 0; /* unknown section/name, error */
+
+	return 1;
+}
+
+void test_map_custom(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	const char *config_filename = hltests_get_config_filename();
+	struct hlthunk_hw_ip_info hw_ip;
+	struct map_custom_cfg cfg;
+	void *dram_addr;
+	int rc, fd = tests_state->fd;
+
+	if (!config_filename)
+		fail_msg("User didn't supply a configuration file name!\n");
+
+	if (ini_parse(config_filename, map_custom_parsing_handler, &cfg) < 0)
+		fail_msg("Can't load %s\n", config_filename);
+
+	printf("Configuration loaded from %s:\n", config_filename);
+	printf("dram_size = %lu\n", cfg.dram_size);
+
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+
+	assert_int_equal(hw_ip.dram_enabled, 1);
+
+	dram_addr = hltests_allocate_device_mem(fd, cfg.dram_size,
+							NOT_CONTIGOUS);
+	assert_non_null(dram_addr);
+
+	while (1)
+		sleep(1);
+}
+
 const struct CMUnitTest debug_tests[] = {
 	cmocka_unit_test_setup(test_tdr_deadlock,
 				hltests_ensure_device_operational),
@@ -354,6 +403,8 @@ const struct CMUnitTest debug_tests[] = {
 	cmocka_unit_test_setup(test_dma_custom,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_transfer_bigger_than_alloc,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_map_custom,
 				hltests_ensure_device_operational)
 };
 
