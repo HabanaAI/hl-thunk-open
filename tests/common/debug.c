@@ -346,6 +346,7 @@ static void test_transfer_bigger_than_alloc(void **state)
 
 struct map_custom_cfg {
 	uint64_t dram_size;
+	uint64_t host_size;
 };
 
 static int map_custom_parsing_handler(void *user, const char *section,
@@ -356,6 +357,8 @@ static int map_custom_parsing_handler(void *user, const char *section,
 
 	if (MATCH("map_custom_test", "dram_size"))
 		cfg->dram_size = strtoul(value, NULL, 0);
+	else if (MATCH("map_custom_test", "host_size"))
+		cfg->host_size = strtoul(value, NULL, 0);
 	else
 		return 0; /* unknown section/name, error */
 
@@ -368,8 +371,10 @@ void test_map_custom(void **state)
 	const char *config_filename = hltests_get_config_filename();
 	struct hlthunk_hw_ip_info hw_ip;
 	struct map_custom_cfg cfg;
-	void *dram_addr;
+	void *dram_addr, *host_addr;
 	int rc, fd = tests_state->fd;
+
+	memset(&cfg, 0, sizeof(struct map_custom_cfg));
 
 	if (!config_filename)
 		fail_msg("User didn't supply a configuration file name!\n");
@@ -378,16 +383,24 @@ void test_map_custom(void **state)
 		fail_msg("Can't load %s\n", config_filename);
 
 	printf("Configuration loaded from %s:\n", config_filename);
-	printf("dram_size = %lu\n", cfg.dram_size);
+	printf("dram_size = %lu , host_size = %lu\n",
+		cfg.dram_size, cfg.host_size);
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
-	assert_int_equal(hw_ip.dram_enabled, 1);
-
-	dram_addr = hltests_allocate_device_mem(fd, cfg.dram_size,
+	if (cfg.dram_size) {
+		assert_int_equal(hw_ip.dram_enabled, 1);
+		dram_addr = hltests_allocate_device_mem(fd, cfg.dram_size,
 							NOT_CONTIGOUS);
-	assert_non_null(dram_addr);
+		assert_non_null(dram_addr);
+	}
+
+	if (cfg.host_size) {
+		host_addr = hltests_allocate_host_mem(fd, cfg.host_size,
+							NOT_HUGE);
+		assert_non_null(host_addr);
+	}
 
 	while (1)
 		sleep(1);
