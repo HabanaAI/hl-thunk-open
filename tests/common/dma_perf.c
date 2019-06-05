@@ -28,17 +28,21 @@ static double hltests_transfer_perf(int fd, uint32_t queue_index,
 			uint32_t size, enum hltests_goya_dma_direction dma_dir)
 {
 	uint32_t offset = 0;
-	void *ptr;
+	void *cb;
 	struct timespec begin, end;
 	struct hltests_cs_chunk execute_arr[1];
 	struct hltests_pkt_info pkt_info;
 	uint64_t seq = 0;
-	int rc, num_of_transfers, i;
+	int rc;
+	uint64_t num_of_transfers, i;
 	double time_diff;
 
-	num_of_transfers = hltests_is_simulator(fd) ? 10 : 300;
-	ptr = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
-	assert_ptr_not_equal(ptr, NULL);
+	num_of_transfers = hltests_is_simulator(fd) ? 5 :
+					(0x400000000ull / size);
+
+	cb = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
+	assert_ptr_not_equal(cb, NULL);
+
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_FALSE;
@@ -46,11 +50,14 @@ static double hltests_transfer_perf(int fd, uint32_t queue_index,
 	pkt_info.dma.dst_addr = dst_addr;
 	pkt_info.dma.size = size;
 	pkt_info.dma.dma_dir = dma_dir;
-	offset = hltests_add_dma_pkt(fd, ptr, offset, &pkt_info);
+	offset = hltests_add_dma_pkt(fd, cb, offset, &pkt_info);
 
-	execute_arr[0].cb_ptr = ptr;
+	execute_arr[0].cb_ptr = cb;
 	execute_arr[0].cb_size = offset;
 	execute_arr[0].queue_index = queue_index;
+
+	printf("DMA size = %u, number of DMA transfers = %lu\n",
+		size, num_of_transfers);
 
 	clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
 
@@ -87,7 +94,8 @@ void hltest_host_sram_transfer_perf(void **state)
 	assert_int_equal(rc, 0);
 
 	sram_addr = hw_ip.sram_base_address;
-	size = hw_ip.sram_size;
+	size = 4 * 1024 * 1024;
+
 	src_ptr = hltests_allocate_host_mem(fd, size, HUGE);
 	assert_non_null(src_ptr);
 
@@ -113,7 +121,7 @@ void hltest_sram_host_transfer_perf(void **state)
 	assert_int_equal(rc, 0);
 
 	sram_addr = hw_ip.sram_base_address;
-	size = hw_ip.sram_size;
+	size = 4 * 1024 * 1024;
 
 	dst_ptr = hltests_allocate_host_mem(fd, size, HUGE);
 	assert_non_null(dst_ptr);
@@ -132,8 +140,8 @@ void hltest_host_dram_transfer_perf(void **state)
 	struct hlthunk_hw_ip_info hw_ip;
 	void *src_ptr, *dram_addr;
 	uint64_t host_addr;
-	uint32_t size = 50 * 1024 * 1024;
 	int rc, fd = tests_state->fd;
+	uint32_t size = 4 * 1024 * 1024;
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
@@ -162,8 +170,8 @@ void hltest_dram_host_transfer_perf(void **state)
 	struct hlthunk_hw_ip_info hw_ip;
 	void *dst_ptr, *dram_addr;
 	uint64_t host_addr;
-	uint32_t size = 50 * 1024 * 1024;
 	int rc, fd = tests_state->fd;
+	uint32_t size = 32 * 1024 * 1024;
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
