@@ -106,6 +106,7 @@ struct dma_custom_cfg {
 	bool sequential;
 	bool random;
 	bool stop_on_err;
+	bool zero_before_write;
 };
 
 static int dma_custom_parsing_handler(void *user, const char *section,
@@ -145,6 +146,13 @@ static int dma_custom_parsing_handler(void *user, const char *section,
 		cfg->read_cnt = strtoul(value, NULL, 0);
 	} else if (MATCH("dma_custom_test", "write_cnt")) {
 		cfg->write_cnt = strtoul(value, NULL, 0);
+	} else if (MATCH("dma_custom_test", "zero_before_write")) {
+		tmp = strdup(value);
+		if (!tmp)
+			return 1;
+
+		cfg->zero_before_write = strcmp("true", tmp) ? false : true;
+		free(tmp);
 	} else {
 		return 0; /* unknown section/name, error */
 	}
@@ -158,9 +166,10 @@ void test_dma_custom(void **state)
 	const char *config_filename = hltests_get_config_filename();
 	struct hlthunk_hw_ip_info hw_ip;
 	struct dma_custom_cfg cfg;
-	void *device_ptr = NULL, *src_ptr, *dst_ptr;
-	uint64_t device_addr, host_src_addr, host_dst_addr, offset = 0;
+	void *device_ptr = NULL, *src_ptr, *dst_ptr, *zero_ptr;
+	uint64_t device_addr, host_src_addr, host_dst_addr, host_zero_addr = 0;
 	uint32_t dma_dir_down, dma_dir_up, read_cnt, write_cnt;
+	uint64_t offset = 0;
 	bool is_huge, is_error;
 	int i, rc, fd = tests_state->fd;
 
@@ -171,6 +180,7 @@ void test_dma_custom(void **state)
 	cfg.read_cnt = 1;
 	cfg.write_cnt = 1;
 	cfg.stop_on_err = true;
+	cfg.zero_before_write = false;
 
 	if (ini_parse(config_filename, dma_custom_parsing_handler, &cfg) < 0)
 		fail_msg("Can't load %s\n", config_filename);
@@ -178,9 +188,11 @@ void test_dma_custom(void **state)
 	printf("Configuration loaded from %s:\n", config_filename);
 	printf("dma_dir = %d, dst_addr = 0x%lx, size = %lu, chunk size = %u\n",
 		cfg.dma_dir, cfg.dst_addr, cfg.size, cfg.chunk_size);
-	printf("read cnt = %d, write cnt = %d, stop on err = %s\n",
+	printf(
+		"read cnt = %d, write cnt = %d, stop on err = %s, zero before write = %s\n",
 		cfg.read_cnt, cfg.write_cnt,
-		(cfg.stop_on_err ? "true" : "false"));
+		(cfg.stop_on_err ? "true" : "false"),
+		(cfg.zero_before_write ? "true" : "false"));
 
 	if (cfg.random) {
 		printf("random values\n\n");
@@ -239,12 +251,27 @@ void test_dma_custom(void **state)
 			((uint32_t *) src_ptr)[i] = cfg.value;
 	}
 
+	if (cfg.zero_before_write) {
+		zero_ptr = hltests_allocate_host_mem(fd, cfg.chunk_size,
+								NOT_HUGE);
+		assert_non_null(src_ptr);
+		host_zero_addr = hltests_get_device_va_for_host_ptr(fd,
+								zero_ptr);
+		memset(zero_ptr, 0, cfg.chunk_size);
+	}
+
 	dst_ptr = hltests_allocate_host_mem(fd, cfg.chunk_size, is_huge);
 	assert_non_null(dst_ptr);
 	memset(dst_ptr, 0, cfg.chunk_size);
 	host_dst_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
 
 	do {
+		if (cfg.zero_before_write)
+			hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd,
+					DCORE0, STREAM0), EB_FALSE, MB_TRUE,
+					host_zero_addr, device_addr + offset,
+					cfg.chunk_size, dma_dir_down);
+
 		/* DMA: host->device */
 		for (write_cnt = 0 ; write_cnt < cfg.write_cnt ; write_cnt++) {
 			if (cfg.random)
