@@ -170,7 +170,7 @@ void test_dma_custom(void **state)
 	uint64_t device_addr, host_src_addr, host_dst_addr, host_zero_addr = 0;
 	uint32_t dma_dir_down, dma_dir_up, read_cnt, write_cnt;
 	uint64_t offset = 0;
-	bool is_huge, is_error;
+	bool is_error;
 	int i, rc, fd = tests_state->fd;
 
 	if (!config_filename)
@@ -237,9 +237,7 @@ void test_dma_custom(void **state)
 	if (cfg.chunk_size > cfg.size)
 		cfg.chunk_size = cfg.size;
 
-	is_huge = cfg.chunk_size > 32 * 1024;
-
-	src_ptr = hltests_allocate_host_mem(fd, cfg.chunk_size, is_huge);
+	src_ptr = hltests_allocate_host_mem(fd, cfg.chunk_size, NOT_HUGE);
 	assert_non_null(src_ptr);
 	host_src_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
 
@@ -260,7 +258,7 @@ void test_dma_custom(void **state)
 		memset(zero_ptr, 0, cfg.chunk_size);
 	}
 
-	dst_ptr = hltests_allocate_host_mem(fd, cfg.chunk_size, is_huge);
+	dst_ptr = hltests_allocate_host_mem(fd, cfg.chunk_size, NOT_HUGE);
 	assert_non_null(dst_ptr);
 	memset(dst_ptr, 0, cfg.chunk_size);
 	host_dst_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
@@ -302,6 +300,7 @@ void test_dma_custom(void **state)
 				is_error = true;
 			}
 		}
+
 		assert_int_equal(is_error, false);
 
 		printf("Finished section 0x%lx - 0x%lx\n", device_addr + offset,
