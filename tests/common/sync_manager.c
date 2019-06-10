@@ -18,7 +18,7 @@
 #include <errno.h>
 #include <unistd.h>
 
-static void test_sm(void **state, bool is_tpc, bool is_wait)
+static void test_sm(void **state, bool is_tpc, bool is_wait, uint8_t tpc_id)
 {
 	struct hltests_state *tests_state =
 			(struct hltests_state *) *state;
@@ -37,20 +37,10 @@ static void test_sm(void **state, bool is_tpc, bool is_wait)
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
-	if (is_tpc) {
-		/* Find first available TPC */
-		uint8_t tpc_id;
-		for (tpc_id = 0;
-			(!(hw_ip.tpc_enabled_mask & (0x1 << tpc_id))) &&
-			(tpc_id < hltests_get_tpc_cnt(fd, 0));)
-			tpc_id++;
-
-		assert_in_range(tpc_id, 0, hltests_get_tpc_cnt(fd, 0) - 1);
-
+	if (is_tpc)
 		engine_qid = hltests_get_tpc_qid(fd, DCORE0, tpc_id, STREAM0);
-	} else {
+	else
 		engine_qid = hltests_get_mme_qid(fd, DCORE0, 0, STREAM0);
-	}
 
 	/* SRAM MAP (base + )
 	 * 0x1000 : data
@@ -165,7 +155,7 @@ static void test_sm(void **state, bool is_tpc, bool is_wait)
 	}
 }
 
-static void test_sm_pingpong_upper_cp(void **state, bool is_tpc)
+static void test_sm_pingpong_upper_cp(void **state, bool is_tpc, uint8_t tpc_id)
 {
 	struct hltests_state *tests_state =
 			(struct hltests_state *) *state;
@@ -186,20 +176,10 @@ static void test_sm_pingpong_upper_cp(void **state, bool is_tpc)
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
-	if (is_tpc) {
-		/* Find first available TPC */
-		uint8_t tpc_id;
-		for (tpc_id = 0;
-			(!(hw_ip.tpc_enabled_mask & (0x1 << tpc_id))) &&
-			(tpc_id < hltests_get_tpc_cnt(fd, 0));)
-			tpc_id++;
-
-		assert_in_range(tpc_id, 0, hltests_get_tpc_cnt(fd, 0) - 1);
-
+	if (is_tpc)
 		engine_qid = hltests_get_tpc_qid(fd, DCORE0, tpc_id, STREAM0);
-	} else {
+	else
 		engine_qid = hltests_get_mme_qid(fd, DCORE0, 0, STREAM0);
-	}
 
 	/* SRAM MAP (base + )
 	 * 0x1000 : data
@@ -373,42 +353,86 @@ static void test_sm_pingpong_upper_cp(void **state, bool is_tpc)
 
 void test_sm_tpc(void **state)
 {
-	test_sm(state, true, true);
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct hlthunk_hw_ip_info hw_ip;
+	uint8_t tpc_id, tpc_cnt;
+	int rc, fd = tests_state->fd;
+
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+
+	tpc_cnt = hltests_get_tpc_cnt(fd, 0);
+	for (tpc_id = 0 ; tpc_id < tpc_cnt ; tpc_id++)
+		if (hw_ip.tpc_enabled_mask & (0x1 << tpc_id))
+			test_sm(state, true, true, tpc_id);
 }
 
 void test_sm_mme(void **state)
 {
-	test_sm(state, false, true);
+	test_sm(state, false, true, 0);
 }
 
 void test_sm_pingpong_tpc_upper_cp(void **state)
 {
-	test_sm_pingpong_upper_cp(state, true);
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct hlthunk_hw_ip_info hw_ip;
+	uint8_t tpc_id, tpc_cnt;
+	int rc, fd = tests_state->fd;
+
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+
+	tpc_cnt = hltests_get_tpc_cnt(fd, 0);
+	for (tpc_id = 0 ; tpc_id < tpc_cnt ; tpc_id++)
+		if (hw_ip.tpc_enabled_mask & (0x1 << tpc_id))
+			test_sm_pingpong_upper_cp(state, true, tpc_id);
 }
 
 void test_sm_pingpong_mme_upper_cp(void **state)
 {
-	test_sm_pingpong_upper_cp(state, false);
+	test_sm_pingpong_upper_cp(state, false, 0);
 }
 
 void test_sm_pingpong_tpc_common_cp_from_sram(void **state)
 {
-	test_sm_pingpong_common_cp(state, true, false);
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct hlthunk_hw_ip_info hw_ip;
+	uint8_t tpc_id, tpc_cnt;
+	int rc, fd = tests_state->fd;
+
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+
+	tpc_cnt = hltests_get_tpc_cnt(fd, 0);
+	for (tpc_id = 0 ; tpc_id < tpc_cnt ; tpc_id++)
+		if (hw_ip.tpc_enabled_mask & (0x1 << tpc_id))
+			test_sm_pingpong_common_cp(state, true, false, tpc_id);
 }
 
 void test_sm_pingpong_mme_common_cp_from_sram(void **state)
 {
-	test_sm_pingpong_common_cp(state, false, false);
+	test_sm_pingpong_common_cp(state, false, false, 0);
 }
 
 void test_sm_pingpong_tpc_common_cp_from_host(void **state)
 {
-	test_sm_pingpong_common_cp(state, true, true);
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct hlthunk_hw_ip_info hw_ip;
+	uint8_t tpc_id, tpc_cnt;
+	int rc, fd = tests_state->fd;
+
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+
+	tpc_cnt = hltests_get_tpc_cnt(fd, 0);
+	for (tpc_id = 0 ; tpc_id < tpc_cnt ; tpc_id++)
+		if (hw_ip.tpc_enabled_mask & (0x1 << tpc_id))
+			test_sm_pingpong_common_cp(state, true, true, tpc_id);
 }
 
 void test_sm_pingpong_mme_common_cp_from_host(void **state)
 {
-	test_sm_pingpong_common_cp(state, false, true);
+	test_sm_pingpong_common_cp(state, false, true, 0);
 }
 
 const struct CMUnitTest sm_tests[] = {

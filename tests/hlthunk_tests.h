@@ -353,7 +353,7 @@ void hltests_submit_and_wait_cs(int fd, void *cb_ptr, uint32_t cb_size,
 
 int hltests_ensure_device_operational(void **state);
 void test_sm_pingpong_common_cp(void **state, bool is_tpc,
-				bool common_cb_in_host);
+				bool common_cb_in_host, uint8_t tpc_id);
 
 void hltests_clear_sobs(int fd, enum hltests_dcore_id dcore_id,
 						uint32_t num_of_sobs);
