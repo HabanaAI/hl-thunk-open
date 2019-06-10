@@ -800,7 +800,8 @@ uint64_t hltests_get_device_va_for_host_ptr(int fd, void *vaddr)
  * @param cb_size the size of the command buffer
  * @param is_external true if CB is for external queue, false otherwise
  * @cb_internal_sram_address the address in the sram that the internal CB will
- *                           be executed from by the CS
+ *                           be executed from by the CS. If this parameter is
+ *                           0, the CB will be located on the host
  * @return virtual address of the CB in the user process VA space, or NULL for
  *         failure
  */
@@ -837,7 +838,12 @@ void *hltests_create_cb(int fd, uint32_t cb_size,
 		cb->ptr = hltests_allocate_host_mem(fd, cb_size, NOT_HUGE);
 		if (!cb->ptr)
 			goto free_cb;
-		cb->cb_handle = cb_internal_sram_address;
+
+		if (cb_internal_sram_address)
+			cb->cb_handle = cb_internal_sram_address;
+		else
+			cb->cb_handle =
+				hltests_get_device_va_for_host_ptr(fd, cb->ptr);
 	}
 
 	pthread_mutex_lock(&hdev->cb_table_lock);
@@ -1654,7 +1660,7 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 		dmaup_cb_size;
 	int rc, fd = tests_state->fd;
 
-	/* This test can't run on Goya */
+	/* This test can't run on Goya in case the cb is in host */
 	if ((hlthunk_get_device_name_from_fd(fd) == HLTHUNK_DEVICE_GOYA) &&
 			(common_cb_in_host)) {
 		printf("Test is skipped. Goya's common CP can't be in host\n");
@@ -1667,7 +1673,7 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	 * - 0x3000               : engine's common CB (CMDQ)
 	 *
 	 * NOTE:
-	 * The engine's common CB could be located on the host, depending on
+	 * The engine's common CB can be located on the host, depending on
 	 * the common_cb_in_host flag
 	 *
 	 * Test Description:

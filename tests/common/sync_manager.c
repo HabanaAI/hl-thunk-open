@@ -155,7 +155,8 @@ static void test_sm(void **state, bool is_tpc, bool is_wait, uint8_t tpc_id)
 	}
 }
 
-static void test_sm_pingpong_upper_cp(void **state, bool is_tpc, uint8_t tpc_id)
+static void test_sm_pingpong_upper_cp(void **state, bool is_tpc,
+					bool upper_cb_in_host, uint8_t tpc_id)
 {
 	struct hltests_state *tests_state =
 			(struct hltests_state *) *state;
@@ -172,6 +173,13 @@ static void test_sm_pingpong_upper_cp(void **state, bool is_tpc, uint8_t tpc_id)
 	int rc, engine_qid, fd = tests_state->fd;
 	uint64_t seq;
 
+	/* This test can't run on Goya in case the cb is in host */
+	if ((hlthunk_get_device_name_from_fd(fd) == HLTHUNK_DEVICE_GOYA) &&
+			(upper_cb_in_host)) {
+		printf("Test is skipped. Goya's upper CP can't be in host\n");
+		skip();
+	}
+
 	/* Get device information, especially tpc enabled mask */
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
@@ -185,6 +193,10 @@ static void test_sm_pingpong_upper_cp(void **state, bool is_tpc, uint8_t tpc_id)
 	 * 0x1000 : data
 	 * 0x2000 : engine's internal CB (we only use upper CP in this test)
 	 *
+	 * NOTE:
+	 * The engine's upper CB can be located on the host, depending on
+	 * the upper_cb_in_host flag
+	 *
 	 * Test description:
 	 * DMA1 QMAN will transfer data to device and then signal the Engine's
 	 * QMAN. It will signal DMA2 QMAN that will transfer the data from the
@@ -194,7 +206,13 @@ static void test_sm_pingpong_upper_cp(void **state, bool is_tpc, uint8_t tpc_id)
 	 */
 
 	device_data_address = hw_ip.sram_base_address + 0x1000;
-	engine_cb_sram_addr = hw_ip.sram_base_address + 0x2000;
+
+	if (upper_cb_in_host)
+		engine_cb_sram_addr = 0;
+	else
+		engine_cb_sram_addr = hw_ip.sram_base_address + 0x2000;
+
+	hltests_clear_sobs(fd, DCORE0, 2);
 
 	/* Allocate two buffers on the host for data transfers */
 	src_data = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
@@ -234,19 +252,21 @@ static void test_sm_pingpong_upper_cp(void **state, bool is_tpc, uint8_t tpc_id)
 	engine_cb_size = hltests_add_write_to_sob_pkt(fd, engine_cb,
 						engine_cb_size, &pkt_info);
 
-	hltests_clear_sobs(fd, DCORE0, 2);
-	restore_cb = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
-	assert_ptr_not_equal(restore_cb, NULL);
+	/* Restore CB will download the engine's CB to the SRAM */
+	if (engine_cb_sram_addr) {
+		restore_cb = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
+		assert_ptr_not_equal(restore_cb, NULL);
 
-	memset(&pkt_info, 0, sizeof(pkt_info));
-	pkt_info.eb = EB_FALSE;
-	pkt_info.mb = MB_FALSE;
-	pkt_info.dma.src_addr = engine_cb_device_va;
-	pkt_info.dma.dst_addr = engine_cb_sram_addr;
-	pkt_info.dma.size = engine_cb_size;
-	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_SRAM;
-	restore_cb_size = hltests_add_dma_pkt(fd, restore_cb,
-					restore_cb_size, &pkt_info);
+		memset(&pkt_info, 0, sizeof(pkt_info));
+		pkt_info.eb = EB_FALSE;
+		pkt_info.mb = MB_FALSE;
+		pkt_info.dma.src_addr = engine_cb_device_va;
+		pkt_info.dma.dst_addr = engine_cb_sram_addr;
+		pkt_info.dma.size = engine_cb_size;
+		pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_SRAM;
+		restore_cb_size = hltests_add_dma_pkt(fd, restore_cb,
+						restore_cb_size, &pkt_info);
+	}
 
 	/* Create CB for DMA down that downloads data to device and signal the
 	 * engine
@@ -300,15 +320,17 @@ static void test_sm_pingpong_upper_cp(void **state, bool is_tpc, uint8_t tpc_id)
 	dmaup_cb_size = hltests_add_dma_pkt(fd, dmaup_cb,
 					dmaup_cb_size, &pkt_info);
 
-	restore_arr[0].cb_ptr = restore_cb;
-	restore_arr[0].cb_size = restore_cb_size;
-	restore_arr[0].queue_index = hltests_get_dma_down_qid(fd,
-							DCORE0, STREAM0);
+	if (engine_cb_sram_addr) {
+		restore_arr[0].cb_ptr = restore_cb;
+		restore_arr[0].cb_size = restore_cb_size;
+		restore_arr[0].queue_index =
+				hltests_get_dma_down_qid(fd, DCORE0, STREAM0);
+	}
 
 	execute_arr[0].cb_ptr = dmaup_cb;
 	execute_arr[0].cb_size = dmaup_cb_size;
-	execute_arr[0].queue_index = hltests_get_dma_up_qid(fd,
-							DCORE0, STREAM0);
+	execute_arr[0].queue_index =
+				hltests_get_dma_up_qid(fd, DCORE0, STREAM0);
 
 	execute_arr[1].cb_ptr = engine_cb;
 	execute_arr[1].cb_size = engine_cb_size;
@@ -316,11 +338,16 @@ static void test_sm_pingpong_upper_cp(void **state, bool is_tpc, uint8_t tpc_id)
 
 	execute_arr[2].cb_ptr = dmadown_cb;
 	execute_arr[2].cb_size = dmadown_cb_size;
-	execute_arr[2].queue_index = hltests_get_dma_down_qid(fd,
-							DCORE0, STREAM0);
+	execute_arr[2].queue_index =
+			hltests_get_dma_down_qid(fd, DCORE0, STREAM0);
 
-	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 3,
+	if (engine_cb_sram_addr)
+		rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 3,
 						FORCE_RESTORE_TRUE, &seq);
+	else
+		rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 3,
+						FORCE_RESTORE_FALSE, &seq);
+
 	assert_int_equal(rc, 0);
 
 	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
@@ -329,8 +356,10 @@ static void test_sm_pingpong_upper_cp(void **state, bool is_tpc, uint8_t tpc_id)
 	rc = hltests_destroy_cb(fd, engine_cb);
 	assert_int_equal(rc, 0);
 
-	rc = hltests_destroy_cb(fd, restore_cb);
-	assert_int_equal(rc, 0);
+	if (engine_cb_sram_addr) {
+		rc = hltests_destroy_cb(fd, restore_cb);
+		assert_int_equal(rc, 0);
+	}
 
 	rc = hltests_destroy_cb(fd, dmadown_cb);
 	assert_int_equal(rc, 0);
@@ -372,7 +401,7 @@ void test_sm_mme(void **state)
 	test_sm(state, false, true, 0);
 }
 
-void test_sm_pingpong_tpc_upper_cp(void **state)
+void test_sm_pingpong_tpc_upper_cp_from_sram(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -385,12 +414,33 @@ void test_sm_pingpong_tpc_upper_cp(void **state)
 	tpc_cnt = hltests_get_tpc_cnt(fd, 0);
 	for (tpc_id = 0 ; tpc_id < tpc_cnt ; tpc_id++)
 		if (hw_ip.tpc_enabled_mask & (0x1 << tpc_id))
-			test_sm_pingpong_upper_cp(state, true, tpc_id);
+			test_sm_pingpong_upper_cp(state, true, false, tpc_id);
 }
 
-void test_sm_pingpong_mme_upper_cp(void **state)
+void test_sm_pingpong_mme_upper_cp_from_sram(void **state)
 {
-	test_sm_pingpong_upper_cp(state, false, 0);
+	test_sm_pingpong_upper_cp(state, false, false, 0);
+}
+
+void test_sm_pingpong_tpc_upper_cp_from_host(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct hlthunk_hw_ip_info hw_ip;
+	uint8_t tpc_id, tpc_cnt;
+	int rc, fd = tests_state->fd;
+
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+
+	tpc_cnt = hltests_get_tpc_cnt(fd, 0);
+	for (tpc_id = 0 ; tpc_id < tpc_cnt ; tpc_id++)
+		if (hw_ip.tpc_enabled_mask & (0x1 << tpc_id))
+			test_sm_pingpong_upper_cp(state, true, true, tpc_id);
+}
+
+void test_sm_pingpong_mme_upper_cp_from_host(void **state)
+{
+	test_sm_pingpong_upper_cp(state, false, true, 0);
 }
 
 void test_sm_pingpong_tpc_common_cp_from_sram(void **state)
@@ -438,9 +488,13 @@ void test_sm_pingpong_mme_common_cp_from_host(void **state)
 const struct CMUnitTest sm_tests[] = {
 	cmocka_unit_test_setup(test_sm_tpc, hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_sm_mme, hltests_ensure_device_operational),
-	cmocka_unit_test_setup(test_sm_pingpong_tpc_upper_cp,
+	cmocka_unit_test_setup(test_sm_pingpong_tpc_upper_cp_from_sram,
 				hltests_ensure_device_operational),
-	cmocka_unit_test_setup(test_sm_pingpong_mme_upper_cp,
+	cmocka_unit_test_setup(test_sm_pingpong_mme_upper_cp_from_sram,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_sm_pingpong_tpc_upper_cp_from_host,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_sm_pingpong_mme_upper_cp_from_host,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_sm_pingpong_tpc_common_cp_from_sram,
 				hltests_ensure_device_operational),
