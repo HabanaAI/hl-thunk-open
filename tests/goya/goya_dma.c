@@ -30,11 +30,6 @@ void test_dma_4_queues(void **state)
 	uint32_t dma_size, page_size, restore_cb_size = 0, dma_cb_size[4];
 	int rc, fd = tests_state->fd, i;
 
-	if (hlthunk_get_device_name_from_fd(fd) != HLTHUNK_DEVICE_GOYA) {
-		printf("Test is skipped. Can only run on GOYA\n");
-		return;
-	}
-
 	/* SRAM MAP (base + ):
 	 * - 0x1000: data
 	 *
