@@ -63,7 +63,7 @@ void test_dma_4_queues(void **state)
 
 	for (i = 0 ; i < 2 ; i++) {
 		dram_addr[i] = hltests_allocate_device_mem(fd, dma_size,
-								NOT_CONTIGOUS);
+								NOT_CONTIGUOUS);
 		assert_non_null(dram_addr[i]);
 	}
 

@@ -1298,7 +1298,7 @@ int hltests_dma_test(void **state, bool is_ddr, uint64_t size)
 		assert_in_range(size, 1, hw_ip.dram_size);
 
 		device_addr = hltests_allocate_device_mem(fd, size,
-								NOT_CONTIGOUS);
+								NOT_CONTIGUOUS);
 		assert_non_null(device_addr);
 
 		dma_dir_down = GOYA_DMA_HOST_TO_DRAM;

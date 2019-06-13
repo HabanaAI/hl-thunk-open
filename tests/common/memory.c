@@ -43,7 +43,7 @@ void test_map_bigger_than_4GB(void **state)
 	assert_int_equal(hw_ip.dram_enabled, 1);
 	assert_in_range(dma_size, 1, hw_ip.dram_size);
 
-	device_addr = hltests_allocate_device_mem(fd, dma_size, NOT_CONTIGOUS);
+	device_addr = hltests_allocate_device_mem(fd, dma_size, NOT_CONTIGUOUS);
 	assert_non_null(device_addr);
 
 	dma_dir_down = GOYA_DMA_HOST_TO_DRAM;
@@ -95,8 +95,79 @@ void test_map_bigger_than_4GB(void **state)
 	assert_int_equal(rc, 0);
 }
 
+/**
+ * This test allocates device memory until all the memory was allocated.
+ * The allocated chunks are 0.5GB (because KMD reserves the first 0.5GB and we
+ * have multiples of 1GB of memory).
+ * The test pass if we can allocate the entire memory and fails otherwise
+ * @param state contains the open file descriptor.
+ */
+static void allocate_device_mem_until_full(void **state,
+					enum hltests_contiguous contigouos)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct hlthunk_hw_ip_info hw_ip;
+	void **device_addr;
+	uint64_t total_size, num_of_chunks, i, j;
+	uint32_t chunk_size;
+	bool error = false;
+	int rc, fd = tests_state->fd;
+
+	chunk_size = hltests_is_simulator(fd) ? SZ_32M : SZ_512M;
+
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+	assert_int_equal(hw_ip.dram_enabled, 1);
+
+	total_size = hw_ip.dram_size;
+	assert_int_equal(total_size % chunk_size, 0);
+
+	num_of_chunks = total_size / chunk_size;
+	assert_int_not_equal(num_of_chunks, 0);
+
+	device_addr = hlthunk_malloc(num_of_chunks * sizeof(void *));
+	assert_non_null(device_addr);
+
+	for (i = 0 ; i < num_of_chunks ; i++) {
+		device_addr[i] = hltests_allocate_device_mem(fd, chunk_size,
+								contigouos);
+		if (!device_addr[i])
+			break;
+	}
+
+	if (i < num_of_chunks) {
+		printf("Was able to allocate only %luMB out of %luMB\n",
+			i * (chunk_size / SZ_1M), total_size / SZ_1M);
+		error = true;
+	}
+
+	for (j = 0 ; j < i ; j++) {
+		rc = hltests_free_device_mem(fd, device_addr[j]);
+		assert_int_equal(rc, 0);
+	}
+
+	hlthunk_free(device_addr);
+
+	if (error)
+		fail();
+}
+
+void test_alloc_device_mem_until_full(void **state)
+{
+	allocate_device_mem_until_full(state, NOT_CONTIGUOUS);
+}
+
+void test_alloc_device_mem_until_full_contiguous(void **state)
+{
+	allocate_device_mem_until_full(state, CONTIGUOUS);
+}
+
 const struct CMUnitTest memory_tests[] = {
 	cmocka_unit_test_setup(test_map_bigger_than_4GB,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_alloc_device_mem_until_full,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_alloc_device_mem_until_full_contiguous,
 				hltests_ensure_device_operational),
 };
 

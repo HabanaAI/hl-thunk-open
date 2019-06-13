@@ -220,7 +220,7 @@ void test_dma_custom(void **state)
 	case GOYA_DMA_HOST_TO_DRAM:
 		dma_dir_up = GOYA_DMA_DRAM_TO_HOST;
 		device_ptr = hltests_allocate_device_mem(fd,
-						hw_ip.dram_size, CONTIGOUS);
+						hw_ip.dram_size, CONTIGUOUS);
 		assert_non_null(device_ptr);
 		device_addr = (uint64_t) (uintptr_t) device_ptr;
 		device_addr += (cfg.dst_addr - hw_ip.dram_base_address);
@@ -343,7 +343,7 @@ static void test_transfer_bigger_than_alloc(void **state)
 	int rc, fd = tests_state->fd;
 
 	device_ptr = hltests_allocate_device_mem(fd,
-				device_alloc_size, CONTIGOUS);
+				device_alloc_size, CONTIGUOUS);
 	assert_non_null(device_ptr);
 	device_addr = (uint64_t) (uintptr_t) device_ptr;
 
@@ -425,7 +425,7 @@ void test_map_custom(void **state)
 
 	assert_int_equal(hw_ip.dram_enabled, 1);
 	dram_addr = hltests_allocate_device_mem(fd, cfg.dram_size,
-							NOT_CONTIGOUS);
+							NOT_CONTIGUOUS);
 	assert_non_null(dram_addr);
 
 skip_dram:
