@@ -373,6 +373,7 @@ static void test_transfer_bigger_than_alloc(void **state)
 struct map_custom_cfg {
 	uint64_t dram_size;
 	uint64_t host_size;
+	int dram_num_of_alloc;
 	int host_num_of_alloc;
 };
 
@@ -386,6 +387,8 @@ static int map_custom_parsing_handler(void *user, const char *section,
 		cfg->dram_size = strtoul(value, NULL, 0);
 	else if (MATCH("map_custom_test", "host_size"))
 		cfg->host_size = strtoul(value, NULL, 0);
+	else if (MATCH("map_custom_test", "dram_num_of_alloc"))
+		cfg->dram_num_of_alloc = atoi(value);
 	else if (MATCH("map_custom_test", "host_num_of_alloc"))
 		cfg->host_num_of_alloc = atoi(value);
 	else
@@ -404,6 +407,7 @@ void test_map_custom(void **state)
 	int i, rc, fd = tests_state->fd;
 
 	memset(&cfg, 0, sizeof(struct map_custom_cfg));
+	cfg.dram_num_of_alloc = 1;
 	cfg.host_num_of_alloc = 1;
 
 	if (!config_filename)
@@ -413,24 +417,23 @@ void test_map_custom(void **state)
 		fail_msg("Can't load %s\n", config_filename);
 
 	printf("Configuration loaded from %s:\n", config_filename);
+	printf("dram size = %lu , host size = %lu\n",
+			cfg.dram_size, cfg.host_size);
 	printf(
-		"dram size = %lu , host size = %lu, number of host allocations = %d\n",
-		cfg.dram_size, cfg.host_size, cfg.host_num_of_alloc);
+		"number of dram allocations = %d, number of host allocations = %d\n",
+		cfg.dram_num_of_alloc, cfg.host_num_of_alloc);
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
-	if (!cfg.dram_size)
-		goto skip_dram;
+	if (cfg.dram_num_of_alloc)
+		assert_int_equal(hw_ip.dram_enabled, 1);
 
-	assert_int_equal(hw_ip.dram_enabled, 1);
-	dram_addr = hltests_allocate_device_mem(fd, cfg.dram_size,
-							NOT_CONTIGUOUS);
-	assert_non_null(dram_addr);
-
-skip_dram:
-	if ((!cfg.host_num_of_alloc) || (!cfg.host_size))
-		goto skip_host;
+	for (i = 0 ; i < cfg.dram_num_of_alloc ; i++) {
+		dram_addr = hltests_allocate_device_mem(fd, cfg.dram_size,
+								CONTIGUOUS);
+		assert_non_null(dram_addr);
+	}
 
 	for (i = 0 ; i < cfg.host_num_of_alloc ; i++) {
 		host_addr = hltests_allocate_host_mem(fd, cfg.host_size,
@@ -438,7 +441,6 @@ skip_dram:
 		assert_non_null(host_addr);
 	}
 
-skip_host:
 	printf("Starting to wait...\n");
 	while (1)
 		sleep(1);
