@@ -103,6 +103,7 @@ struct dma_custom_cfg {
 	uint32_t value;
 	uint32_t read_cnt;
 	uint32_t write_cnt;
+	uint32_t write_to_read_delay_ms;
 	bool sequential;
 	bool random;
 	bool stop_on_err;
@@ -153,6 +154,8 @@ static int dma_custom_parsing_handler(void *user, const char *section,
 
 		cfg->zero_before_write = strcmp("true", tmp) ? false : true;
 		free(tmp);
+	} else if (MATCH("dma_custom_test", "write_to_read_delay_ms")) {
+		cfg->write_to_read_delay_ms = strtoul(value, NULL, 0);
 	} else {
 		return 0; /* unknown section/name, error */
 	}
@@ -181,6 +184,7 @@ void test_dma_custom(void **state)
 	cfg.write_cnt = 1;
 	cfg.stop_on_err = true;
 	cfg.zero_before_write = false;
+	cfg.write_to_read_delay_ms = 0;
 
 	if (ini_parse(config_filename, dma_custom_parsing_handler, &cfg) < 0)
 		fail_msg("Can't load %s\n", config_filename);
@@ -193,6 +197,7 @@ void test_dma_custom(void **state)
 		cfg.read_cnt, cfg.write_cnt,
 		(cfg.stop_on_err ? "true" : "false"),
 		(cfg.zero_before_write ? "true" : "false"));
+	printf("write_to_read_delay_ms = %d\n", cfg.write_to_read_delay_ms);
 
 	if (cfg.random) {
 		printf("random values\n\n");
@@ -283,6 +288,9 @@ void test_dma_custom(void **state)
 
 		/* DMA: device->host */
 		is_error = false;
+
+		if (cfg.write_to_read_delay_ms)
+			usleep((uint64_t) cfg.write_to_read_delay_ms * 1000);
 
 		for (read_cnt = 0 ; read_cnt < cfg.read_cnt ; read_cnt++) {
 			hltests_dma_transfer(fd,
