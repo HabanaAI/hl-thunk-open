@@ -13,6 +13,7 @@ extern "C" {
 #endif
 
 #include <uapi/misc/habanalabs.h>
+#include "specs/pci_ids.h"
 
 #include <stdint.h>
 #include <stdbool.h>

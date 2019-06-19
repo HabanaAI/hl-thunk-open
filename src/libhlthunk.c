@@ -6,7 +6,6 @@
  */
 
 #include "libhlthunk.h"
-#include "specs/pci_ids.h"
 
 #define _GNU_SOURCE
 

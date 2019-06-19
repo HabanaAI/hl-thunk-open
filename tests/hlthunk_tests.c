@@ -6,7 +6,6 @@
  */
 
 #include "hlthunk_tests.h"
-#include "specs/pci_ids.h"
 #include "mersenne-twister.h"
 #include "argparse.h"
 
