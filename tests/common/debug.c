@@ -463,6 +463,60 @@ void test_map_custom(void **state)
 		sleep(1);
 }
 
+void test_loop_map_work_unmap(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct hlthunk_hw_ip_info hw_ip;
+	struct hltests_pkt_info pkt_info;
+	void *src_ptr, *dram_ptr;
+	uint64_t host_src_addr, total_size = 100 * SZ_1M;
+	uint32_t cb_size = 0;
+	void *cb;
+	int i, rc, fd = tests_state->fd;
+
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+
+	cb = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
+	assert_ptr_not_equal(cb, NULL);
+
+	dram_ptr = hltests_allocate_device_mem(fd, total_size, CONTIGUOUS);
+	assert_non_null(dram_ptr);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.dma.dst_addr = (uint64_t) (uintptr_t) dram_ptr;
+	pkt_info.dma.size = total_size;
+	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_DRAM;
+
+	for (i = 0 ; i < 20000 ; i++) {
+		src_ptr = hltests_allocate_host_mem(fd, total_size, HUGE);
+		assert_non_null(src_ptr);
+		host_src_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
+
+		pkt_info.dma.src_addr = host_src_addr;
+
+		cb_size = hltests_add_dma_pkt(fd, cb, 0, &pkt_info);
+
+		hltests_submit_and_wait_cs(fd, cb, cb_size,
+				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
+				DESTROY_CB_FALSE, HL_WAIT_CS_STATUS_COMPLETED);
+
+		rc = hltests_free_host_mem(fd, src_ptr);
+		assert_int_equal(rc, 0);
+
+		if (!((i + 1) % 100))
+			printf("Finished %d iterations\n", i + 1);
+	}
+
+	rc = hltests_free_device_mem(fd, dram_ptr);
+	assert_int_equal(rc, 0);
+
+	rc = hltests_destroy_cb(fd, cb);
+	assert_int_equal(rc, 0);
+}
+
 const struct CMUnitTest debug_tests[] = {
 	cmocka_unit_test_setup(test_tdr_deadlock,
 				hltests_ensure_device_operational),
@@ -475,6 +529,8 @@ const struct CMUnitTest debug_tests[] = {
 	cmocka_unit_test_setup(test_transfer_bigger_than_alloc,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_map_custom,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_loop_map_work_unmap,
 				hltests_ensure_device_operational)
 };
 
