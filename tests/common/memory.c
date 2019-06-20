@@ -36,7 +36,6 @@ void test_map_bigger_than_4GB(void **state)
 	uint32_t dma_dir_down, dma_dir_up;
 	int rc, fd = tests_state->fd;
 
-	/* Sanity and memory allocation */
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
@@ -64,17 +63,18 @@ void test_map_bigger_than_4GB(void **state)
 	 */
 	while (offset < total_size) {
 		/* DMA: host->device */
-		hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd,
-			DCORE0, STREAM0), EB_FALSE, MB_TRUE,
-			(host_src_addr + offset),
-			(uint64_t) (uintptr_t) device_addr, dma_size,
-			dma_dir_down);
+		hltests_dma_transfer(fd,
+				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
+				EB_FALSE, MB_TRUE, (host_src_addr + offset),
+				(uint64_t) (uintptr_t) device_addr, dma_size,
+				dma_dir_down);
 
 		/* DMA: device->host */
-		hltests_dma_transfer(fd, hltests_get_dma_up_qid(fd, DCORE0,
-			STREAM0), EB_FALSE, MB_TRUE,
-			(uint64_t) (uintptr_t) device_addr,
-			host_dst_addr, dma_size, dma_dir_up);
+		hltests_dma_transfer(fd,
+				hltests_get_dma_up_qid(fd, DCORE0, STREAM0),
+				EB_FALSE, MB_TRUE,
+				(uint64_t) (uintptr_t) device_addr,
+				host_dst_addr, dma_size, dma_dir_up);
 
 		/* Compare host memories */
 		rc = hltests_mem_compare(
@@ -168,7 +168,7 @@ const struct CMUnitTest memory_tests[] = {
 	cmocka_unit_test_setup(test_alloc_device_mem_until_full,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_alloc_device_mem_until_full_contiguous,
-				hltests_ensure_device_operational),
+				hltests_ensure_device_operational)
 };
 
 static const char *const usage[] = {
