@@ -94,6 +94,59 @@ void test_print_hw_ip_info(void **state)
 	printf("\n\n");
 }
 
+static void print_engine_name(enum hlthunk_device_name device_id,
+					uint32_t engine_id)
+{
+	if (device_id == HLTHUNK_DEVICE_GOYA) {
+		switch (engine_id) {
+		case GOYA_ENGINE_ID_DMA_0 ... GOYA_ENGINE_ID_DMA_4:
+			printf("  DMA%d\n", engine_id - GOYA_ENGINE_ID_DMA_0);
+			break;
+		case GOYA_ENGINE_ID_MME_0:
+			printf("  MME\n");
+			break;
+		case GOYA_ENGINE_ID_TPC_0 ... GOYA_ENGINE_ID_TPC_7:
+			printf("  TPC%d\n", engine_id - GOYA_ENGINE_ID_TPC_0);
+			break;
+		default:
+			fail_msg("Unexpected engine id %d\n", engine_id);
+		}
+	} else {
+		fail_msg("Unexpected device id %d\n", device_id);
+	}
+}
+
+void test_print_hw_idle_info(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	enum hlthunk_device_name device_id;
+	uint32_t busy_engines_mask, i;
+	bool is_idle;
+	int rc, fd = tests_state->fd;
+
+	printf("\n");
+	printf("Idle status\n");
+	printf("-----------\n");
+
+	is_idle = hlthunk_is_device_idle(fd);
+	if (is_idle) {
+		printf("Device is idle\n");
+		goto out;
+	}
+
+	rc = hlthunk_get_busy_engines_mask(fd, &busy_engines_mask);
+	assert_int_equal(rc, 0);
+
+	device_id = hlthunk_get_device_name_from_fd(fd);
+
+	printf("Busy engine(s):\n");
+	for (i = 0 ; i < 32; i++)
+		if (busy_engines_mask & (1 << i))
+			print_engine_name(device_id, i);
+out:
+	printf("\n");
+}
+
 struct dma_custom_cfg {
 	enum hltests_goya_dma_direction dma_dir;
 	uint64_t src_addr;
@@ -514,6 +567,8 @@ const struct CMUnitTest debug_tests[] = {
 	cmocka_unit_test_setup(test_endless_memory_ioctl,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_print_hw_ip_info,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_print_hw_idle_info,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_dma_custom,
 				hltests_ensure_device_operational),
