@@ -110,18 +110,10 @@ struct dma_custom_cfg {
 	bool zero_before_write;
 };
 
-struct map_custom_cfg {
-	uint64_t dram_size;
-	uint64_t host_size;
-	int dram_num_of_alloc;
-	int host_num_of_alloc;
-};
-
 static int dma_custom_parsing_handler(void *user, const char *section,
 					const char *name, const char *value)
 {
 	struct dma_custom_cfg *dma_cfg = (struct dma_custom_cfg *) user;
-	struct map_custom_cfg *map_cfg = (struct map_custom_cfg *) user;
 	char *tmp;
 
 	if (MATCH("dma_custom_test", "dma_dir")) {
@@ -164,14 +156,6 @@ static int dma_custom_parsing_handler(void *user, const char *section,
 		free(tmp);
 	} else if (MATCH("dma_custom_test", "write_to_read_delay_ms")) {
 		dma_cfg->write_to_read_delay_ms = strtoul(value, NULL, 0);
-	} else if (MATCH("map_custom_test", "dram_size")) {
-		map_cfg->dram_size = strtoul(value, NULL, 0);
-	} else if (MATCH("map_custom_test", "host_size")) {
-		map_cfg->host_size = strtoul(value, NULL, 0);
-	} else if (MATCH("map_custom_test", "dram_num_of_alloc")) {
-		map_cfg->dram_num_of_alloc = atoi(value);
-	} else if (MATCH("map_custom_test", "host_num_of_alloc")) {
-		map_cfg->host_num_of_alloc = atoi(value);
 	} else {
 		return 0; /* unknown section/name, error */
 	}
@@ -393,6 +377,13 @@ static void test_transfer_bigger_than_alloc(void **state)
 
 	/* no need to clean up because the device is in reset */
 }
+
+struct map_custom_cfg {
+	uint64_t dram_size;
+	uint64_t host_size;
+	int dram_num_of_alloc;
+	int host_num_of_alloc;
+};
 
 static int map_custom_parsing_handler(void *user, const char *section,
 					const char *name, const char *value)
