@@ -56,9 +56,6 @@ static double hltests_transfer_perf(int fd, uint32_t queue_index,
 	execute_arr[0].cb_size = offset;
 	execute_arr[0].queue_index = queue_index;
 
-	printf("DMA size = %u, number of DMA transfers = %lu\n",
-		size, num_of_transfers);
-
 	clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
 
 	for (i = 0 ; i <= num_of_transfers ; i++) {
