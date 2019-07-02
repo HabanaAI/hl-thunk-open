@@ -1263,7 +1263,7 @@ void hltests_dma_transfer(int fd, uint32_t queue_index, enum hltests_eb eb,
 	struct hltests_pkt_info pkt_info;
 
 	ptr = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
-	assert_ptr_not_equal(ptr, NULL);
+	assert_non_null(ptr);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = eb;
@@ -1754,7 +1754,7 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	/* Upper CB for engine: CP_DMA */
 	engine_upper_cb = hltests_create_cb(fd, PAGE_SIZE_4KB, INTERNAL,
 						engine_upper_cb_sram_addr);
-	assert_ptr_not_equal(engine_upper_cb, NULL);
+	assert_non_null(engine_upper_cb);
 	engine_upper_cb_device_va =
 			hltests_get_device_va_for_host_ptr(fd, engine_upper_cb);
 	engine_upper_cb_size = 0;
@@ -1774,7 +1774,7 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 
 	/* Setup CB: DMA the internal CBs to SRAM */
 	restore_cb =  hltests_create_cb(fd, PAGE_SIZE_4KB, EXTERNAL, 0);
-	assert_ptr_not_equal(restore_cb, NULL);
+	assert_non_null(restore_cb);
 	restore_cb_size = 0;
 
 	if (!common_cb_in_host) {
@@ -1803,7 +1803,7 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	 * Transfer data from host to SRAM + signal SOB0.
 	 */
 	dmadown_cb = hltests_create_cb(fd, PAGE_SIZE_4KB, EXTERNAL, 0);
-	assert_ptr_not_equal(dmadown_cb, NULL);
+	assert_non_null(dmadown_cb);
 	dmadown_cb_size = 0;
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
@@ -1828,7 +1828,7 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	 * Fence on SOB1 + transfer data from SRAM to host.
 	 */
 	dmaup_cb = hltests_create_cb(fd, PAGE_SIZE_4KB, EXTERNAL, 0);
-	assert_ptr_not_equal(dmaup_cb, NULL);
+	assert_non_null(dmaup_cb);
 	dmaup_cb_size = 0;
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
 	mon_and_fence_info.dcore_id = 0;

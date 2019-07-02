@@ -32,7 +32,7 @@ void test_tdr_deadlock(void **state)
 	assert_in_range(page_size, PAGE_SIZE_4KB, PAGE_SIZE_64KB);
 
 	ptr = hltests_create_cb(fd, page_size, EXTERNAL, 0);
-	assert_ptr_not_equal(ptr, NULL);
+	assert_non_null(ptr);
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_FALSE;
@@ -413,7 +413,7 @@ static void test_transfer_bigger_than_alloc(void **state)
 	host_src_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
 
 	ptr = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
-	assert_ptr_not_equal(ptr, NULL);
+	assert_non_null(ptr);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
@@ -522,7 +522,7 @@ void test_loop_map_work_unmap(void **state)
 	assert_int_equal(rc, 0);
 
 	cb = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
-	assert_ptr_not_equal(cb, NULL);
+	assert_non_null(cb);
 
 	dram_ptr = hltests_allocate_device_mem(fd, total_size, CONTIGUOUS);
 	assert_non_null(dram_ptr);

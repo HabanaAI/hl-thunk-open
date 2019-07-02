@@ -27,7 +27,7 @@ void test_cs_nop(void **state)
 	int fd = tests_state->fd;
 
 	cb = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
-	assert_ptr_not_equal(cb, NULL);
+	assert_non_null(cb);
 
 	cb_size = hltests_add_nop_pkt(fd, cb, cb_size, EB_FALSE, MB_FALSE);
 
@@ -47,7 +47,7 @@ void test_cs_msg_long(void **state)
 	int rc, fd = tests_state->fd;
 
 	cb = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
-	assert_ptr_not_equal(cb, NULL);
+	assert_non_null(cb);
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
@@ -77,7 +77,7 @@ void test_cs_msg_long_2000(void **state)
 
 	/* Largest packet is 24 bytes, so 32 is a good number */
 	cb = hltests_create_cb(fd, NUM_OF_MSGS * 32, EXTERNAL, 0);
-	assert_ptr_not_equal(cb, NULL);
+	assert_non_null(cb);
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
@@ -133,7 +133,7 @@ void test_cs_two_streams_with_fence(void **state)
 
 	/* Stream 0: Fence on SOB0 + LIN_DMA from host to SRAM */
 	cb_stream0 = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
-	assert_ptr_not_equal(cb_stream0, NULL);
+	assert_non_null(cb_stream0);
 
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
 	mon_and_fence_info.dcore_id = 0;
@@ -160,7 +160,7 @@ void test_cs_two_streams_with_fence(void **state)
 
 	/* Stream 3: Signal SOB0 */
 	cb_stream3 = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
-	assert_ptr_not_equal(cb_stream3, NULL);
+	assert_non_null(cb_stream3);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;

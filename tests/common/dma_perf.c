@@ -41,7 +41,7 @@ static double hltests_transfer_perf(int fd, uint32_t queue_index,
 					(0x400000000ull / size);
 
 	cb = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
-	assert_ptr_not_equal(cb, NULL);
+	assert_non_null(cb);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
@@ -201,7 +201,7 @@ static uint32_t setup_lower_cb_in_sram(int fd, uint64_t src_addr,
 	struct hltests_pkt_info pkt_info;
 
 	lower_cb = hltests_allocate_host_mem(fd, 0x2000, NOT_HUGE);
-	assert_ptr_not_equal(lower_cb, NULL);
+	assert_non_null(lower_cb);
 	lower_cb_device_va = hltests_get_device_va_for_host_ptr(fd, lower_cb);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));

@@ -80,7 +80,7 @@ void test_dma_4_queues(void **state)
 	 * Transfer data from host to DRAM + signal SOB0.
 	 */
 	dma_cb[0] = hltests_create_cb(fd, page_size, EXTERNAL, 0);
-	assert_ptr_not_equal(dma_cb[0], NULL);
+	assert_non_null(dma_cb[0]);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
@@ -105,7 +105,7 @@ void test_dma_4_queues(void **state)
 	 * Fence on SOB0 + transfer data from DRAM to SRAM + signal SOB1.
 	 */
 	dma_cb[1] = hltests_create_cb(fd, page_size, EXTERNAL, 0);
-	assert_ptr_not_equal(dma_cb[1], NULL);
+	assert_non_null(dma_cb[1]);
 
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
 	mon_and_fence_info.dcore_id = 0;
@@ -143,7 +143,7 @@ void test_dma_4_queues(void **state)
 	 * Fence on SOB1 + transfer data from SRAM to DRAM + signal SOB2.
 	 */
 	dma_cb[2] = hltests_create_cb(fd, page_size, EXTERNAL, 0);
-	assert_ptr_not_equal(dma_cb[2], NULL);
+	assert_non_null(dma_cb[2]);
 
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
 	mon_and_fence_info.dcore_id = 0;
@@ -181,7 +181,7 @@ void test_dma_4_queues(void **state)
 	 * Fence on SOB2 + transfer data from DRAM to host.
 	 */
 	dma_cb[3] = hltests_create_cb(fd, page_size, EXTERNAL, 0);
-	assert_ptr_not_equal(dma_cb[3], NULL);
+	assert_non_null(dma_cb[3]);
 
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
 	mon_and_fence_info.dcore_id = 0;

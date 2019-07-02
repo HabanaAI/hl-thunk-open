@@ -72,7 +72,7 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 	/* Internal CB for engine QMAN: MSG_LONG + signal SOB0 */
 	engine_cb = hltests_create_cb(fd, page_size, INTERNAL,
 					engine_cb_sram_addr);
-	assert_ptr_not_equal(engine_cb, NULL);
+	assert_non_null(engine_cb);
 	engine_cb_device_va = hltests_get_device_va_for_host_ptr(fd, engine_cb);
 	engine_cb_size = 0;
 	memset(&pkt_info, 0, sizeof(pkt_info));
@@ -95,7 +95,7 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 	/* Setup CB: Clear SOB0 + DMA the internal CB to SRAM */
 	hltests_clear_sobs(fd, DCORE0, 1);
 	restore_cb =  hltests_create_cb(fd, page_size, EXTERNAL, 0);
-	assert_ptr_not_equal(restore_cb, NULL);
+	assert_non_null(restore_cb);
 	restore_cb_size = 0;
 
 
@@ -111,7 +111,7 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 
 	/* CB for DMA QMAN: Fence on SOB0 */
 	dma_cb = hltests_create_cb(fd, page_size, EXTERNAL, 0);
-	assert_ptr_not_equal(dma_cb, NULL);
+	assert_non_null(dma_cb);
 	dma_cb_size = 0;
 
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
@@ -195,7 +195,7 @@ void test_write_to_cfg_space(void **state)
 	assert_int_equal(val, 0x55555555);
 
 	ptr = hltests_create_cb(fd, page_size, EXTERNAL, 0);
-	assert_ptr_not_equal(ptr, NULL);
+	assert_non_null(ptr);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
@@ -243,7 +243,7 @@ void test_write_to_mmTPC_PLL_CLK_RLX_0_from_qman(void **state)
 	assert_int_equal(val, 0x300030);
 
 	ptr = hltests_create_cb(fd, page_size, EXTERNAL, 0);
-	assert_ptr_not_equal(ptr, NULL);
+	assert_non_null(ptr);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;

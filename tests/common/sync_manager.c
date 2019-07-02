@@ -69,7 +69,7 @@ static void test_sm(void **state, bool is_tpc, bool is_wait, uint8_t tpc_id)
 
 	/* Create internal CB for the engine */
 	engine_cb = hltests_create_cb(fd, 64, INTERNAL, cb_engine_address);
-	assert_ptr_not_equal(engine_cb, NULL);
+	assert_non_null(engine_cb);
 	engine_cb_device_va = hltests_get_device_va_for_host_ptr(fd, engine_cb);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
@@ -94,7 +94,7 @@ static void test_sm(void **state, bool is_tpc, bool is_wait, uint8_t tpc_id)
 	 * a DMA down to the data address on the sram
 	 */
 	ext_cb = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
-	assert_ptr_not_equal(ext_cb, NULL);
+	assert_non_null(ext_cb);
 
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
 	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd,
@@ -229,7 +229,7 @@ static void test_sm_pingpong_upper_cp(void **state, bool is_tpc,
 	 * SOB1
 	 */
 	engine_cb = hltests_create_cb(fd, 512, INTERNAL, engine_cb_sram_addr);
-	assert_ptr_not_equal(engine_cb, NULL);
+	assert_non_null(engine_cb);
 	engine_cb_device_va = hltests_get_device_va_for_host_ptr(fd, engine_cb);
 
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
@@ -255,7 +255,7 @@ static void test_sm_pingpong_upper_cp(void **state, bool is_tpc,
 	/* Restore CB will download the engine's CB to the SRAM */
 	if (engine_cb_sram_addr) {
 		restore_cb = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
-		assert_ptr_not_equal(restore_cb, NULL);
+		assert_non_null(restore_cb);
 
 		memset(&pkt_info, 0, sizeof(pkt_info));
 		pkt_info.eb = EB_FALSE;
@@ -272,7 +272,7 @@ static void test_sm_pingpong_upper_cp(void **state, bool is_tpc,
 	 * engine
 	 */
 	dmadown_cb = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
-	assert_ptr_not_equal(dmadown_cb, NULL);
+	assert_non_null(dmadown_cb);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
@@ -296,7 +296,7 @@ static void test_sm_pingpong_upper_cp(void **state, bool is_tpc,
 	 * performs a DMA up of the data address on the sram
 	 */
 	dmaup_cb = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
-	assert_ptr_not_equal(dmaup_cb, NULL);
+	assert_non_null(dmaup_cb);
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
 	mon_and_fence_info.dcore_id = 0;
 	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd,
