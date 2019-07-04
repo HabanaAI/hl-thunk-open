@@ -178,9 +178,11 @@ static const char *const usage[] = {
 
 int main(int argc, const char **argv)
 {
-	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_INVALID, memory_tests,
-			sizeof(memory_tests) / sizeof((memory_tests)[0]));
+	int num_tests = sizeof(memory_tests) / sizeof((memory_tests)[0]);
 
-	return cmocka_run_group_tests(memory_tests, hltests_setup,
-					hltests_teardown);
+	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_INVALID, memory_tests,
+			num_tests);
+
+	return hltests_run_group_tests("memory", memory_tests, num_tests,
+					hltests_setup, hltests_teardown);
 }

@@ -20,14 +20,25 @@
 #include <time.h>
 #include <inttypes.h>
 
+struct hltests_thread_params {
+	const char *group_name;
+	const struct CMUnitTest *tests;
+	size_t num_tests;
+	CMFixtureFunction group_setup;
+	CMFixtureFunction group_teardown;
+};
+
 static pthread_mutex_t table_lock = PTHREAD_MUTEX_INITIALIZER;
 static khash_t(ptr) * dev_table;
 
 static enum hlthunk_device_name asic_name_for_testing = HLTHUNK_DEVICE_INVALID;
 
-int run_disabled_tests;
-const char *parser_pciaddr;
-const char *config_filename;
+static pthread_barrier_t barrier;
+
+static int run_disabled_tests;
+static const char *parser_pciaddr;
+static const char *config_filename;
+static int num_devices = 1;
 
 static char asic_names[HLTHUNK_DEVICE_INVALID][10] = {
 		"Goya"
@@ -119,22 +130,122 @@ static void destroy_cb_map(struct hltests_device *hdev)
 	pthread_mutex_destroy(&hdev->cb_table_lock);
 }
 
-int hltests_init(void)
+static int hltests_init(void)
 {
-	if (!dev_table) {
-		dev_table = kh_init(ptr);
+	seed(time(NULL));
 
-		if (!dev_table)
-			return -ENOMEM;
-	}
+	dev_table = kh_init(ptr);
 
-	return 0;
+	return dev_table ? 0 : -ENOMEM;
 }
 
-void hltests_fini(void)
+static void hltests_fini(void)
 {
 	if (dev_table)
 		kh_destroy(ptr, dev_table);
+}
+
+static void *hltests_thread_start(void *args)
+{
+	struct hltests_thread_params *params =
+			(struct hltests_thread_params *) args;
+	int rc;
+
+	/*
+	 * PTHREAD_BARRIER_SERIAL_THREAD is returned to one unspecified thread
+	 * and zero is returned to each of the remaining threads.
+	 */
+	rc = pthread_barrier_wait(&barrier);
+	if (rc && rc != PTHREAD_BARRIER_SERIAL_THREAD)
+		return NULL;
+
+	rc = _cmocka_run_group_tests(params->group_name,
+				params->tests, params->num_tests,
+				params->group_setup, params->group_teardown);
+	if (rc)
+		return NULL;
+
+	return args;
+}
+
+int hltests_run_group_tests(const char *group_name,
+				const struct CMUnitTest * const tests,
+				const size_t num_tests,
+				CMFixtureFunction group_setup,
+				CMFixtureFunction group_teardown)
+{
+	pthread_t *thread_ids = NULL;
+	struct hltests_thread_params *thread_params = NULL;
+	void *retval;
+	uint32_t i, num_threads = num_devices;
+	int rc;
+
+	rc = pthread_barrier_init(&barrier, NULL, num_threads);
+	if (rc) {
+		printf("Failed to initialize pthread barrier [rc %d]\n", rc);
+		return rc;
+	}
+
+	rc = hltests_init();
+	if (rc) {
+		printf("Failed to initialize tests library [rc %d]\n", rc);
+		goto out;
+	}
+
+	/* Allocate arrays for threads management */
+	thread_ids = (pthread_t *) hlthunk_malloc(num_threads *
+							sizeof(*thread_ids));
+	if (!thread_ids) {
+		printf("Failed to allocate memory for thread identifiers\n");
+		rc = -ENOMEM;
+		goto out;
+	}
+
+	thread_params = (struct hltests_thread_params *)
+			hlthunk_malloc(num_threads * sizeof(*thread_params));
+	if (!thread_params) {
+		printf("Failed to allocate memory for thread parameters\n");
+		rc = -ENOMEM;
+		goto out;
+	}
+
+	/* Create and execute threads */
+	for (i = 0 ; i < num_threads ; i++) {
+		thread_params[i].group_name = group_name;
+		thread_params[i].tests = tests;
+		thread_params[i].num_tests = num_tests;
+		thread_params[i].group_setup = group_setup;
+		thread_params[i].group_teardown = group_teardown;
+
+		rc = pthread_create(&thread_ids[i], NULL, hltests_thread_start,
+					&thread_params[i]);
+		if (rc) {
+			printf("Failed to create thread %d\n", i);
+			goto out;
+		}
+	}
+
+	/* Wait for the termination of the threads */
+	for (i = 0 ; i < num_threads ; i++) {
+		rc = pthread_join(thread_ids[i], &retval);
+		if (rc) {
+			printf("Failed to join with thread %d\n", i);
+			goto out;
+		}
+
+		if (!retval) {
+			printf("Thread %d has failed\n", i);
+			goto out;
+		}
+	}
+out:
+	/* Cleanup */
+	hlthunk_free(thread_params);
+	hlthunk_free(thread_ids);
+	hltests_fini();
+	pthread_barrier_destroy(&barrier);
+
+	return rc;
 }
 
 enum hlthunk_device_name hltests_validate_device_name(const char *device_name)
@@ -416,17 +527,11 @@ int hltests_setup(void **state)
 	if (!tests_state)
 		return -ENOMEM;
 
-	rc = hltests_init();
-	if (rc) {
-		printf("Failed to init tests library %d\n", rc);
-		goto free_state;
-	}
-
 	tests_state->fd = hltests_open(parser_pciaddr);
 	if (tests_state->fd < 0) {
 		printf("Failed to open device %d\n", tests_state->fd);
 		rc = tests_state->fd;
-		goto fini_tests;
+		goto free_state;
 	}
 
 	rc = is_param_enabled(KMD_PARAM_MMU, &tests_state->mmu);
@@ -446,15 +551,11 @@ int hltests_setup(void **state)
 
 	*state = tests_state;
 
-	seed(time(NULL));
-
 	return 0;
 
 close_fd:
 	if (hltests_close(tests_state->fd))
 		printf("Problem in closing FD, ignoring...\n");
-fini_tests:
-	hltests_fini();
 free_state:
 	hlthunk_free(tests_state);
 
@@ -471,8 +572,6 @@ int hltests_teardown(void **state)
 
 	if (hltests_close(tests_state->fd))
 		printf("Problem in closing FD, ignoring...\n");
-
-	hltests_fini();
 
 	hlthunk_free(*state);
 
@@ -1573,6 +1672,7 @@ void hltests_parser(int argc, const char **argv, const char * const* usage,
 			"pci address of device"),
 		OPT_STRING('c', "config", &config_filename,
 			"config filename for test(s)"),
+		OPT_INTEGER('n', "ndevices", &num_devices, "number of devices"),
 		OPT_END(),
 	};
 

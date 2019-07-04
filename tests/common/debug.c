@@ -587,12 +587,14 @@ static const char *const usage[] = {
 
 int main(int argc, const char **argv)
 {
+	int num_tests = sizeof(debug_tests) / sizeof((debug_tests)[0]);
+
 	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_INVALID, debug_tests,
-			sizeof(debug_tests) / sizeof((debug_tests)[0]));
+			num_tests);
 
 	if (!hltests_get_parser_run_disabled_tests())
 		return 0;
 
-	return cmocka_run_group_tests(debug_tests, hltests_setup,
-					hltests_teardown);
+	return hltests_run_group_tests("debug", debug_tests, num_tests,
+					hltests_setup, hltests_teardown);
 }

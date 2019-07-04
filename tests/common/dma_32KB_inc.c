@@ -114,10 +114,12 @@ static const char *const usage[] = {
 
 int main(int argc, const char **argv)
 {
-	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_INVALID,
-		dma_32KB_inc_tests,
-		sizeof(dma_32KB_inc_tests) / sizeof((dma_32KB_inc_tests)[0]));
+	int num_tests = sizeof(dma_32KB_inc_tests) /
+			sizeof((dma_32KB_inc_tests)[0]);
 
-	return cmocka_run_group_tests(dma_32KB_inc_tests, hltests_setup,
-					hltests_teardown);
+	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_INVALID,
+			dma_32KB_inc_tests, num_tests);
+
+	return hltests_run_group_tests("dma_32KB_inc", dma_32KB_inc_tests,
+				num_tests, hltests_setup, hltests_teardown);
 }

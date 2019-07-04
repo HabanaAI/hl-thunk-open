@@ -45,9 +45,12 @@ static const char *const usage[] = {
 
 int main(int argc, const char **argv)
 {
-	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_INVALID,
-		open_close_tests,
-		sizeof(open_close_tests) / sizeof((open_close_tests)[0]));
+	int num_tests = sizeof(open_close_tests) /
+			sizeof((open_close_tests)[0]);
 
-	return cmocka_run_group_tests(open_close_tests, NULL, NULL);
+	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_INVALID,
+			open_close_tests, num_tests);
+
+	return hltests_run_group_tests("open_close", open_close_tests,
+					num_tests, NULL, NULL);
 }

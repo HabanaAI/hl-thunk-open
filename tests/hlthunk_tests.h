@@ -170,6 +170,7 @@ struct hltests_device {
 };
 
 struct hltests_state {
+	double perf_outcomes[GOYA_DMA_ENUM_MAX];
 	int fd;
 	bool mmu;
 	bool security;
@@ -307,8 +308,6 @@ struct mem_pool {
 	uint8_t *pool;
 };
 
-
-
 void hltests_parser(int argc, const char **argv, const char * const* usage,
 			enum hlthunk_device_name expected_device,
 			const struct CMUnitTest * const tests, int num_tests);
@@ -318,8 +317,12 @@ int hltests_get_parser_run_disabled_tests(void);
 bool hltests_is_simulator(int fd);
 bool hltests_is_goya(int fd);
 
-int hltests_init(void);
-void hltests_fini(void);
+int hltests_run_group_tests(const char *group_name,
+				const struct CMUnitTest * const tests,
+				const size_t num_tests,
+				CMFixtureFunction group_setup,
+				CMFixtureFunction group_teardown);
+
 int hltests_open(const char *busid);
 int hltests_close(int fd);
 
