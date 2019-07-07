@@ -18,5 +18,5 @@ fi
 
 cd "$BUILDDIR"
 
-$CMAKE ${EXTRA_CMAKE_FLAGS:-} ..
+$CMAKE -DCMAKE_BUILD_TYPE="Release" ${EXTRA_CMAKE_FLAGS:-} ..
 make -j8
