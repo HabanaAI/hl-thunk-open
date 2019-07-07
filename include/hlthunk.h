@@ -54,6 +54,8 @@ struct hlthunk_cs_out {
 
 enum hlthunk_device_name {
 	HLTHUNK_DEVICE_GOYA,
+	HLTHUNK_DEVICE_PLACEHOLDER1,
+	HLTHUNK_DEVICE_PLACEHOLDER2,
 	HLTHUNK_DEVICE_INVALID
 };
 
