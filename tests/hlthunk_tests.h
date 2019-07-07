@@ -10,6 +10,7 @@
 
 #include "hlthunk.h"
 #include "khash.h"
+#include "specs/pci_ids.h"
 
 #include <stdint.h>
 #include <sys/types.h>
