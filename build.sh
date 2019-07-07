@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+# To build with tests, install cmocka-dev and define EXTRA_CMAKE_FLAGS as:
+# EXTRA_CMAKE_FLAGS=-DUNIT_TESTING=ON
+
 SRCDIR=`dirname $0`
 BUILDDIR="$SRCDIR/build"
 
