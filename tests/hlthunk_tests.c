@@ -389,8 +389,9 @@ static int is_param_enabled(enum hltests_kmd_param param, bool *val)
 
 	fd = open(path, O_RDONLY);
 	if (fd < 0) {
-		printf("Failed to open %s\n", path);
-		return errno;
+		/* Probably working with upstream kernel so it is enabled */
+		*val = true;
+		return 0;
 	}
 
 	if (read(fd, &c, 1) <= 0) {
