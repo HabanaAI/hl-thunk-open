@@ -134,14 +134,18 @@ hlthunk_public enum hlthunk_device_name hlthunk_get_device_name_from_fd(int fd)
 
 static int hlthunk_open_device_by_name(enum hlthunk_device_name device_name)
 {
+	enum hlthunk_device_name asic_name;
 	int fd, i;
 
 	for (i = 0 ; i < HLTHUNK_MAX_MINOR ; i++) {
 		fd = hlthunk_open_minor(i, HLTHUNK_DEV_NAME_PRIMARY);
 		if (fd >= 0) {
-			if (hlthunk_get_device_name_from_fd(fd) ==
-								device_name)
+			asic_name = hlthunk_get_device_name_from_fd(fd);
+
+			if ((device_name == HLTHUNK_DEVICE_DONT_CARE) ||
+					(asic_name == device_name))
 				return fd;
+
 			hlthunk_close(fd);
 		}
 	}

@@ -56,7 +56,8 @@ enum hlthunk_device_name {
 	HLTHUNK_DEVICE_GOYA,
 	HLTHUNK_DEVICE_PLACEHOLDER1,
 	HLTHUNK_DEVICE_PLACEHOLDER2,
-	HLTHUNK_DEVICE_INVALID
+	HLTHUNK_DEVICE_INVALID,
+	HLTHUNK_DEVICE_DONT_CARE
 };
 
 hlthunk_public int hlthunk_open(enum hlthunk_device_name device_name,
