@@ -561,6 +561,77 @@ void test_loop_map_work_unmap(void **state)
 	assert_int_equal(rc, 0);
 }
 
+static int file_descriptor_sanity_check(int fd)
+{
+	struct hlthunk_hw_ip_info hw_ip;
+	int rc;
+
+	/* INFO IOCTL is an arbitrary IOCTL for a sanity check of the fd */
+	memset(&hw_ip, 0, sizeof(hw_ip));
+	return hlthunk_get_hw_ip_info(fd, &hw_ip);
+}
+
+void test_duplicate_file_descriptor(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct hlthunk_hw_ip_info hw_ip;
+	enum hlthunk_device_name device_name;
+	int rc, fd = tests_state->fd, fd_dup, fd_new;
+
+	device_name = hlthunk_get_device_name_from_fd(fd);
+	assert_int_not_equal(device_name, HLTHUNK_DEVICE_INVALID);
+
+	/* Duplicate a file descriptor */
+	fd_dup = dup(fd);
+	assert_false(fd_dup < 0);
+	rc = file_descriptor_sanity_check(fd_dup);
+	assert_int_equal(rc, 0);
+
+	/*
+	 * Verify that fd is valid after closing the duplicated fd, and that a
+	 * new file descriptor cannot be opened.
+	 */
+	rc = hlthunk_close(fd_dup);
+	assert_int_equal(rc, 0);
+	rc = file_descriptor_sanity_check(fd);
+	assert_int_equal(rc, 0);
+	fd_new = hlthunk_open(device_name, NULL);
+	assert_true(fd_new < 0);
+
+	/*
+	 * Re-duplicate a file descriptor.
+	 * Verify that the duplicated fd is still valid after closing fd, and
+	 * that a new file descriptor cannot be opened.
+	 */
+	fd_dup = dup(fd);
+	assert_false(fd_dup < 0);
+	rc = file_descriptor_sanity_check(fd_dup);
+	assert_int_equal(rc, 0);
+	rc = hlthunk_close(fd);
+	assert_int_equal(rc, 0);
+	rc = file_descriptor_sanity_check(fd_dup);
+	assert_int_equal(rc, 0);
+	fd_new = hlthunk_open(device_name, NULL);
+	assert_true(fd_new < 0);
+
+	/*
+	 * Close the duplicated fd in addition to fd and verify that a new file
+	 * descriptor can be opened.
+	 */
+	rc = hlthunk_close(fd_dup);
+	assert_int_equal(rc, 0);
+	fd_new = hlthunk_open(device_name, NULL);
+	assert_false(fd_new < 0);
+	rc = file_descriptor_sanity_check(fd_new);
+	assert_int_equal(rc, 0);
+
+	/*
+	 * Update "tests_state->fd" to "fd_new", so the "hltests_teardown"
+	 * function won't try to close "fd" which was released during the test.
+	 */
+	tests_state->fd = fd_new;
+}
+
 const struct CMUnitTest debug_tests[] = {
 	cmocka_unit_test_setup(test_tdr_deadlock,
 				hltests_ensure_device_operational),
@@ -577,6 +648,8 @@ const struct CMUnitTest debug_tests[] = {
 	cmocka_unit_test_setup(test_map_custom,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_loop_map_work_unmap,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_duplicate_file_descriptor,
 				hltests_ensure_device_operational)
 };
 
