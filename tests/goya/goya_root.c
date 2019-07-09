@@ -284,11 +284,13 @@ int main(int argc, const char **argv)
 {
 	int num_tests = sizeof(goya_root_tests) / sizeof((goya_root_tests)[0]);
 
-	if (access("/sys/kernel/debug", R_OK))
-		return 0;
-
 	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_GOYA, goya_root_tests,
 			num_tests);
+
+	if (access("/sys/kernel/debug", R_OK)) {
+		printf("This executable need to be run with sudo\n");
+		return 0;
+	}
 
 	return hltests_run_group_tests("goya_root", goya_root_tests, num_tests,
 				hltests_root_setup, hltests_root_teardown);

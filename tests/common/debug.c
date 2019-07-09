@@ -592,8 +592,10 @@ int main(int argc, const char **argv)
 	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_INVALID, debug_tests,
 			num_tests);
 
-	if (!hltests_get_parser_run_disabled_tests())
+	if (!hltests_get_parser_run_disabled_tests()) {
+		printf("This executable need to be run with -d flag\n");
 		return 0;
+	}
 
 	return hltests_run_group_tests("debug", debug_tests, num_tests,
 					hltests_setup, hltests_teardown);
