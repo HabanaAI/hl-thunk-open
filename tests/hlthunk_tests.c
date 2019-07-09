@@ -1669,7 +1669,6 @@ void hltests_parser(int argc, const char **argv, const char * const* usage,
 			const struct CMUnitTest * const tests, int num_tests)
 {
 	struct argparse argparse;
-	const char *asic = NULL;
 	const char *test = NULL;
 	int list = 0;
 
@@ -1679,8 +1678,6 @@ void hltests_parser(int argc, const char **argv, const char * const* usage,
 		OPT_BOOLEAN('l', "list", &list, "list tests"),
 		OPT_BOOLEAN('d', "disabled", &run_disabled_tests,
 			"run disabled tests"),
-		OPT_STRING('a', "asic", &asic,
-			"run tests on asic (goya)"),
 		OPT_STRING('s', "test", &test, "name of specific test to run"),
 		OPT_STRING('p', "pciaddr", &parser_pciaddr,
 			"pci address of device"),
