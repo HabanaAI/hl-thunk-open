@@ -66,9 +66,9 @@
 
 #define MSG_LONG_SIZE			16
 
-#define DMA_1KB_INC_SRAM(func_name, state, size) \
+#define DMA_TEST_INC_SRAM(func_name, state, size) \
 	void func_name(void **state) { hltests_dma_test(state, false, size); }
-#define DMA_1KB_INC_DRAM(func_name, state, size) \
+#define DMA_TEST_INC_DRAM(func_name, state, size) \
 	void func_name(void **state) { hltests_dma_test(state, true, size); }
 
 KHASH_MAP_INIT_INT(ptr, void*)

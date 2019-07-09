@@ -8,18 +8,13 @@ set(COMMON_UNIT_TESTS
     open_close
     command_buffer
     command_submission
-    dma
-    dma_1KB_inc
-    dma_4KB_inc
-    dma_32KB_inc
-    dma_128KB_inc
-    dma_1MB_inc
-    dma_4MB_inc
-    dma_64MB_inc
-    memory
     sync_manager
-    debug
+    memory
+    dma
+    dma_sram
+    dma_dram
     dma_perf
+    debug
 )
 
 foreach(_UNIT_TEST ${COMMON_UNIT_TESTS})

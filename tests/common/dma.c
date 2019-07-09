@@ -29,14 +29,6 @@ struct dma_thread_params {
 	int fd;
 };
 
-struct dma_chunk {
-	void *input;
-	void *output;
-	uint64_t input_device_va;
-	uint64_t output_device_va;
-	uint64_t dram_addr;
-};
-
 static void *dma_thread_start(void *args)
 {
 	struct dma_thread_params *params = (struct dma_thread_params *) args;
@@ -276,158 +268,6 @@ static void test_dma_threads(void **state, uint32_t num_of_threads)
 	hlthunk_free(thread_id);
 }
 
-void test_dma_entire_dram_random(void **state)
-{
-	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	struct hltests_cs_chunk execute_arr[1];
-	struct hlthunk_hw_ip_info hw_ip;
-	struct hltests_pkt_info pkt_info;
-	void *buf[2], *cb;
-	uint64_t dram_size, dram_addr, dram_addr_end, device_va[2], seq;
-	uint64_t dma_size = 1 << 21; /* 2MB */
-	uint64_t zone_size = 1 << 24; /* 16MB */
-	uint32_t offset, cb_size = 0, vec_len, packets_size;
-
-	kvec_t(struct dma_chunk) array;
-	struct dma_chunk chunk;
-	int i, rc, fd = tests_state->fd;
-
-	/*
-	 * This test uses specific DRAM addresses, hence needs MMU to be
-	 * disabled
-	 */
-	if (tests_state->mmu) {
-		printf("Test is skipped because MMU is enabled\n");
-		skip();
-	}
-
-	kv_init(array);
-
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
-	assert_true(hw_ip.dram_enabled);
-
-	/* check alignment to 8B */
-	assert_int_equal(dma_size & 0x7, 0);
-	assert_int_equal(zone_size & 0x7, 0);
-
-	assert_true(2 * dma_size <= zone_size);
-
-	/* align to zone_size */
-	dram_size = hw_ip.dram_size & ~(zone_size - 1);
-	assert_true(zone_size < dram_size);
-
-	dram_addr = hw_ip.dram_base_address;
-	dram_addr_end = hw_ip.dram_base_address + dram_size - 1;
-
-	while (dram_addr < (dram_addr_end - dma_size)) {
-		buf[0] = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
-		assert_non_null(buf[0]);
-		hltests_fill_rand_values(buf[0], dma_size);
-		device_va[0] = hltests_get_device_va_for_host_ptr(fd, buf[0]);
-
-		buf[1] = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
-		assert_non_null(buf[1]);
-		memset(buf[1], 0, dma_size);
-		device_va[1] = hltests_get_device_va_for_host_ptr(fd, buf[1]);
-
-		hltests_fill_rand_values(&offset, sizeof(offset));
-
-		/* need an offset inside a zone and aligned to 8B */
-		offset = (offset & (zone_size - 1)) & ~0x7;
-		if (offset > (zone_size - dma_size - 1))
-			offset -= dma_size;
-
-		chunk.input = buf[0];
-		chunk.output = buf[1];
-		chunk.input_device_va = device_va[0];
-		chunk.output_device_va = device_va[1];
-		chunk.dram_addr = dram_addr + offset;
-
-		kv_push(struct dma_chunk, array, chunk);
-
-		dram_addr += zone_size;
-	}
-
-	vec_len = kv_size(array);
-	packets_size = 24 * vec_len;
-
-	/* DMA down */
-	cb = hltests_create_cb(fd, packets_size, EXTERNAL, 0);
-	assert_non_null(cb);
-
-	for (i = 0 ; i < vec_len ; i++) {
-		chunk = kv_A(array, i);
-		memset(&pkt_info, 0, sizeof(pkt_info));
-		pkt_info.eb = EB_FALSE;
-		pkt_info.mb = MB_TRUE;
-		pkt_info.dma.src_addr = chunk.input_device_va;
-		pkt_info.dma.dst_addr = (uint64_t) (uintptr_t) chunk.dram_addr;
-		pkt_info.dma.size = dma_size;
-		pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_DRAM;
-		cb_size = hltests_add_dma_pkt(fd, cb, cb_size, &pkt_info);
-	}
-
-	hltests_submit_and_wait_cs(fd, cb, cb_size,
-				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
-				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
-	cb_size = 0;
-
-	/* DMA up */
-	cb = hltests_create_cb(fd, packets_size, EXTERNAL, 0);
-	assert_non_null(cb);
-
-	for (i = 0 ; i < vec_len ; i++) {
-		chunk = kv_A(array, i);
-		memset(&pkt_info, 0, sizeof(pkt_info));
-		pkt_info.eb = EB_FALSE;
-		pkt_info.mb = MB_TRUE;
-		pkt_info.dma.src_addr = (uint64_t) (uintptr_t) chunk.dram_addr;
-		pkt_info.dma.dst_addr = chunk.output_device_va;
-		pkt_info.dma.size = dma_size;
-		pkt_info.dma.dma_dir = GOYA_DMA_DRAM_TO_HOST;
-		cb_size = hltests_add_dma_pkt(fd, cb, cb_size, &pkt_info);
-	}
-
-	hltests_submit_and_wait_cs(fd, cb, cb_size,
-				hltests_get_dma_up_qid(fd, DCORE0, STREAM0),
-				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
-
-	cb_size = 0;
-
-	/* compare host memories */
-	for (i = 0 ; i < vec_len ; i++) {
-		chunk = kv_A(array, i);
-		rc = hltests_mem_compare(chunk.input, chunk.output, dma_size);
-		assert_int_equal(rc, 0);
-	}
-
-	/* cleanup */
-	for (i = 0 ; i < vec_len ; i++) {
-		chunk = kv_A(array, i);
-		rc = hltests_free_host_mem(fd, chunk.input);
-		assert_int_equal(rc, 0);
-
-		rc = hltests_free_host_mem(fd, chunk.output);
-		assert_int_equal(rc, 0);
-	}
-
-	kv_destroy(array);
-}
-
-void test_dma_entire_sram_random(void **state)
-{
-	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	struct hlthunk_hw_ip_info hw_ip;
-	int rc;
-
-	rc = hlthunk_get_hw_ip_info(tests_state->fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
-	hltests_dma_test(state, false, hw_ip.sram_size);
-}
-
 void test_dma_8_threads(void **state)
 {
 	test_dma_threads(state, 8);
@@ -444,10 +284,6 @@ void test_dma_512_threads(void **state)
 }
 
 const struct CMUnitTest dma_tests[] = {
-	cmocka_unit_test_setup(test_dma_entire_sram_random,
-			hltests_ensure_device_operational),
-	cmocka_unit_test_setup(test_dma_entire_dram_random,
-			hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_dma_8_threads,
 			hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_dma_64_threads,
