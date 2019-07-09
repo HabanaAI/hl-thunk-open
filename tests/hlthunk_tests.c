@@ -1403,8 +1403,8 @@ int hltests_dma_test(void **state, bool is_ddr, uint64_t size)
 		dma_dir_down = GOYA_DMA_HOST_TO_DRAM;
 		dma_dir_up = GOYA_DMA_DRAM_TO_HOST;
 	} else {
-		if (size < 1 || size > hw_ip.sram_size)
-			return 0;
+		if (size > hw_ip.sram_size)
+			skip();
 		device_addr = (void *) (uintptr_t) hw_ip.sram_base_address;
 
 		dma_dir_down = GOYA_DMA_HOST_TO_SRAM;
