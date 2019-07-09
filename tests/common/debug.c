@@ -589,7 +589,7 @@ int main(int argc, const char **argv)
 {
 	int num_tests = sizeof(debug_tests) / sizeof((debug_tests)[0]);
 
-	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_INVALID, debug_tests,
+	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_DONT_CARE, debug_tests,
 			num_tests);
 
 	if (!hltests_get_parser_run_disabled_tests()) {

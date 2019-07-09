@@ -515,7 +515,7 @@ int main(int argc, const char **argv)
 {
 	int num_tests = sizeof(sm_tests) / sizeof((sm_tests)[0]);
 
-	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_INVALID, sm_tests,
+	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_DONT_CARE, sm_tests,
 			num_tests);
 
 	return hltests_run_group_tests("sync_manager", sm_tests, num_tests,

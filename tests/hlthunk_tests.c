@@ -31,7 +31,8 @@ struct hltests_thread_params {
 static pthread_mutex_t table_lock = PTHREAD_MUTEX_INITIALIZER;
 static khash_t(ptr) * dev_table;
 
-static enum hlthunk_device_name asic_name_for_testing = HLTHUNK_DEVICE_INVALID;
+static enum hlthunk_device_name asic_name_for_testing =
+						HLTHUNK_DEVICE_DONT_CARE;
 
 static pthread_barrier_t barrier;
 
@@ -40,8 +41,12 @@ static const char *parser_pciaddr;
 static const char *config_filename;
 static int num_devices = 1;
 
-static char asic_names[HLTHUNK_DEVICE_INVALID][10] = {
-		"Goya"
+static char asic_names[HLTHUNK_DEVICE_MAX][20] = {
+	"Goya",
+	"Placeholder1",
+	"Placeholder2",
+	"Invalid",
+	"Don't care"
 };
 
 static struct hltests_device *get_hdev_from_fd(int fd)
@@ -248,30 +253,39 @@ out:
 	return rc;
 }
 
-enum hlthunk_device_name hltests_validate_device_name(const char *device_name)
-{
-	if (!device_name)
-		device_name = "goya";
-
-	if (!strcmp(device_name, "goya"))
-		return HLTHUNK_DEVICE_GOYA;
-
-	printf("Invalid device name %s\n", device_name);
-
-	return HLTHUNK_DEVICE_INVALID;
-}
-
 int hltests_open(const char *busid)
 {
-	int fd, rc;
+	enum hlthunk_device_name actual_asic_type;
 	struct hltests_device *hdev;
+	int fd, rc;
 	khint_t k;
+
+	if (asic_name_for_testing == HLTHUNK_DEVICE_INVALID) {
+		printf("Expected ASIC name is %s!!!\n",
+			asic_names[asic_name_for_testing]);
+		printf("Something is very wrong, exiting...\n");
+		rc = -EINVAL;
+		goto out;
+	}
 
 	pthread_mutex_lock(&table_lock);
 
-	rc = fd = hlthunk_open(asic_name_for_testing, busid);
+	rc = fd = hlthunk_open(HLTHUNK_DEVICE_DONT_CARE, busid);
 	if (fd < 0)
 		goto out;
+
+	actual_asic_type = hlthunk_get_device_name_from_fd(fd);
+	if ((asic_name_for_testing != HLTHUNK_DEVICE_DONT_CARE) &&
+			(asic_name_for_testing != actual_asic_type)) {
+
+		printf("Expected to run on device %s but detected device %s\n",
+				asic_names[asic_name_for_testing],
+				asic_names[actual_asic_type]);
+		rc = -EINVAL;
+		hlthunk_close(fd);
+		pthread_mutex_unlock(&table_lock);
+		exit(0);
+	}
 
 	k = kh_get(ptr, dev_table, fd);
 	if (k != kh_end(dev_table)) {
@@ -295,7 +309,7 @@ int hltests_open(const char *busid)
 
 	hdev->device_id = hlthunk_get_device_id_from_fd(fd);
 
-	switch (hlthunk_get_device_name_from_fd(fd)) {
+	switch (actual_asic_type) {
 	case HLTHUNK_DEVICE_GOYA:
 		goya_tests_set_asic_funcs(hdev);
 		break;
@@ -1680,10 +1694,6 @@ void hltests_parser(int argc, const char **argv, const char * const* usage,
 	argparse_describe(&argparse, "\nRun tests using hl-thunk", NULL);
 	argc = argparse_parse(&argparse, argc, argv);
 
-	asic_name_for_testing = hltests_validate_device_name(asic);
-	if (asic_name_for_testing == HLTHUNK_DEVICE_INVALID)
-		exit(-1);
-
 	if (list) {
 		printf("\nList of tests:");
 		printf("\n-----------------\n\n");
@@ -1693,13 +1703,7 @@ void hltests_parser(int argc, const char **argv, const char * const* usage,
 		exit(0);
 	}
 
-	if ((!parser_pciaddr) && (expected_device != HLTHUNK_DEVICE_INVALID) &&
-				(asic_name_for_testing != expected_device)) {
-		printf("Expected to run on device %s but detected device %s\n",
-				asic_names[expected_device],
-				asic_names[asic_name_for_testing]);
-		exit(0);
-	}
+	asic_name_for_testing = expected_device;
 
 	if (test)
 		cmocka_set_test_filter(test);

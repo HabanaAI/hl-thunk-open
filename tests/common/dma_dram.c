@@ -421,7 +421,7 @@ int main(int argc, const char **argv)
 {
 	int num_tests = sizeof(dma_dram_tests) / sizeof((dma_dram_tests)[0]);
 
-	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_INVALID,
+	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_DONT_CARE,
 			dma_dram_tests, num_tests);
 
 	return hltests_run_group_tests("dma_dram", dma_dram_tests, num_tests,

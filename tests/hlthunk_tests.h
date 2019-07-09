@@ -326,8 +326,6 @@ int hltests_run_group_tests(const char *group_name,
 int hltests_open(const char *busid);
 int hltests_close(int fd);
 
-enum hlthunk_device_name hltests_validate_device_name(const char *device_name);
-
 void *hltests_cb_mmap(int fd, size_t len, off_t offset);
 int hltests_cb_munmap(void *addr, size_t length);
 

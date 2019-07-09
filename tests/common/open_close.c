@@ -48,7 +48,7 @@ int main(int argc, const char **argv)
 	int num_tests = sizeof(open_close_tests) /
 			sizeof((open_close_tests)[0]);
 
-	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_INVALID,
+	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_DONT_CARE,
 			open_close_tests, num_tests);
 
 	return hltests_run_group_tests("open_close", open_close_tests,
