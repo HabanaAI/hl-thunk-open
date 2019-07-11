@@ -73,7 +73,7 @@ void test_dma_entire_dram_random(void **state)
 			fail_msg("Can't load %s\n", config_filename);
 
 		printf("Configuration loaded from %s:\n", config_filename);
-		printf("dma_size = %lx, zone_size = 0x%lx\n",
+		printf("dma_size = 0x%lx, zone_size = 0x%lx\n",
 				cfg.dma_size, cfg.zone_size);
 	}
 
