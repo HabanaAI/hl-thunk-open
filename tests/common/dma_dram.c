@@ -33,8 +33,8 @@ struct dma_entire_dram_cfg {
 	uint64_t zone_size;
 };
 
-static int dma_entire_dram_parser(void *user, const char *section,
-					const char *name, const char *value)
+static int dma_dram_parser(void *user, const char *section, const char *name,
+				const char *value)
 {
 	struct dma_entire_dram_cfg *dma_cfg =
 			(struct dma_entire_dram_cfg *) user;
@@ -59,30 +59,23 @@ void test_dma_entire_dram_random(void **state)
 	struct hlthunk_hw_ip_info hw_ip;
 	struct dma_entire_dram_cfg cfg;
 	struct dma_chunk chunk;
-	void *buf[2], *cb;
+	void *buf[2], *cb, *dram_ptr;
 	uint64_t dram_size, dram_addr, dram_addr_end, device_va[2], seq;
 	uint32_t offset, cb_size = 0, vec_len, packets_size;
 	int i, rc, fd = tests_state->fd;
 	kvec_t(struct dma_chunk) array;
 
-	/* This test uses specific DRAM addresses, hence needs MMU to
-	 * be disabled
-	 */
-	if (tests_state->mmu) {
-		printf("Test is skipped because MMU is enabled\n");
-		skip();
-	}
-
 	cfg.dma_size = 1 << 21; /* 2MB */
 	cfg.zone_size = 1 << 24; /* 16MB */
 
-	if ((config_filename) && (ini_parse(config_filename,
-					dma_entire_dram_parser, &cfg) < 0))
-		fail_msg("Can't load %s\n", config_filename);
+	if (config_filename) {
+		if (ini_parse(config_filename, dma_dram_parser, &cfg) < 0)
+			fail_msg("Can't load %s\n", config_filename);
 
-	printf("Configuration loaded from %s:\n", config_filename);
-	printf("dma_size = %lx, zone_size = 0x%lx\n",
-		cfg.dma_size, cfg.zone_size);
+		printf("Configuration loaded from %s:\n", config_filename);
+		printf("dma_size = %lx, zone_size = 0x%lx\n",
+				cfg.dma_size, cfg.zone_size);
+	}
 
 	kv_init(array);
 
@@ -101,8 +94,10 @@ void test_dma_entire_dram_random(void **state)
 	dram_size = hw_ip.dram_size & ~(cfg.zone_size - 1);
 	assert_true(cfg.zone_size < dram_size);
 
-	dram_addr = hw_ip.dram_base_address;
-	dram_addr_end = hw_ip.dram_base_address + dram_size - 1;
+	dram_ptr = hltests_allocate_device_mem(fd, dram_size, CONTIGUOUS);
+	assert_non_null(dram_ptr);
+	dram_addr = (uint64_t) (uintptr_t) dram_ptr;
+	dram_addr_end = dram_addr + dram_size - 1;
 
 	while (dram_addr < (dram_addr_end - cfg.dma_size)) {
 		buf[0] = hltests_allocate_host_mem(fd, cfg.dma_size, NOT_HUGE);
@@ -196,6 +191,9 @@ void test_dma_entire_dram_random(void **state)
 		rc = hltests_free_host_mem(fd, chunk.output);
 		assert_int_equal(rc, 0);
 	}
+
+	rc = hltests_free_device_mem(fd, dram_ptr);
+	assert_int_equal(rc, 0);
 
 	kv_destroy(array);
 }
