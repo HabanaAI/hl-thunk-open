@@ -16,6 +16,7 @@
 #include <cmocka.h>
 #include <stdio.h>
 #include <errno.h>
+#include <fcntl.h>
 
 void test_open_by_busid(void **state)
 {
@@ -34,8 +35,24 @@ void test_open_by_busid(void **state)
 	hltests_teardown(state);
 }
 
+void test_open_close_without_ioctl(void **state)
+{
+	const char *pciaddr = hltests_get_parser_pciaddr();
+	int fd;
+
+	if (pciaddr)
+		fd = hlthunk_open(HLTHUNK_DEVICE_DONT_CARE, pciaddr);
+	else
+		fd = open("/dev/hl0", O_RDWR | O_CLOEXEC, 0);
+
+	assert_in_range(fd, 0, INT_MAX);
+
+	hlthunk_close(fd);
+}
+
 const struct CMUnitTest open_close_tests[] = {
 	cmocka_unit_test(test_open_by_busid),
+	cmocka_unit_test(test_open_close_without_ioctl)
 };
 
 static const char *const usage[] = {
