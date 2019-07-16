@@ -50,9 +50,35 @@ void test_open_close_without_ioctl(void **state)
 	hlthunk_close(fd);
 }
 
+void test_open_and_wait_cs_without_context(void **state)
+{
+	const char *pciaddr = hltests_get_parser_pciaddr();
+	uint32_t status;
+	int fd, rc;
+
+	if (!hltests_get_parser_run_disabled_tests()) {
+		printf("This test needs to be run with -d flag\n");
+		skip();
+	}
+
+	if (pciaddr)
+		fd = hlthunk_open(HLTHUNK_DEVICE_DONT_CARE, pciaddr);
+	else
+		fd = open("/dev/hl0", O_RDWR | O_CLOEXEC, 0);
+
+	assert_in_range(fd, 0, INT_MAX);
+
+	rc = hlthunk_wait_for_cs(fd, 0, 0, &status);
+
+	assert_int_not_equal(rc, 0);
+
+	hlthunk_close(fd);
+}
+
 const struct CMUnitTest open_close_tests[] = {
 	cmocka_unit_test(test_open_by_busid),
-	cmocka_unit_test(test_open_close_without_ioctl)
+	cmocka_unit_test(test_open_close_without_ioctl),
+	cmocka_unit_test(test_open_and_wait_cs_without_context)
 };
 
 static const char *const usage[] = {
