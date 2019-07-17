@@ -75,10 +75,53 @@ void test_open_and_wait_cs_without_context(void **state)
 	hlthunk_close(fd);
 }
 
+void test_close_without_releasing_debug(void **state)
+{
+	const char *pciaddr = hltests_get_parser_pciaddr();
+	struct hl_debug_args debug;
+	uint32_t status;
+	int fd, rc;
+
+	if (pciaddr)
+		fd = hlthunk_open(HLTHUNK_DEVICE_DONT_CARE, pciaddr);
+	else
+		fd = open("/dev/hl0", O_RDWR | O_CLOEXEC, 0);
+
+	assert_in_range(fd, 0, INT_MAX);
+
+	memset(&debug, 0, sizeof(struct hl_debug_args));
+	debug.op = HL_DEBUG_OP_SET_MODE;
+	debug.enable = 1;
+
+	rc = hlthunk_debug(fd, &debug);
+	assert_int_equal(rc, 0);
+
+	rc = hlthunk_close(fd);
+	assert_int_equal(rc, 0);
+
+	if (pciaddr)
+		fd = hlthunk_open(HLTHUNK_DEVICE_DONT_CARE, pciaddr);
+	else
+		fd = open("/dev/hl0", O_RDWR | O_CLOEXEC, 0);
+
+	assert_in_range(fd, 0, INT_MAX);
+
+	memset(&debug, 0, sizeof(struct hl_debug_args));
+	debug.op = HL_DEBUG_OP_SET_MODE;
+	debug.enable = 1;
+
+	rc = hlthunk_debug(fd, &debug);
+	assert_int_equal(rc, 0);
+
+	rc = hlthunk_close(fd);
+	assert_int_equal(rc, 0);
+}
+
 const struct CMUnitTest open_close_tests[] = {
 	cmocka_unit_test(test_open_by_busid),
 	cmocka_unit_test(test_open_close_without_ioctl),
-	cmocka_unit_test(test_open_and_wait_cs_without_context)
+	cmocka_unit_test(test_open_and_wait_cs_without_context),
+	cmocka_unit_test(test_close_without_releasing_debug)
 };
 
 static const char *const usage[] = {
