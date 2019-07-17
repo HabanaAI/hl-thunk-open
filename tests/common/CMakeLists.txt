@@ -15,6 +15,7 @@ set(COMMON_UNIT_TESTS
     dma_dram
     dma_perf
     debug
+    profiling
 )
 
 foreach(_UNIT_TEST ${COMMON_UNIT_TESTS})
