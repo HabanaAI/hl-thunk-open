@@ -7,6 +7,10 @@ set -e
 SRCDIR=`dirname $0`
 BUILDDIR="$SRCDIR/build"
 
+if [ -d $BUILDDIR ]; then
+	rm -rf $BUILDDIR
+fi
+
 mkdir -p "$BUILDDIR"
 
 if hash cmake3 2>/dev/null; then

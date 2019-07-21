@@ -68,7 +68,7 @@ include_directories(include)
 add_subdirectory(src)
 
 if (UNIT_TESTING)
-    find_package(CMocka REQUIRED)
+    find_package(CMocka 1.1.3 REQUIRED)
     include(AddCMockaTest)
     add_subdirectory(tests)
 endif ()
