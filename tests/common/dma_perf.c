@@ -16,23 +16,16 @@
 #include <unistd.h>
 #include <time.h>
 
-/*
- * Accessing the elements of the "perf_outcomes" array is done using Goya's
- * "enum hltests_goya_dma_direction", although the tests are common.
- * This way there is no need to redefine another similar enum just for this
- * purpose. Still, in order to avoid any confusion, we use defines without the
- * GOYA prefix.
- */
-#define DMA_HOST_TO_DRAM	GOYA_DMA_HOST_TO_DRAM
-#define DMA_HOST_TO_SRAM	GOYA_DMA_HOST_TO_SRAM
-#define DMA_DRAM_TO_SRAM	GOYA_DMA_DRAM_TO_SRAM
-#define DMA_SRAM_TO_DRAM	GOYA_DMA_SRAM_TO_DRAM
-#define DMA_SRAM_TO_HOST	GOYA_DMA_SRAM_TO_HOST
-#define DMA_DRAM_TO_HOST	GOYA_DMA_DRAM_TO_HOST
+struct dma_perf_transfer {
+	uint64_t src_addr;
+	uint64_t dst_addr;
+	uint32_t size;
+	uint32_t queue_index;
+	enum hltests_goya_dma_direction dma_dir;
+};
 
-static double hltests_transfer_perf(int fd, uint32_t queue_index,
-			uint64_t src_addr, uint64_t dst_addr,
-			uint32_t size, enum hltests_goya_dma_direction dma_dir)
+static double hltests_transfer_perf(int fd,
+				struct dma_perf_transfer *first_transfer)
 {
 	uint32_t offset = 0;
 	void *cb;
@@ -45,7 +38,7 @@ static double hltests_transfer_perf(int fd, uint32_t queue_index,
 	double time_diff;
 
 	num_of_transfers = hltests_is_simulator(fd) ? 5 :
-					(0x400000000ull / size);
+					(0x400000000ull / first_transfer->size);
 
 	cb = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
 	assert_non_null(cb);
@@ -53,15 +46,15 @@ static double hltests_transfer_perf(int fd, uint32_t queue_index,
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_FALSE;
-	pkt_info.dma.src_addr = src_addr;
-	pkt_info.dma.dst_addr = dst_addr;
-	pkt_info.dma.size = size;
-	pkt_info.dma.dma_dir = dma_dir;
+	pkt_info.dma.src_addr = first_transfer->src_addr;
+	pkt_info.dma.dst_addr = first_transfer->dst_addr;
+	pkt_info.dma.size = first_transfer->size;
+	pkt_info.dma.dma_dir = first_transfer->dma_dir;
 	offset = hltests_add_dma_pkt(fd, cb, offset, &pkt_info);
 
 	execute_arr[0].cb_ptr = cb;
 	execute_arr[0].cb_size = offset;
-	execute_arr[0].queue_index = queue_index;
+	execute_arr[0].queue_index = first_transfer->queue_index;
 
 	clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
 
@@ -80,7 +73,7 @@ static double hltests_transfer_perf(int fd, uint32_t queue_index,
 						(end.tv_sec  - begin.tv_sec);
 
 	/* return value in GB/Sec */
-	return ((double)(size) * num_of_transfers / time_diff)
+	return ((double)(first_transfer->size) * num_of_transfers / time_diff)
 						/ 1024 / 1024 / 1024;
 
 }
@@ -88,10 +81,11 @@ static double hltests_transfer_perf(int fd, uint32_t queue_index,
 void hltest_host_sram_transfer_perf(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct dma_perf_transfer transfer;
 	struct hlthunk_hw_ip_info hw_ip;
 	double *host_sram_perf_outcome;
-	void *src_ptr;
 	uint64_t host_addr, sram_addr;
+	void *src_ptr;
 	uint32_t size;
 	int rc, fd = tests_state->fd;
 
@@ -106,10 +100,16 @@ void hltest_host_sram_transfer_perf(void **state)
 
 	host_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
 
-	host_sram_perf_outcome = &tests_state->perf_outcomes[DMA_HOST_TO_SRAM];
-	*host_sram_perf_outcome = hltests_transfer_perf(fd,
-			hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
-			host_addr, sram_addr, size, GOYA_DMA_HOST_TO_SRAM);
+	host_sram_perf_outcome =
+		&tests_state->perf_outcomes[DMA_PERF_RESULTS_HOST_TO_SRAM];
+
+	transfer.queue_index = hltests_get_dma_down_qid(fd, DCORE0, STREAM0);
+	transfer.src_addr = host_addr;
+	transfer.dst_addr = sram_addr;
+	transfer.size = size;
+	transfer.dma_dir = GOYA_DMA_HOST_TO_SRAM;
+
+	*host_sram_perf_outcome = hltests_transfer_perf(fd, &transfer);
 
 	hltests_free_host_mem(fd, src_ptr);
 }
@@ -117,10 +117,11 @@ void hltest_host_sram_transfer_perf(void **state)
 void hltest_sram_host_transfer_perf(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct dma_perf_transfer transfer;
 	struct hlthunk_hw_ip_info hw_ip;
 	double *sram_host_perf_outcome;
-	void *dst_ptr;
 	uint64_t host_addr, sram_addr;
+	void *dst_ptr;
 	uint32_t size;
 	int rc, fd = tests_state->fd;
 
@@ -135,16 +136,24 @@ void hltest_sram_host_transfer_perf(void **state)
 
 	host_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
 
-	sram_host_perf_outcome = &tests_state->perf_outcomes[DMA_SRAM_TO_HOST];
-	*sram_host_perf_outcome = hltests_transfer_perf(fd,
-			hltests_get_dma_up_qid(fd, DCORE0, STREAM0),
-			sram_addr, host_addr, size, GOYA_DMA_SRAM_TO_HOST);
+	sram_host_perf_outcome =
+		&tests_state->perf_outcomes[DMA_PERF_RESULTS_SRAM_TO_HOST];
+
+	transfer.queue_index = hltests_get_dma_up_qid(fd, DCORE0, STREAM0);
+	transfer.src_addr = sram_addr;
+	transfer.dst_addr = host_addr;
+	transfer.size = size;
+	transfer.dma_dir = GOYA_DMA_SRAM_TO_HOST;
+
+	*sram_host_perf_outcome = hltests_transfer_perf(fd, &transfer);
+
 	hltests_free_host_mem(fd, dst_ptr);
 }
 
 void hltest_host_dram_transfer_perf(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct dma_perf_transfer transfer;
 	struct hlthunk_hw_ip_info hw_ip;
 	double *host_dram_perf_outcome;
 	void *src_ptr, *dram_addr;
@@ -165,11 +174,17 @@ void hltest_host_dram_transfer_perf(void **state)
 
 	host_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
 
-	host_dram_perf_outcome = &tests_state->perf_outcomes[DMA_HOST_TO_DRAM];
-	*host_dram_perf_outcome = hltests_transfer_perf(fd,
-			hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
-			host_addr, (uint64_t) (uintptr_t) dram_addr,
-			size, GOYA_DMA_HOST_TO_DRAM);
+	host_dram_perf_outcome =
+		&tests_state->perf_outcomes[DMA_PERF_RESULTS_HOST_TO_DRAM];
+
+	transfer.queue_index = hltests_get_dma_down_qid(fd, DCORE0, STREAM0);
+	transfer.src_addr = host_addr;
+	transfer.dst_addr = (uint64_t) (uintptr_t) dram_addr;
+	transfer.size = size;
+	transfer.dma_dir = GOYA_DMA_HOST_TO_DRAM;
+
+	*host_dram_perf_outcome = hltests_transfer_perf(fd, &transfer);
+
 	hltests_free_host_mem(fd, src_ptr);
 	hltests_free_device_mem(fd, dram_addr);
 }
@@ -177,6 +192,7 @@ void hltest_host_dram_transfer_perf(void **state)
 void hltest_dram_host_transfer_perf(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct dma_perf_transfer transfer;
 	struct hlthunk_hw_ip_info hw_ip;
 	double *dram_host_perf_outcome;
 	void *dst_ptr, *dram_addr;
@@ -197,11 +213,17 @@ void hltest_dram_host_transfer_perf(void **state)
 
 	host_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
 
-	dram_host_perf_outcome = &tests_state->perf_outcomes[DMA_DRAM_TO_HOST];
-	*dram_host_perf_outcome = hltests_transfer_perf(fd,
-			hltests_get_dma_up_qid(fd, DCORE0, STREAM0),
-			(uint64_t) (uintptr_t) dram_addr, host_addr, size,
-			GOYA_DMA_DRAM_TO_HOST);
+	dram_host_perf_outcome =
+		&tests_state->perf_outcomes[DMA_PERF_RESULTS_DRAM_TO_HOST];
+
+	transfer.queue_index = hltests_get_dma_up_qid(fd, DCORE0, STREAM0);
+	transfer.src_addr = (uint64_t) (uintptr_t) dram_addr;
+	transfer.dst_addr = host_addr;
+	transfer.size = size;
+	transfer.dma_dir = GOYA_DMA_DRAM_TO_HOST;
+
+	*dram_host_perf_outcome = hltests_transfer_perf(fd, &transfer);
+
 	hltests_free_host_mem(fd, dst_ptr);
 	hltests_free_device_mem(fd, dram_addr);
 }
@@ -341,6 +363,7 @@ static double indirect_transfer_perf_test(int fd, uint32_t queue_index,
 void hltest_sram_dram_transfer_perf(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct dma_perf_transfer transfer;
 	struct hlthunk_hw_ip_info hw_ip;
 	double *sram_dram_perf_outcome;
 	void *dram_addr;
@@ -358,18 +381,25 @@ void hltest_sram_dram_transfer_perf(void **state)
 	dram_addr = hltests_allocate_device_mem(fd, size, NOT_CONTIGUOUS);
 	assert_non_null(dram_addr);
 
-	sram_dram_perf_outcome = &tests_state->perf_outcomes[DMA_SRAM_TO_DRAM];
+	sram_dram_perf_outcome =
+		&tests_state->perf_outcomes[DMA_PERF_RESULTS_SRAM_TO_DRAM];
 
-	if (hltests_is_goya(fd))
-		*sram_dram_perf_outcome = hltests_transfer_perf(fd,
-			hltests_get_dma_sram_to_dram_qid(fd, DCORE0, STREAM0),
-			sram_addr, (uint64_t) (uintptr_t) dram_addr, size,
-			GOYA_DMA_SRAM_TO_DRAM);
-	else
+	if (hltests_is_goya(fd)) {
+		transfer.queue_index =
+			hltests_get_dma_sram_to_dram_qid(fd, DCORE0, STREAM0);
+
+		transfer.src_addr = sram_addr;
+		transfer.dst_addr = (uint64_t) (uintptr_t) dram_addr;
+		transfer.size = size;
+		transfer.dma_dir = GOYA_DMA_SRAM_TO_DRAM;
+
+		*sram_dram_perf_outcome = hltests_transfer_perf(fd, &transfer);
+	} else {
 		*sram_dram_perf_outcome =
 			indirect_transfer_perf_test(fd,
 			hltests_get_dma_sram_to_dram_qid(fd, DCORE0, STREAM0),
 			sram_addr + 0x3000, (uint64_t) (uintptr_t) dram_addr);
+	}
 
 	hltests_free_device_mem(fd, dram_addr);
 }
@@ -377,6 +407,7 @@ void hltest_sram_dram_transfer_perf(void **state)
 void hltest_dram_sram_transfer_perf(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct dma_perf_transfer transfer;
 	struct hlthunk_hw_ip_info hw_ip;
 	double *dram_sram_perf_outcome;
 	void *dram_addr;
@@ -395,18 +426,25 @@ void hltest_dram_sram_transfer_perf(void **state)
 	dram_addr = hltests_allocate_device_mem(fd, size, NOT_CONTIGUOUS);
 	assert_non_null(dram_addr);
 
-	dram_sram_perf_outcome = &tests_state->perf_outcomes[DMA_DRAM_TO_SRAM];
+	dram_sram_perf_outcome =
+		&tests_state->perf_outcomes[DMA_PERF_RESULTS_DRAM_TO_SRAM];
 
-	if (hltests_is_goya(fd))
-		*dram_sram_perf_outcome = hltests_transfer_perf(fd,
-			hltests_get_dma_dram_to_sram_qid(fd, DCORE0, STREAM0),
-			(uint64_t) (uintptr_t) dram_addr, sram_addr,
-			size, GOYA_DMA_DRAM_TO_SRAM);
-	else
+	if (hltests_is_goya(fd)) {
+		transfer.queue_index =
+			hltests_get_dma_dram_to_sram_qid(fd, DCORE0, STREAM0);
+
+		transfer.src_addr = (uint64_t) (uintptr_t) dram_addr;
+		transfer.dst_addr = sram_addr;
+		transfer.size = size;
+		transfer.dma_dir = GOYA_DMA_DRAM_TO_SRAM;
+
+		*dram_sram_perf_outcome = hltests_transfer_perf(fd, &transfer);
+	} else {
 		*dram_sram_perf_outcome =
 			indirect_transfer_perf_test(fd,
 			hltests_get_dma_dram_to_sram_qid(fd, DCORE0, STREAM0),
 			(uint64_t) (uintptr_t) dram_addr, sram_addr + 0x3000);
+	}
 
 	hltests_free_device_mem(fd, dram_addr);
 }
@@ -423,12 +461,18 @@ static int hltests_perf_teardown(void **state)
 	printf("========\n");
 	printf("RESULTS:\n");
 	printf("========\n");
-	printf("HOST->SRAM %lf GB/Sec\n", perf_outcomes[DMA_HOST_TO_SRAM]);
-	printf("SRAM->HOST %lf GB/Sec\n", perf_outcomes[DMA_SRAM_TO_HOST]);
-	printf("HOST->DRAM %lf GB/Sec\n", perf_outcomes[DMA_HOST_TO_DRAM]);
-	printf("DRAM->HOST %lf GB/Sec\n", perf_outcomes[DMA_DRAM_TO_HOST]);
-	printf("SRAM->DRAM %lf GB/Sec\n", perf_outcomes[DMA_SRAM_TO_DRAM]);
-	printf("DRAM->SRAM %lf GB/Sec\n", perf_outcomes[DMA_DRAM_TO_SRAM]);
+	printf("HOST->SRAM %lf GB/Sec\n",
+			perf_outcomes[DMA_PERF_RESULTS_HOST_TO_SRAM]);
+	printf("SRAM->HOST %lf GB/Sec\n",
+			perf_outcomes[DMA_PERF_RESULTS_SRAM_TO_HOST]);
+	printf("HOST->DRAM %lf GB/Sec\n",
+			perf_outcomes[DMA_PERF_RESULTS_HOST_TO_DRAM]);
+	printf("DRAM->HOST %lf GB/Sec\n",
+			perf_outcomes[DMA_PERF_RESULTS_DRAM_TO_HOST]);
+	printf("SRAM->DRAM %lf GB/Sec\n",
+			perf_outcomes[DMA_PERF_RESULTS_SRAM_TO_DRAM]);
+	printf("DRAM->SRAM %lf GB/Sec\n",
+			perf_outcomes[DMA_PERF_RESULTS_DRAM_TO_SRAM]);
 
 	return hltests_teardown(state);
 }
@@ -445,7 +489,7 @@ const struct CMUnitTest dma_perf_tests[] = {
 	cmocka_unit_test_setup(hltest_sram_dram_transfer_perf,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(hltest_dram_sram_transfer_perf,
-				hltests_ensure_device_operational),
+				hltests_ensure_device_operational)
 };
 
 static const char *const usage[] = {

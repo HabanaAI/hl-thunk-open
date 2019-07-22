@@ -147,6 +147,16 @@ enum hltests_contiguous {
 	CONTIGUOUS
 };
 
+enum hltests_dma_perf_test_results {
+	DMA_PERF_RESULTS_HOST_TO_DRAM,
+	DMA_PERF_RESULTS_HOST_TO_SRAM,
+	DMA_PERF_RESULTS_DRAM_TO_SRAM,
+	DMA_PERF_RESULTS_SRAM_TO_DRAM,
+	DMA_PERF_RESULTS_SRAM_TO_HOST,
+	DMA_PERF_RESULTS_DRAM_TO_HOST,
+	DMA_PERF_RESULTS_MAX
+};
+
 struct hltests_device {
 	const struct hltests_asic_funcs *asic_funcs;
 
@@ -170,7 +180,7 @@ struct hltests_device {
 };
 
 struct hltests_state {
-	double perf_outcomes[GOYA_DMA_ENUM_MAX];
+	double perf_outcomes[DMA_PERF_RESULTS_MAX];
 	int fd;
 	bool mmu;
 	bool security;
