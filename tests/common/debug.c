@@ -166,49 +166,49 @@ struct dma_custom_cfg {
 static int dma_custom_parsing_handler(void *user, const char *section,
 					const char *name, const char *value)
 {
-	struct dma_custom_cfg *dma_cfg = (struct dma_custom_cfg *) user;
+	struct dma_custom_cfg *cfg = (struct dma_custom_cfg *) user;
 	char *tmp;
 
 	if (MATCH("dma_custom_test", "dma_dir")) {
-		dma_cfg->dma_dir = atoi(value);
+		cfg->dma_dir = atoi(value);
 	} else if (MATCH("dma_custom_test", "dst_addr")) {
-		dma_cfg->dst_addr = strtoul(value, NULL, 0);
+		cfg->dst_addr = strtoul(value, NULL, 0);
 	} else if (MATCH("dma_custom_test", "size")) {
-		dma_cfg->size = strtoul(value, NULL, 0);
+		cfg->size = strtoul(value, NULL, 0);
 	} else if (MATCH("dma_custom_test", "chunk_size")) {
-		dma_cfg->chunk_size = strtoul(value, NULL, 0);
+		cfg->chunk_size = strtoul(value, NULL, 0);
 	} else if (MATCH("dma_custom_test", "sequential")) {
 		tmp = strdup(value);
 		if (!tmp)
 			return 1;
 
-		dma_cfg->sequential = strcmp("true", tmp) ? false : true;
-		if (dma_cfg->sequential)
-			dma_cfg->random = false;
+		cfg->sequential = strcmp("true", tmp) ? false : true;
+		if (cfg->sequential)
+			cfg->random = false;
 		free(tmp);
 	} else if (MATCH("dma_custom_test", "stop_on_err")) {
 		tmp = strdup(value);
 		if (!tmp)
 			return 1;
 
-		dma_cfg->stop_on_err = strcmp("true", tmp) ? false : true;
+		cfg->stop_on_err = strcmp("true", tmp) ? false : true;
 		free(tmp);
 	} else if (MATCH("dma_custom_test", "value")) {
-		dma_cfg->value = strtoul(value, NULL, 0);
-		dma_cfg->random = false;
+		cfg->value = strtoul(value, NULL, 0);
+		cfg->random = false;
 	} else if (MATCH("dma_custom_test", "read_cnt")) {
-		dma_cfg->read_cnt = strtoul(value, NULL, 0);
+		cfg->read_cnt = strtoul(value, NULL, 0);
 	} else if (MATCH("dma_custom_test", "write_cnt")) {
-		dma_cfg->write_cnt = strtoul(value, NULL, 0);
+		cfg->write_cnt = strtoul(value, NULL, 0);
 	} else if (MATCH("dma_custom_test", "zero_before_write")) {
 		tmp = strdup(value);
 		if (!tmp)
 			return 1;
 
-		dma_cfg->zero_before_write = strcmp("true", tmp) ? false : true;
+		cfg->zero_before_write = strcmp("true", tmp) ? false : true;
 		free(tmp);
 	} else if (MATCH("dma_custom_test", "write_to_read_delay_ms")) {
-		dma_cfg->write_to_read_delay_ms = strtoul(value, NULL, 0);
+		cfg->write_to_read_delay_ms = strtoul(value, NULL, 0);
 	} else {
 		return 0; /* unknown section/name, error */
 	}
@@ -436,6 +436,7 @@ struct map_custom_cfg {
 	uint64_t host_size;
 	int dram_num_of_alloc;
 	int host_num_of_alloc;
+	bool create_tdr;
 };
 
 static int map_custom_parsing_handler(void *user, const char *section,
@@ -444,16 +445,24 @@ static int map_custom_parsing_handler(void *user, const char *section,
 	struct map_custom_cfg *cfg = (struct map_custom_cfg *) user;
 	char *tmp;
 
-	if (MATCH("map_custom_test", "dram_size"))
+	if (MATCH("map_custom_test", "dram_size")) {
 		cfg->dram_size = strtoul(value, NULL, 0);
-	else if (MATCH("map_custom_test", "host_size"))
+	} else if (MATCH("map_custom_test", "host_size")) {
 		cfg->host_size = strtoul(value, NULL, 0);
-	else if (MATCH("map_custom_test", "dram_num_of_alloc"))
+	} else if (MATCH("map_custom_test", "dram_num_of_alloc")) {
 		cfg->dram_num_of_alloc = atoi(value);
-	else if (MATCH("map_custom_test", "host_num_of_alloc"))
+	} else if (MATCH("map_custom_test", "host_num_of_alloc")) {
 		cfg->host_num_of_alloc = atoi(value);
-	else
+	} else if (MATCH("map_custom_test", "create_tdr")) {
+		tmp = strdup(value);
+		if (!tmp)
+			return 1;
+
+		cfg->create_tdr = strcmp("true", tmp) ? false : true;
+		free(tmp);
+	} else {
 		return 0; /* unknown section/name, error */
+	}
 
 	return 1;
 }
@@ -483,6 +492,7 @@ void test_map_custom(void **state)
 	printf(
 		"number of dram allocations = %d, number of host allocations = %d\n",
 		cfg.dram_num_of_alloc, cfg.host_num_of_alloc);
+	printf("create tdr = %d\n", cfg.create_tdr);
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
@@ -502,9 +512,15 @@ void test_map_custom(void **state)
 		assert_non_null(host_addr);
 	}
 
-	printf("Starting to wait...\n");
-	while (1)
-		sleep(1);
+	if (!cfg.create_tdr) {
+		printf("Starting to wait...\n");
+		while (1)
+			sleep(1);
+	}
+
+	printf("Creating TDR...\n");
+
+	test_tdr_deadlock(state);
 }
 
 void test_loop_map_work_unmap(void **state)
