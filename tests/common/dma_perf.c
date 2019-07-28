@@ -72,6 +72,9 @@ static double hltests_transfer_perf(int fd,
 	time_diff = (end.tv_nsec - begin.tv_nsec) / 1000000000.0 +
 						(end.tv_sec  - begin.tv_sec);
 
+	rc = hltests_destroy_cb(fd, cb);
+	assert_int_equal(rc, 0);
+
 	/* return value in GB/Sec */
 	return ((double)(first_transfer->size) * num_of_transfers / time_diff)
 						/ 1024 / 1024 / 1024;
