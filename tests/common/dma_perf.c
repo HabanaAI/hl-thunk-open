@@ -25,23 +25,26 @@ struct dma_perf_transfer {
 };
 
 static double hltests_transfer_perf(int fd,
-				struct dma_perf_transfer *first_transfer)
+				struct dma_perf_transfer *first_transfer,
+				struct dma_perf_transfer *second_transfer)
 {
-	uint32_t offset = 0;
-	void *cb;
-	struct timespec begin, end;
-	struct hltests_cs_chunk execute_arr[1];
+	struct hltests_cs_chunk execute_arr[2];
 	struct hltests_pkt_info pkt_info;
-	uint64_t seq = 0;
-	int rc;
 	uint64_t num_of_transfers, i;
+	struct timespec begin, end;
 	double time_diff;
+	void *cb1, *cb2;
+	int rc, num_of_cb = 1;
+	uint64_t seq = 0;
+	uint32_t offset_cb1 = 0, offset_cb2 = 0;
 
 	num_of_transfers = hltests_is_simulator(fd) ? 5 :
 					(0x400000000ull / first_transfer->size);
 
-	cb = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
-	assert_non_null(cb);
+	cb1 = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
+	assert_non_null(cb1);
+	cb2 = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
+	assert_non_null(cb2);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
@@ -50,18 +53,36 @@ static double hltests_transfer_perf(int fd,
 	pkt_info.dma.dst_addr = first_transfer->dst_addr;
 	pkt_info.dma.size = first_transfer->size;
 	pkt_info.dma.dma_dir = first_transfer->dma_dir;
-	offset = hltests_add_dma_pkt(fd, cb, offset, &pkt_info);
+	offset_cb1 = hltests_add_dma_pkt(fd, cb1, offset_cb1, &pkt_info);
 
-	execute_arr[0].cb_ptr = cb;
-	execute_arr[0].cb_size = offset;
+	execute_arr[0].cb_ptr = cb1;
+	execute_arr[0].cb_size = offset_cb1;
 	execute_arr[0].queue_index = first_transfer->queue_index;
+
+	if (second_transfer) {
+		num_of_cb = 2;
+
+		memset(&pkt_info, 0, sizeof(pkt_info));
+		pkt_info.eb = EB_FALSE;
+		pkt_info.mb = MB_FALSE;
+		pkt_info.dma.src_addr = second_transfer->src_addr;
+		pkt_info.dma.dst_addr = second_transfer->dst_addr;
+		pkt_info.dma.size = second_transfer->size;
+		pkt_info.dma.dma_dir = second_transfer->dma_dir;
+		offset_cb2 = hltests_add_dma_pkt(fd, cb2, offset_cb2,
+							&pkt_info);
+
+		execute_arr[1].cb_ptr = cb2;
+		execute_arr[1].cb_size = offset_cb2;
+		execute_arr[1].queue_index = second_transfer->queue_index;
+	}
 
 	clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
 
 	for (i = 0 ; i <= num_of_transfers ; i++) {
 
 		rc = hltests_submit_cs(fd, NULL, 0, execute_arr,
-						1, FORCE_RESTORE_FALSE, &seq);
+					num_of_cb, FORCE_RESTORE_FALSE, &seq);
 		assert_int_equal(rc, 0);
 	}
 
@@ -72,13 +93,18 @@ static double hltests_transfer_perf(int fd,
 	time_diff = (end.tv_nsec - begin.tv_nsec) / 1000000000.0 +
 						(end.tv_sec  - begin.tv_sec);
 
-	rc = hltests_destroy_cb(fd, cb);
+	rc = hltests_destroy_cb(fd, cb1);
+	assert_int_equal(rc, 0);
+	rc = hltests_destroy_cb(fd, cb2);
 	assert_int_equal(rc, 0);
 
 	/* return value in GB/Sec */
-	return ((double)(first_transfer->size) * num_of_transfers / time_diff)
-						/ 1024 / 1024 / 1024;
-
+	if (second_transfer)
+		return ((double)(first_transfer->size + second_transfer->size) *
+			num_of_transfers / time_diff) / 1024 / 1024 / 1024;
+	else
+		return ((double)(first_transfer->size) *
+			num_of_transfers / time_diff) / 1024 / 1024 / 1024;
 }
 
 void hltest_host_sram_transfer_perf(void **state)
@@ -112,7 +138,7 @@ void hltest_host_sram_transfer_perf(void **state)
 	transfer.size = size;
 	transfer.dma_dir = GOYA_DMA_HOST_TO_SRAM;
 
-	*host_sram_perf_outcome = hltests_transfer_perf(fd, &transfer);
+	*host_sram_perf_outcome = hltests_transfer_perf(fd, &transfer, NULL);
 
 	hltests_free_host_mem(fd, src_ptr);
 
@@ -154,7 +180,7 @@ void hltest_sram_host_transfer_perf(void **state)
 	transfer.size = size;
 	transfer.dma_dir = GOYA_DMA_SRAM_TO_HOST;
 
-	*sram_host_perf_outcome = hltests_transfer_perf(fd, &transfer);
+	*sram_host_perf_outcome = hltests_transfer_perf(fd, &transfer, NULL);
 
 	hltests_free_host_mem(fd, dst_ptr);
 
@@ -198,7 +224,7 @@ void hltest_host_dram_transfer_perf(void **state)
 	transfer.size = size;
 	transfer.dma_dir = GOYA_DMA_HOST_TO_DRAM;
 
-	*host_dram_perf_outcome = hltests_transfer_perf(fd, &transfer);
+	*host_dram_perf_outcome = hltests_transfer_perf(fd, &transfer, NULL);
 
 	hltests_free_host_mem(fd, src_ptr);
 	hltests_free_device_mem(fd, dram_addr);
@@ -243,7 +269,7 @@ void hltest_dram_host_transfer_perf(void **state)
 	transfer.size = size;
 	transfer.dma_dir = GOYA_DMA_DRAM_TO_HOST;
 
-	*dram_host_perf_outcome = hltests_transfer_perf(fd, &transfer);
+	*dram_host_perf_outcome = hltests_transfer_perf(fd, &transfer, NULL);
 
 	hltests_free_host_mem(fd, dst_ptr);
 	hltests_free_device_mem(fd, dram_addr);
@@ -420,7 +446,8 @@ void hltest_sram_dram_transfer_perf(void **state)
 		transfer.size = size;
 		transfer.dma_dir = GOYA_DMA_SRAM_TO_DRAM;
 
-		*sram_dram_perf_outcome = hltests_transfer_perf(fd, &transfer);
+		*sram_dram_perf_outcome = hltests_transfer_perf(fd, &transfer,
+								NULL);
 	} else {
 		*sram_dram_perf_outcome =
 			indirect_transfer_perf_test(fd,
@@ -471,7 +498,8 @@ void hltest_dram_sram_transfer_perf(void **state)
 		transfer.size = size;
 		transfer.dma_dir = GOYA_DMA_DRAM_TO_SRAM;
 
-		*dram_sram_perf_outcome = hltests_transfer_perf(fd, &transfer);
+		*dram_sram_perf_outcome = hltests_transfer_perf(fd, &transfer,
+								NULL);
 	} else {
 		*dram_sram_perf_outcome =
 			indirect_transfer_perf_test(fd,
@@ -486,6 +514,116 @@ void hltest_dram_sram_transfer_perf(void **state)
 		printf("DRAM->SRAM must be at least 35 GB/Sec");
 		fail();
 	}
+}
+
+void hltest_host_sram_bidirectional_transfer_perf(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct dma_perf_transfer host_to_sram_transfer, sram_to_host_transfer;
+	struct hlthunk_hw_ip_info hw_ip;
+	double *host_sram_perf_outcome;
+	uint64_t host_src_addr, host_dst_addr, sram_addr1, sram_addr2;
+	void *src_ptr, *dst_ptr;
+	uint32_t size;
+	int rc, fd = tests_state->fd;
+
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+
+	size = 4 * 1024 * 1024;
+	sram_addr1 = hw_ip.sram_base_address;
+	sram_addr2 = sram_addr1 + size;
+
+	src_ptr = hltests_allocate_host_mem(fd, size, HUGE);
+	assert_non_null(src_ptr);
+	host_src_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
+
+	dst_ptr = hltests_allocate_host_mem(fd, size, HUGE);
+	assert_non_null(dst_ptr);
+	host_dst_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
+
+	host_sram_perf_outcome =
+		&tests_state->perf_outcomes[DMA_PERF_RESULTS_HOST_SRAM_BIDIR];
+
+	host_to_sram_transfer.queue_index =
+			hltests_get_dma_down_qid(fd, DCORE0, STREAM0);
+	host_to_sram_transfer.src_addr = host_src_addr;
+	host_to_sram_transfer.dst_addr = sram_addr1;
+	host_to_sram_transfer.size = size;
+	host_to_sram_transfer.dma_dir = GOYA_DMA_HOST_TO_SRAM;
+
+	sram_to_host_transfer.queue_index =
+			hltests_get_dma_up_qid(fd, DCORE0, STREAM0);
+	sram_to_host_transfer.src_addr = sram_addr2;
+	sram_to_host_transfer.dst_addr = host_dst_addr;
+	sram_to_host_transfer.size = size;
+	sram_to_host_transfer.dma_dir = GOYA_DMA_SRAM_TO_HOST;
+
+	*host_sram_perf_outcome = hltests_transfer_perf(fd,
+				&host_to_sram_transfer, &sram_to_host_transfer);
+
+	hltests_free_host_mem(fd, src_ptr);
+	hltests_free_host_mem(fd, dst_ptr);
+}
+
+void hltest_host_dram_bidirectional_transfer_perf(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct dma_perf_transfer host_to_dram_transfer, dram_to_host_transfer;
+	struct hlthunk_hw_ip_info hw_ip;
+	double *host_dram_perf_outcome;
+	uint64_t host_src_addr, host_dst_addr;
+	void *src_ptr, *dst_ptr, *dram_ptr1, *dram_ptr2;
+	uint32_t host_to_dram_size = 4 * 1024 * 1024;
+	uint32_t dram_to_host_size = 32 * 1024 * 1024;
+	int rc, fd = tests_state->fd;
+
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+
+	assert_int_equal(hw_ip.dram_enabled, 1);
+	assert_in_range(host_to_dram_size + dram_to_host_size, 1,
+			hw_ip.dram_size);
+	dram_ptr1 = hltests_allocate_device_mem(fd, host_to_dram_size,
+						NOT_CONTIGUOUS);
+	assert_non_null(dram_ptr1);
+	dram_ptr2 = hltests_allocate_device_mem(fd, dram_to_host_size,
+						NOT_CONTIGUOUS);
+	assert_non_null(dram_ptr2);
+
+	src_ptr = hltests_allocate_host_mem(fd, host_to_dram_size, HUGE);
+	assert_non_null(src_ptr);
+	host_src_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
+
+	dst_ptr = hltests_allocate_host_mem(fd, dram_to_host_size, HUGE);
+	assert_non_null(dst_ptr);
+	host_dst_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
+
+	host_dram_perf_outcome =
+		&tests_state->perf_outcomes[DMA_PERF_RESULTS_HOST_DRAM_BIDIR];
+
+	host_to_dram_transfer.queue_index =
+			hltests_get_dma_down_qid(fd, DCORE0, STREAM0);
+	host_to_dram_transfer.src_addr = host_src_addr;
+	host_to_dram_transfer.dst_addr = (uint64_t) (uintptr_t) dram_ptr1;
+	host_to_dram_transfer.size = host_to_dram_size;
+	host_to_dram_transfer.dma_dir = GOYA_DMA_HOST_TO_DRAM;
+
+	dram_to_host_transfer.queue_index =
+			hltests_get_dma_up_qid(fd, DCORE0, STREAM0);
+	dram_to_host_transfer.src_addr = (uint64_t) (uintptr_t) dram_ptr2;
+	dram_to_host_transfer.dst_addr = host_dst_addr;
+	dram_to_host_transfer.size = dram_to_host_size;
+	dram_to_host_transfer.dma_dir = GOYA_DMA_DRAM_TO_HOST;
+
+	*host_dram_perf_outcome = hltests_transfer_perf(fd,
+				&host_to_dram_transfer, &dram_to_host_transfer);
+
+	hltests_free_host_mem(fd, src_ptr);
+	hltests_free_host_mem(fd, dst_ptr);
+
+	hltests_free_device_mem(fd, dram_ptr1);
+	hltests_free_device_mem(fd, dram_ptr2);
 }
 
 static int hltests_perf_teardown(void **state)
@@ -512,6 +650,10 @@ static int hltests_perf_teardown(void **state)
 			perf_outcomes[DMA_PERF_RESULTS_SRAM_TO_DRAM]);
 	printf("DRAM->SRAM %lf GB/Sec\n",
 			perf_outcomes[DMA_PERF_RESULTS_DRAM_TO_SRAM]);
+	printf("HOST<->SRAM %lf GB/Sec\n",
+			perf_outcomes[DMA_PERF_RESULTS_HOST_SRAM_BIDIR]);
+	printf("HOST<->DRAM %lf GB/Sec\n",
+			perf_outcomes[DMA_PERF_RESULTS_HOST_DRAM_BIDIR]);
 
 	return hltests_teardown(state);
 }
@@ -528,6 +670,10 @@ const struct CMUnitTest dma_perf_tests[] = {
 	cmocka_unit_test_setup(hltest_sram_dram_transfer_perf,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(hltest_dram_sram_transfer_perf,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(hltest_host_sram_bidirectional_transfer_perf,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(hltest_host_dram_bidirectional_transfer_perf,
 				hltests_ensure_device_operational)
 };
 
