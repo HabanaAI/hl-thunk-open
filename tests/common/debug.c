@@ -648,6 +648,51 @@ void test_duplicate_file_descriptor(void **state)
 	tests_state->fd = fd_new;
 }
 
+void test_page_miss(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct hlthunk_hw_ip_info hw_ip;
+	void *device_addr, *src_ptr, *dst_ptr;
+	uint64_t host_src_addr, host_dst_addr;
+	uint32_t size = 0x100000;
+	int rc, fd = tests_state->fd;
+
+	/* Sanity and memory allocation */
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+
+	device_addr = (void *) (uintptr_t) hw_ip.sram_base_address;
+
+	src_ptr = malloc(size);
+	assert_non_null(src_ptr);
+	hltests_fill_rand_values(src_ptr, size);
+	host_src_addr = (uint64_t) (uintptr_t) src_ptr;
+
+	dst_ptr = malloc(size);
+	assert_non_null(dst_ptr);
+	memset(dst_ptr, 0, size);
+	host_dst_addr = (uint64_t) (uintptr_t) dst_ptr;
+
+	/* DMA: host->device */
+	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
+			EB_FALSE, MB_TRUE, host_src_addr,
+			(uint64_t) (uintptr_t) device_addr,
+			size, GOYA_DMA_HOST_TO_SRAM);
+
+	/* DMA: device->host */
+	hltests_dma_transfer(fd, hltests_get_dma_up_qid(fd, DCORE0, STREAM0),
+				0, 1, (uint64_t) (uintptr_t) device_addr,
+				host_dst_addr, size, GOYA_DMA_SRAM_TO_HOST);
+
+	/* Compare host memories */
+	rc = hltests_mem_compare(src_ptr, dst_ptr, size);
+	assert_int_not_equal(rc, 0);
+
+	/* Cleanup */
+	free(dst_ptr);
+	free(src_ptr);
+}
+
 const struct CMUnitTest debug_tests[] = {
 	cmocka_unit_test_setup(test_tdr_deadlock,
 				hltests_ensure_device_operational),
@@ -666,6 +711,8 @@ const struct CMUnitTest debug_tests[] = {
 	cmocka_unit_test_setup(test_loop_map_work_unmap,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_duplicate_file_descriptor,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_page_miss,
 				hltests_ensure_device_operational)
 };
 
