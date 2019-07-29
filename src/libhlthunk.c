@@ -35,10 +35,24 @@ static int hlthunk_ioctl(int fd, unsigned long request, void *arg)
 	return ret;
 }
 
-static int hlthunk_open_minor(int minor, const char *dev_name)
+static int hlthunk_open_minor(int minor, enum hlthunk_node_type type)
 {
-	char buf[64];
+	char buf[64], *dev_name;
 	int fd;
+
+	switch (type) {
+	case HLTHUNK_NODE_PRIMARY:
+		dev_name = HLTHUNK_DEV_NAME_PRIMARY;
+		break;
+
+	case HLTHUNK_NODE_CONTROL:
+		dev_name = HLTHUNK_DEV_NAME_CONTROL;
+		break;
+
+	default:
+		printf("invalid type %d\n", type);
+		return -1;
+	}
 
 	sprintf(buf, dev_name, minor);
 	fd = open(buf, O_RDWR | O_CLOEXEC, 0);
@@ -47,7 +61,7 @@ static int hlthunk_open_minor(int minor, const char *dev_name)
 	return -errno;
 }
 
-static int hlthunk_open_by_busid(const char *busid)
+static int hlthunk_open_by_busid(const char *busid, enum hlthunk_node_type type)
 {
 	const char *base_path = "/sys/class/habanalabs/";
 	char *substr_ptr;
@@ -93,23 +107,23 @@ static int hlthunk_open_by_busid(const char *busid)
 					entry->d_name, pci_bus_prefix);
 
 		fd = open(pci_bus_file_name, O_RDONLY);
-		if (fd < 0) {
-			printf("failed to open pci_addr\n");
+		if (fd < 0)
 			continue;
-		}
+
 		rc = read(fd, read_busid, BUSID_WITH_DOMAIN_LEN);
 		if (rc < 0) {
-			printf("failed to read pci_addr\n");
 			close(fd);
 			continue;
 		}
+
 		read_busid[BUSID_WITH_DOMAIN_LEN] = '\0';
 		close(fd);
 
 		if (!strcmp(read_busid, full_busid)) {
 			closedir(dir);
-			return hlthunk_open_minor(device_index,
-					HLTHUNK_DEV_NAME_PRIMARY);
+			device_index = (type == HLTHUNK_NODE_PRIMARY ?
+					device_index : device_index + 1);
+			return hlthunk_open_minor(device_index, type);
 		}
 	}
 	closedir(dir);
@@ -132,13 +146,14 @@ hlthunk_public enum hlthunk_device_name hlthunk_get_device_name_from_fd(int fd)
 	return HLTHUNK_DEVICE_INVALID;
 }
 
-static int hlthunk_open_device_by_name(enum hlthunk_device_name device_name)
+static int hlthunk_open_device_by_name(enum hlthunk_device_name device_name,
+					enum hlthunk_node_type type)
 {
 	enum hlthunk_device_name asic_name;
 	int fd, i;
 
 	for (i = 0 ; i < HLTHUNK_MAX_MINOR ; i++) {
-		fd = hlthunk_open_minor(i, HLTHUNK_DEV_NAME_PRIMARY);
+		fd = hlthunk_open_minor(i, type);
 		if (fd >= 0) {
 			asic_name = hlthunk_get_device_name_from_fd(fd);
 
@@ -176,9 +191,21 @@ hlthunk_public int hlthunk_open(enum hlthunk_device_name device_name,
 				const char *busid)
 {
 	if (busid)
-		return hlthunk_open_by_busid(busid);
+		return hlthunk_open_by_busid(busid, HLTHUNK_NODE_PRIMARY);
 
-	return hlthunk_open_device_by_name(device_name);
+	return hlthunk_open_device_by_name(device_name, HLTHUNK_NODE_PRIMARY);
+}
+
+hlthunk_public int hlthunk_open_control(int minor, const char *busid)
+{
+	if (busid)
+		return hlthunk_open_by_busid(busid, HLTHUNK_NODE_CONTROL);
+
+	/* minor number of main device must be even */
+	if (minor & 1)
+		return -1;
+
+	return hlthunk_open_minor(minor + 1, HLTHUNK_NODE_CONTROL);
 }
 
 hlthunk_public int hlthunk_close(int fd)

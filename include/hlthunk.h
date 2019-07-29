@@ -21,6 +21,24 @@ extern "C" {
 
 #define HLTHUNK_MAX_MINOR		16
 #define HLTHUNK_DEV_NAME_PRIMARY	"/dev/hl%d"
+#define HLTHUNK_DEV_NAME_CONTROL	"/dev/hl_controlD%d"
+
+#define HLTHUNK_CONTROL_MINOR		64
+
+enum hlthunk_node_type {
+	HLTHUNK_NODE_PRIMARY,
+	HLTHUNK_NODE_CONTROL,
+	HLTHUNK_NODE_MAX
+};
+
+enum hlthunk_device_name {
+	HLTHUNK_DEVICE_GOYA,
+	HLTHUNK_DEVICE_PLACEHOLDER1,
+	HLTHUNK_DEVICE_PLACEHOLDER2,
+	HLTHUNK_DEVICE_INVALID,
+	HLTHUNK_DEVICE_DONT_CARE,
+	HLTHUNK_DEVICE_MAX
+};
 
 struct hlthunk_hw_ip_info {
 	uint64_t sram_base_address;
@@ -52,17 +70,28 @@ struct hlthunk_cs_out {
 	uint32_t status;
 };
 
-enum hlthunk_device_name {
-	HLTHUNK_DEVICE_GOYA,
-	HLTHUNK_DEVICE_PLACEHOLDER1,
-	HLTHUNK_DEVICE_PLACEHOLDER2,
-	HLTHUNK_DEVICE_INVALID,
-	HLTHUNK_DEVICE_DONT_CARE,
-	HLTHUNK_DEVICE_MAX
-};
-
+/**
+ * This function opens the habanalabs device according to specified busid, or
+ * according to the device name, if busid is NULL. If busid is specified but
+ * the device can't be opened, the function fails.
+ * @param device_name name of the device that the user wants to open
+ * @param busid pci address of the device on the host pci bus
+ * @return file descriptor handle or negative value in case of error
+ */
 hlthunk_public int hlthunk_open(enum hlthunk_device_name device_name,
 				const char *busid);
+
+/**
+ * This function opens the habanalabs control device according to specified
+ * busid, or according to the requested minor number, if busid is NULL. If
+ * busid is specified but the device can't be opened, the function fails.
+ * @param minor the minor number of the main device for which we want to open
+ * the control device. Must be even number
+ * @param busid pci address of the device on the host pci bus
+ * @return file descriptor handle or negative value in case of error
+ */
+hlthunk_public int hlthunk_open_control(int minor, const char *busid);
+
 hlthunk_public int hlthunk_close(int fd);
 hlthunk_public enum hl_pci_ids hlthunk_get_device_id_from_fd(int fd);
 hlthunk_public enum hlthunk_device_name hlthunk_get_device_name_from_fd(int fd);
