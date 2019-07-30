@@ -143,7 +143,7 @@ void hltest_host_sram_transfer_perf(void **state)
 	hltests_free_host_mem(fd, src_ptr);
 
 	if ((hltests_is_goya(fd)) && (!hltests_is_simulator(fd)) &&
-				(*host_sram_perf_outcome < 9.5)) {
+				(*host_sram_perf_outcome < 9.5f)) {
 		printf("HOST->SRAM must be at least 9.5 GB/Sec");
 		fail();
 	}
@@ -185,7 +185,7 @@ void hltest_sram_host_transfer_perf(void **state)
 	hltests_free_host_mem(fd, dst_ptr);
 
 	if ((hltests_is_goya(fd)) && (!hltests_is_simulator(fd)) &&
-				(*sram_host_perf_outcome < 11.9)) {
+				(*sram_host_perf_outcome < 11.9f)) {
 		printf("SRAM->HOST must be at least 11.9 GB/Sec");
 		fail();
 	}
@@ -230,7 +230,7 @@ void hltest_host_dram_transfer_perf(void **state)
 	hltests_free_device_mem(fd, dram_addr);
 
 	if ((hltests_is_goya(fd)) && (!hltests_is_simulator(fd)) &&
-				(*host_dram_perf_outcome < 9.5)) {
+				(*host_dram_perf_outcome < 9.5f)) {
 		printf("HOST->DRAM must be at least 9.5 GB/Sec");
 		fail();
 	}
@@ -275,7 +275,7 @@ void hltest_dram_host_transfer_perf(void **state)
 	hltests_free_device_mem(fd, dram_addr);
 
 	if ((hltests_is_goya(fd)) && (!hltests_is_simulator(fd)) &&
-				(*dram_host_perf_outcome < 11.5)) {
+				(*dram_host_perf_outcome < 11.5f)) {
 		printf("DRAM->HOST must be at least 11.5 GB/Sec");
 		fail();
 	}
@@ -458,7 +458,7 @@ void hltest_sram_dram_transfer_perf(void **state)
 	hltests_free_device_mem(fd, dram_addr);
 
 	if ((hltests_is_goya(fd)) && (!hltests_is_simulator(fd)) &&
-				(*sram_dram_perf_outcome < 34)) {
+				(*sram_dram_perf_outcome < 34.0f)) {
 		printf("SRAM->DRAM must be at least 34 GB/Sec");
 		fail();
 	}
@@ -510,7 +510,7 @@ void hltest_dram_sram_transfer_perf(void **state)
 	hltests_free_device_mem(fd, dram_addr);
 
 	if ((hltests_is_goya(fd)) && (!hltests_is_simulator(fd)) &&
-				(*dram_sram_perf_outcome < 35)) {
+				(*dram_sram_perf_outcome < 35.0f)) {
 		printf("DRAM->SRAM must be at least 35 GB/Sec");
 		fail();
 	}
