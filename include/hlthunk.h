@@ -23,8 +23,6 @@ extern "C" {
 #define HLTHUNK_DEV_NAME_PRIMARY	"/dev/hl%d"
 #define HLTHUNK_DEV_NAME_CONTROL	"/dev/hl_controlD%d"
 
-#define HLTHUNK_CONTROL_MINOR		64
-
 enum hlthunk_node_type {
 	HLTHUNK_NODE_PRIMARY,
 	HLTHUNK_NODE_CONTROL,
@@ -83,14 +81,19 @@ hlthunk_public int hlthunk_open(enum hlthunk_device_name device_name,
 
 /**
  * This function opens the habanalabs control device according to specified
- * busid, or according to the requested minor number, if busid is NULL. If
+ * busid, or according to the requested device id number, if busid is NULL. If
  * busid is specified but the device can't be opened, the function fails.
- * @param minor the minor number of the main device for which we want to open
- * the control device. Must be even number
+ * @param dev_id the dev_id number of the control device as appears in /dev/.
+ * The control devices appear like this:
+ * /dev/hl_controlD0
+ * /dev/hl_controlD1
+ * ...
+ * So the dev_id represents the number that appear at the name of the node.
+ * Note it is different from the minor number
  * @param busid pci address of the device on the host pci bus
  * @return file descriptor handle or negative value in case of error
  */
-hlthunk_public int hlthunk_open_control(int minor, const char *busid);
+hlthunk_public int hlthunk_open_control(int dev_id, const char *busid);
 
 hlthunk_public int hlthunk_close(int fd);
 hlthunk_public enum hl_pci_ids hlthunk_get_device_id_from_fd(int fd);

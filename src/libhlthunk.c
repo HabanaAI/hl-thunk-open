@@ -35,7 +35,7 @@ static int hlthunk_ioctl(int fd, unsigned long request, void *arg)
 	return ret;
 }
 
-static int hlthunk_open_minor(int minor, enum hlthunk_node_type type)
+static int hlthunk_open_minor(int device_index, enum hlthunk_node_type type)
 {
 	char buf[64], *dev_name;
 	int fd;
@@ -54,7 +54,7 @@ static int hlthunk_open_minor(int minor, enum hlthunk_node_type type)
 		return -1;
 	}
 
-	sprintf(buf, dev_name, minor);
+	sprintf(buf, dev_name, device_index);
 	fd = open(buf, O_RDWR | O_CLOEXEC, 0);
 	if (fd >= 0)
 		return fd;
@@ -121,8 +121,6 @@ static int hlthunk_open_by_busid(const char *busid, enum hlthunk_node_type type)
 
 		if (!strcmp(read_busid, full_busid)) {
 			closedir(dir);
-			device_index = (type == HLTHUNK_NODE_PRIMARY ?
-					device_index : device_index + 1);
 			return hlthunk_open_minor(device_index, type);
 		}
 	}
@@ -196,16 +194,12 @@ hlthunk_public int hlthunk_open(enum hlthunk_device_name device_name,
 	return hlthunk_open_device_by_name(device_name, HLTHUNK_NODE_PRIMARY);
 }
 
-hlthunk_public int hlthunk_open_control(int minor, const char *busid)
+hlthunk_public int hlthunk_open_control(int dev_id, const char *busid)
 {
 	if (busid)
 		return hlthunk_open_by_busid(busid, HLTHUNK_NODE_CONTROL);
 
-	/* minor number of main device must be even */
-	if (minor & 1)
-		return -1;
-
-	return hlthunk_open_minor(minor + 1, HLTHUNK_NODE_CONTROL);
+	return hlthunk_open_minor(dev_id, HLTHUNK_NODE_CONTROL);
 }
 
 hlthunk_public int hlthunk_close(int fd)
