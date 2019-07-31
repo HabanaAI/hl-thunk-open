@@ -93,7 +93,7 @@ static uint32_t goya_add_write_to_sob_pkt(void *buffer, uint32_t buf_off,
 	uint16_t address = pkt_info->write_to_sob.sob_id * 4;
 	uint8_t base = 1; /* syn object base address */
 
-	memset(&packet, 0, sizeof(packet.value));
+	memset(&packet, 0, sizeof(packet));
 	packet.opcode = PACKET_MSG_SHORT;
 	packet.value = pkt_info->write_to_sob.value;
 	packet.base  = base;
