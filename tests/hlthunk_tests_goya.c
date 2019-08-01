@@ -11,6 +11,7 @@
 #include "goya/goya_packets.h"
 #include "goya/asic_reg/goya_regs.h"
 
+#include <endian.h>
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
@@ -25,6 +26,8 @@ static uint32_t goya_add_nop_pkt(void *buffer, uint32_t buf_off, bool eb,
 	packet.eng_barrier = eb;
 	packet.msg_barrier = mb;
 	packet.reg_barrier = 1;
+
+	packet.ctl = htole32(packet.ctl);
 
 	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
 						sizeof(packet));
@@ -43,6 +46,10 @@ static uint32_t goya_add_msg_long_pkt(void *buffer, uint32_t buf_off,
 	packet.msg_barrier = pkt_info->mb;
 	packet.reg_barrier = 1;
 
+	packet.ctl = htole32(packet.ctl);
+	packet.value = htole32(packet.value);
+	packet.addr = htole64(packet.addr);
+
 	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
 						sizeof(packet));
 }
@@ -60,6 +67,9 @@ static uint32_t goya_add_msg_short_pkt(void *buffer, uint32_t buf_off,
 	packet.eng_barrier = pkt_info->eb;
 	packet.msg_barrier = pkt_info->mb;
 	packet.reg_barrier = 1;
+
+	packet.ctl = htole32(packet.ctl);
+	packet.value = htole32(packet.value);
 
 	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
 						sizeof(packet));
@@ -81,6 +91,9 @@ static uint32_t goya_add_arm_monitor_pkt(void *buffer, uint32_t buf_off,
 	packet.eng_barrier = pkt_info->eb;
 	packet.msg_barrier = pkt_info->mb;
 	packet.reg_barrier = 1;
+
+	packet.ctl = htole32(packet.ctl);
+	packet.value = htole32(packet.value);
 
 	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
 							sizeof(packet));
@@ -104,6 +117,9 @@ static uint32_t goya_add_write_to_sob_pkt(void *buffer, uint32_t buf_off,
 	packet.so_upd.sync_value = pkt_info->write_to_sob.value;
 	packet.so_upd.mode = pkt_info->write_to_sob.mode;
 
+	packet.ctl = htole32(packet.ctl);
+	packet.value = htole32(packet.value);
+
 	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
 							sizeof(packet));
 }
@@ -121,6 +137,9 @@ static uint32_t goya_add_fence_pkt(void *buffer, uint32_t buf_off,
 	packet.eng_barrier = pkt_info->eb;
 	packet.msg_barrier = pkt_info->mb;
 	packet.reg_barrier = 1;
+
+	packet.ctl = htole32(packet.ctl);
+	packet.cfg = htole32(packet.cfg);
 
 	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
 						sizeof(packet));
@@ -142,6 +161,11 @@ static uint32_t goya_add_dma_pkt(void *buffer, uint32_t buf_off,
 	packet.tsize = pkt_info->dma.size;
 	packet.dma_dir = pkt_info->dma.dma_dir;
 
+	packet.ctl = htole32(packet.ctl);
+	packet.tsize = htole32(packet.tsize);
+	packet.src_addr = htole64(packet.src_addr);
+	packet.dst_addr = htole64(packet.dst_addr);
+
 	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
 						sizeof(packet));
 }
@@ -158,6 +182,10 @@ static uint32_t goya_add_cp_dma_pkt(void *buffer, uint32_t buf_off,
 	packet.reg_barrier = 1;
 	packet.src_addr = pkt_info->cp_dma.src_addr;
 	packet.tsize = pkt_info->cp_dma.size;
+
+	packet.ctl = htole32(packet.ctl);
+	packet.tsize = htole32(packet.tsize);
+	packet.src_addr = htole64(packet.src_addr);
 
 	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
 						sizeof(packet));
