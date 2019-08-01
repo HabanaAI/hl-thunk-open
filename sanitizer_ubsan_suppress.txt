@@ -1,0 +1,2 @@
+# ignore shift warnings of the random generator
+shift-base:mersenne-twister.c
