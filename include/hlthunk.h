@@ -50,7 +50,7 @@ struct hlthunk_hw_ip_info {
 	uint32_t psoc_pci_pll_nf;
 	uint32_t psoc_pci_pll_od;
 	uint32_t psoc_pci_pll_div_factor;
-	uint8_t tpc_enabled_mask;
+	uint16_t tpc_enabled_mask;
 	uint8_t dram_enabled;
 	uint8_t armcp_version[HL_INFO_VERSION_MAX_LEN];
 };

@@ -91,6 +91,7 @@ void test_print_hw_ip_info(void **state)
 	printf("\nSRAM base address: 0x%lx", hw_ip.sram_base_address);
 	printf("\nSRAM size        : %u (0x%x)", hw_ip.sram_size,
 							hw_ip.sram_size);
+	printf("\nTPC enabled mask : 0x%x", hw_ip.tpc_enabled_mask);
 	printf("\n\n");
 }
 
