@@ -1699,6 +1699,16 @@ void hltests_parser(int argc, const char **argv, const char * const* usage,
 
 	if (test)
 		cmocka_set_test_filter(test);
+
+	/*
+	 * TODO:
+	 * Remove when providing multiple PCI bus addresses is supported.
+	 */
+	if (num_devices > 1 &&  parser_pciaddr) {
+		printf(
+			"The '--pciaddr' and '--ndevices' options cannot coexist\n");
+		exit(-1);
+	}
 }
 
 const char *hltests_get_parser_pciaddr(void)
