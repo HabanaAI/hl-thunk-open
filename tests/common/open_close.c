@@ -40,11 +40,7 @@ void test_open_close_without_ioctl(void **state)
 	const char *pciaddr = hltests_get_parser_pciaddr();
 	int fd;
 
-	if (pciaddr)
-		fd = hlthunk_open(HLTHUNK_DEVICE_DONT_CARE, pciaddr);
-	else
-		fd = open("/dev/hl0", O_RDWR | O_CLOEXEC, 0);
-
+	fd = hlthunk_open(HLTHUNK_DEVICE_DONT_CARE, pciaddr);
 	assert_in_range(fd, 0, INT_MAX);
 
 	hlthunk_close(fd);
@@ -57,11 +53,7 @@ void test_close_without_releasing_debug(void **state)
 	uint32_t status;
 	int fd, rc;
 
-	if (pciaddr)
-		fd = hlthunk_open(HLTHUNK_DEVICE_DONT_CARE, pciaddr);
-	else
-		fd = open("/dev/hl0", O_RDWR | O_CLOEXEC, 0);
-
+	fd = hlthunk_open(HLTHUNK_DEVICE_DONT_CARE, pciaddr);
 	assert_in_range(fd, 0, INT_MAX);
 
 	memset(&debug, 0, sizeof(struct hl_debug_args));
@@ -74,11 +66,7 @@ void test_close_without_releasing_debug(void **state)
 	rc = hlthunk_close(fd);
 	assert_int_equal(rc, 0);
 
-	if (pciaddr)
-		fd = hlthunk_open(HLTHUNK_DEVICE_DONT_CARE, pciaddr);
-	else
-		fd = open("/dev/hl0", O_RDWR | O_CLOEXEC, 0);
-
+	fd = hlthunk_open(HLTHUNK_DEVICE_DONT_CARE, pciaddr);
 	assert_in_range(fd, 0, INT_MAX);
 
 	memset(&debug, 0, sizeof(struct hl_debug_args));
