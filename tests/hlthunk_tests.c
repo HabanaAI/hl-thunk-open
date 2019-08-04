@@ -1235,71 +1235,66 @@ uint32_t hltests_add_monitor_and_fence(int fd, void *buffer, uint32_t buf_off,
 	const struct hltests_asic_funcs *asic =
 			get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->add_monitor_and_fence(buffer, buf_off, mon_and_fence_info);
+	return asic->add_monitor_and_fence(DCORE_MODE_FULL_CHIP, buffer,
+					buf_off, mon_and_fence_info);
 }
 
-uint32_t hltests_get_dma_down_qid(int fd, enum hltests_dcore_id dcore_id,
-						enum hltests_stream_id stream)
+uint32_t hltests_get_dma_down_qid(int fd, enum hltests_stream_id stream)
 {
 	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->get_dma_down_qid(dcore_id, stream);
+	return asic->get_dma_down_qid(DCORE_MODE_FULL_CHIP, stream);
 }
 
-uint32_t hltests_get_dma_up_qid(int fd, enum hltests_dcore_id dcore_id,
-					enum hltests_stream_id stream)
+uint32_t hltests_get_dma_up_qid(int fd, enum hltests_stream_id stream)
 {
 	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->get_dma_up_qid(dcore_id, stream);
+	return asic->get_dma_up_qid(DCORE_MODE_FULL_CHIP, stream);
 }
 
-uint32_t hltests_get_dma_dram_to_sram_qid(int fd,
-					enum hltests_dcore_id dcore_id,
-					enum hltests_stream_id stream)
+uint32_t hltests_get_dma_dram_to_sram_qid(int fd, enum hltests_stream_id stream)
 {
 	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->get_dma_dram_to_sram_qid(dcore_id, stream);
+	return asic->get_dma_dram_to_sram_qid(DCORE_MODE_FULL_CHIP, stream);
 }
 
-uint32_t hltests_get_dma_sram_to_dram_qid(int fd,
-					enum hltests_dcore_id dcore_id,
-					enum hltests_stream_id stream)
+uint32_t hltests_get_dma_sram_to_dram_qid(int fd, enum hltests_stream_id stream)
 {
 	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->get_dma_sram_to_dram_qid(dcore_id, stream);
+	return asic->get_dma_sram_to_dram_qid(DCORE_MODE_FULL_CHIP, stream);
 }
 
-uint32_t hltests_get_tpc_qid(int fd, enum hltests_dcore_id dcore_id,
-				uint8_t tpc_id,	enum hltests_stream_id stream)
+uint32_t hltests_get_tpc_qid(int fd, uint8_t tpc_id,
+				enum hltests_stream_id stream)
 {
 	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->get_tpc_qid(dcore_id, tpc_id, stream);
+	return asic->get_tpc_qid(DCORE_MODE_FULL_CHIP, tpc_id, stream);
 }
 
-uint32_t hltests_get_mme_qid(int fd, enum hltests_dcore_id dcore_id,
-				uint8_t mme_id,	enum hltests_stream_id stream)
+uint32_t hltests_get_mme_qid(int fd, uint8_t mme_id,
+				enum hltests_stream_id stream)
 {
 	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->get_mme_qid(dcore_id, mme_id, stream);
+	return asic->get_mme_qid(DCORE_MODE_FULL_CHIP, mme_id, stream);
 }
 
-uint8_t hltests_get_tpc_cnt(int fd, uint8_t dcore_id)
+uint8_t hltests_get_tpc_cnt(int fd)
 {
 	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->get_tpc_cnt(dcore_id);
+	return asic->get_tpc_cnt(DCORE_MODE_FULL_CHIP);
 }
 
 void hltests_fill_rand_values(void *ptr, uint32_t size)
@@ -1436,13 +1431,13 @@ int hltests_dma_test(void **state, bool is_ddr, uint64_t size)
 	host_dst_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
 
 	/* DMA: host->device */
-	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
+	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
 			EB_FALSE, MB_TRUE, host_src_addr,
 			(uint64_t) (uintptr_t) device_addr,
 			size, dma_dir_down);
 
 	/* DMA: device->host */
-	hltests_dma_transfer(fd, hltests_get_dma_up_qid(fd, DCORE0, STREAM0),
+	hltests_dma_transfer(fd, hltests_get_dma_up_qid(fd, STREAM0),
 				0, 1, (uint64_t) (uintptr_t) device_addr,
 				host_dst_addr, size, dma_dir_up);
 
@@ -1795,9 +1790,9 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	assert_int_equal(rc, 0);
 
 	if (is_tpc)
-		engine_qid = hltests_get_tpc_qid(fd, DCORE0, tpc_id, STREAM0);
+		engine_qid = hltests_get_tpc_qid(fd, tpc_id, STREAM0);
 	else
-		engine_qid = hltests_get_mme_qid(fd, DCORE0, 0, STREAM0);
+		engine_qid = hltests_get_mme_qid(fd, 0, STREAM0);
 
 	device_data_addr = hw_ip.sram_base_address + 0x1000;
 	engine_upper_cb_sram_addr = hw_ip.sram_base_address + 0x2000;
@@ -1826,7 +1821,6 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 
 	engine_common_cb_size = 0;
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
-	mon_and_fence_info.dcore_id = 0;
 	mon_and_fence_info.queue_id = engine_qid;
 	mon_and_fence_info.cmdq_fence = true;
 	mon_and_fence_info.sob_id = 0;
@@ -1872,7 +1866,7 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 						engine_upper_cb_size,
 						&pkt_info);
 
-	hltests_clear_sobs(fd, DCORE0, 2);
+	hltests_clear_sobs(fd, 2);
 
 	/* Setup CB: DMA the internal CBs to SRAM */
 	restore_cb =  hltests_create_cb(fd, PAGE_SIZE_4KB, EXTERNAL, 0);
@@ -1933,9 +1927,7 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	assert_non_null(dmaup_cb);
 	dmaup_cb_size = 0;
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
-	mon_and_fence_info.dcore_id = 0;
-	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd,
-							DCORE0, STREAM0);
+	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd, STREAM0);
 	mon_and_fence_info.cmdq_fence = false;
 	mon_and_fence_info.sob_id = 1;
 	mon_and_fence_info.mon_id = 1;
@@ -1958,13 +1950,11 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	/* Submit CS and wait for completion */
 	restore_arr[0].cb_ptr = restore_cb;
 	restore_arr[0].cb_size = restore_cb_size;
-	restore_arr[0].queue_index = hltests_get_dma_down_qid(fd,
-							DCORE0, STREAM0);
+	restore_arr[0].queue_index = hltests_get_dma_down_qid(fd, STREAM0);
 
 	execute_arr[0].cb_ptr = dmadown_cb;
 	execute_arr[0].cb_size = dmadown_cb_size;
-	execute_arr[0].queue_index = hltests_get_dma_down_qid(fd,
-							DCORE0, STREAM0);
+	execute_arr[0].queue_index = hltests_get_dma_down_qid(fd, STREAM0);
 
 	execute_arr[1].cb_ptr = engine_upper_cb;
 	execute_arr[1].cb_size = engine_upper_cb_size;
@@ -1972,8 +1962,7 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 
 	execute_arr[2].cb_ptr = dmaup_cb;
 	execute_arr[2].cb_size = dmaup_cb_size;
-	execute_arr[2].queue_index = hltests_get_dma_up_qid(fd,
-							DCORE0, STREAM0);
+	execute_arr[2].queue_index = hltests_get_dma_up_qid(fd, STREAM0);
 
 	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 3,
 						FORCE_RESTORE_TRUE, &seq);
@@ -2004,8 +1993,7 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	assert_int_equal(rc, 0);
 }
 
-void hltests_clear_sobs(int fd, enum hltests_dcore_id dcore_id,
-						uint32_t num_of_sobs)
+void hltests_clear_sobs(int fd, uint32_t num_of_sobs)
 {
 	struct hltests_pkt_info pkt_info;
 	void *cb;
@@ -2030,7 +2018,7 @@ void hltests_clear_sobs(int fd, enum hltests_dcore_id dcore_id,
 	cb_offset = hltests_add_write_to_sob_pkt(fd, cb, cb_offset, &pkt_info);
 
 	hltests_submit_and_wait_cs(fd, cb, cb_offset,
-		hltests_get_dma_down_qid(fd, dcore_id, STREAM0),
+		hltests_get_dma_down_qid(fd, STREAM0),
 		DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
 
 }

@@ -42,7 +42,7 @@ void test_tdr_deadlock(void **state)
 	offset = hltests_add_fence_pkt(fd, ptr, offset, &pkt_info);
 
 	hltests_submit_and_wait_cs(fd, ptr, offset,
-				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
+				hltests_get_dma_down_qid(fd, STREAM0),
 				DESTROY_CB_FALSE, HL_WAIT_CS_STATUS_TIMEDOUT);
 
 	/* no need to destroy the CB because the device is in reset */
@@ -325,7 +325,7 @@ void test_dma_custom(void **state)
 	do {
 		if (cfg.zero_before_write)
 			hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd,
-					DCORE0, STREAM0), EB_FALSE, MB_TRUE,
+					STREAM0), EB_FALSE, MB_TRUE,
 					host_zero_addr, device_addr + offset,
 					cfg.chunk_size, dma_dir_down);
 
@@ -335,7 +335,7 @@ void test_dma_custom(void **state)
 				hltests_fill_rand_values(src_ptr,
 							cfg.chunk_size);
 			hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd,
-					DCORE0, STREAM0), EB_FALSE, MB_TRUE,
+					STREAM0), EB_FALSE, MB_TRUE,
 					host_src_addr, device_addr + offset,
 					cfg.chunk_size, dma_dir_down);
 		}
@@ -348,7 +348,7 @@ void test_dma_custom(void **state)
 
 		for (read_cnt = 0 ; read_cnt < cfg.read_cnt ; read_cnt++) {
 			hltests_dma_transfer(fd,
-				hltests_get_dma_up_qid(fd, DCORE0, STREAM0),
+				hltests_get_dma_up_qid(fd, STREAM0),
 				EB_FALSE, MB_TRUE, device_addr + offset,
 				host_dst_addr, cfg.chunk_size, dma_dir_up);
 
@@ -426,7 +426,7 @@ static void test_transfer_bigger_than_alloc(void **state)
 	offset = hltests_add_dma_pkt(fd, ptr, offset, &pkt_info);
 
 	hltests_submit_and_wait_cs(fd, ptr, offset,
-				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
+				hltests_get_dma_down_qid(fd, STREAM0),
 				DESTROY_CB_FALSE, HL_WAIT_CS_STATUS_TIMEDOUT);
 
 	/* no need to clean up because the device is in reset */
@@ -561,7 +561,7 @@ void test_loop_map_work_unmap(void **state)
 		cb_size = hltests_add_dma_pkt(fd, cb, 0, &pkt_info);
 
 		hltests_submit_and_wait_cs(fd, cb, cb_size,
-				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
+				hltests_get_dma_down_qid(fd, STREAM0),
 				DESTROY_CB_FALSE, HL_WAIT_CS_STATUS_COMPLETED);
 
 		rc = hltests_free_host_mem(fd, src_ptr);
@@ -675,13 +675,13 @@ void test_page_miss(void **state)
 	host_dst_addr = (uint64_t) (uintptr_t) dst_ptr;
 
 	/* DMA: host->device */
-	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
+	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
 			EB_FALSE, MB_TRUE, host_src_addr,
 			(uint64_t) (uintptr_t) device_addr,
 			size, GOYA_DMA_HOST_TO_SRAM);
 
 	/* DMA: device->host */
-	hltests_dma_transfer(fd, hltests_get_dma_up_qid(fd, DCORE0, STREAM0),
+	hltests_dma_transfer(fd, hltests_get_dma_up_qid(fd, STREAM0),
 				0, 1, (uint64_t) (uintptr_t) device_addr,
 				host_dst_addr, size, GOYA_DMA_SRAM_TO_HOST);
 

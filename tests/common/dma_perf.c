@@ -132,7 +132,7 @@ void hltest_host_sram_transfer_perf(void **state)
 	host_sram_perf_outcome =
 		&tests_state->perf_outcomes[DMA_PERF_RESULTS_HOST_TO_SRAM];
 
-	transfer.queue_index = hltests_get_dma_down_qid(fd, DCORE0, STREAM0);
+	transfer.queue_index = hltests_get_dma_down_qid(fd, STREAM0);
 	transfer.src_addr = host_addr;
 	transfer.dst_addr = sram_addr;
 	transfer.size = size;
@@ -174,7 +174,7 @@ void hltest_sram_host_transfer_perf(void **state)
 	sram_host_perf_outcome =
 		&tests_state->perf_outcomes[DMA_PERF_RESULTS_SRAM_TO_HOST];
 
-	transfer.queue_index = hltests_get_dma_up_qid(fd, DCORE0, STREAM0);
+	transfer.queue_index = hltests_get_dma_up_qid(fd, STREAM0);
 	transfer.src_addr = sram_addr;
 	transfer.dst_addr = host_addr;
 	transfer.size = size;
@@ -218,7 +218,7 @@ void hltest_host_dram_transfer_perf(void **state)
 	host_dram_perf_outcome =
 		&tests_state->perf_outcomes[DMA_PERF_RESULTS_HOST_TO_DRAM];
 
-	transfer.queue_index = hltests_get_dma_down_qid(fd, DCORE0, STREAM0);
+	transfer.queue_index = hltests_get_dma_down_qid(fd, STREAM0);
 	transfer.src_addr = host_addr;
 	transfer.dst_addr = (uint64_t) (uintptr_t) dram_addr;
 	transfer.size = size;
@@ -263,7 +263,7 @@ void hltest_dram_host_transfer_perf(void **state)
 	dram_host_perf_outcome =
 		&tests_state->perf_outcomes[DMA_PERF_RESULTS_DRAM_TO_HOST];
 
-	transfer.queue_index = hltests_get_dma_up_qid(fd, DCORE0, STREAM0);
+	transfer.queue_index = hltests_get_dma_up_qid(fd, STREAM0);
 	transfer.src_addr = (uint64_t) (uintptr_t) dram_addr;
 	transfer.dst_addr = host_addr;
 	transfer.size = size;
@@ -314,7 +314,7 @@ static uint32_t setup_lower_cb_in_sram(int fd, uint64_t src_addr,
 	lower_cb_offset = hltests_add_write_to_sob_pkt(fd, lower_cb,
 						lower_cb_offset, &pkt_info);
 
-	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
+	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
 				EB_FALSE, MB_FALSE, lower_cb_device_va,
 				sram_addr, lower_cb_offset, 0);
 	hltests_free_host_mem(fd, lower_cb);
@@ -351,7 +351,7 @@ static double indirect_transfer_perf_test(int fd, uint32_t queue_index,
 					num_of_transfers, size, sram_addr);
 
 	/* Clear SOB before we start */
-	hltests_clear_sobs(fd, DCORE0, 1);
+	hltests_clear_sobs(fd, 1);
 
 	/* Internal CB for CP_DMA */
 	cp_dma_cb = hltests_create_cb(fd, 0x20, INTERNAL, sram_addr + 0x2000);
@@ -365,16 +365,14 @@ static double indirect_transfer_perf_test(int fd, uint32_t queue_index,
 	cp_dma_cb_offset = hltests_add_cp_dma_pkt(fd, cp_dma_cb,
 					cp_dma_cb_offset, &pkt_info);
 
-	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
+	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
 				EB_FALSE, MB_FALSE, cp_dma_cb_device_va,
 				sram_addr + 0x2000, cp_dma_cb_offset, 0);
 
 	cb = hltests_create_cb(fd, 0x1000, EXTERNAL, 0);
 	assert_non_null(cb);
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
-	mon_and_fence_info.dcore_id = 0;
-	mon_and_fence_info.queue_id = hltests_get_dma_down_qid(fd,
-							DCORE0, STREAM0);
+	mon_and_fence_info.queue_id = hltests_get_dma_down_qid(fd, STREAM0);
 	mon_and_fence_info.cmdq_fence = false;
 	mon_and_fence_info.sob_id = 0;
 	mon_and_fence_info.mon_id = 0;
@@ -390,8 +388,7 @@ static double indirect_transfer_perf_test(int fd, uint32_t queue_index,
 
 	execute_arr[1].cb_ptr = cb;
 	execute_arr[1].cb_size = cb_offset;
-	execute_arr[1].queue_index = hltests_get_dma_down_qid(fd,
-							DCORE0, STREAM0);
+	execute_arr[1].queue_index = hltests_get_dma_down_qid(fd, STREAM0);
 
 	clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
 
@@ -439,7 +436,7 @@ void hltest_sram_dram_transfer_perf(void **state)
 
 	if (hltests_is_goya(fd)) {
 		transfer.queue_index =
-			hltests_get_dma_sram_to_dram_qid(fd, DCORE0, STREAM0);
+			hltests_get_dma_sram_to_dram_qid(fd, STREAM0);
 
 		transfer.src_addr = sram_addr;
 		transfer.dst_addr = (uint64_t) (uintptr_t) dram_addr;
@@ -451,7 +448,7 @@ void hltest_sram_dram_transfer_perf(void **state)
 	} else {
 		*sram_dram_perf_outcome =
 			indirect_transfer_perf_test(fd,
-			hltests_get_dma_sram_to_dram_qid(fd, DCORE0, STREAM0),
+			hltests_get_dma_sram_to_dram_qid(fd, STREAM0),
 			sram_addr + 0x3000, (uint64_t) (uintptr_t) dram_addr);
 	}
 
@@ -491,7 +488,7 @@ void hltest_dram_sram_transfer_perf(void **state)
 
 	if (hltests_is_goya(fd)) {
 		transfer.queue_index =
-			hltests_get_dma_dram_to_sram_qid(fd, DCORE0, STREAM0);
+			hltests_get_dma_dram_to_sram_qid(fd, STREAM0);
 
 		transfer.src_addr = (uint64_t) (uintptr_t) dram_addr;
 		transfer.dst_addr = sram_addr;
@@ -503,7 +500,7 @@ void hltest_dram_sram_transfer_perf(void **state)
 	} else {
 		*dram_sram_perf_outcome =
 			indirect_transfer_perf_test(fd,
-			hltests_get_dma_dram_to_sram_qid(fd, DCORE0, STREAM0),
+			hltests_get_dma_dram_to_sram_qid(fd, STREAM0),
 			(uint64_t) (uintptr_t) dram_addr, sram_addr + 0x3000);
 	}
 
@@ -546,14 +543,14 @@ void hltest_host_sram_bidirectional_transfer_perf(void **state)
 		&tests_state->perf_outcomes[DMA_PERF_RESULTS_HOST_SRAM_BIDIR];
 
 	host_to_sram_transfer.queue_index =
-			hltests_get_dma_down_qid(fd, DCORE0, STREAM0);
+			hltests_get_dma_down_qid(fd, STREAM0);
 	host_to_sram_transfer.src_addr = host_src_addr;
 	host_to_sram_transfer.dst_addr = sram_addr1;
 	host_to_sram_transfer.size = size;
 	host_to_sram_transfer.dma_dir = GOYA_DMA_HOST_TO_SRAM;
 
 	sram_to_host_transfer.queue_index =
-			hltests_get_dma_up_qid(fd, DCORE0, STREAM0);
+			hltests_get_dma_up_qid(fd, STREAM0);
 	sram_to_host_transfer.src_addr = sram_addr2;
 	sram_to_host_transfer.dst_addr = host_dst_addr;
 	sram_to_host_transfer.size = size;
@@ -603,14 +600,14 @@ void hltest_host_dram_bidirectional_transfer_perf(void **state)
 		&tests_state->perf_outcomes[DMA_PERF_RESULTS_HOST_DRAM_BIDIR];
 
 	host_to_dram_transfer.queue_index =
-			hltests_get_dma_down_qid(fd, DCORE0, STREAM0);
+			hltests_get_dma_down_qid(fd, STREAM0);
 	host_to_dram_transfer.src_addr = host_src_addr;
 	host_to_dram_transfer.dst_addr = (uint64_t) (uintptr_t) dram_ptr1;
 	host_to_dram_transfer.size = host_to_dram_size;
 	host_to_dram_transfer.dma_dir = GOYA_DMA_HOST_TO_DRAM;
 
 	dram_to_host_transfer.queue_index =
-			hltests_get_dma_up_qid(fd, DCORE0, STREAM0);
+			hltests_get_dma_up_qid(fd, STREAM0);
 	dram_to_host_transfer.src_addr = (uint64_t) (uintptr_t) dram_ptr2;
 	dram_to_host_transfer.dst_addr = host_dst_addr;
 	dram_to_host_transfer.size = dram_to_host_size;

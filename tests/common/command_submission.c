@@ -32,7 +32,7 @@ void test_cs_nop(void **state)
 	cb_size = hltests_add_nop_pkt(fd, cb, cb_size, EB_FALSE, MB_FALSE);
 
 	hltests_submit_and_wait_cs(fd, cb, cb_size,
-				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
+				hltests_get_dma_down_qid(fd, STREAM0),
 				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
 }
 
@@ -60,7 +60,7 @@ void test_cs_msg_long(void **state)
 	cb_size = hltests_add_msg_long_pkt(fd, cb, cb_size, &pkt_info);
 
 	hltests_submit_and_wait_cs(fd, cb, cb_size,
-				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
+				hltests_get_dma_down_qid(fd, STREAM0),
 				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
 }
 
@@ -93,7 +93,7 @@ void test_cs_msg_long_2000(void **state)
 	}
 
 	hltests_submit_and_wait_cs(fd, cb, cb_size,
-				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
+				hltests_get_dma_down_qid(fd, STREAM0),
 				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
 }
 
@@ -129,16 +129,14 @@ void test_cs_two_streams_with_fence(void **state)
 	src_data_device_va = hltests_get_device_va_for_host_ptr(fd, src_data);
 
 	/* Clear SOB 0 */
-	hltests_clear_sobs(fd, DCORE0, 1);
+	hltests_clear_sobs(fd, 1);
 
 	/* Stream 0: Fence on SOB0 + LIN_DMA from host to SRAM */
 	cb_stream0 = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
 	assert_non_null(cb_stream0);
 
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
-	mon_and_fence_info.dcore_id = 0;
-	mon_and_fence_info.queue_id =
-				hltests_get_dma_down_qid(fd, DCORE0, STREAM0);
+	mon_and_fence_info.queue_id = hltests_get_dma_down_qid(fd, STREAM0);
 	mon_and_fence_info.cmdq_fence = false;
 	mon_and_fence_info.sob_id = 0;
 	mon_and_fence_info.mon_id = 0;
@@ -175,14 +173,14 @@ void test_cs_two_streams_with_fence(void **state)
 	execute_arr[0].cb_ptr = cb_stream0;
 	execute_arr[0].cb_size = cb_stream0_size;
 	execute_arr[0].queue_index =
-				hltests_get_dma_down_qid(fd, DCORE0, STREAM0);
+				hltests_get_dma_down_qid(fd, STREAM0);
 	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, FORCE_RESTORE_FALSE,
 				&seq);
 	assert_int_equal(rc, 0);
 
 	/* Second CS: Submit CB of stream 3 and wait for completion */
 	hltests_submit_and_wait_cs(fd, cb_stream3, cb_stream3_size,
-				hltests_get_dma_down_qid(fd, DCORE0, STREAM3),
+				hltests_get_dma_down_qid(fd, STREAM3),
 				DESTROY_CB_FALSE, HL_WAIT_CS_STATUS_COMPLETED);
 
 	/* First CS: Wait for completion */

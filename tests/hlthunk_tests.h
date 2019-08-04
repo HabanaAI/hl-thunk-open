@@ -90,6 +90,12 @@ enum hltests_goya_dma_direction {
 	GOYA_DMA_ENUM_MAX
 };
 
+/* Should be removed when a more appropriate enum is defined in habanalabs.h */
+enum hltests_dcore_separation_mode {
+	DCORE_MODE_FULL_CHIP,
+	DCORE_MODE_ENUM_MAX
+};
+
 enum hltests_eb {
 	EB_FALSE = 0,
 	EB_TRUE
@@ -108,11 +114,6 @@ enum mon_mode {
 enum hl_tests_write_to_sob_mod {
 	SOB_SET = 0,
 	SOB_ADD
-};
-
-enum hltests_dcore_id {
-	DCORE0 = 0,
-	DCORE1
 };
 
 enum hltests_stream_id {
@@ -237,7 +238,6 @@ struct hltests_pkt_info {
 };
 
 struct hltests_monitor_and_fence {
-	uint8_t dcore_id;
 	uint8_t queue_id;
 	bool cmdq_fence;
 	uint32_t sob_id;
@@ -248,7 +248,9 @@ struct hltests_monitor_and_fence {
 };
 
 struct hltests_asic_funcs {
-	uint32_t (*add_monitor_and_fence)(void *buffer, uint32_t buf_off,
+	uint32_t (*add_monitor_and_fence)(
+			enum hltests_dcore_separation_mode dcore_sep_mode,
+			void *buffer, uint32_t buf_off,
 			struct hltests_monitor_and_fence *mon_and_fence);
 	uint32_t (*add_nop_pkt)(void *buffer, uint32_t buf_off, bool eb,
 				bool mb);
@@ -266,19 +268,26 @@ struct hltests_asic_funcs {
 					struct hltests_pkt_info *pkt_info);
 	uint32_t (*add_cp_dma_pkt)(void *buffer, uint32_t buf_off,
 					struct hltests_pkt_info *pkt_info);
-	uint32_t (*get_dma_down_qid)(enum hltests_dcore_id dcore_id,
-					enum hltests_stream_id stream);
-	uint32_t (*get_dma_up_qid)(enum hltests_dcore_id dcore_id,
-					enum hltests_stream_id stream);
-	uint32_t (*get_dma_dram_to_sram_qid)(enum hltests_dcore_id dcore_id,
-					enum hltests_stream_id stream);
-	uint32_t (*get_dma_sram_to_dram_qid)(enum hltests_dcore_id dcore_id,
-					enum hltests_stream_id stream);
-	uint32_t (*get_tpc_qid)(enum hltests_dcore_id dcore_id, uint8_t tpc_id,
-					enum hltests_stream_id stream);
-	uint32_t (*get_mme_qid)(enum hltests_dcore_id dcore_id, uint8_t mme_id,
-					enum hltests_stream_id stream);
-	uint8_t (*get_tpc_cnt)(uint8_t dcore_id);
+	uint32_t (*get_dma_down_qid)(
+			enum hltests_dcore_separation_mode dcore_sep_mode,
+			enum hltests_stream_id stream);
+	uint32_t (*get_dma_up_qid)(
+			enum hltests_dcore_separation_mode dcore_sep_mode,
+			enum hltests_stream_id stream);
+	uint32_t (*get_dma_dram_to_sram_qid)(
+			enum hltests_dcore_separation_mode dcore_sep_mode,
+			enum hltests_stream_id stream);
+	uint32_t (*get_dma_sram_to_dram_qid)(
+			enum hltests_dcore_separation_mode dcore_sep_mode,
+			enum hltests_stream_id stream);
+	uint32_t (*get_tpc_qid)(
+			enum hltests_dcore_separation_mode dcore_sep_mode,
+			uint8_t tpc_id, enum hltests_stream_id stream);
+	uint32_t (*get_mme_qid)(
+			enum hltests_dcore_separation_mode dcore_sep_mode,
+			uint8_t mme_id,	enum hltests_stream_id stream);
+	uint8_t (*get_tpc_cnt)(
+			enum hltests_dcore_separation_mode dcore_sep_mode);
 	void (*dram_pool_init)(struct hltests_device *hdev);
 	void (*dram_pool_fini)(struct hltests_device *hdev);
 	int (*dram_pool_alloc)(struct hltests_device *hdev, uint64_t size,
@@ -398,8 +407,7 @@ int hltests_ensure_device_operational(void **state);
 void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 				bool common_cb_in_host, uint8_t tpc_id);
 
-void hltests_clear_sobs(int fd, enum hltests_dcore_id dcore_id,
-						uint32_t num_of_sobs);
+void hltests_clear_sobs(int fd, uint32_t num_of_sobs);
 
 /* Generic memory addresses pool */
 void *hltests_mem_pool_init(uint64_t start_addr, uint64_t size, uint64_t order);
@@ -438,23 +446,17 @@ uint32_t hltests_add_cp_dma_pkt(int fd, void *buffer, uint32_t buf_off,
 uint32_t hltests_add_monitor_and_fence(int fd, void *buffer, uint32_t buf_off,
 		struct hltests_monitor_and_fence *mon_and_fence_info);
 
-uint32_t hltests_get_dma_down_qid(int fd, enum hltests_dcore_id dcore_id,
-					enum hltests_stream_id stream);
-uint32_t hltests_get_dma_up_qid(int fd, enum hltests_dcore_id dcore_id,
-					enum hltests_stream_id stream);
+uint32_t hltests_get_dma_down_qid(int fd, enum hltests_stream_id stream);
+uint32_t hltests_get_dma_up_qid(int fd, enum hltests_stream_id stream);
 uint32_t hltests_get_dma_dram_to_sram_qid(int fd,
-					enum hltests_dcore_id dcore_id,
 					enum hltests_stream_id stream);
 uint32_t hltests_get_dma_sram_to_dram_qid(int fd,
-					enum hltests_dcore_id dcore_id,
 					enum hltests_stream_id stream);
-uint32_t hltests_get_tpc_qid(int fd, enum hltests_dcore_id dcore_id,
-					uint8_t tpc_id,
-					enum hltests_stream_id stream);
-uint32_t hltests_get_mme_qid(int fd, enum hltests_dcore_id dcore_id,
-					uint8_t mme_id,
-					enum hltests_stream_id stream);
-uint8_t hltests_get_tpc_cnt(int fd, uint8_t dcore_id);
+uint32_t hltests_get_tpc_qid(int fd, uint8_t tpc_id,
+				enum hltests_stream_id stream);
+uint32_t hltests_get_mme_qid(int fd, uint8_t mme_id,
+				enum hltests_stream_id stream);
+uint8_t hltests_get_tpc_cnt(int fd);
 
 void goya_tests_set_asic_funcs(struct hltests_device *hdev);
 

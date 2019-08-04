@@ -148,7 +148,7 @@ void test_dma_entire_dram_random(void **state)
 	}
 
 	hltests_submit_and_wait_cs(fd, cb, cb_size,
-				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
+				hltests_get_dma_down_qid(fd, STREAM0),
 				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
 	cb_size = 0;
 
@@ -169,7 +169,7 @@ void test_dma_entire_dram_random(void **state)
 	}
 
 	hltests_submit_and_wait_cs(fd, cb, cb_size,
-				hltests_get_dma_up_qid(fd, DCORE0, STREAM0),
+				hltests_get_dma_up_qid(fd, STREAM0),
 				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
 
 	cb_size = 0;

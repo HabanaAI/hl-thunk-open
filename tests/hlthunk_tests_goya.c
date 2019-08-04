@@ -163,7 +163,9 @@ static uint32_t goya_add_cp_dma_pkt(void *buffer, uint32_t buf_off,
 						sizeof(packet));
 }
 
-static uint32_t goya_add_monitor_and_fence(void *buffer, uint32_t buf_off,
+static uint32_t goya_add_monitor_and_fence(
+			enum hltests_dcore_separation_mode dcore_sep_mode,
+			void *buffer, uint32_t buf_off,
 			struct hltests_monitor_and_fence *mon_and_fence_info)
 {
 	uint64_t address, monitor_base;
@@ -319,43 +321,50 @@ static uint32_t goya_add_monitor_and_fence(void *buffer, uint32_t buf_off,
 	return buf_off;
 }
 
-static uint32_t goya_get_dma_down_qid(enum hltests_dcore_id dcore_id,
-						enum hltests_stream_id stream)
+static uint32_t goya_get_dma_down_qid(
+			enum hltests_dcore_separation_mode dcore_sep_mode,
+			enum hltests_stream_id stream)
 {
 	return GOYA_QUEUE_ID_DMA_1;
 }
 
-static uint32_t goya_get_dma_up_qid(enum hltests_dcore_id dcore_id,
-						enum hltests_stream_id stream)
+static uint32_t goya_get_dma_up_qid(
+			enum hltests_dcore_separation_mode dcore_sep_mode,
+			enum hltests_stream_id stream)
 {
 	return GOYA_QUEUE_ID_DMA_2;
 }
 
-static uint32_t goya_get_dma_dram_to_sram_qid(enum hltests_dcore_id dcore_id,
-						enum hltests_stream_id stream)
+static uint32_t goya_get_dma_dram_to_sram_qid(
+			enum hltests_dcore_separation_mode dcore_sep_mode,
+			enum hltests_stream_id stream)
 {
 	return GOYA_QUEUE_ID_DMA_3;
 }
 
-static uint32_t goya_get_dma_sram_to_dram_qid(enum hltests_dcore_id dcore_id,
-						enum hltests_stream_id stream)
+static uint32_t goya_get_dma_sram_to_dram_qid(
+			enum hltests_dcore_separation_mode dcore_sep_mode,
+			enum hltests_stream_id stream)
 {
 	return GOYA_QUEUE_ID_DMA_4;
 }
 
-static uint32_t goya_get_tpc_qid(enum hltests_dcore_id decore_id,
-				uint8_t tpc_id,	enum hltests_stream_id stream)
+static uint32_t goya_get_tpc_qid(
+			enum hltests_dcore_separation_mode dcore_sep_mode,
+			uint8_t tpc_id,	enum hltests_stream_id stream)
 {
 	return GOYA_QUEUE_ID_TPC0 + tpc_id;
 }
 
-static uint32_t goya_get_mme_qid(enum hltests_dcore_id decore_id,
-				uint8_t mme_id, enum hltests_stream_id stream)
+static uint32_t goya_get_mme_qid(
+			enum hltests_dcore_separation_mode dcore_sep_mode,
+			uint8_t mme_id, enum hltests_stream_id stream)
 {
 	return GOYA_QUEUE_ID_MME;
 }
 
-static uint8_t goya_get_tpc_cnt(uint8_t dcore_id)
+static uint8_t goya_get_tpc_cnt(
+			enum hltests_dcore_separation_mode dcore_sep_mode)
 {
 	return TPC_MAX_NUM;
 }

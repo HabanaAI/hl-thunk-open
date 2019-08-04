@@ -74,7 +74,7 @@ void test_dma_4_queues(void **state)
 
 
 	/* Setup CB: clear SOB 0-2 */
-	hltests_clear_sobs(fd, DCORE0, 3);
+	hltests_clear_sobs(fd, 3);
 
 	/* CB for first DMA QMAN:
 	 * Transfer data from host to DRAM + signal SOB0.
@@ -108,9 +108,8 @@ void test_dma_4_queues(void **state)
 	assert_non_null(dma_cb[1]);
 
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
-	mon_and_fence_info.dcore_id = 0;
-	mon_and_fence_info.queue_id = hltests_get_dma_dram_to_sram_qid(fd,
-							DCORE0, STREAM0);
+	mon_and_fence_info.queue_id =
+				hltests_get_dma_dram_to_sram_qid(fd, STREAM0);
 	mon_and_fence_info.cmdq_fence = false;
 	mon_and_fence_info.sob_id = 0;
 	mon_and_fence_info.mon_id = 0;
@@ -146,9 +145,8 @@ void test_dma_4_queues(void **state)
 	assert_non_null(dma_cb[2]);
 
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
-	mon_and_fence_info.dcore_id = 0;
-	mon_and_fence_info.queue_id = hltests_get_dma_sram_to_dram_qid(fd,
-							DCORE0, STREAM0);
+	mon_and_fence_info.queue_id =
+				hltests_get_dma_sram_to_dram_qid(fd, STREAM0);
 	mon_and_fence_info.cmdq_fence = false;
 	mon_and_fence_info.sob_id = 1;
 	mon_and_fence_info.mon_id = 1;
@@ -184,8 +182,7 @@ void test_dma_4_queues(void **state)
 	assert_non_null(dma_cb[3]);
 
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
-	mon_and_fence_info.dcore_id = 0;
-	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd, 0, 0);
+	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd, 0);
 	mon_and_fence_info.cmdq_fence = false;
 	mon_and_fence_info.sob_id = 2;
 	mon_and_fence_info.mon_id = 2;
@@ -207,23 +204,22 @@ void test_dma_4_queues(void **state)
 
 	execute_arr[0].cb_ptr = dma_cb[0];
 	execute_arr[0].cb_size = dma_cb_size[0];
-	execute_arr[0].queue_index = hltests_get_dma_down_qid(fd,
-							DCORE0, STREAM0);
+	execute_arr[0].queue_index = hltests_get_dma_down_qid(fd, STREAM0);
 
 	execute_arr[1].cb_ptr = dma_cb[1];
 	execute_arr[1].cb_size = dma_cb_size[1];
-	execute_arr[1].queue_index = hltests_get_dma_dram_to_sram_qid(fd,
-							DCORE0, STREAM0);
+	execute_arr[1].queue_index =
+				hltests_get_dma_dram_to_sram_qid(fd, STREAM0);
 
 	execute_arr[2].cb_ptr = dma_cb[2];
 	execute_arr[2].cb_size = dma_cb_size[2];
-	execute_arr[2].queue_index = hltests_get_dma_sram_to_dram_qid(fd,
-							DCORE0, STREAM0);
+	execute_arr[2].queue_index =
+				hltests_get_dma_sram_to_dram_qid(fd, STREAM0);
 
 	execute_arr[3].cb_ptr = dma_cb[3];
 	execute_arr[3].cb_size = dma_cb_size[3];
-	execute_arr[3].queue_index = hltests_get_dma_up_qid(fd,
-							DCORE0, STREAM0);
+	execute_arr[3].queue_index =
+				hltests_get_dma_up_qid(fd, STREAM0);
 
 	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 4,
 					FORCE_RESTORE_TRUE, &seq);

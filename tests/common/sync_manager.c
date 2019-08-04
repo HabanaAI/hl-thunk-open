@@ -38,9 +38,9 @@ static void test_sm(void **state, bool is_tpc, bool is_wait, uint8_t tpc_id)
 	assert_int_equal(rc, 0);
 
 	if (is_tpc)
-		engine_qid = hltests_get_tpc_qid(fd, DCORE0, tpc_id, STREAM0);
+		engine_qid = hltests_get_tpc_qid(fd, tpc_id, STREAM0);
 	else
-		engine_qid = hltests_get_mme_qid(fd, DCORE0, 0, STREAM0);
+		engine_qid = hltests_get_mme_qid(fd, 0, STREAM0);
 
 	/* SRAM MAP (base + )
 	 * 0x1000 : data
@@ -62,7 +62,7 @@ static void test_sm(void **state, bool is_tpc, bool is_wait, uint8_t tpc_id)
 	dst_data_device_va = hltests_get_device_va_for_host_ptr(fd, dst_data);
 
 	/* DMA of data host->sram */
-	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
+	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
 				EB_FALSE, MB_TRUE, src_data_device_va,
 				device_data_address, dma_size,
 				GOYA_DMA_HOST_TO_SRAM);
@@ -82,13 +82,13 @@ static void test_sm(void **state, bool is_tpc, bool is_wait, uint8_t tpc_id)
 								0, &pkt_info);
 
 	/* DMA of cb engine host->sram */
-	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
+	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
 				EB_FALSE, MB_TRUE, engine_cb_device_va,
 				cb_engine_address,
 				engine_cb_size, GOYA_DMA_HOST_TO_SRAM);
 
 	/* Clear SOB 0 */
-	hltests_clear_sobs(fd, DCORE0, 1);
+	hltests_clear_sobs(fd, 1);
 
 	/* Create CB for DMA that waits on internal engine and then performs
 	 * a DMA down to the data address on the sram
@@ -97,8 +97,7 @@ static void test_sm(void **state, bool is_tpc, bool is_wait, uint8_t tpc_id)
 	assert_non_null(ext_cb);
 
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
-	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd,
-							DCORE0, STREAM0);
+	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd, STREAM0);
 	mon_and_fence_info.cmdq_fence = false;
 	mon_and_fence_info.sob_id = 0;
 	mon_and_fence_info.mon_id = 0;
@@ -118,8 +117,7 @@ static void test_sm(void **state, bool is_tpc, bool is_wait, uint8_t tpc_id)
 
 	execute_arr[0].cb_ptr = ext_cb;
 	execute_arr[0].cb_size = offset;
-	execute_arr[0].queue_index = hltests_get_dma_up_qid(fd,
-							DCORE0, STREAM0);
+	execute_arr[0].queue_index = hltests_get_dma_up_qid(fd, STREAM0);
 
 	execute_arr[1].cb_ptr = engine_cb;
 	execute_arr[1].cb_size = engine_cb_size;
@@ -185,9 +183,9 @@ static void test_sm_pingpong_upper_cp(void **state, bool is_tpc,
 	assert_int_equal(rc, 0);
 
 	if (is_tpc)
-		engine_qid = hltests_get_tpc_qid(fd, DCORE0, tpc_id, STREAM0);
+		engine_qid = hltests_get_tpc_qid(fd, tpc_id, STREAM0);
 	else
-		engine_qid = hltests_get_mme_qid(fd, DCORE0, 0, STREAM0);
+		engine_qid = hltests_get_mme_qid(fd, 0, STREAM0);
 
 	/* SRAM MAP (base + )
 	 * 0x1000 : data
@@ -212,7 +210,7 @@ static void test_sm_pingpong_upper_cp(void **state, bool is_tpc,
 	else
 		engine_cb_sram_addr = hw_ip.sram_base_address + 0x2000;
 
-	hltests_clear_sobs(fd, DCORE0, 2);
+	hltests_clear_sobs(fd, 2);
 
 	/* Allocate two buffers on the host for data transfers */
 	src_data = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
@@ -233,7 +231,6 @@ static void test_sm_pingpong_upper_cp(void **state, bool is_tpc,
 	engine_cb_device_va = hltests_get_device_va_for_host_ptr(fd, engine_cb);
 
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
-	mon_and_fence_info.dcore_id = 0;
 	mon_and_fence_info.queue_id = engine_qid;
 	mon_and_fence_info.cmdq_fence = false;
 	mon_and_fence_info.sob_id = 0;
@@ -298,9 +295,7 @@ static void test_sm_pingpong_upper_cp(void **state, bool is_tpc,
 	dmaup_cb = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
 	assert_non_null(dmaup_cb);
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
-	mon_and_fence_info.dcore_id = 0;
-	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd,
-							DCORE0, STREAM0);
+	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd, STREAM0);
 	mon_and_fence_info.cmdq_fence = false;
 	mon_and_fence_info.sob_id = 1;
 	mon_and_fence_info.mon_id = 1;
@@ -324,13 +319,13 @@ static void test_sm_pingpong_upper_cp(void **state, bool is_tpc,
 		restore_arr[0].cb_ptr = restore_cb;
 		restore_arr[0].cb_size = restore_cb_size;
 		restore_arr[0].queue_index =
-				hltests_get_dma_down_qid(fd, DCORE0, STREAM0);
+				hltests_get_dma_down_qid(fd, STREAM0);
 	}
 
 	execute_arr[0].cb_ptr = dmaup_cb;
 	execute_arr[0].cb_size = dmaup_cb_size;
 	execute_arr[0].queue_index =
-				hltests_get_dma_up_qid(fd, DCORE0, STREAM0);
+				hltests_get_dma_up_qid(fd, STREAM0);
 
 	execute_arr[1].cb_ptr = engine_cb;
 	execute_arr[1].cb_size = engine_cb_size;
@@ -339,7 +334,7 @@ static void test_sm_pingpong_upper_cp(void **state, bool is_tpc,
 	execute_arr[2].cb_ptr = dmadown_cb;
 	execute_arr[2].cb_size = dmadown_cb_size;
 	execute_arr[2].queue_index =
-			hltests_get_dma_down_qid(fd, DCORE0, STREAM0);
+			hltests_get_dma_down_qid(fd, STREAM0);
 
 	if (engine_cb_sram_addr)
 		rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 3,
@@ -390,7 +385,7 @@ void test_sm_tpc(void **state)
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
-	tpc_cnt = hltests_get_tpc_cnt(fd, 0);
+	tpc_cnt = hltests_get_tpc_cnt(fd);
 	for (tpc_id = 0 ; tpc_id < tpc_cnt ; tpc_id++)
 		if (hw_ip.tpc_enabled_mask & (0x1 << tpc_id))
 			test_sm(state, true, true, tpc_id);
@@ -411,7 +406,7 @@ void test_sm_pingpong_tpc_upper_cp_from_sram(void **state)
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
-	tpc_cnt = hltests_get_tpc_cnt(fd, 0);
+	tpc_cnt = hltests_get_tpc_cnt(fd);
 	for (tpc_id = 0 ; tpc_id < tpc_cnt ; tpc_id++)
 		if (hw_ip.tpc_enabled_mask & (0x1 << tpc_id))
 			test_sm_pingpong_upper_cp(state, true, false, tpc_id);
@@ -432,7 +427,7 @@ void test_sm_pingpong_tpc_upper_cp_from_host(void **state)
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
-	tpc_cnt = hltests_get_tpc_cnt(fd, 0);
+	tpc_cnt = hltests_get_tpc_cnt(fd);
 	for (tpc_id = 0 ; tpc_id < tpc_cnt ; tpc_id++)
 		if (hw_ip.tpc_enabled_mask & (0x1 << tpc_id))
 			test_sm_pingpong_upper_cp(state, true, true, tpc_id);
@@ -453,7 +448,7 @@ void test_sm_pingpong_tpc_common_cp_from_sram(void **state)
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
-	tpc_cnt = hltests_get_tpc_cnt(fd, 0);
+	tpc_cnt = hltests_get_tpc_cnt(fd);
 	for (tpc_id = 0 ; tpc_id < tpc_cnt ; tpc_id++)
 		if (hw_ip.tpc_enabled_mask & (0x1 << tpc_id))
 			test_sm_pingpong_common_cp(state, true, false, tpc_id);
@@ -474,7 +469,7 @@ void test_sm_pingpong_tpc_common_cp_from_host(void **state)
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
-	tpc_cnt = hltests_get_tpc_cnt(fd, 0);
+	tpc_cnt = hltests_get_tpc_cnt(fd);
 	for (tpc_id = 0 ; tpc_id < tpc_cnt ; tpc_id++)
 		if (hw_ip.tpc_enabled_mask & (0x1 << tpc_id))
 			test_sm_pingpong_common_cp(state, true, true, tpc_id);

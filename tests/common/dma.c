@@ -50,9 +50,7 @@ static void *dma_thread_start(void *args)
 
 	/* fence on SOB0, clear it, do DMA down and write to SOB8 */
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
-	mon_and_fence_info.dcore_id = 0;
-	mon_and_fence_info.queue_id = hltests_get_dma_down_qid(fd,
-							DCORE0, STREAM0);
+	mon_and_fence_info.queue_id = hltests_get_dma_down_qid(fd, STREAM0);
 	mon_and_fence_info.cmdq_fence = false;
 	mon_and_fence_info.sob_id = 0;
 	mon_and_fence_info.mon_id = 0;
@@ -91,9 +89,7 @@ static void *dma_thread_start(void *args)
 
 	/* fence on SOB8, clear it, do DMA up and write to SOB0 */
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
-	mon_and_fence_info.dcore_id = 0;
-	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd,
-							DCORE0, STREAM0);
+	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd, STREAM0);
 	mon_and_fence_info.cmdq_fence = false;
 	mon_and_fence_info.sob_id = 8;
 	mon_and_fence_info.mon_id = 1;
@@ -133,12 +129,12 @@ static void *dma_thread_start(void *args)
 	execute_arr[0].cb_ptr = cb[0];
 	execute_arr[0].cb_size = cb_size[0];
 	execute_arr[0].queue_index = hltests_get_dma_down_qid(params->fd,
-							DCORE0, STREAM0);
+								STREAM0);
 
 	execute_arr[1].cb_ptr = cb[1];
 	execute_arr[1].cb_size = cb_size[1];
 	execute_arr[1].queue_index = hltests_get_dma_up_qid(params->fd,
-							DCORE0, STREAM0);
+								STREAM0);
 
 	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 2,
 					FORCE_RESTORE_FALSE, &seq);
@@ -236,7 +232,7 @@ static void test_dma_threads(void **state, uint32_t num_of_threads)
 	cb_size = hltests_add_write_to_sob_pkt(fd, cb, cb_size, &pkt_info);
 
 	hltests_submit_and_wait_cs(fd, cb, cb_size,
-				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
+				hltests_get_dma_down_qid(fd, STREAM0),
 				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
 
 	/* Create and execute threads */

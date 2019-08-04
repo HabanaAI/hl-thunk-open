@@ -64,14 +64,14 @@ void test_map_bigger_than_4GB(void **state)
 	while (offset < total_size) {
 		/* DMA: host->device */
 		hltests_dma_transfer(fd,
-				hltests_get_dma_down_qid(fd, DCORE0, STREAM0),
+				hltests_get_dma_down_qid(fd, STREAM0),
 				EB_FALSE, MB_TRUE, (host_src_addr + offset),
 				(uint64_t) (uintptr_t) device_addr, dma_size,
 				dma_dir_down);
 
 		/* DMA: device->host */
 		hltests_dma_transfer(fd,
-				hltests_get_dma_up_qid(fd, DCORE0, STREAM0),
+				hltests_get_dma_up_qid(fd, STREAM0),
 				EB_FALSE, MB_TRUE,
 				(uint64_t) (uintptr_t) device_addr,
 				host_dst_addr, dma_size, dma_dir_up);
