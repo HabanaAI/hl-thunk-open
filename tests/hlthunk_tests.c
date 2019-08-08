@@ -1556,7 +1556,7 @@ int hltests_ensure_device_operational(void **state)
 	exit(-1);
 }
 
-void *hltests_mem_pool_init(uint64_t start_addr, uint64_t size, uint64_t order)
+void *hltests_mem_pool_init(uint64_t start_addr, uint64_t size, uint8_t order)
 {
 	struct mem_pool *mem_pool;
 	uint64_t page_size;
@@ -1564,7 +1564,7 @@ void *hltests_mem_pool_init(uint64_t start_addr, uint64_t size, uint64_t order)
 
 	assert_in_range(order, PAGE_SHIFT_4KB, PAGE_SHIFT_16MB);
 
-	page_size = 1 << order;
+	page_size = 1ull << order;
 
 	if (size < page_size) {
 		printf("pool size should be at least one order size\n");
