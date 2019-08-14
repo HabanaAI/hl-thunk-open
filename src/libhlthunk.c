@@ -144,6 +144,70 @@ hlthunk_public enum hlthunk_device_name hlthunk_get_device_name_from_fd(int fd)
 	return HLTHUNK_DEVICE_INVALID;
 }
 
+hlthunk_public int hlthunk_get_pci_bus_id_from_fd(int fd, char *pci_bus_id,
+							int len)
+{
+	const char *base_path = "/sys/class/habanalabs/";
+	const char *pci_bus_prefix = "pci_addr";
+	const char *device_prefix = "hl";
+	char str[64], dev_name[64], read_busid[16], pci_bus_file_name[128], *p;
+	FILE *output;
+	pid_t pid;
+	int pci_fd, rc = 0;
+
+	pid = getpid();
+	snprintf(str, 63, "lsof -F n /proc/%d/fd/%d 2>/dev/null", pid, fd);
+
+	output = popen(str, "r");
+	if (!output)
+		return -1;
+
+	p = fgets(str, sizeof(str), output);
+	while (p) {
+		if (*p == 'n') {
+			p = strstr(p, device_prefix);
+			if (p)
+				break;
+		}
+		p = fgets(str, sizeof(str), output);
+	};
+
+	if (!p) {
+		rc = -1;
+		goto out;
+	}
+
+	sscanf(p, "%[^\n]", dev_name);
+
+	sprintf(pci_bus_file_name, "%s%s/%s", base_path, dev_name,
+		pci_bus_prefix);
+
+	pci_fd = open(pci_bus_file_name, O_RDONLY);
+	if (pci_fd < 0) {
+		rc = -1;
+		goto out;
+	}
+
+	rc = read(pci_fd, read_busid, BUSID_WITH_DOMAIN_LEN);
+	if (rc < 0) {
+		rc = -1;
+		goto close_pci_fd;
+	}
+
+	rc = 0;
+
+	read_busid[BUSID_WITH_DOMAIN_LEN] = '\0';
+
+	strncpy(pci_bus_id, read_busid, len);
+
+close_pci_fd:
+	close(pci_fd);
+out:
+	pclose(output);
+
+	return rc;
+}
+
 static int hlthunk_open_device_by_name(enum hlthunk_device_name device_name,
 					enum hlthunk_node_type type)
 {

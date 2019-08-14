@@ -95,9 +95,42 @@ hlthunk_public int hlthunk_open(enum hlthunk_device_name device_name,
  */
 hlthunk_public int hlthunk_open_control(int dev_id, const char *busid);
 
+/**
+ * This function closes an open file descriptor
+ * @param fd file descriptor handle
+ * @return the return value of the close() syscall
+ */
 hlthunk_public int hlthunk_close(int fd);
+
+/**
+ * This function retrieves the PCI device ID of a specific device through the
+ * INFO IOCTL call
+ * @param fd file descriptor handle of habanalabs main or control device
+ * @return PCI device ID of the acquired device
+ */
 hlthunk_public enum hl_pci_ids hlthunk_get_device_id_from_fd(int fd);
+
+/**
+ * This function returns the matching device name (ASIC type) of a specific
+ * device through the INFO IOCTL call
+ * @param fd file descriptor handle of habanalabs main or control device
+ * @return enumeration value that represents the ASIC type of the acquired
+ * device
+ */
 hlthunk_public enum hlthunk_device_name hlthunk_get_device_name_from_fd(int fd);
+
+/**
+ * This function retrieves the PCI bus ID of a specific device
+ * @param fd file descriptor handle of habanalabs main device
+ * @param pci_bus_id null-terminated string for the device in the following
+ * format: [domain]:[bus]:[device].[function] where domain, bus, device, and
+ * function are all hexadecimal values. pci_bus_id should be large enough to
+ * store 13 characters including the NULL-terminator.
+ * @param len maximum length of string to store in pci_bus_id
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_get_pci_bus_id_from_fd(int fd, char *pci_bus_id,
+							int len);
 
 /* TODO: split the INFO functions into several "logic" functions */
 hlthunk_public int hlthunk_get_hw_ip_info(int fd,
