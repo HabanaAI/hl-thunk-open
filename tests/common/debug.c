@@ -148,6 +148,19 @@ out:
 	printf("\n");
 }
 
+
+void test_print_pci_bus_id(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	char pci_bus_id[16];
+	int rc, fd = tests_state->fd;
+
+	rc = hlthunk_get_pci_bus_id_from_fd(fd, pci_bus_id, 16);
+	assert_int_equal(rc, 0);
+
+	printf("\nPCI bus ID: %s\n", pci_bus_id);
+}
+
 struct dma_custom_cfg {
 	enum hltests_goya_dma_direction dma_dir;
 	uint64_t src_addr;
@@ -702,6 +715,8 @@ const struct CMUnitTest debug_tests[] = {
 	cmocka_unit_test_setup(test_print_hw_ip_info,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_print_hw_idle_info,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_print_pci_bus_id,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_dma_custom,
 				hltests_ensure_device_operational),
