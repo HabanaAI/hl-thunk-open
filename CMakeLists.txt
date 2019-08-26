@@ -31,6 +31,7 @@ macro_ensure_out_of_source_build("${PROJECT_NAME} requires an out of source buil
 
 # Copy library files to a lib sub-directory
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 
 exec_program(
     "git"
