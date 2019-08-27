@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
+#include <inttypes.h>
 
 void test_print_hw_ip_info(void **state)
 {
@@ -107,8 +108,7 @@ out:
 void test_print_dram_usage_info_no_stop(void **state)
 {
 	const char *pciaddr = hltests_get_parser_pciaddr();
-	struct hl_info_dram_usage dram_usage;
-	struct hl_info_args info;
+	struct hlthunk_dram_usage_info dram_usage;
 	int rc, fd;
 
 	fd = hlthunk_open_control(0, pciaddr);
@@ -117,17 +117,12 @@ void test_print_dram_usage_info_no_stop(void **state)
 	printf("\n");
 
 	while (1) {
-		memset(&dram_usage, 0, sizeof(struct hl_info_dram_usage));
-		memset(&info, 0, sizeof(struct hl_info_args));
+		memset(&dram_usage, 0, sizeof(dram_usage));
 
-		info.op = HL_INFO_DRAM_USAGE;
-		info.return_pointer = (__u64) (uintptr_t) &dram_usage;
-		info.return_size = sizeof(struct hl_info_dram_usage);
-
-		rc = hlthunk_get_info(fd, &info);
+		rc = hlthunk_get_dram_usage(fd, &dram_usage);
 		assert_int_equal(rc, 0);
 
-		printf("dram free memory: %lluMB\n",
+		printf("dram free memory: %"PRIu64"MB\n",
 			dram_usage.dram_free_mem / 1024 / 1024);
 
 		usleep(250 * 1000);
