@@ -312,6 +312,33 @@ hlthunk_public int hlthunk_get_hw_ip_info(int fd,
 	return 0;
 }
 
+hlthunk_public int hlthunk_get_dram_usage(int fd,
+				struct hlthunk_dram_usage_info *dram_usage)
+{
+	struct hl_info_args args;
+	struct hl_info_dram_usage hl_dram_usage;
+	int rc;
+
+	if (!dram_usage)
+		return -EINVAL;
+
+	memset(&args, 0, sizeof(args));
+	memset(&hl_dram_usage, 0, sizeof(hl_dram_usage));
+
+	args.op = HL_INFO_DRAM_USAGE;
+	args.return_pointer = (__u64) (uintptr_t) &hl_dram_usage;
+	args.return_size = sizeof(hl_dram_usage);
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	if (rc)
+		return rc;
+
+	dram_usage->dram_free_mem = hl_dram_usage.dram_free_mem;
+	dram_usage->ctx_dram_mem = hl_dram_usage.ctx_dram_mem;
+
+	return 0;
+}
+
 hlthunk_public enum hl_device_status hlthunk_get_device_status_info(int fd)
 {
 	struct hl_info_args args;

@@ -55,6 +55,11 @@ struct hlthunk_hw_ip_info {
 	uint8_t armcp_version[HL_INFO_VERSION_MAX_LEN];
 };
 
+struct hlthunk_dram_usage_info {
+	uint64_t dram_free_mem;
+	uint64_t ctx_dram_mem;
+};
+
 struct hlthunk_cs_in {
 	void *chunks_restore;
 	void *chunks_execute;
@@ -135,6 +140,16 @@ hlthunk_public int hlthunk_get_pci_bus_id_from_fd(int fd, char *pci_bus_id,
 /* TODO: split the INFO functions into several "logic" functions */
 hlthunk_public int hlthunk_get_hw_ip_info(int fd,
 					struct hlthunk_hw_ip_info *hw_ip);
+
+/**
+ * This function retrieves DRAM usage information for a specific device
+ * @param fd file descriptor handle of habanalabs main device
+ * @param dram_usage pointer to DRAM usage information structure
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_get_dram_usage(int fd,
+				struct hlthunk_dram_usage_info *dram_usage);
+
 hlthunk_public enum hl_device_status hlthunk_get_device_status_info(int fd);
 hlthunk_public bool hlthunk_is_device_idle(int fd);
 hlthunk_public int hlthunk_get_busy_engines_mask(int fd, uint32_t *mask);
