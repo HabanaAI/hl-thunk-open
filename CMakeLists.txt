@@ -25,9 +25,10 @@ set(BUILD_VERSION_MINOR ${VERSION_MINOR})
 set(BUILD_VERSION_PATCH ${VERSION_PATCH})
 set(LIB_VERSION_STRING "${BUILD_VERSION_MAJOR}.${BUILD_VERSION_MINOR}.${BUILD_VERSION_PATCH}")
 
-# disallow in-source build
+if (NOT ALLOW_IN_SOURCE_BUILD)
 include(MacroEnsureOutOfSourceBuild)
 macro_ensure_out_of_source_build("${PROJECT_NAME} requires an out of source build. Please create a separate build directory and run 'cmake /path/to/${PROJECT_NAME} [options]' there.")
+endif()
 
 # Copy library files to a lib sub-directory
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
