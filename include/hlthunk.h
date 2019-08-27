@@ -137,7 +137,12 @@ hlthunk_public enum hlthunk_device_name hlthunk_get_device_name_from_fd(int fd);
 hlthunk_public int hlthunk_get_pci_bus_id_from_fd(int fd, char *pci_bus_id,
 							int len);
 
-/* TODO: split the INFO functions into several "logic" functions */
+/**
+ * This function retrieves H/W IP information for a specific device
+ * @param fd file descriptor handle of habanalabs main device
+ * @param hw_ip info pointer to H/W IP information structure
+ * @return 0 for success, negative value for failure
+ */
 hlthunk_public int hlthunk_get_hw_ip_info(int fd,
 					struct hlthunk_hw_ip_info *hw_ip);
 
@@ -150,34 +155,142 @@ hlthunk_public int hlthunk_get_hw_ip_info(int fd,
 hlthunk_public int hlthunk_get_dram_usage(int fd,
 				struct hlthunk_dram_usage_info *dram_usage);
 
+/**
+ * This function retrieves the status of a specific device
+ * @param fd file descriptor handle of habanalabs main device
+ * @return enumeration value that represents the status of the acquired device
+ */
 hlthunk_public enum hl_device_status hlthunk_get_device_status_info(int fd);
+
+/**
+ * This function checks whether a specific device is idle
+ * @param fd file descriptor handle of habanalabs main device
+ * @return true if the acquired device is idle, false otherwise
+ */
 hlthunk_public bool hlthunk_is_device_idle(int fd);
+
+/**
+ * This function retrieves a busy engines bitmask of a specific device
+ * @param fd file descriptor handle of habanalabs main device
+ * @param mask pointer to uint32_t to store the bitmask
+ * @return 0 for success, negative value for failure
+ */
 hlthunk_public int hlthunk_get_busy_engines_mask(int fd, uint32_t *mask);
+
+/**
+ * This function retrieves miscellaneous information of a specific device
+ * @param fd file descriptor handle of habanalabs main device
+ * @param info pointer to device information structure
+ * @return 0 for success, negative value for failure
+ */
 hlthunk_public int hlthunk_get_info(int fd, struct hl_info_args *info);
 
+/**
+ * This function creates a command buffer for a specific device
+ * @param fd file descriptor handle of habanalabs main device
+ * @param cb_size size of command buffer
+ * @param cb_handle pointer to uint64_t to store the command buffer handle
+ * @return 0 for success, negative value for failure
+ */
 hlthunk_public int hlthunk_request_command_buffer(int fd, uint32_t cb_size,
 							uint64_t *cb_handle);
 
+/**
+ * This function destroys a command buffer for a specific device
+ * @param fd file descriptor handle of habanalabs main device
+ * @param cb_handle handle of the command buffer
+ * @return 0 for success, negative value for failure
+ */
 hlthunk_public int hlthunk_destroy_command_buffer(int fd, uint64_t cb_handle);
 
+/**
+ * This function submits a set of jobs to a specific device
+ * @param fd file descriptor handle of habanalabs main device
+ * @param in pointer to command submission input structure
+ * @param out pointer to command submission output structure
+ * @return 0 for success, negative value for failure
+ */
 hlthunk_public int hlthunk_command_submission(int fd, struct hlthunk_cs_in *in,
 						struct hlthunk_cs_out *out);
 
+/**
+ * This function waits until a command submission of a specific device has
+ * finished executing
+ * @param fd file descriptor handle of habanalabs main device
+ * @param seq sequence number of command submission
+ * @param timeout_us absolute timeout to wait in microseconds
+ * @param status pointer to uint32_t to store the wait status
+ * @return 0 for success, negative value for failure
+ */
 hlthunk_public int hlthunk_wait_for_cs(int fd, uint64_t seq,
 					uint64_t timeout_us, uint32_t *status);
 
+/**
+ * This function allocates DRAM memory on the device
+ * @param fd file descriptor of the device on which to allocate the memory
+ * @param size how much memory to allocate
+ * @param contiguous whether the memory area will be physically contiguous
+ * @param shared whether this memory can be shared with other user processes
+ * on the device
+ * @return opaque handle representing the memory allocation. 0 is returned
+ * upon failure
+ */
 hlthunk_public uint64_t hlthunk_device_memory_alloc(int fd, uint64_t size,
 						bool contiguous, bool shared);
 
+/**
+ * This function frees DRAM memory that was allocated on the device using
+ * hlthunk_device_memory_alloc
+ * @param fd file descriptor of the device that this memory belongs to
+ * @param handle the opaque handle that represents this memory
+ * @return 0 for success, negative value for failure
+ */
 hlthunk_public int hlthunk_device_memory_free(int fd, uint64_t handle);
 
+/**
+ * This function asks the driver to map a previously allocated DRAM memory
+ * to the device's MMU and to allocate for it a VA in the device address space
+ * @param fd file descriptor of the device that this memory belongs to
+ * @param handle the opaque handle that represents this memory
+ * @param hint_addr the user can request from the driver that the VA will be
+ * a specific address. The driver doesn't have to comply to this request but
+ * will take it under consideration
+ * @return VA in the device address space. 0 is returned upon failure
+ */
 hlthunk_public uint64_t hlthunk_device_memory_map(int fd, uint64_t handle,
 							uint64_t hint_addr);
+
+/**
+ * This function asks the driver to map a previously allocated host memory
+ * to the device's MMU and to allocate for it a VA in the device address space
+ * @param fd file descriptor of the device that this memory will be mapped to
+ * @param host_virt_addr the user's VA of memory area on the host
+ * @param hint_addr the user can request from the driver that the device VA will
+ * be a specific address. The driver doesn't have to comply to this request but
+ * will take it under consideration
+ * @param host_size the size of the memory area
+ * @return VA in the device address space. 0 is returned upon failure
+ */
 hlthunk_public uint64_t hlthunk_host_memory_map(int fd, void *host_virt_addr,
 						uint64_t hint_addr,
 						uint64_t host_size);
 
+/**
+ * This function unmaps a mapping in the device's MMU that was previously done
+ * using either hlthunk_device_memory_map or hlthunk_host_memory_map
+ * @param fd file descriptor of the device that contains the mapping
+ * @param device_virt_addr the VA in the device address space representing
+ * the device or host memory area
+ * @return 0 for success, negative value for failure
+ */
 hlthunk_public int hlthunk_memory_unmap(int fd, uint64_t device_virt_addr);
+
+/**
+ * This function enables and retrieves debug traces of a specific device
+ * @param fd file descriptor handle of habanalabs main device
+ * @param debug pointer to debug parameters structure
+ * @return 0 for success, negative value for failure
+ */
 hlthunk_public int hlthunk_debug(int fd, struct hl_debug_args *debug);
 
 hlthunk_public void *hlthunk_malloc(int size);
