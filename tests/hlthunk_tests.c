@@ -1297,6 +1297,14 @@ uint8_t hltests_get_tpc_cnt(int fd)
 	return asic->get_tpc_cnt(DCORE_MODE_FULL_CHIP);
 }
 
+uint8_t hltests_get_mme_cnt(int fd)
+{
+	const struct hltests_asic_funcs *asic =
+				get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->get_mme_cnt(DCORE_MODE_FULL_CHIP);
+}
+
 void hltests_fill_rand_values(void *ptr, uint32_t size)
 {
 	uint32_t i, *p = ptr, rounddown_aligned_size, remainder, val;
@@ -1748,7 +1756,7 @@ bool hltests_is_goya(int fd)
 }
 
 void test_sm_pingpong_common_cp(void **state, bool is_tpc,
-				bool common_cb_in_host, uint8_t tpc_id)
+				bool common_cb_in_host, uint8_t engine_id)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -1800,9 +1808,9 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	assert_int_equal(rc, 0);
 
 	if (is_tpc)
-		engine_qid = hltests_get_tpc_qid(fd, tpc_id, STREAM0);
+		engine_qid = hltests_get_tpc_qid(fd, engine_id, STREAM0);
 	else
-		engine_qid = hltests_get_mme_qid(fd, 0, STREAM0);
+		engine_qid = hltests_get_mme_qid(fd, engine_id, STREAM0);
 
 	device_data_addr = hw_ip.sram_base_address + 0x1000;
 	engine_upper_cb_sram_addr = hw_ip.sram_base_address + 0x2000;

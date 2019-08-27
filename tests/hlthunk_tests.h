@@ -288,6 +288,8 @@ struct hltests_asic_funcs {
 			uint8_t mme_id,	enum hltests_stream_id stream);
 	uint8_t (*get_tpc_cnt)(
 			enum hltests_dcore_separation_mode dcore_sep_mode);
+	uint8_t (*get_mme_cnt)(
+			enum hltests_dcore_separation_mode dcore_sep_mode);
 	void (*dram_pool_init)(struct hltests_device *hdev);
 	void (*dram_pool_fini)(struct hltests_device *hdev);
 	int (*dram_pool_alloc)(struct hltests_device *hdev, uint64_t size,
@@ -457,6 +459,7 @@ uint32_t hltests_get_tpc_qid(int fd, uint8_t tpc_id,
 uint32_t hltests_get_mme_qid(int fd, uint8_t mme_id,
 				enum hltests_stream_id stream);
 uint8_t hltests_get_tpc_cnt(int fd);
+uint8_t hltests_get_mme_cnt(int fd);
 
 void goya_tests_set_asic_funcs(struct hltests_device *hdev);
 

@@ -397,6 +397,12 @@ static uint8_t goya_get_tpc_cnt(
 	return TPC_MAX_NUM;
 }
 
+static uint8_t goya_get_mme_cnt(
+			enum hltests_dcore_separation_mode dcore_sep_mode)
+{
+	return MME_MAX_NUM;
+}
+
 static void goya_dram_pool_init(struct hltests_device *hdev)
 {
 
@@ -436,6 +442,7 @@ static const struct hltests_asic_funcs goya_funcs = {
 	.get_tpc_qid = goya_get_tpc_qid,
 	.get_mme_qid = goya_get_mme_qid,
 	.get_tpc_cnt = goya_get_tpc_cnt,
+	.get_mme_cnt = goya_get_mme_cnt,
 	.dram_pool_init = goya_dram_pool_init,
 	.dram_pool_fini = goya_dram_pool_fini,
 	.dram_pool_alloc = goya_dram_pool_alloc,
