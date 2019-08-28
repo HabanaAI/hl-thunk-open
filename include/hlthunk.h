@@ -178,6 +178,18 @@ hlthunk_public bool hlthunk_is_device_idle(int fd);
 hlthunk_public int hlthunk_get_busy_engines_mask(int fd, uint32_t *mask);
 
 /**
+ * This function retrieves the device utilization as percentage in the last
+ * Xms period.
+ * @param fd file descriptor handle of habanalabs main device
+ * @param period_ms the period value in ms. Valid values are 100-1000, with
+ * resolution of 100.
+ * @rate pointer to uint32_t to store the utilization rate as percentage.
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_get_device_utilization(int fd, uint32_t period_ms,
+						uint32_t *rate);
+
+/**
  * This function retrieves miscellaneous information of a specific device
  * @param fd file descriptor handle of habanalabs main device
  * @param info pointer to device information structure

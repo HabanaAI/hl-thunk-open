@@ -403,6 +403,33 @@ hlthunk_public int hlthunk_get_busy_engines_mask(int fd, uint32_t *mask)
 	return rc;
 }
 
+hlthunk_public int hlthunk_get_device_utilization(int fd, uint32_t period_ms,
+						uint32_t *rate)
+{
+	struct hl_info_args args;
+	struct hl_info_device_utilization hl_info;
+	int rc, i;
+
+	if (!rate)
+		return -EINVAL;
+
+	memset(&args, 0, sizeof(args));
+	memset(&hl_info, 0, sizeof(hl_info));
+
+	args.op = HL_INFO_DEVICE_UTILIZATION;
+	args.return_pointer = (__u64) (uintptr_t) &hl_info;
+	args.return_size = sizeof(hl_info);
+	args.period_ms = period_ms;
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	if (rc)
+		return rc;
+
+	*rate = hl_info.utilization;
+
+	return 0;
+}
+
 hlthunk_public int hlthunk_request_command_buffer(int fd, uint32_t cb_size,
 							uint64_t *cb_handle)
 {
