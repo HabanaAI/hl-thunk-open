@@ -132,10 +132,35 @@ void test_print_dram_usage_info_no_stop(void **state)
 	hlthunk_close(fd);
 }
 
+void test_print_device_utilization_no_stop(void **state)
+{
+	const char *pciaddr = hltests_get_parser_pciaddr();
+	uint32_t rate;
+	int rc, fd;
+
+	fd = hlthunk_open_control(0, pciaddr);
+	assert_in_range(fd, 0, INT_MAX);
+
+	printf("\n");
+
+	while (1) {
+		rc = hlthunk_get_device_utilization(fd, 500, &rate);
+		assert_int_equal(rc, 0);
+
+		printf("device utilization: %u%%\n", rate);
+
+		usleep(450 * 1000);
+	}
+
+	printf("\n");
+	hlthunk_close(fd);
+}
+
 const struct CMUnitTest control_tests[] = {
 	cmocka_unit_test(test_print_hw_ip_info),
 	cmocka_unit_test(test_print_hw_idle_info),
-	cmocka_unit_test(test_print_dram_usage_info_no_stop)
+	cmocka_unit_test(test_print_dram_usage_info_no_stop),
+	cmocka_unit_test(test_print_device_utilization_no_stop)
 };
 
 static const char *const usage[] = {
