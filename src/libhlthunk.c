@@ -430,6 +430,32 @@ hlthunk_public int hlthunk_get_device_utilization(int fd, uint32_t period_ms,
 	return 0;
 }
 
+hlthunk_public int hlthunk_get_hw_events_arr(int fd, bool aggregate,
+						uint32_t hw_events_arr_size,
+						uint32_t *hw_events_arr)
+{
+	struct hl_info_args args;
+	int rc;
+
+	if (!hw_events_arr)
+		return -EINVAL;
+
+	memset(&args, 0, sizeof(args));
+	if (aggregate)
+		args.op = HL_INFO_HW_EVENTS_AGGREGATE;
+	else
+		args.op = HL_INFO_HW_EVENTS;
+
+	args.return_pointer = (__u64) (uintptr_t) &hw_events_arr;
+	args.return_size = hw_events_arr_size;
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	if (rc)
+		return rc;
+
+	return 0;
+}
+
 hlthunk_public int hlthunk_request_command_buffer(int fd, uint32_t cb_size,
 							uint64_t *cb_handle)
 {

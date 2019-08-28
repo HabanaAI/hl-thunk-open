@@ -190,6 +190,18 @@ hlthunk_public int hlthunk_get_device_utilization(int fd, uint32_t period_ms,
 						uint32_t *rate);
 
 /**
+ * This function retrieves the h/w events array
+ * @param fd file descriptor handle of habanalabs main device
+ * @param aggregate whether to retrieve from last reset or from loading of the
+ * driver (aggregate mode)
+ * @hw_events_arr_size size of hw_events_arr, in bytes
+ * @hw_events_arr pointer to array of uint32_t to store the result.
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_get_hw_events_arr(int fd, bool aggregate,
+			uint32_t hw_events_arr_size, uint32_t *hw_events_arr);
+
+/**
  * This function retrieves miscellaneous information of a specific device
  * @param fd file descriptor handle of habanalabs main device
  * @param info pointer to device information structure
