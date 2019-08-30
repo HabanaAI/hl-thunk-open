@@ -20,7 +20,7 @@
 
 /**
  * This test checks that a mapping of more than 4GB is successful. This big size
- * enforces the KMD to store it in a u64 variable rather than u32 variable.
+ * enforces the driver to store it in a u64 variable rather than u32 variable.
  * In addition the test performs DMA transfers to verify that the mapping is
  * correct.
  * The DMA size shouldn't be too big to avoid too big command buffers.
@@ -97,8 +97,8 @@ void test_map_bigger_than_4GB(void **state)
 
 /**
  * This test allocates device memory until all the memory was allocated.
- * The allocated chunks are 0.5GB (because KMD reserves the first 0.5GB and we
- * have multiples of 1GB of memory).
+ * The allocated chunks are 0.5GB (because the driver reserves the first 0.5GB
+ * and we have multiples of 1GB of memory).
  * The test pass if we can allocate the entire memory and fails otherwise
  * @param state contains the open file descriptor.
  */
