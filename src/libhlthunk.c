@@ -446,7 +446,7 @@ hlthunk_public int hlthunk_get_hw_events_arr(int fd, bool aggregate,
 	else
 		args.op = HL_INFO_HW_EVENTS;
 
-	args.return_pointer = (__u64) (uintptr_t) &hw_events_arr;
+	args.return_pointer = (__u64) (uintptr_t) hw_events_arr;
 	args.return_size = hw_events_arr_size;
 
 	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
