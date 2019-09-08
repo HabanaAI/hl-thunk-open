@@ -38,9 +38,9 @@ void test_dma_4_queues(void **state)
 	 *   SOB0.
 	 * - Second DMA QMAN fences on SOB0, transfers data from DRAM to SRAM,
 	 *   and then signals SOB1.
-	 * - Third DMA QMAN fences on SOB8, transfers data from SRAM to DRAM,
+	 * - Third DMA QMAN fences on SOB1, transfers data from SRAM to DRAM,
 	 *   and then signals SOB2.
-	 * - Forth DMA QMAN fences on SOB16 and then transfers data from DRAM to
+	 * - Forth DMA QMAN fences on SOB2 and then transfers data from DRAM to
 	 *   host.
 	 */
 

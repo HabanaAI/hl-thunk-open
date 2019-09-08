@@ -279,6 +279,338 @@ void test_dma_512_threads(void **state)
 	test_dma_threads(state, 512);
 }
 
+void test_dma_4_queues(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct hlthunk_hw_ip_info hw_ip;
+	struct hltests_cs_chunk restore_arr[1], execute_arr[4];
+	struct hltests_pkt_info pkt_info;
+	struct hltests_monitor_and_fence mon_and_fence_info;
+	void *host_src, *host_dst, *dram_addr[2], *restore_cb, *dma_cb[2],
+		*common_cb_buf[2], *cp_dma_cb[2];
+	uint64_t host_src_device_va, host_dst_device_va, sram_addr, seq,
+		common_cb_device_va[2], cp_dma_cb_device_va[2];
+	uint32_t dma_size = 128, page_size, restore_cb_size = 0,
+		dma_cb_size[2] = {0}, common_cb_buf_size[2] = {0},
+		cp_dma_cb_size[2] = {0};
+	int rc, fd = tests_state->fd, i;
+
+	/* This test can't run on Goya, we have a similar test in goya_dma */
+	if (hlthunk_get_device_name_from_fd(fd) == HLTHUNK_DEVICE_GOYA) {
+		printf("Test is skipped. Run same test from goya_dma\n");
+		skip();
+	}
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+
+	/* SRAM MAP (base + ):
+	 * - 0x0000 - DMA 2.0 - CB of common CP
+	 * - 0x1000 - DMA 3.0 - CB of common CP
+	 * - 0x2000 - DMA 2.0 - CB of upper CP
+	 * - 0x2020 - DMA 3.0 - CB of upper CP
+	 * - 0x2200 - Data
+	 *
+	 * Test Description:
+	 * - First DMA QMAN transfers data from host to DRAM and then signals
+	 *   SOB0.
+	 * - Second DMA QMAN fences on SOB0, transfers data from DRAM to SRAM,
+	 *   and then signals SOB1.
+	 * - Third DMA QMAN fences on SOB1, transfers data from SRAM to DRAM,
+	 *   and then signals SOB2.
+	 * - Forth DMA QMAN fences on SOB2 and then transfers data from DRAM to
+	 *   host.
+	 * - Setup CB is used to clear SOB 0, 1 and 2 and to copy all internal
+	 *   CBs to SRAM.
+	 */
+
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+	assert_true(hw_ip.dram_enabled);
+
+	sram_addr = hw_ip.sram_base_address;
+
+	page_size = sysconf(_SC_PAGESIZE);
+	assert_in_range(page_size, PAGE_SIZE_4KB, PAGE_SIZE_64KB);
+
+	/* Allocate memory on host and DRAM and set the SRAM address */
+	host_src = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
+	assert_non_null(host_src);
+	hltests_fill_rand_values(host_src, dma_size);
+	host_src_device_va = hltests_get_device_va_for_host_ptr(fd, host_src);
+
+	host_dst = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
+	assert_non_null(host_dst);
+	memset(host_dst, 0, dma_size);
+	host_dst_device_va = hltests_get_device_va_for_host_ptr(fd, host_dst);
+
+	for (i = 0 ; i < 2 ; i++) {
+		dram_addr[i] = hltests_allocate_device_mem(fd, dma_size,
+								NOT_CONTIGUOUS);
+		assert_non_null(dram_addr[i]);
+	}
+
+	/* clear SOB 0-2  */
+	hltests_clear_sobs(fd, 3);
+	for (i = 0 ; i < 2 ; i++) {
+		common_cb_buf[i] = hltests_allocate_host_mem(fd, page_size,
+								NOT_HUGE);
+		assert_non_null(common_cb_buf[i]);
+		memset(common_cb_buf[i], 0, page_size);
+		common_cb_buf_size[i] = 0;
+		common_cb_device_va[i] = hltests_get_device_va_for_host_ptr(fd,
+							common_cb_buf[i]);
+	}
+
+	/* Fence on SOB0 + DMA from DRAM to SRAM */
+	restore_cb = hltests_create_cb(fd, page_size, EXTERNAL, 0);
+	assert_non_null(restore_cb);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.dma.src_addr = common_cb_device_va[0];
+	pkt_info.dma.dst_addr = sram_addr;
+	pkt_info.dma.size = page_size;
+	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_SRAM;
+	restore_cb_size = hltests_add_dma_pkt(fd, restore_cb, restore_cb_size,
+						&pkt_info);
+
+	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
+	mon_and_fence_info.queue_id =
+				hltests_get_dma_dram_to_sram_qid(fd, STREAM0);
+	mon_and_fence_info.cmdq_fence = true;
+	mon_and_fence_info.sob_id = 0;
+	mon_and_fence_info.mon_id = 0;
+	mon_and_fence_info.mon_address = 0;
+	mon_and_fence_info.target_val = 1;
+	mon_and_fence_info.dec_val = 1;
+	common_cb_buf_size[0] = hltests_add_monitor_and_fence(fd,
+				common_cb_buf[0], common_cb_buf_size[0],
+				&mon_and_fence_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.dma.src_addr = (uint64_t) (uintptr_t) dram_addr[0];
+	pkt_info.dma.dst_addr = sram_addr + 0x2200;
+	pkt_info.dma.size = dma_size;
+	pkt_info.dma.dma_dir = GOYA_DMA_DRAM_TO_SRAM;
+	common_cb_buf_size[0] = hltests_add_dma_pkt(fd, common_cb_buf[0],
+					common_cb_buf_size[0], &pkt_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.write_to_sob.sob_id = 1;
+	pkt_info.write_to_sob.value = 1;
+	pkt_info.write_to_sob.mode = SOB_ADD;
+	common_cb_buf_size[0] = hltests_add_write_to_sob_pkt(fd,
+					common_cb_buf[0], common_cb_buf_size[0],
+					&pkt_info);
+
+	/* Internal CB for CP_DMA */
+	cp_dma_cb[0] = hltests_create_cb(fd, page_size, INTERNAL,
+					sram_addr + 0x2000);
+	assert_non_null(cp_dma_cb[0]);
+	cp_dma_cb_device_va[0] = hltests_get_device_va_for_host_ptr(fd,
+							cp_dma_cb[0]);
+
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.cp_dma.src_addr = sram_addr;
+	pkt_info.cp_dma.size = common_cb_buf_size[0];
+	cp_dma_cb_size[0] = hltests_add_cp_dma_pkt(fd, cp_dma_cb[0],
+					cp_dma_cb_size[0], &pkt_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.dma.src_addr = cp_dma_cb_device_va[0];
+	pkt_info.dma.dst_addr = sram_addr + 0x2000;
+	pkt_info.dma.size = cp_dma_cb_size[0];
+	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_SRAM;
+	restore_cb_size = hltests_add_dma_pkt(fd, restore_cb, restore_cb_size,
+						&pkt_info);
+
+	/* Fence on SOB1 + DMA from SRAM to DRAM */
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.dma.src_addr = common_cb_device_va[1];
+	pkt_info.dma.dst_addr = sram_addr + 0x1000;
+	pkt_info.dma.size = page_size;
+	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_SRAM;
+	restore_cb_size = hltests_add_dma_pkt(fd, restore_cb, restore_cb_size,
+								&pkt_info);
+
+	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
+	mon_and_fence_info.queue_id =
+				hltests_get_dma_sram_to_dram_qid(fd, STREAM0);
+	mon_and_fence_info.cmdq_fence = true;
+	mon_and_fence_info.sob_id = 1;
+	mon_and_fence_info.mon_id = 1;
+	mon_and_fence_info.mon_address = 0;
+	mon_and_fence_info.target_val = 1;
+	mon_and_fence_info.dec_val = 1;
+	common_cb_buf_size[1] = hltests_add_monitor_and_fence(fd,
+				common_cb_buf[1], common_cb_buf_size[1],
+				&mon_and_fence_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.dma.src_addr = sram_addr + 0x2200;
+	pkt_info.dma.dst_addr = (uint64_t) (uintptr_t) dram_addr[1];
+	pkt_info.dma.size = dma_size;
+	pkt_info.dma.dma_dir = GOYA_DMA_SRAM_TO_DRAM;
+	common_cb_buf_size[1] = hltests_add_dma_pkt(fd, common_cb_buf[1],
+					common_cb_buf_size[1], &pkt_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.write_to_sob.sob_id = 2;
+	pkt_info.write_to_sob.value = 1;
+	pkt_info.write_to_sob.mode = SOB_ADD;
+	common_cb_buf_size[1] = hltests_add_write_to_sob_pkt(fd,
+					common_cb_buf[1], common_cb_buf_size[1],
+					&pkt_info);
+
+	/* Internal CB for CP_DMA */
+	cp_dma_cb[1] = hltests_create_cb(fd, page_size, INTERNAL,
+					sram_addr + 0x2020);
+	assert_non_null(cp_dma_cb[1]);
+	cp_dma_cb_device_va[1] = hltests_get_device_va_for_host_ptr(fd,
+							cp_dma_cb[1]);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.cp_dma.src_addr = sram_addr + 0x1000;
+	pkt_info.cp_dma.size = common_cb_buf_size[1];
+	cp_dma_cb_size[1] = hltests_add_cp_dma_pkt(fd, cp_dma_cb[1],
+					cp_dma_cb_size[1], &pkt_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.dma.src_addr = cp_dma_cb_device_va[1];
+	pkt_info.dma.dst_addr = sram_addr + 0x2020;
+	pkt_info.dma.size = cp_dma_cb_size[1];
+	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_SRAM;
+	restore_cb_size = hltests_add_dma_pkt(fd, restore_cb, restore_cb_size,
+						&pkt_info);
+
+	/* DMA from host to DRAM + signal SOB0 */
+	dma_cb[0] = hltests_create_cb(fd, page_size, EXTERNAL, 0);
+	assert_non_null(dma_cb[0]);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.dma.src_addr = host_src_device_va;
+	pkt_info.dma.dst_addr = (uint64_t) (uintptr_t) dram_addr[0];
+	pkt_info.dma.size = dma_size;
+	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_DRAM;
+	dma_cb_size[0] = hltests_add_dma_pkt(fd, dma_cb[0],
+					dma_cb_size[0],	&pkt_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.write_to_sob.sob_id = 0;
+	pkt_info.write_to_sob.value = 1;
+	pkt_info.write_to_sob.mode = SOB_ADD;
+	dma_cb_size[0] = hltests_add_write_to_sob_pkt(fd, dma_cb[0],
+					dma_cb_size[0], &pkt_info);
+
+	/* Fence on SOB2 + DMA from DRAM to host */
+	dma_cb[1] = hltests_create_cb(fd, page_size, EXTERNAL, 0);
+	assert_non_null(dma_cb[1]);
+
+	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
+	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd, STREAM0);
+	mon_and_fence_info.cmdq_fence = false;
+	mon_and_fence_info.sob_id = 2;
+	mon_and_fence_info.mon_id = 2;
+	mon_and_fence_info.mon_address = 0;
+	mon_and_fence_info.target_val = 1;
+	mon_and_fence_info.dec_val = 1;
+	dma_cb_size[1] = hltests_add_monitor_and_fence(fd, dma_cb[1],
+					dma_cb_size[1], &mon_and_fence_info);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.dma.src_addr = (uint64_t) (uintptr_t) dram_addr[1];
+	pkt_info.dma.dst_addr = host_dst_device_va;
+	pkt_info.dma.size = dma_size;
+	pkt_info.dma.dma_dir = GOYA_DMA_DRAM_TO_HOST;
+	dma_cb_size[1] = hltests_add_dma_pkt(fd, dma_cb[1], dma_cb_size[1],
+						&pkt_info);
+
+	/* Submit CS and wait for completion */
+	restore_arr[0].cb_ptr = restore_cb;
+	restore_arr[0].cb_size = restore_cb_size;
+	restore_arr[0].queue_index = hltests_get_dma_down_qid(fd, STREAM0);
+
+	execute_arr[0].cb_ptr = dma_cb[0];
+	execute_arr[0].cb_size = dma_cb_size[0];
+	execute_arr[0].queue_index = hltests_get_dma_down_qid(fd, STREAM0);
+
+	execute_arr[1].cb_ptr = cp_dma_cb[0];
+	execute_arr[1].cb_size = cp_dma_cb_size[0];
+	execute_arr[1].queue_index =
+				hltests_get_dma_dram_to_sram_qid(fd, STREAM0);
+
+	execute_arr[2].cb_ptr = cp_dma_cb[1];
+	execute_arr[2].cb_size = cp_dma_cb_size[1];
+	execute_arr[2].queue_index =
+				hltests_get_dma_sram_to_dram_qid(fd, STREAM0);
+
+	execute_arr[3].cb_ptr = dma_cb[1];
+	execute_arr[3].cb_size = dma_cb_size[1];
+	execute_arr[3].queue_index = hltests_get_dma_up_qid(fd, STREAM0);
+
+	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 4,
+						FORCE_RESTORE_TRUE, &seq);
+	assert_int_equal(rc, 0);
+
+	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
+	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
+
+	/* Compare host memories */
+	rc = hltests_mem_compare(host_src, host_dst, dma_size);
+	assert_int_equal(rc, 0);
+
+	/* Cleanup */
+	for (i = 0 ; i < 2 ; i++) {
+		rc = hltests_destroy_cb(fd, dma_cb[i]);
+		assert_int_equal(rc, 0);
+	}
+
+	for (i = 0 ; i < 2 ; i++) {
+		rc = hltests_destroy_cb(fd, cp_dma_cb[i]);
+		assert_int_equal(rc, 0);
+	}
+
+	for (i = 0 ; i < 2 ; i++) {
+		rc = hltests_free_host_mem(fd, common_cb_buf[i]);
+		assert_int_equal(rc, 0);
+	}
+
+	rc = hltests_destroy_cb(fd, restore_cb);
+	assert_int_equal(rc, 0);
+
+	for (i = 0 ; i < 2 ; i++) {
+		rc = hltests_free_device_mem(fd, dram_addr[i]);
+		assert_int_equal(rc, 0);
+	}
+
+	rc = hltests_free_host_mem(fd, host_dst);
+	assert_int_equal(rc, 0);
+	rc = hltests_free_host_mem(fd, host_src);
+	assert_int_equal(rc, 0);
+}
+
 const struct CMUnitTest dma_tests[] = {
 	cmocka_unit_test_setup(test_dma_8_threads,
 			hltests_ensure_device_operational),
@@ -286,6 +618,8 @@ const struct CMUnitTest dma_tests[] = {
 			hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_dma_512_threads,
 			hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_dma_4_queues,
+			hltests_ensure_device_operational)
 };
 
 static const char *const usage[] = {
