@@ -283,13 +283,13 @@ void test_dma_custom(void **state)
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
-	assert_int_equal(hw_ip.dram_enabled, 1);
 	assert_int_not_equal(cfg.size, 0);
 	assert_in_range(cfg.chunk_size, 1, UINT_MAX);
 
 	dma_dir_down = cfg.dma_dir;
 	switch (cfg.dma_dir) {
 	case GOYA_DMA_HOST_TO_DRAM:
+		assert_int_equal(hw_ip.dram_enabled, 1);
 		dma_dir_up = GOYA_DMA_DRAM_TO_HOST;
 		device_ptr = hltests_allocate_device_mem(fd,
 						hw_ip.dram_size, CONTIGUOUS);
