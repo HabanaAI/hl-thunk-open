@@ -196,6 +196,16 @@ void test_cs_two_streams_with_fence(void **state)
 	assert_int_equal(rc, 0);
 }
 
+#define CQ_WRAP_AROUND_TEST_NUM_OF_CS	1000
+
+void test_cs_cq_wrap_around(void **state)
+{
+	int i;
+
+	for (i = 0 ; i < CQ_WRAP_AROUND_TEST_NUM_OF_CS ; i++)
+		test_cs_nop(state);
+}
+
 const struct CMUnitTest cs_tests[] = {
 	cmocka_unit_test_setup(test_cs_nop, hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_cs_msg_long,
@@ -204,6 +214,8 @@ const struct CMUnitTest cs_tests[] = {
 					hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_cs_two_streams_with_fence,
 					hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_cs_cq_wrap_around,
+					hltests_ensure_device_operational)
 };
 
 static const char *const usage[] = {
