@@ -107,8 +107,8 @@ enum hltests_mb {
 };
 
 enum mon_mode {
-	EQUAL = 0,
-	GREATER_OR_EQUAL
+	GREATER_OR_EQUAL = 0,
+	EQUAL,
 };
 
 enum hl_tests_write_to_sob_mod {
