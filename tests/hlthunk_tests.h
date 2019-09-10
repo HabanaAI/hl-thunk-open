@@ -433,9 +433,6 @@ uint32_t hltests_add_arm_monitor_pkt(int fd, void *buffer, uint32_t buf_off,
 uint32_t hltests_add_write_to_sob_pkt(int fd, void *buffer, uint32_t buf_off,
 					struct hltests_pkt_info *pkt_info);
 
-uint32_t hltests_add_set_sob_pkt(int fd, void *buffer, uint32_t buf_off,
-					struct hltests_pkt_info *pkt_info);
-
 uint32_t hltests_add_fence_pkt(int fd, void *buffer, uint32_t buf_off,
 				struct hltests_pkt_info *pkt_info);
 
