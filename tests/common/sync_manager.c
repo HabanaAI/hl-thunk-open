@@ -32,6 +32,7 @@ static void test_sm(void **state, bool is_tpc, bool is_wait, uint8_t engine_id)
 	uint32_t offset = 0, dma_size = 4, engine_cb_size;
 	int rc, engine_qid, fd = tests_state->fd;
 	uint64_t seq;
+	uint16_t sob0, mon0;
 
 	/* Get device information, especially tpc enabled mask */
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
@@ -67,6 +68,9 @@ static void test_sm(void **state, bool is_tpc, bool is_wait, uint8_t engine_id)
 				device_data_address, dma_size,
 				GOYA_DMA_HOST_TO_SRAM);
 
+	sob0 = hltests_get_first_avail_sob(fd);
+	mon0 = hltests_get_first_avail_mon(fd);
+
 	/* Create internal CB for the engine */
 	engine_cb = hltests_create_cb(fd, 64, INTERNAL, cb_engine_address);
 	assert_non_null(engine_cb);
@@ -75,7 +79,7 @@ static void test_sm(void **state, bool is_tpc, bool is_wait, uint8_t engine_id)
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_TRUE;
-	pkt_info.write_to_sob.sob_id = 0;
+	pkt_info.write_to_sob.sob_id = sob0;
 	pkt_info.write_to_sob.value = 1;
 	pkt_info.write_to_sob.mode = SOB_ADD;
 	engine_cb_size = hltests_add_write_to_sob_pkt(fd, engine_cb,
@@ -87,7 +91,7 @@ static void test_sm(void **state, bool is_tpc, bool is_wait, uint8_t engine_id)
 				cb_engine_address,
 				engine_cb_size, GOYA_DMA_HOST_TO_SRAM);
 
-	/* Clear SOB 0 */
+	/* Clear SOB0 */
 	hltests_clear_sobs(fd, 1);
 
 	/* Create CB for DMA that waits on internal engine and then performs
@@ -99,8 +103,8 @@ static void test_sm(void **state, bool is_tpc, bool is_wait, uint8_t engine_id)
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
 	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd, STREAM0);
 	mon_and_fence_info.cmdq_fence = false;
-	mon_and_fence_info.sob_id = 0;
-	mon_and_fence_info.mon_id = 0;
+	mon_and_fence_info.sob_id = sob0;
+	mon_and_fence_info.mon_id = mon0;
 	mon_and_fence_info.mon_address = 0;
 	mon_and_fence_info.target_val = 1;
 	mon_and_fence_info.dec_val = 1;
@@ -170,6 +174,7 @@ static void test_sm_pingpong_upper_cp(void **state, bool is_tpc,
 			dmadown_cb_size, dmaup_cb_size, i, err_cnt = 0;
 	int rc, engine_qid, fd = tests_state->fd;
 	uint64_t seq;
+	uint16_t sob[2], mon[2];
 
 	/* This test can't run on Goya in case the cb is in host */
 	if ((hlthunk_get_device_name_from_fd(fd) == HLTHUNK_DEVICE_GOYA) &&
@@ -223,6 +228,11 @@ static void test_sm_pingpong_upper_cp(void **state, bool is_tpc,
 	memset(dst_data, 0, dma_size);
 	dst_data_device_va = hltests_get_device_va_for_host_ptr(fd, dst_data);
 
+	sob[0] = hltests_get_first_avail_sob(fd);
+	sob[1] = hltests_get_first_avail_sob(fd) + 1;
+	mon[0] = hltests_get_first_avail_mon(fd);
+	mon[1] = hltests_get_first_avail_mon(fd) + 1;
+
 	/* Create internal CB for the engine. It will fence on SOB0 and signal
 	 * SOB1
 	 */
@@ -233,8 +243,8 @@ static void test_sm_pingpong_upper_cp(void **state, bool is_tpc,
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
 	mon_and_fence_info.queue_id = engine_qid;
 	mon_and_fence_info.cmdq_fence = false;
-	mon_and_fence_info.sob_id = 0;
-	mon_and_fence_info.mon_id = 0;
+	mon_and_fence_info.sob_id = sob[0];
+	mon_and_fence_info.mon_id = mon[0];
 	mon_and_fence_info.mon_address = 0;
 	mon_and_fence_info.target_val = 1;
 	mon_and_fence_info.dec_val = 1;
@@ -243,7 +253,7 @@ static void test_sm_pingpong_upper_cp(void **state, bool is_tpc,
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_TRUE;
-	pkt_info.write_to_sob.sob_id = 1;
+	pkt_info.write_to_sob.sob_id = sob[1];
 	pkt_info.write_to_sob.value = 1;
 	pkt_info.write_to_sob.mode = SOB_ADD;
 	engine_cb_size = hltests_add_write_to_sob_pkt(fd, engine_cb,
@@ -283,7 +293,7 @@ static void test_sm_pingpong_upper_cp(void **state, bool is_tpc,
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_TRUE;
 	pkt_info.mb = MB_TRUE;
-	pkt_info.write_to_sob.sob_id = 0;
+	pkt_info.write_to_sob.sob_id = sob[0];
 	pkt_info.write_to_sob.value = 1;
 	pkt_info.write_to_sob.mode = SOB_ADD;
 	dmadown_cb_size = hltests_add_write_to_sob_pkt(fd, dmadown_cb,
@@ -297,8 +307,8 @@ static void test_sm_pingpong_upper_cp(void **state, bool is_tpc,
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
 	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd, STREAM0);
 	mon_and_fence_info.cmdq_fence = false;
-	mon_and_fence_info.sob_id = 1;
-	mon_and_fence_info.mon_id = 1;
+	mon_and_fence_info.sob_id = sob[1];
+	mon_and_fence_info.mon_id = mon[1];
 	mon_and_fence_info.mon_address = 0;
 	mon_and_fence_info.target_val = 1;
 	mon_and_fence_info.dec_val = 1;

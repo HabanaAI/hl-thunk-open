@@ -296,6 +296,7 @@ static uint32_t setup_lower_cb_in_sram(int fd, uint64_t src_addr,
 	void *lower_cb;
 	uint64_t lower_cb_device_va;
 	uint32_t  lower_cb_offset = 0, i;
+	uint16_t sob0 = hltests_get_first_avail_sob(fd);
 	struct hltests_pkt_info pkt_info;
 
 	lower_cb = hltests_allocate_host_mem(fd, 0x2000, NOT_HUGE);
@@ -316,7 +317,7 @@ static uint32_t setup_lower_cb_in_sram(int fd, uint64_t src_addr,
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_TRUE;
 	pkt_info.mb = MB_TRUE;
-	pkt_info.write_to_sob.sob_id = 0;
+	pkt_info.write_to_sob.sob_id = sob0;
 	pkt_info.write_to_sob.value = 1;
 	pkt_info.write_to_sob.mode = SOB_ADD;
 	lower_cb_offset = hltests_add_write_to_sob_pkt(fd, lower_cb,
@@ -339,6 +340,7 @@ static double indirect_transfer_perf_test(int fd, uint32_t queue_index,
 	void *cp_dma_cb, *cb;
 	uint64_t sram_addr, cp_dma_cb_device_va;
 	uint32_t size, cp_dma_cb_offset = 0, cb_offset = 0, lower_cb_offset;
+	uint16_t sob0, mon0;
 	int rc, num_of_transfers, i;
 
 	struct timespec begin, end;
@@ -357,6 +359,9 @@ static double indirect_transfer_perf_test(int fd, uint32_t queue_index,
 
 	lower_cb_offset = setup_lower_cb_in_sram(fd, src_addr, dst_addr,
 					num_of_transfers, size, sram_addr);
+
+	sob0 = hltests_get_first_avail_sob(fd);
+	mon0 = hltests_get_first_avail_mon(fd);
 
 	/* Clear SOB before we start */
 	hltests_clear_sobs(fd, 1);
@@ -382,8 +387,8 @@ static double indirect_transfer_perf_test(int fd, uint32_t queue_index,
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
 	mon_and_fence_info.queue_id = hltests_get_dma_down_qid(fd, STREAM0);
 	mon_and_fence_info.cmdq_fence = false;
-	mon_and_fence_info.sob_id = 0;
-	mon_and_fence_info.mon_id = 0;
+	mon_and_fence_info.sob_id = sob0;
+	mon_and_fence_info.mon_id = mon0;
 	mon_and_fence_info.mon_address = 0;
 	mon_and_fence_info.target_val = 1;
 	mon_and_fence_info.dec_val = 1;

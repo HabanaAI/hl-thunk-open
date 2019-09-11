@@ -106,6 +106,7 @@ void test_cs_two_streams_with_fence(void **state)
 	struct hltests_cs_chunk execute_arr[1];
 	uint32_t dma_size = 4, cb_stream0_size = 0, cb_stream3_size = 0;
 	uint64_t src_data_device_va, device_data_address, seq;
+	uint16_t sob0, mon0;
 	void *src_data, *cb_stream0, *cb_stream3;
 	int rc, fd = tests_state->fd;
 
@@ -128,7 +129,10 @@ void test_cs_two_streams_with_fence(void **state)
 	hltests_fill_rand_values(src_data, dma_size);
 	src_data_device_va = hltests_get_device_va_for_host_ptr(fd, src_data);
 
-	/* Clear SOB 0 */
+	sob0 = hltests_get_first_avail_sob(fd);
+	mon0 = hltests_get_first_avail_mon(fd);
+
+	/* Clear SOB0 */
 	hltests_clear_sobs(fd, 1);
 
 	/* Stream 0: Fence on SOB0 + LIN_DMA from host to SRAM */
@@ -138,8 +142,8 @@ void test_cs_two_streams_with_fence(void **state)
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
 	mon_and_fence_info.queue_id = hltests_get_dma_down_qid(fd, STREAM0);
 	mon_and_fence_info.cmdq_fence = false;
-	mon_and_fence_info.sob_id = 0;
-	mon_and_fence_info.mon_id = 0;
+	mon_and_fence_info.sob_id = sob0;
+	mon_and_fence_info.mon_id = mon0;
 	mon_and_fence_info.mon_address = 0;
 	mon_and_fence_info.dec_val = 1;
 	mon_and_fence_info.target_val = 1;
@@ -163,7 +167,7 @@ void test_cs_two_streams_with_fence(void **state)
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_FALSE;
-	pkt_info.write_to_sob.sob_id = 0;
+	pkt_info.write_to_sob.sob_id = sob0;
 	pkt_info.write_to_sob.value = 1;
 	pkt_info.write_to_sob.mode = SOB_ADD;
 	cb_stream3_size = hltests_add_write_to_sob_pkt(fd, cb_stream3,
