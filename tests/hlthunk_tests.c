@@ -1325,6 +1325,26 @@ void hltests_fill_rand_values(void *ptr, uint32_t size)
 	}
 }
 
+void hltests_fill_seq_values(void *ptr, uint32_t size)
+{
+	uint32_t i, *p = ptr, rounddown_aligned_size, remainder, val;
+
+	rounddown_aligned_size = size & ~(sizeof(uint32_t) - 1);
+	remainder = size - rounddown_aligned_size;
+
+	for (i = 0 ; i < rounddown_aligned_size ; i += sizeof(uint32_t), p++)
+		*p = i / 4;
+
+	if (!remainder)
+		return;
+
+	val = i / 4;
+	for (i = 0 ; i < remainder ; i++) {
+		((uint8_t *) p)[i] = (uint8_t) (val & 0xff);
+		val >>= 8;
+	}
+}
+
 int hltests_mem_compare_with_stop(void *ptr1, void *ptr2, uint64_t size,
 					bool stop_on_err)
 {

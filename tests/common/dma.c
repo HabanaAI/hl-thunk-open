@@ -279,7 +279,7 @@ void test_dma_512_threads(void **state)
 	test_dma_threads(state, 512);
 }
 
-void test_dma_4_queues(void **state)
+void dma_4_queues(void **state, bool sram_only)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -310,6 +310,13 @@ void test_dma_4_queues(void **state)
 	 * - 0x2020 - DMA 3.0 - CB of upper CP
 	 * - 0x2200 - Data
 	 *
+	 * Test has an option to only use SRAM. In that case, all places where
+	 * DRAM is mentioned, it is actually SRAM.
+	 *
+	 * In that case, the SRAM map also contains:
+	 * - 0x2400 - DRAM source location
+	 * - 0x2600 - DRAM destination location
+	 *
 	 * Test Description:
 	 * - First DMA QMAN transfers data from host to DRAM and then signals
 	 *   SOB0.
@@ -325,7 +332,9 @@ void test_dma_4_queues(void **state)
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
-	assert_true(hw_ip.dram_enabled);
+
+	if (!sram_only)
+		assert_true(hw_ip.dram_enabled);
 
 	sram_addr = hw_ip.sram_base_address;
 
@@ -343,10 +352,15 @@ void test_dma_4_queues(void **state)
 	memset(host_dst, 0, dma_size);
 	host_dst_device_va = hltests_get_device_va_for_host_ptr(fd, host_dst);
 
-	for (i = 0 ; i < 2 ; i++) {
-		dram_addr[i] = hltests_allocate_device_mem(fd, dma_size,
+	if (sram_only) {
+		dram_addr[0] = (void *) (sram_addr + 0x2400);
+		dram_addr[1] = (void *) (sram_addr + 0x2600);
+	} else {
+		for (i = 0 ; i < 2 ; i++) {
+			dram_addr[i] = hltests_allocate_device_mem(fd, dma_size,
 								NOT_CONTIGUOUS);
-		assert_non_null(dram_addr[i]);
+			assert_non_null(dram_addr[i]);
+		}
 	}
 
 	/* clear SOB 0-2  */
@@ -361,7 +375,10 @@ void test_dma_4_queues(void **state)
 							common_cb_buf[i]);
 	}
 
-	/* Fence on SOB0 + DMA from DRAM to SRAM */
+	/* Start to prepare restore CB to run before execution to copy CB of
+	 * device DMA QMANs to SRAM. We will fill this CB throughout this
+	 * function
+	 */
 	restore_cb = hltests_create_cb(fd, page_size, EXTERNAL, 0);
 	assert_non_null(restore_cb);
 
@@ -371,10 +388,10 @@ void test_dma_4_queues(void **state)
 	pkt_info.dma.src_addr = common_cb_device_va[0];
 	pkt_info.dma.dst_addr = sram_addr;
 	pkt_info.dma.size = page_size;
-	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_SRAM;
 	restore_cb_size = hltests_add_dma_pkt(fd, restore_cb, restore_cb_size,
 						&pkt_info);
 
+	/* Fence on SOB0 + DMA from DRAM to SRAM */
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
 	mon_and_fence_info.queue_id =
 				hltests_get_dma_dram_to_sram_qid(fd, STREAM0);
@@ -394,7 +411,6 @@ void test_dma_4_queues(void **state)
 	pkt_info.dma.src_addr = (uint64_t) (uintptr_t) dram_addr[0];
 	pkt_info.dma.dst_addr = sram_addr + 0x2200;
 	pkt_info.dma.size = dma_size;
-	pkt_info.dma.dma_dir = GOYA_DMA_DRAM_TO_SRAM;
 	common_cb_buf_size[0] = hltests_add_dma_pkt(fd, common_cb_buf[0],
 					common_cb_buf_size[0], &pkt_info);
 
@@ -428,7 +444,6 @@ void test_dma_4_queues(void **state)
 	pkt_info.dma.src_addr = cp_dma_cb_device_va[0];
 	pkt_info.dma.dst_addr = sram_addr + 0x2000;
 	pkt_info.dma.size = cp_dma_cb_size[0];
-	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_SRAM;
 	restore_cb_size = hltests_add_dma_pkt(fd, restore_cb, restore_cb_size,
 						&pkt_info);
 
@@ -439,7 +454,6 @@ void test_dma_4_queues(void **state)
 	pkt_info.dma.src_addr = common_cb_device_va[1];
 	pkt_info.dma.dst_addr = sram_addr + 0x1000;
 	pkt_info.dma.size = page_size;
-	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_SRAM;
 	restore_cb_size = hltests_add_dma_pkt(fd, restore_cb, restore_cb_size,
 								&pkt_info);
 
@@ -462,7 +476,6 @@ void test_dma_4_queues(void **state)
 	pkt_info.dma.src_addr = sram_addr + 0x2200;
 	pkt_info.dma.dst_addr = (uint64_t) (uintptr_t) dram_addr[1];
 	pkt_info.dma.size = dma_size;
-	pkt_info.dma.dma_dir = GOYA_DMA_SRAM_TO_DRAM;
 	common_cb_buf_size[1] = hltests_add_dma_pkt(fd, common_cb_buf[1],
 					common_cb_buf_size[1], &pkt_info);
 
@@ -496,7 +509,6 @@ void test_dma_4_queues(void **state)
 	pkt_info.dma.src_addr = cp_dma_cb_device_va[1];
 	pkt_info.dma.dst_addr = sram_addr + 0x2020;
 	pkt_info.dma.size = cp_dma_cb_size[1];
-	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_SRAM;
 	restore_cb_size = hltests_add_dma_pkt(fd, restore_cb, restore_cb_size,
 						&pkt_info);
 
@@ -510,7 +522,6 @@ void test_dma_4_queues(void **state)
 	pkt_info.dma.src_addr = host_src_device_va;
 	pkt_info.dma.dst_addr = (uint64_t) (uintptr_t) dram_addr[0];
 	pkt_info.dma.size = dma_size;
-	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_DRAM;
 	dma_cb_size[0] = hltests_add_dma_pkt(fd, dma_cb[0],
 					dma_cb_size[0],	&pkt_info);
 
@@ -543,7 +554,6 @@ void test_dma_4_queues(void **state)
 	pkt_info.dma.src_addr = (uint64_t) (uintptr_t) dram_addr[1];
 	pkt_info.dma.dst_addr = host_dst_device_va;
 	pkt_info.dma.size = dma_size;
-	pkt_info.dma.dma_dir = GOYA_DMA_DRAM_TO_HOST;
 	dma_cb_size[1] = hltests_add_dma_pkt(fd, dma_cb[1], dma_cb_size[1],
 						&pkt_info);
 
@@ -600,15 +610,26 @@ void test_dma_4_queues(void **state)
 	rc = hltests_destroy_cb(fd, restore_cb);
 	assert_int_equal(rc, 0);
 
-	for (i = 0 ; i < 2 ; i++) {
-		rc = hltests_free_device_mem(fd, dram_addr[i]);
-		assert_int_equal(rc, 0);
-	}
+	if (!sram_only)
+		for (i = 0 ; i < 2 ; i++) {
+			rc = hltests_free_device_mem(fd, dram_addr[i]);
+			assert_int_equal(rc, 0);
+		}
 
 	rc = hltests_free_host_mem(fd, host_dst);
 	assert_int_equal(rc, 0);
 	rc = hltests_free_host_mem(fd, host_src);
 	assert_int_equal(rc, 0);
+}
+
+void test_dma_4_queues(void **state)
+{
+	dma_4_queues(state, false);
+}
+
+void test_dma_4_queues_sram_only(void **state)
+{
+	dma_4_queues(state, true);
 }
 
 const struct CMUnitTest dma_tests[] = {
@@ -619,6 +640,8 @@ const struct CMUnitTest dma_tests[] = {
 	cmocka_unit_test_setup(test_dma_512_threads,
 			hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_dma_4_queues,
+			hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_dma_4_queues_sram_only,
 			hltests_ensure_device_operational)
 };
 
