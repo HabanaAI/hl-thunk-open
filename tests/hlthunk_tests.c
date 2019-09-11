@@ -1316,6 +1316,22 @@ uint8_t hltests_get_mme_cnt(int fd)
 	return asic->get_mme_cnt(DCORE_MODE_FULL_CHIP);
 }
 
+uint16_t hltests_get_first_avail_sob(int fd)
+{
+	const struct hltests_asic_funcs *asic =
+				get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->get_first_avail_sob(DCORE_MODE_FULL_CHIP);
+}
+
+uint16_t hltests_get_first_avail_mon(int fd)
+{
+	const struct hltests_asic_funcs *asic =
+				get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->get_first_avail_mon(DCORE_MODE_FULL_CHIP);
+}
+
 void hltests_fill_rand_values(void *ptr, uint32_t size)
 {
 	uint32_t i, *p = ptr, rounddown_aligned_size, remainder, val;
@@ -1807,6 +1823,7 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	uint32_t engine_qid, dma_size, engine_common_cb_size,
 		engine_upper_cb_size, restore_cb_size, dmadown_cb_size,
 		dmaup_cb_size;
+	uint16_t sob[2], mon[2];
 	int rc, fd = tests_state->fd;
 
 	/* This test can't run on Goya in case the cb is in host */
@@ -1833,7 +1850,7 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	 *   SOB8.
 	 * - Second DMA QMAN fences on SOB1 and then transfers data from SRAM to
 	 *   host.
-	 * - Setup CB is used to clear SOB 0, 1 and to DMA the internal CBs to
+	 * - Setup CB is used to clear SOB0, 1 and to DMA the internal CBs to
 	 *   SRAM.
 	 */
 
@@ -1862,6 +1879,11 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	memset(host_dst, 0, dma_size);
 	host_dst_device_va = hltests_get_device_va_for_host_ptr(fd, host_dst);
 
+	sob[0] = hltests_get_first_avail_sob(fd);
+	sob[1] = hltests_get_first_avail_sob(fd) + 1;
+	mon[0] = hltests_get_first_avail_mon(fd);
+	mon[1] = hltests_get_first_avail_mon(fd) + 1;
+
 	/* Allocate memory on the host for the common CB. Either the ASIC will
 	 * fetch it directly from the host, or we will download it to SRAM and
 	 * the ASIC will run it from there
@@ -1876,8 +1898,8 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
 	mon_and_fence_info.queue_id = engine_qid;
 	mon_and_fence_info.cmdq_fence = true;
-	mon_and_fence_info.sob_id = 0;
-	mon_and_fence_info.mon_id = 0;
+	mon_and_fence_info.sob_id = sob[0];
+	mon_and_fence_info.mon_id = mon[0];
 	mon_and_fence_info.mon_address = 0;
 	mon_and_fence_info.target_val = 1;
 	mon_and_fence_info.dec_val = 1;
@@ -1892,7 +1914,7 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_FALSE;
-	pkt_info.write_to_sob.sob_id = 1;
+	pkt_info.write_to_sob.sob_id = sob[0] + 1;
 	pkt_info.write_to_sob.value = 1;
 	pkt_info.write_to_sob.mode = SOB_ADD;
 	engine_common_cb_size = hltests_add_write_to_sob_pkt(fd,
@@ -1967,7 +1989,7 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_TRUE;
 	pkt_info.mb = MB_FALSE;
-	pkt_info.write_to_sob.sob_id = 0;
+	pkt_info.write_to_sob.sob_id = sob[0];
 	pkt_info.write_to_sob.value = 1;
 	pkt_info.write_to_sob.mode = SOB_ADD;
 	dmadown_cb_size = hltests_add_write_to_sob_pkt(fd, dmadown_cb,
@@ -1982,8 +2004,8 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
 	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd, STREAM0);
 	mon_and_fence_info.cmdq_fence = false;
-	mon_and_fence_info.sob_id = 1;
-	mon_and_fence_info.mon_id = 1;
+	mon_and_fence_info.sob_id = sob[0] + 1;
+	mon_and_fence_info.mon_id = mon[0] + 1;
 	mon_and_fence_info.mon_address = 0;
 	mon_and_fence_info.target_val = 1;
 	mon_and_fence_info.dec_val = 1;
@@ -2046,11 +2068,12 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	assert_int_equal(rc, 0);
 }
 
-void hltests_clear_sobs(int fd, uint32_t num_of_sobs)
+void hltests_clear_sobs(int fd, uint16_t num_of_sobs)
 {
 	struct hltests_pkt_info pkt_info;
 	void *cb;
 	uint32_t cb_offset = 0, i;
+	uint16_t first_sob = hltests_get_first_avail_sob(fd);
 
 	cb = hltests_create_cb(fd,  MSG_LONG_SIZE * num_of_sobs, EXTERNAL, 0);
 	assert_non_null(cb);
@@ -2060,7 +2083,7 @@ void hltests_clear_sobs(int fd, uint32_t num_of_sobs)
 	pkt_info.mb = MB_FALSE;
 	pkt_info.write_to_sob.value = 0;
 	pkt_info.write_to_sob.mode = SOB_SET;
-	for (i = 0 ; i < num_of_sobs - 1 ; i++) {
+	for (i = first_sob ; i < (first_sob + num_of_sobs - 1) ; i++) {
 		pkt_info.write_to_sob.sob_id = i;
 		cb_offset = hltests_add_write_to_sob_pkt(fd, cb, cb_offset,
 								&pkt_info);

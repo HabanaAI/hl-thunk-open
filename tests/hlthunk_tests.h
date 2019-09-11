@@ -242,8 +242,8 @@ struct hltests_pkt_info {
 struct hltests_monitor_and_fence {
 	uint8_t queue_id;
 	bool cmdq_fence;
-	uint32_t sob_id;
-	uint32_t mon_id;
+	uint16_t sob_id;
+	uint16_t mon_id;
 	uint64_t mon_address;
 	uint8_t dec_val; /* decrement the fence once it reach the target val */
 	uint8_t target_val;
@@ -291,6 +291,10 @@ struct hltests_asic_funcs {
 	uint8_t (*get_tpc_cnt)(
 			enum hltests_dcore_separation_mode dcore_sep_mode);
 	uint8_t (*get_mme_cnt)(
+			enum hltests_dcore_separation_mode dcore_sep_mode);
+	uint16_t (*get_first_avail_sob)(
+			enum hltests_dcore_separation_mode dcore_sep_mode);
+	uint16_t (*get_first_avail_mon)(
 			enum hltests_dcore_separation_mode dcore_sep_mode);
 	void (*dram_pool_init)(struct hltests_device *hdev);
 	void (*dram_pool_fini)(struct hltests_device *hdev);
@@ -412,7 +416,7 @@ int hltests_ensure_device_operational(void **state);
 void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 				bool common_cb_in_host, uint8_t tpc_id);
 
-void hltests_clear_sobs(int fd, uint32_t num_of_sobs);
+void hltests_clear_sobs(int fd, uint16_t num_of_sobs);
 
 /* Generic memory addresses pool */
 void *hltests_mem_pool_init(uint64_t start_addr, uint64_t size, uint8_t order);
@@ -460,6 +464,8 @@ uint32_t hltests_get_mme_qid(int fd, uint8_t mme_id,
 				enum hltests_stream_id stream);
 uint8_t hltests_get_tpc_cnt(int fd);
 uint8_t hltests_get_mme_cnt(int fd);
+uint16_t hltests_get_first_avail_sob(int fd);
+uint16_t hltests_get_first_avail_mon(int fd);
 
 void goya_tests_set_asic_funcs(struct hltests_device *hdev);
 
