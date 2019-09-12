@@ -185,13 +185,15 @@ struct hltests_device {
 struct hltests_state {
 	double perf_outcomes[DMA_PERF_RESULTS_MAX];
 	int fd;
+	bool mme;
 	bool mmu;
 	bool security;
 };
 
 enum hltests_kmd_param {
 	KMD_PARAM_MMU,
-	KMD_PARAM_SECURITY
+	KMD_PARAM_SECURITY,
+	KMD_PARAM_MME
 };
 
 struct hltests_pkt_info {

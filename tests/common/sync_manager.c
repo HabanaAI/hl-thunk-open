@@ -385,6 +385,11 @@ void test_sm_tpc(void **state)
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
+	if (!hw_ip.tpc_enabled_mask) {
+		printf("TPCs are disabled so skipping test\n");
+		skip();
+	}
+
 	tpc_cnt = hltests_get_tpc_cnt(fd);
 	for (tpc_id = 0 ; tpc_id < tpc_cnt ; tpc_id++)
 		if (hw_ip.tpc_enabled_mask & (0x1 << tpc_id))
@@ -397,6 +402,11 @@ void test_sm_mme(void **state)
 	struct hlthunk_hw_ip_info hw_ip;
 	uint8_t mme_id, mme_cnt;
 	int rc, fd = tests_state->fd;
+
+	if (!tests_state->mme) {
+		printf("MME is disabled so skipping test\n");
+		skip();
+	}
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
@@ -416,6 +426,11 @@ void test_sm_pingpong_tpc_upper_cp_from_sram(void **state)
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
+	if (!hw_ip.tpc_enabled_mask) {
+		printf("TPCs are disabled so skipping test\n");
+		skip();
+	}
+
 	tpc_cnt = hltests_get_tpc_cnt(fd);
 	for (tpc_id = 0 ; tpc_id < tpc_cnt ; tpc_id++)
 		if (hw_ip.tpc_enabled_mask & (0x1 << tpc_id))
@@ -428,6 +443,11 @@ void test_sm_pingpong_mme_upper_cp_from_sram(void **state)
 	struct hlthunk_hw_ip_info hw_ip;
 	uint8_t mme_id, mme_cnt;
 	int rc, fd = tests_state->fd;
+
+	if (!tests_state->mme) {
+		printf("MME is disabled so skipping test\n");
+		skip();
+	}
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
@@ -447,6 +467,11 @@ void test_sm_pingpong_tpc_upper_cp_from_host(void **state)
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
+	if (!hw_ip.tpc_enabled_mask) {
+		printf("TPCs are disabled so skipping test\n");
+		skip();
+	}
+
 	tpc_cnt = hltests_get_tpc_cnt(fd);
 	for (tpc_id = 0 ; tpc_id < tpc_cnt ; tpc_id++)
 		if (hw_ip.tpc_enabled_mask & (0x1 << tpc_id))
@@ -459,6 +484,11 @@ void test_sm_pingpong_mme_upper_cp_from_host(void **state)
 	struct hlthunk_hw_ip_info hw_ip;
 	uint8_t mme_id, mme_cnt;
 	int rc, fd = tests_state->fd;
+
+	if (!tests_state->mme) {
+		printf("MME is disabled so skipping test\n");
+		skip();
+	}
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
@@ -478,6 +508,11 @@ void test_sm_pingpong_tpc_common_cp_from_sram(void **state)
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
+	if (!hw_ip.tpc_enabled_mask) {
+		printf("TPCs are disabled so skipping test\n");
+		skip();
+	}
+
 	tpc_cnt = hltests_get_tpc_cnt(fd);
 	for (tpc_id = 0 ; tpc_id < tpc_cnt ; tpc_id++)
 		if (hw_ip.tpc_enabled_mask & (0x1 << tpc_id))
@@ -490,6 +525,11 @@ void test_sm_pingpong_mme_common_cp_from_sram(void **state)
 	struct hlthunk_hw_ip_info hw_ip;
 	uint8_t mme_id, mme_cnt;
 	int rc, fd = tests_state->fd;
+
+	if (!tests_state->mme) {
+		printf("MME is disabled so skipping test\n");
+		skip();
+	}
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
@@ -509,6 +549,11 @@ void test_sm_pingpong_tpc_common_cp_from_host(void **state)
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
+	if (!hw_ip.tpc_enabled_mask) {
+		printf("TPCs are disabled so skipping test\n");
+		skip();
+	}
+
 	tpc_cnt = hltests_get_tpc_cnt(fd);
 	for (tpc_id = 0 ; tpc_id < tpc_cnt ; tpc_id++)
 		if (hw_ip.tpc_enabled_mask & (0x1 << tpc_id))
@@ -521,6 +566,11 @@ void test_sm_pingpong_mme_common_cp_from_host(void **state)
 	struct hlthunk_hw_ip_info hw_ip;
 	uint8_t mme_id, mme_cnt;
 	int rc, fd = tests_state->fd;
+
+	if (!tests_state->mme) {
+		printf("MME is disabled so skipping test\n");
+		skip();
+	}
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
