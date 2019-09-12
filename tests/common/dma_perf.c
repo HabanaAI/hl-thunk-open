@@ -205,7 +205,11 @@ void hltest_host_dram_transfer_perf(void **state)
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
-	assert_int_equal(hw_ip.dram_enabled, 1);
+	if (!hw_ip.dram_enabled) {
+		printf("DRAM is disabled so skipping test\n");
+		skip();
+	}
+
 	assert_in_range(size, 1, hw_ip.dram_size);
 	dram_addr = hltests_allocate_device_mem(fd, size, NOT_CONTIGUOUS);
 	assert_non_null(dram_addr);
@@ -250,7 +254,11 @@ void hltest_dram_host_transfer_perf(void **state)
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
-	assert_int_equal(hw_ip.dram_enabled, 1);
+	if (!hw_ip.dram_enabled) {
+		printf("DRAM is disabled so skipping test\n");
+		skip();
+	}
+
 	assert_in_range(size, 1, hw_ip.dram_size);
 	dram_addr = hltests_allocate_device_mem(fd, size, NOT_CONTIGUOUS);
 	assert_non_null(dram_addr);
@@ -424,9 +432,13 @@ void hltest_sram_dram_transfer_perf(void **state)
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
+	if (!hw_ip.dram_enabled) {
+		printf("DRAM is disabled so skipping test\n");
+		skip();
+	}
+
 	sram_addr = hw_ip.sram_base_address;
 	size = hw_ip.sram_size;
-	assert_int_equal(hw_ip.dram_enabled, 1);
 	assert_in_range(size, 1, hw_ip.dram_size);
 	dram_addr = hltests_allocate_device_mem(fd, size, NOT_CONTIGUOUS);
 	assert_non_null(dram_addr);
@@ -478,7 +490,11 @@ void hltest_dram_sram_transfer_perf(void **state)
 	sram_addr = hw_ip.sram_base_address;
 	size = hw_ip.sram_size;
 
-	assert_int_equal(hw_ip.dram_enabled, 1);
+	if (!hw_ip.dram_enabled) {
+		printf("DRAM is disabled so skipping test\n");
+		skip();
+	}
+
 	assert_in_range(size, 1, hw_ip.dram_size);
 	dram_addr = hltests_allocate_device_mem(fd, size, NOT_CONTIGUOUS);
 	assert_non_null(dram_addr);
@@ -578,7 +594,11 @@ void hltest_host_dram_bidirectional_transfer_perf(void **state)
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
-	assert_int_equal(hw_ip.dram_enabled, 1);
+	if (!hw_ip.dram_enabled) {
+		printf("DRAM is disabled so skipping test\n");
+		skip();
+	}
+
 	assert_in_range(host_to_dram_size + dram_to_host_size, 1,
 			hw_ip.dram_size);
 	dram_ptr1 = hltests_allocate_device_mem(fd, host_to_dram_size,

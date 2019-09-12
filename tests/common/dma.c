@@ -172,7 +172,12 @@ static void test_dma_threads(void **state, uint32_t num_of_threads)
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
-	assert_int_equal(hw_ip.dram_enabled, 1);
+
+	if (!hw_ip.dram_enabled) {
+		printf("DRAM is disabled so skipping test\n");
+		skip();
+	}
+
 	assert_in_range(num_of_threads * dma_size, 1, hw_ip.dram_size);
 
 	/* Allocate arrays for threads management */
@@ -333,8 +338,10 @@ void dma_4_queues(void **state, bool sram_only)
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
-	if (!sram_only)
-		assert_true(hw_ip.dram_enabled);
+	if ((!sram_only) && (!hw_ip.dram_enabled)) {
+		printf("DRAM is disabled so skipping test\n");
+		skip();
+	}
 
 	sram_addr = hw_ip.sram_base_address;
 

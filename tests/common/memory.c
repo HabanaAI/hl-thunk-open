@@ -39,7 +39,11 @@ void test_map_bigger_than_4GB(void **state)
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
-	assert_int_equal(hw_ip.dram_enabled, 1);
+	if (!hw_ip.dram_enabled) {
+		printf("DRAM is disabled so skipping test\n");
+		skip();
+	}
+
 	assert_in_range(dma_size, 1, hw_ip.dram_size);
 
 	device_addr = hltests_allocate_device_mem(fd, dma_size, NOT_CONTIGUOUS);
@@ -117,7 +121,11 @@ static void allocate_device_mem_until_full(void **state,
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
-	assert_int_equal(hw_ip.dram_enabled, 1);
+
+	if (!hw_ip.dram_enabled) {
+		printf("DRAM is disabled so skipping test\n");
+		skip();
+	}
 
 	total_size = hw_ip.dram_size;
 	assert_int_equal(total_size % chunk_size, 0);
