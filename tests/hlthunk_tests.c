@@ -505,6 +505,9 @@ static int is_param_enabled(enum hltests_kmd_param param, bool *val)
 	case KMD_PARAM_SECURITY:
 		param_str = "security_enable";
 		break;
+	case KMD_PARAM_MME:
+		param_str = "mme_enable";
+		break;
 	default:
 		printf("Invalid KMD parameter %d\n", param);
 		return errno;
@@ -559,6 +562,14 @@ int hltests_setup(void **state)
 	if (rc) {
 		printf(
 			"Failed to detect if security is enabled on device %d, %d\n",
+			tests_state->fd, rc);
+		goto close_fd;
+	}
+
+	rc = is_param_enabled(KMD_PARAM_MME, &tests_state->mme);
+	if (rc) {
+		printf(
+			"Failed to detect if mme is enabled on device %d, %d\n",
 			tests_state->fd, rc);
 		goto close_fd;
 	}
