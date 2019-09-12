@@ -1430,7 +1430,11 @@ int hltests_dma_test(void **state, bool is_ddr, uint64_t size)
 	assert_int_equal(rc, 0);
 
 	if (is_ddr) {
-		assert_int_equal(hw_ip.dram_enabled, 1);
+		if (!hw_ip.dram_enabled) {
+			printf("DRAM is disabled so skipping test\n");
+			skip();
+		}
+
 		assert_in_range(size, 1, hw_ip.dram_size);
 
 		device_addr = hltests_allocate_device_mem(fd, size,

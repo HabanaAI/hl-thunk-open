@@ -65,6 +65,14 @@ void test_dma_entire_dram_random(void **state)
 	int i, rc, fd = tests_state->fd;
 	kvec_t(struct dma_chunk) array;
 
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+
+	if (!hw_ip.dram_enabled) {
+		printf("DRAM is disabled so skipping test\n");
+		skip();
+	}
+
 	cfg.dma_size = 1 << 21; /* 2MB */
 	cfg.zone_size = 1 << 24; /* 16MB */
 
@@ -78,11 +86,6 @@ void test_dma_entire_dram_random(void **state)
 	}
 
 	kv_init(array);
-
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
-	assert_true(hw_ip.dram_enabled);
 
 	/* check alignment to 8B */
 	assert_int_equal(cfg.dma_size & 0x7, 0);
