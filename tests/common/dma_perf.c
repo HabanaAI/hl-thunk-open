@@ -577,6 +577,12 @@ void hltest_host_sram_bidirectional_transfer_perf(void **state)
 
 	hltests_free_host_mem(fd, src_ptr);
 	hltests_free_host_mem(fd, dst_ptr);
+
+	if ((hltests_is_goya(fd)) && (!hltests_is_simulator(fd)) &&
+				(*host_sram_perf_outcome < 18.5f)) {
+		printf("HOST<->SRAM must be at least 18.5 GB/Sec");
+		fail();
+	}
 }
 
 void hltest_host_dram_bidirectional_transfer_perf(void **state)
@@ -588,7 +594,7 @@ void hltest_host_dram_bidirectional_transfer_perf(void **state)
 	uint64_t host_src_addr, host_dst_addr;
 	void *src_ptr, *dst_ptr, *dram_ptr1, *dram_ptr2;
 	uint32_t host_to_dram_size = 4 * 1024 * 1024;
-	uint32_t dram_to_host_size = 32 * 1024 * 1024;
+	uint32_t dram_to_host_size = 4 * 1024 * 1024;
 	int rc, fd = tests_state->fd;
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
@@ -641,6 +647,12 @@ void hltest_host_dram_bidirectional_transfer_perf(void **state)
 
 	hltests_free_device_mem(fd, dram_ptr1);
 	hltests_free_device_mem(fd, dram_ptr2);
+
+	if ((hltests_is_goya(fd)) && (!hltests_is_simulator(fd)) &&
+				(*host_dram_perf_outcome < 18.0f)) {
+		printf("HOST<->DRAM must be at least 18 GB/Sec");
+		fail();
+	}
 }
 
 static int hltests_perf_teardown(void **state)
