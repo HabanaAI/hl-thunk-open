@@ -706,6 +706,71 @@ void test_page_miss(void **state)
 	free(src_ptr);
 }
 
+struct register_security_cfg {
+	uint64_t reg_addr;
+	uint32_t value;
+};
+
+static int register_security_parsing_handler(void *user, const char *section,
+					const char *name, const char *value)
+{
+	struct register_security_cfg *cfg =
+					(struct register_security_cfg *) user;
+	char *tmp;
+
+	if (MATCH("register_security_cfg", "reg_addr"))
+		cfg->reg_addr = strtoul(value, NULL, 0);
+	else if (MATCH("register_security_cfg", "value"))
+		cfg->value = strtoul(value, NULL, 0);
+	else
+		return 0; /* unknown section/name, error */
+
+	return 1;
+}
+
+void test_register_security(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	const char *config_filename = hltests_get_config_filename();
+	struct hlthunk_hw_ip_info hw_ip;
+	struct register_security_cfg cfg;
+	struct hltests_pkt_info pkt_info;
+	uint32_t cb_size;
+	void *cb;
+	int rc, fd = tests_state->fd;
+
+	memset(&cfg, 0, sizeof(struct register_security_cfg));
+
+	if (!config_filename)
+		fail_msg("User didn't supply a configuration file name!\n");
+
+	if (ini_parse(config_filename, register_security_parsing_handler,
+								&cfg) < 0)
+		fail_msg("Can't load %s\n", config_filename);
+
+	printf("Configuration loaded from %s:\n", config_filename);
+	printf("register address = 0x%lx, value = 0x%x\n",
+		cfg.reg_addr, cfg.value);
+
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+
+	cb = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
+	assert_non_null(cb);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.msg_long.address = cfg.reg_addr;
+	pkt_info.msg_long.value = cfg.value;
+
+	cb_size = hltests_add_msg_long_pkt(fd, cb, 0, &pkt_info);
+
+	hltests_submit_and_wait_cs(fd, cb, cb_size,
+				hltests_get_dma_down_qid(fd, STREAM0),
+				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
+}
+
 const struct CMUnitTest debug_tests[] = {
 	cmocka_unit_test_setup(test_tdr_deadlock,
 				hltests_ensure_device_operational),
@@ -728,6 +793,8 @@ const struct CMUnitTest debug_tests[] = {
 	cmocka_unit_test_setup(test_duplicate_file_descriptor,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_page_miss,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_register_security,
 				hltests_ensure_device_operational)
 };
 
