@@ -455,6 +455,34 @@ hlthunk_public int hlthunk_get_hw_events_arr(int fd, bool aggregate,
 	return 0;
 }
 
+hlthunk_public int hlthunk_get_clk_rate(int fd, uint32_t *cur_clk_mhz,
+					uint32_t *max_clk_mhz)
+{
+	struct hl_info_args args;
+	struct hl_info_clk_rate hl_clk_rate;
+	int rc, i;
+
+	if ((!cur_clk_mhz) || (!max_clk_mhz))
+		return -EINVAL;
+
+	memset(&args, 0, sizeof(args));
+	memset(&hl_clk_rate, 0, sizeof(hl_clk_rate));
+
+	args.op = HL_INFO_CLK_RATE;
+	args.return_pointer = (__u64) (uintptr_t) &hl_clk_rate;
+	args.return_size = sizeof(hl_clk_rate);
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	if (rc)
+		return rc;
+
+	*cur_clk_mhz = hl_clk_rate.cur_clk_rate_mhz;
+	*max_clk_mhz = hl_clk_rate.max_clk_rate_mhz;
+
+	return 0;
+
+}
+
 hlthunk_public int hlthunk_request_command_buffer(int fd, uint32_t cb_size,
 							uint64_t *cb_handle)
 {
