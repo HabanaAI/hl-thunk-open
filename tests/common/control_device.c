@@ -155,11 +155,30 @@ void test_print_device_utilization_no_stop(void **state)
 	hlthunk_close(fd);
 }
 
+void test_print_clk_rate(void **state)
+{
+	const char *pciaddr = hltests_get_parser_pciaddr();
+	uint32_t cur_clk, max_clk;
+	int rc, fd;
+
+	fd = hlthunk_open_control(0, pciaddr);
+	assert_in_range(fd, 0, INT_MAX);
+
+	rc = hlthunk_get_clk_rate(fd, &cur_clk, &max_clk);
+	assert_int_equal(rc, 0);
+
+	printf("\nCurrent clock rate: %dMHz\n", cur_clk);
+	printf("Maximum clock rate: %dMHz\n\n", max_clk);
+
+	hlthunk_close(fd);
+}
+
 const struct CMUnitTest control_tests[] = {
 	cmocka_unit_test(test_print_hw_ip_info),
 	cmocka_unit_test(test_print_hw_idle_info),
 	cmocka_unit_test(test_print_dram_usage_info_no_stop),
-	cmocka_unit_test(test_print_device_utilization_no_stop)
+	cmocka_unit_test(test_print_device_utilization_no_stop),
+	cmocka_unit_test(test_print_clk_rate)
 };
 
 static const char *const usage[] = {
