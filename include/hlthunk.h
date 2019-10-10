@@ -60,6 +60,11 @@ struct hlthunk_dram_usage_info {
 	uint64_t ctx_dram_mem;
 };
 
+struct hlthunk_clk_rate {
+	uint32_t cur_clk_rate_mhz;
+	uint32_t max_clk_rate_mhz;
+};
+
 struct hlthunk_cs_in {
 	void *chunks_restore;
 	void *chunks_execute;
@@ -200,6 +205,18 @@ hlthunk_public int hlthunk_get_device_utilization(int fd, uint32_t period_ms,
  */
 hlthunk_public int hlthunk_get_hw_events_arr(int fd, bool aggregate,
 			uint32_t hw_events_arr_size, uint32_t *hw_events_arr);
+
+/**
+ * This function retrieves the ASIC current and maximum clock rate, in MHz
+ * @param fd file descriptor handle of habanalabs main device
+ * @param cur_clk_mhz pointer to memory that will be filled by the function
+ * with the current clock rate in MHz
+ * @param max_clk_mhz pointer to memory that will be filled by the function
+ * with the maximum clock rate in MHz
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_get_clk_rate(int fd, uint32_t *cur_clk_mhz,
+					uint32_t *max_clk_mhz);
 
 /**
  * This function retrieves miscellaneous information of a specific device
