@@ -68,6 +68,14 @@ else()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ggdb -O0")
 endif()
 
+if (SANITIZE_ON)
+    set(SANITIZE "-fsanitize=undefined")
+    set(SANITIZE "${SANITIZE} -fsanitize=leak")
+    set(SANITIZE "${SANITIZE} -fno-omit-frame-pointer -fsanitize=address")
+endif()
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SANITIZE}")
+
 include_directories(include)
 
 add_subdirectory(src)
