@@ -1175,6 +1175,15 @@ uint32_t hltests_add_nop_pkt(int fd, void *buffer, uint32_t buf_off,
 	return asic->add_nop_pkt(buffer, buf_off, eb, mb);
 }
 
+uint32_t hltests_add_wreg32_pkt(int fd, void *buffer, uint32_t buf_off,
+					struct hltests_pkt_info *pkt_info)
+{
+	const struct hltests_asic_funcs *asic =
+			get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->add_wreg32_pkt(buffer, buf_off, pkt_info);
+}
+
 uint32_t hltests_add_msg_long_pkt(int fd, void *buffer, uint32_t buf_off,
 					struct hltests_pkt_info *pkt_info)
 {

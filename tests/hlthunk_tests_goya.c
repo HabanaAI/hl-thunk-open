@@ -33,6 +33,26 @@ static uint32_t goya_add_nop_pkt(void *buffer, uint32_t buf_off, bool eb,
 						sizeof(packet));
 }
 
+static uint32_t goya_add_wreg32_pkt(void *buffer, uint32_t buf_off,
+					struct hltests_pkt_info *pkt_info)
+{
+	struct packet_wreg32 packet;
+
+	memset(&packet, 0, sizeof(packet));
+	packet.opcode = PACKET_WREG_32;
+	packet.reg_offset = pkt_info->wreg32.reg_addr;
+	packet.value = pkt_info->wreg32.value;
+	packet.eng_barrier = pkt_info->eb;
+	packet.msg_barrier = pkt_info->mb;
+	packet.reg_barrier = 1;
+
+	packet.ctl = htole32(packet.ctl);
+	packet.value = htole32(packet.value);
+
+	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
+						sizeof(packet));
+}
+
 static uint32_t goya_add_msg_long_pkt(void *buffer, uint32_t buf_off,
 					struct hltests_pkt_info *pkt_info)
 {
@@ -441,6 +461,7 @@ static void goya_dram_pool_free(struct hltests_device *hdev, uint64_t addr,
 static const struct hltests_asic_funcs goya_funcs = {
 	.add_monitor_and_fence = goya_add_monitor_and_fence,
 	.add_nop_pkt = goya_add_nop_pkt,
+	.add_wreg32_pkt = goya_add_wreg32_pkt,
 	.add_msg_long_pkt = goya_add_msg_long_pkt,
 	.add_msg_short_pkt = goya_add_msg_short_pkt,
 	.add_arm_monitor_pkt = goya_add_arm_monitor_pkt,
