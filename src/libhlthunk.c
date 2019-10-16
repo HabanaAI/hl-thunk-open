@@ -307,6 +307,8 @@ hlthunk_public int hlthunk_get_hw_ip_info(int fd,
 	hw_ip->dram_enabled = hl_hw_ip.dram_enabled;
 	memcpy(hw_ip->armcp_version, hl_hw_ip.armcp_version,
 		HL_INFO_VERSION_MAX_LEN);
+	memcpy(hw_ip->card_name, hl_hw_ip.card_name,
+		HL_INFO_CARD_NAME_MAX_LEN);
 
 	return 0;
 }
