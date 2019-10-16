@@ -202,6 +202,10 @@ struct hltests_pkt_info {
 	enum hltests_mb mb;
 	union {
 		struct {
+			uint32_t value;
+			uint16_t reg_addr;
+		} wreg32;
+		struct {
 			uint64_t address;
 			uint32_t value;
 		} msg_long;
@@ -256,6 +260,8 @@ struct hltests_asic_funcs {
 			struct hltests_monitor_and_fence *mon_and_fence);
 	uint32_t (*add_nop_pkt)(void *buffer, uint32_t buf_off, bool eb,
 				bool mb);
+	uint32_t (*add_wreg32_pkt)(void *buffer, uint32_t buf_off,
+					struct hltests_pkt_info *pkt_info);
 	uint32_t (*add_msg_long_pkt)(void *buffer, uint32_t buf_off,
 					struct hltests_pkt_info *pkt_info);
 	uint32_t (*add_msg_short_pkt)(void *buffer, uint32_t buf_off,
@@ -427,6 +433,9 @@ void hltests_mem_pool_free(void *data, uint64_t addr, uint64_t size);
 /* ASIC functions */
 uint32_t hltests_add_nop_pkt(int fd, void *buffer, uint32_t buf_off,
 				enum hltests_eb eb, enum hltests_mb mb);
+
+uint32_t hltests_add_wreg32_pkt(int fd, void *buffer, uint32_t buf_off,
+					struct hltests_pkt_info *pkt_info);
 
 uint32_t hltests_add_msg_long_pkt(int fd, void *buffer, uint32_t buf_off,
 					struct hltests_pkt_info *pkt_info);

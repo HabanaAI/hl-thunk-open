@@ -709,6 +709,8 @@ void test_page_miss(void **state)
 struct register_security_cfg {
 	uint64_t reg_addr;
 	uint32_t value;
+	uint32_t qid;
+	bool use_wreg;
 };
 
 static int register_security_parsing_handler(void *user, const char *section,
@@ -718,12 +720,22 @@ static int register_security_parsing_handler(void *user, const char *section,
 					(struct register_security_cfg *) user;
 	char *tmp;
 
-	if (MATCH("register_security_cfg", "reg_addr"))
+	if (MATCH("register_security_cfg", "reg_addr")) {
 		cfg->reg_addr = strtoul(value, NULL, 0);
-	else if (MATCH("register_security_cfg", "value"))
+	} else if (MATCH("register_security_cfg", "value")) {
 		cfg->value = strtoul(value, NULL, 0);
-	else
+	} else if (MATCH("register_security_cfg", "qid")) {
+		cfg->qid = strtoul(value, NULL, 0);
+	} else if (MATCH("register_security_cfg", "use_wreg")) {
+		tmp = strdup(value);
+		if (!tmp)
+			return 1;
+
+		cfg->use_wreg = strcmp("true", tmp) ? false : true;
+		free(tmp);
+	} else {
 		return 0; /* unknown section/name, error */
+	}
 
 	return 1;
 }
@@ -751,6 +763,8 @@ void test_register_security(void **state)
 	printf("Configuration loaded from %s:\n", config_filename);
 	printf("register address = 0x%lx, value = 0x%x\n",
 		cfg.reg_addr, cfg.value);
+	printf("use_wreg = %d, qid = %d\n",
+		cfg.use_wreg, cfg.qid);
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
@@ -761,14 +775,25 @@ void test_register_security(void **state)
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_FALSE;
-	pkt_info.msg_long.address = cfg.reg_addr;
-	pkt_info.msg_long.value = cfg.value;
 
-	cb_size = hltests_add_msg_long_pkt(fd, cb, 0, &pkt_info);
+	if (cfg.use_wreg) {
+		pkt_info.wreg32.reg_addr = (uint16_t) cfg.reg_addr;
+		pkt_info.wreg32.value = cfg.value;
 
-	hltests_submit_and_wait_cs(fd, cb, cb_size,
+		cb_size = hltests_add_wreg32_pkt(fd, cb, 0, &pkt_info);
+
+		hltests_submit_and_wait_cs(fd, cb, cb_size, cfg.qid,
+				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
+	} else {
+		pkt_info.msg_long.address = cfg.reg_addr;
+		pkt_info.msg_long.value = cfg.value;
+
+		cb_size = hltests_add_msg_long_pkt(fd, cb, 0, &pkt_info);
+
+		hltests_submit_and_wait_cs(fd, cb, cb_size,
 				hltests_get_dma_down_qid(fd, STREAM0),
 				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
+	}
 }
 
 const struct CMUnitTest debug_tests[] = {
