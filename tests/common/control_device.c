@@ -34,7 +34,8 @@ void test_print_hw_ip_info(void **state)
 
 	printf("\nDevice information:");
 	printf("\n-----------------------");
-	printf("\nDevice id        : 0x%x", hw_ip.device_id);
+	printf("\nPCI Device id    : 0x%x", hw_ip.device_id);
+	printf("\nCard name        : %s", hw_ip.card_name);
 	printf("\nDRAM enabled     : %d", hw_ip.dram_enabled);
 	printf("\nDRAM base address: 0x%lx", hw_ip.dram_base_address);
 	printf("\nDRAM size        : %lu (0x%lx)", hw_ip.dram_size,
