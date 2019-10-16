@@ -53,6 +53,7 @@ struct hlthunk_hw_ip_info {
 	uint8_t tpc_enabled_mask;
 	uint8_t dram_enabled;
 	uint8_t armcp_version[HL_INFO_VERSION_MAX_LEN];
+	uint8_t card_name[HL_INFO_CARD_NAME_MAX_LEN];
 };
 
 struct hlthunk_dram_usage_info {
