@@ -304,7 +304,6 @@ hlthunk_public int hlthunk_get_hw_ip_info(int fd,
 	hw_ip->psoc_pci_pll_od = hl_hw_ip.psoc_pci_pll_od;
 	hw_ip->psoc_pci_pll_div_factor = hl_hw_ip.psoc_pci_pll_div_factor;
 	hw_ip->tpc_enabled_mask = hl_hw_ip.tpc_enabled_mask;
-	hw_ip->tpc_enabled_mask |= ((uint16_t) hl_hw_ip.tpc_enabled_mask2) << 8;
 	hw_ip->dram_enabled = hl_hw_ip.dram_enabled;
 	memcpy(hw_ip->armcp_version, hl_hw_ip.armcp_version,
 		HL_INFO_VERSION_MAX_LEN);
