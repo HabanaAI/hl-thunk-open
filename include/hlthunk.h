@@ -144,6 +144,15 @@ hlthunk_public int hlthunk_get_pci_bus_id_from_fd(int fd, char *pci_bus_id,
 							int len);
 
 /**
+ * This function retrieves the device index of a specific device
+ * @param busid null-terminated string of the device PCI bus ID in the following
+ * format: [domain]:[bus]:[device].[function] where domain, bus, device, and
+ * function are all hexadecimal values.
+ * @return device index for success, negative value for failure
+ */
+hlthunk_public int hlthunk_get_device_index_from_pci_bus_id(const char *busid);
+
+/**
  * This function retrieves H/W IP information for a specific device
  * @param fd file descriptor handle of habanalabs main device
  * @param hw_ip info pointer to H/W IP information structure
