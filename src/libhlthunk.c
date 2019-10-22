@@ -63,17 +63,33 @@ static int hlthunk_open_minor(int device_index, enum hlthunk_node_type type)
 
 static int hlthunk_open_by_busid(const char *busid, enum hlthunk_node_type type)
 {
+	int device_index;
+
+	device_index = hlthunk_get_device_index_from_pci_bus_id(busid);
+	if (device_index < 0) {
+		printf("No Device for the given PCI address\n");
+		return -EINVAL;
+	}
+
+	return hlthunk_open_minor(device_index, type);
+}
+
+hlthunk_public int hlthunk_get_device_index_from_pci_bus_id(const char *busid)
+{
 	const char *base_path = "/sys/class/habanalabs/";
 	char *substr_ptr;
 	struct dirent *entry;
-	uint32_t device_index;
+	DIR *dir;
 	const char *device_prefix = "hl";
 	const char *virtual_device_prefix = "hlv";
 	const char *sim_device_prefix = "hls";
 	const char *pci_bus_prefix = "pci_addr";
 	char pci_bus_file_name[PATH_MAX];
-	char read_busid[16], buf[64], full_busid[16];
-	int fd, dev_fd, rc;
+	char read_busid[16], full_busid[16];
+	int fd, rc, device_index;
+
+	if (!busid)
+		return -EINVAL;
 
 	if (strlen(busid) == BUSID_WITHOUT_DOMAIN_LEN) {
 		snprintf(full_busid, BUSID_WITH_DOMAIN_LEN + 1, "0000:%s",
@@ -83,7 +99,7 @@ static int hlthunk_open_by_busid(const char *busid, enum hlthunk_node_type type)
 		full_busid[BUSID_WITH_DOMAIN_LEN] = '\0';
 	}
 
-	DIR *dir = opendir(base_path);
+	dir = opendir(base_path);
 	if (dir == NULL) {
 		printf("Failed to open habanalabs directory\n");
 		return errno;
@@ -121,10 +137,12 @@ static int hlthunk_open_by_busid(const char *busid, enum hlthunk_node_type type)
 
 		if (!strcmp(read_busid, full_busid)) {
 			closedir(dir);
-			return hlthunk_open_minor(device_index, type);
+			return device_index;
 		}
 	}
+
 	closedir(dir);
+
 	return -1;
 }
 
