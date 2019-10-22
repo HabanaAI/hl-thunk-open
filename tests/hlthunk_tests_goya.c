@@ -6,7 +6,6 @@
  */
 
 #include "hlthunk_tests.h"
-#include "uapi/misc/habanalabs.h"
 #include "goya/goya.h"
 #include "goya/goya_packets.h"
 #include "goya/asic_reg/goya_regs.h"
