@@ -127,9 +127,6 @@ void test_print_dram_usage_info_no_stop(void **state)
 
 		usleep(250 * 1000);
 	}
-
-	printf("\n");
-	hlthunk_close(fd);
 }
 
 void test_print_device_utilization_no_stop(void **state)
@@ -151,9 +148,6 @@ void test_print_device_utilization_no_stop(void **state)
 
 		usleep(450 * 1000);
 	}
-
-	printf("\n");
-	hlthunk_close(fd);
 }
 
 void test_print_clk_rate(void **state)
