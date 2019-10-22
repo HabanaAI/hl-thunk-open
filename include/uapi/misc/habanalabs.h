@@ -121,8 +121,7 @@ struct hl_info_hw_ip_info {
 	__u32 psoc_pci_pll_div_factor;
 	__u8 tpc_enabled_mask;
 	__u8 dram_enabled;
-	__u8 tpc_enabled_mask2;
-	__u8 pad;
+	__u8 pad[2];
 	__u8 armcp_version[HL_INFO_VERSION_MAX_LEN];
 };
 
