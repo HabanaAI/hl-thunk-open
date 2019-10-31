@@ -18,6 +18,11 @@ set(HLTHUNK_PACKAGE "hl-thunk")
 set(HLTHUNK_COMPONENT "lib${HLTHUNK}")
 set(HLTHUNK_TARGET "${HLTHUNK}")
 
+set(HLTHUNK_ERR_INJECT "hl-thunk-err_injection")
+set(HLTHUNK_ERR_INJECT_PACKAGE "hl-thunk-err_injection")
+set(HLTHUNK_ERR_INJECT_COMPONENT "lib${HLTHUNK_ERR_INJECT}")
+set(HLTHUNK_ERR_INJECT_TARGET "${HLTHUNK_ERR_INJECT}")
+
 include(GNUInstallDirs)
 
 set(BUILD_VERSION_MAJOR ${VERSION_MAJOR})
@@ -79,6 +84,8 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SANITIZE}")
 include_directories(include)
 
 add_subdirectory(src)
+
+add_subdirectory(err_inject)
 
 if (UNIT_TESTING)
     find_package(CMocka 1.1.3 REQUIRED)
