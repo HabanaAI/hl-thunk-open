@@ -61,11 +61,6 @@ struct hlthunk_dram_usage_info {
 	uint64_t ctx_dram_mem;
 };
 
-struct hlthunk_clk_rate {
-	uint32_t cur_clk_rate_mhz;
-	uint32_t max_clk_rate_mhz;
-};
-
 struct hlthunk_cs_in {
 	void *chunks_restore;
 	void *chunks_execute;
