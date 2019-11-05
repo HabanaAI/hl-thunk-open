@@ -61,6 +61,11 @@ struct hlthunk_dram_usage_info {
 	uint64_t ctx_dram_mem;
 };
 
+struct hlthunk_reset_count_info {
+	uint32_t hard_reset_count;
+	uint32_t soft_reset_count;
+};
+
 struct hlthunk_cs_in {
 	void *chunks_restore;
 	void *chunks_execute;
@@ -222,6 +227,17 @@ hlthunk_public int hlthunk_get_hw_events_arr(int fd, bool aggregate,
  */
 hlthunk_public int hlthunk_get_clk_rate(int fd, uint32_t *cur_clk_mhz,
 					uint32_t *max_clk_mhz);
+
+/**
+ * This function retrieves the number of times the device had been hard or soft
+ * reset since the last time the driver was loaded
+ * @param fd file descriptor handle of habanalabs main device
+ * @param info pointer to memory that will be filled by the function
+ * with the current reset counts.
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_get_reset_count_info(int fd,
+					struct hlthunk_reset_count_info *info);
 
 /**
  * This function retrieves miscellaneous information of a specific device
