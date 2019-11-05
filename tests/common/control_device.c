@@ -168,12 +168,31 @@ void test_print_clk_rate(void **state)
 	hlthunk_close(fd);
 }
 
+void test_print_reset_count(void **state)
+{
+	const char *pciaddr = hltests_get_parser_pciaddr();
+	struct hlthunk_reset_count_info info;
+	int rc, fd;
+
+	fd = hlthunk_open_control(0, pciaddr);
+	assert_in_range(fd, 0, INT_MAX);
+
+	rc = hlthunk_get_reset_count_info(fd, &info);
+	assert_int_equal(rc, 0);
+
+	printf("\nHard reset count: %d\n", info.hard_reset_count);
+	printf("Soft reset count: %d\n\n", info.soft_reset_count);
+
+	hlthunk_close(fd);
+}
+
 const struct CMUnitTest control_tests[] = {
 	cmocka_unit_test(test_print_hw_ip_info),
 	cmocka_unit_test(test_print_hw_idle_info),
 	cmocka_unit_test(test_print_dram_usage_info_no_stop),
 	cmocka_unit_test(test_print_device_utilization_no_stop),
-	cmocka_unit_test(test_print_clk_rate)
+	cmocka_unit_test(test_print_clk_rate),
+	cmocka_unit_test(test_print_reset_count)
 };
 
 static const char *const usage[] = {
