@@ -503,6 +503,34 @@ hlthunk_public int hlthunk_get_clk_rate(int fd, uint32_t *cur_clk_mhz,
 
 }
 
+hlthunk_public int hlthunk_get_reset_count_info(int fd,
+					struct hlthunk_reset_count_info *info)
+{
+	struct hl_info_args args;
+	struct hl_info_reset_count hl_reset_count;
+	int rc, i;
+
+	if (!info)
+		return -EINVAL;
+
+	memset(&args, 0, sizeof(args));
+	memset(&hl_reset_count, 0, sizeof(hl_reset_count));
+
+	args.op = HL_INFO_RESET_COUNT;
+	args.return_pointer = (__u64) (uintptr_t) &hl_reset_count;
+	args.return_size = sizeof(hl_reset_count);
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	if (rc)
+		return rc;
+
+	info->hard_reset_count = hl_reset_count.hard_reset_cnt;
+	info->soft_reset_count = hl_reset_count.soft_reset_cnt;
+
+	return 0;
+
+}
+
 hlthunk_public int hlthunk_request_command_buffer(int fd, uint32_t cb_size,
 							uint64_t *cb_handle)
 {
