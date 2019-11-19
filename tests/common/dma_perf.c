@@ -534,6 +534,55 @@ void hltest_dram_sram_transfer_perf(void **state)
 	}
 }
 
+void hltest_dram_dram_transfer_perf(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct dma_perf_transfer transfer;
+	struct hlthunk_hw_ip_info hw_ip;
+	double *dram_dram_perf_outcome;
+	void *dram_addr;
+	uint32_t size;
+	int rc, fd = tests_state->fd;
+
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+
+	size = 4 * 1024 * 1024;
+
+	if (!hw_ip.dram_enabled) {
+		printf("DRAM is disabled so skipping test\n");
+		skip();
+	}
+
+	assert_in_range(size, 1, hw_ip.dram_size);
+	dram_addr = hltests_allocate_device_mem(fd, size * 2, NOT_CONTIGUOUS);
+	assert_non_null(dram_addr);
+
+	dram_dram_perf_outcome =
+		&tests_state->perf_outcomes[DMA_PERF_RESULTS_DRAM_TO_DRAM];
+
+	if (hltests_is_goya(fd)) {
+		transfer.queue_index =
+			hltests_get_dma_dram_to_sram_qid(fd, STREAM0);
+
+		transfer.src_addr = (uint64_t) (uintptr_t) dram_addr;
+		transfer.dst_addr = ((uint64_t) (uintptr_t) dram_addr) + size;
+		transfer.size = size;
+		transfer.dma_dir = GOYA_DMA_DRAM_TO_DRAM;
+
+		*dram_dram_perf_outcome = hltests_transfer_perf(fd, &transfer,
+								NULL);
+	} else {
+		*dram_dram_perf_outcome =
+			indirect_transfer_perf_test(fd,
+			hltests_get_dma_dram_to_sram_qid(fd, STREAM0),
+			(uint64_t) (uintptr_t) dram_addr,
+			((uint64_t) (uintptr_t) dram_addr) + hw_ip.sram_size);
+	}
+
+	hltests_free_device_mem(fd, dram_addr);
+}
+
 void hltest_host_sram_bidirectional_transfer_perf(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
@@ -684,6 +733,11 @@ static int hltests_perf_teardown(void **state)
 			perf_outcomes[DMA_PERF_RESULTS_SRAM_TO_DRAM]);
 	printf("DRAM->SRAM %lf GB/Sec\n",
 			perf_outcomes[DMA_PERF_RESULTS_DRAM_TO_SRAM]);
+	/* We multiply the result by 2 because the read and write of the DMA
+	 * are both from DRAM
+	 */
+	printf("DRAM->DRAM %lf GB/Sec\n",
+			perf_outcomes[DMA_PERF_RESULTS_DRAM_TO_DRAM] * 2);
 	printf("HOST<->SRAM %lf GB/Sec\n",
 			perf_outcomes[DMA_PERF_RESULTS_HOST_SRAM_BIDIR]);
 	printf("HOST<->DRAM %lf GB/Sec\n",
@@ -704,6 +758,8 @@ const struct CMUnitTest dma_perf_tests[] = {
 	cmocka_unit_test_setup(hltest_sram_dram_transfer_perf,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(hltest_dram_sram_transfer_perf,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(hltest_dram_dram_transfer_perf,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(hltest_host_sram_bidirectional_transfer_perf,
 				hltests_ensure_device_operational),
