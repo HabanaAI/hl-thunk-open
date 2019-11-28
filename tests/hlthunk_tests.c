@@ -20,6 +20,10 @@
 #include <time.h>
 #include <inttypes.h>
 
+#ifndef MAP_HUGE_2MB
+	#define MAP_HUGE_2MB    (21 << MAP_HUGE_SHIFT)
+#endif
+
 struct hltests_thread_params {
 	const char *group_name;
 	const struct CMUnitTest *tests;
