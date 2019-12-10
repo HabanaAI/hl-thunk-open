@@ -35,6 +35,25 @@ static int hlthunk_ioctl(int fd, unsigned long request, void *arg)
 	return ret;
 }
 
+static const char *get_temp_dir(void)
+{
+	char *tmpdir;
+
+	tmpdir = getenv("TEMP");
+	if (tmpdir)
+		return tmpdir;
+
+	tmpdir = getenv("TMP");
+	if (tmpdir)
+		return tmpdir;
+
+	tmpdir = getenv("TMPDIR");
+	if (tmpdir)
+		return tmpdir;
+
+	return "/tmp";
+}
+
 static int hlthunk_open_minor(int device_index, enum hlthunk_node_type type)
 {
 	char buf[64], *dev_name;
@@ -168,17 +187,29 @@ hlthunk_public int hlthunk_get_pci_bus_id_from_fd(int fd, char *pci_bus_id,
 	const char *base_path = "/sys/class/habanalabs/";
 	const char *pci_bus_prefix = "pci_addr";
 	const char *device_prefix = "hl";
-	char str[64], dev_name[64], read_busid[16], pci_bus_file_name[128], *p;
+	char tmp_name[32], str[64], dev_name[16], read_busid[16],
+				pci_bus_file_name[128], *p;
 	FILE *output;
 	pid_t pid;
-	int pci_fd, rc = 0;
+	int lsof_fd, pci_fd, rc = 0;
+
+	snprintf(tmp_name, 31, "%s/hltXXXXXX", get_temp_dir());
+	lsof_fd = mkstemp(tmp_name);
+	if (lsof_fd < 0)
+		return -1;
+
+	output = fdopen(lsof_fd, "r");
+	if (!output) {
+		rc = -1;
+		goto out;
+	}
 
 	pid = getpid();
-	snprintf(str, 63, "lsof -F n /proc/%d/fd/%d 2>/dev/null", pid, fd);
-
-	output = popen(str, "r");
-	if (!output)
-		return -1;
+	snprintf(str, 63, "lsof -F n /proc/%d/fd/%d > %s", pid, fd, tmp_name);
+	if (system(str) == -1) {
+		rc = -1;
+		goto close_output;
+	}
 
 	p = fgets(str, sizeof(str), output);
 	while (p) {
@@ -192,18 +223,18 @@ hlthunk_public int hlthunk_get_pci_bus_id_from_fd(int fd, char *pci_bus_id,
 
 	if (!p) {
 		rc = -1;
-		goto out;
+		goto close_output;
 	}
 
 	sscanf(p, "%[^\n]", dev_name);
 
-	sprintf(pci_bus_file_name, "%s%s/%s", base_path, dev_name,
+	snprintf(pci_bus_file_name, 127, "%s%s/%s", base_path, dev_name,
 		pci_bus_prefix);
 
 	pci_fd = open(pci_bus_file_name, O_RDONLY);
 	if (pci_fd < 0) {
 		rc = -1;
-		goto out;
+		goto close_output;
 	}
 
 	rc = read(pci_fd, read_busid, BUSID_WITH_DOMAIN_LEN);
@@ -220,8 +251,12 @@ hlthunk_public int hlthunk_get_pci_bus_id_from_fd(int fd, char *pci_bus_id,
 
 close_pci_fd:
 	close(pci_fd);
+close_output:
+	fclose(output);
 out:
-	pclose(output);
+	close(lsof_fd);
+	snprintf(str, 63, "rm -f %s", tmp_name);
+	system(str);
 
 	return rc;
 }
