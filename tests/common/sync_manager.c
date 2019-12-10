@@ -127,8 +127,7 @@ static void test_sm(void **state, bool is_tpc, bool is_wait, uint8_t engine_id)
 	execute_arr[1].cb_size = engine_cb_size;
 	execute_arr[1].queue_index = engine_qid;
 
-	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 2,
-					FORCE_RESTORE_FALSE, &seq);
+	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 2, 0, &seq);
 	assert_int_equal(rc, 0);
 
 	rc = hltests_destroy_cb(fd, engine_cb);
@@ -348,10 +347,9 @@ static void test_sm_pingpong_upper_cp(void **state, bool is_tpc,
 
 	if (engine_cb_sram_addr)
 		rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 3,
-						FORCE_RESTORE_TRUE, &seq);
+						CS_FLAGS_FORCE_RESTORE, &seq);
 	else
-		rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 3,
-						FORCE_RESTORE_FALSE, &seq);
+		rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 3, 0, &seq);
 
 	assert_int_equal(rc, 0);
 

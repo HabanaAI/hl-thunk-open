@@ -1068,7 +1068,7 @@ int hltests_submit_cs(int fd,
 		uint32_t restore_arr_size,
 		struct hltests_cs_chunk *execute_arr,
 		uint32_t execute_arr_size,
-		enum hltests_force_restore force_restore,
+		uint32_t flags,
 		uint64_t *seq)
 {
 	struct hltests_device *hdev;
@@ -1128,7 +1128,8 @@ int hltests_submit_cs(int fd,
 	cs_in.chunks_execute = chunks_execute;
 	cs_in.num_chunks_restore = restore_arr_size;
 	cs_in.num_chunks_execute = execute_arr_size;
-	cs_in.flags = force_restore ? HL_CS_FLAGS_FORCE_RESTORE : 0x0;
+	if (flags & CS_FLAGS_FORCE_RESTORE)
+		cs_in.flags |= HL_CS_FLAGS_FORCE_RESTORE;
 
 	memset(&cs_out, 0, sizeof(cs_out));
 	rc = hlthunk_command_submission(fd, &cs_in, &cs_out);
@@ -1558,8 +1559,7 @@ void hltests_submit_and_wait_cs(int fd, void *cb_ptr, uint32_t cb_size,
 	execute_arr[0].cb_size = cb_size;
 	execute_arr[0].queue_index = queue_index;
 
-	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1,
-					FORCE_RESTORE_FALSE, &seq);
+	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, 0, &seq);
 	assert_int_equal(rc, 0);
 
 	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
@@ -2057,7 +2057,7 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	execute_arr[2].queue_index = hltests_get_dma_up_qid(fd, STREAM0);
 
 	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 3,
-						FORCE_RESTORE_TRUE, &seq);
+						CS_FLAGS_FORCE_RESTORE, &seq);
 	assert_int_equal(rc, 0);
 
 	rc = hltests_wait_for_cs_until_not_busy(fd, seq);

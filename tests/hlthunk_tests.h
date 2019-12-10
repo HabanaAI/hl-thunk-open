@@ -24,6 +24,8 @@
 
 #define WAIT_FOR_CS_DEFAULT_TIMEOUT	5000000 /* 5 sec */
 
+#define CS_FLAGS_FORCE_RESTORE		0x1
+
 #define SZ_1K				0x00000400
 #define SZ_2K				0x00000800
 #define SZ_4K				0x00001000
@@ -131,11 +133,6 @@ enum hltests_is_external {
 enum hltests_destroy_cb {
 	 DESTROY_CB_FALSE = 0,
 	 DESTROY_CB_TRUE
-};
-
-enum hltests_force_restore {
-	FORCE_RESTORE_FALSE = 0,
-	FORCE_RESTORE_TRUE
 };
 
 enum hltests_huge {
@@ -388,7 +385,7 @@ int hltests_submit_cs(int fd, struct hltests_cs_chunk *restore_arr,
 				uint32_t restore_arr_size,
 				struct hltests_cs_chunk *execute_arr,
 				uint32_t execute_arr_size,
-				enum hltests_force_restore force_restore,
+				uint32_t flags,
 				uint64_t *seq);
 
 int hltests_setup(void **state);

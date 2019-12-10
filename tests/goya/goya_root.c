@@ -139,8 +139,7 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 	execute_arr[1].cb_size = dma_cb_size;
 	execute_arr[1].queue_index = hltests_get_dma_down_qid(fd, STREAM0);
 
-	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 2,
-						FORCE_RESTORE_FALSE, &seq);
+	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 2, 0, &seq);
 	assert_int_equal(rc, 0);
 
 	rc = hltests_wait_for_cs(fd, seq, WAIT_FOR_CS_DEFAULT_TIMEOUT);
