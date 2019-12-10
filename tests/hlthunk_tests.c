@@ -1514,8 +1514,8 @@ int hltests_dma_test(void **state, bool is_ddr, uint64_t size)
 
 	/* DMA: device->host */
 	hltests_dma_transfer(fd, hltests_get_dma_up_qid(fd, STREAM0),
-				0, 1, (uint64_t) (uintptr_t) device_addr,
-				host_dst_addr, size, dma_dir_up);
+			EB_FALSE, MB_TRUE, (uint64_t) (uintptr_t) device_addr,
+			host_dst_addr, size, dma_dir_up);
 
 	/* Compare host memories */
 	rc = hltests_mem_compare(src_ptr, dst_ptr, size);
