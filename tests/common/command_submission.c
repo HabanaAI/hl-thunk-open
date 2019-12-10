@@ -178,8 +178,7 @@ void test_cs_two_streams_with_fence(void **state)
 	execute_arr[0].cb_size = cb_stream0_size;
 	execute_arr[0].queue_index =
 				hltests_get_dma_down_qid(fd, STREAM0);
-	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, FORCE_RESTORE_FALSE,
-				&seq);
+	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, 0, &seq);
 	assert_int_equal(rc, 0);
 
 	/* Second CS: Submit CB of stream 3 and wait for completion */

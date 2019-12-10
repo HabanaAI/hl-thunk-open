@@ -81,8 +81,8 @@ static double hltests_transfer_perf(int fd,
 
 	for (i = 0 ; i <= num_of_transfers ; i++) {
 
-		rc = hltests_submit_cs(fd, NULL, 0, execute_arr,
-					num_of_cb, FORCE_RESTORE_FALSE, &seq);
+		rc = hltests_submit_cs(fd, NULL, 0, execute_arr, num_of_cb, 0,
+					&seq);
 		assert_int_equal(rc, 0);
 	}
 
@@ -405,8 +405,7 @@ static double indirect_transfer_perf_test(int fd, uint32_t queue_index,
 
 	clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
 
-	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 2,
-					FORCE_RESTORE_FALSE, &seq);
+	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 2, 0, &seq);
 	assert_int_equal(rc, 0);
 
 	rc = hltests_wait_for_cs_until_not_busy(fd, seq);

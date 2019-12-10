@@ -142,8 +142,7 @@ static void *dma_thread_start(void *args)
 	execute_arr[1].queue_index = hltests_get_dma_up_qid(params->fd,
 								STREAM0);
 
-	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 2,
-					FORCE_RESTORE_FALSE, &seq);
+	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 2, 0, &seq);
 	if (rc)
 		return NULL;
 
@@ -606,7 +605,7 @@ void dma_4_queues(void **state, bool sram_only)
 	execute_arr[3].queue_index = hltests_get_dma_up_qid(fd, STREAM0);
 
 	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 4,
-						FORCE_RESTORE_TRUE, &seq);
+						CS_FLAGS_FORCE_RESTORE, &seq);
 	assert_int_equal(rc, 0);
 
 	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
