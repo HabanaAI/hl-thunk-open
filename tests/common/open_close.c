@@ -35,6 +35,19 @@ void test_open_by_busid(void **state)
 	hltests_teardown(state);
 }
 
+void test_open_twice(void **state)
+{
+	int fd, fd2;
+
+	fd = hlthunk_open(HLTHUNK_DEVICE_DONT_CARE, NULL);
+	assert_in_range(fd, 0, INT_MAX);
+
+	fd2 = hlthunk_open(HLTHUNK_DEVICE_DONT_CARE, NULL);
+	assert_int_equal(fd2, -1);
+
+	hlthunk_close(fd);
+}
+
 void test_open_close_without_ioctl(void **state)
 {
 	const char *pciaddr = hltests_get_parser_pciaddr();
@@ -82,6 +95,7 @@ void test_close_without_releasing_debug(void **state)
 
 const struct CMUnitTest open_close_tests[] = {
 	cmocka_unit_test(test_open_by_busid),
+	cmocka_unit_test(test_open_twice),
 	cmocka_unit_test(test_open_close_without_ioctl),
 	cmocka_unit_test(test_close_without_releasing_debug)
 };
