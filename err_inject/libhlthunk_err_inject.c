@@ -5,7 +5,35 @@
  * All Rights Reserved.
  */
 
+#include <errno.h>
+
 #include "hlthunk.h"
+#include "hlthunk_err_inject.h"
 #include "specs/pci_ids.h"
 
 #define _GNU_SOURCE
+
+hlthunk_public int hlthunk_err_inject_endless_command(int fd)
+{
+	return -ENOTSUP;
+}
+
+hlthunk_public int hlthunk_err_inject_non_fatal_event(int fd, int *event_num)
+{
+	return -ENOTSUP;
+}
+
+hlthunk_public int hlthunk_err_inject_fatal_event(int *fd, int *event_num)
+{
+	return -ENOTSUP;
+}
+
+hlthunk_public int hlthunk_err_inject_loss_of_heartbeat(int fd)
+{
+	return -ENOTSUP;
+}
+
+hlthunk_public int hlthunk_err_inject_thermal_event(int fd, int *event_num)
+{
+	return -ENOTSUP;
+}
