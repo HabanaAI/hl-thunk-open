@@ -24,6 +24,6 @@ foreach(_UNIT_TEST ${COMMON_UNIT_TESTS})
     add_cmocka_test(${_UNIT_TEST}
                     SOURCES ${_UNIT_TEST}.c
                     COMPILE_OPTIONS ${DEFAULT_C_COMPILE_FLAGS}
-                    LINK_LIBRARIES ${TEST_TARGET_LIBRARIES}
+                    LINK_LIBRARIES ${TEST_TARGET_LIBRARIES} ${HLTHUNK_ERR_INJECT_TARGET}
     )
 endforeach()
