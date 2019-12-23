@@ -53,6 +53,9 @@ struct hlthunk_asic_funcs {
 	uint32_t (*get_dma_down_qid)(
 			enum hlthunk_dcore_separation_mode dcore_sep_mode,
 			enum hlthunk_stream_id stream);
+	int (*generate_non_fatal_event)(int fd, int *event_num);
+	int (*generate_fatal_event)(struct hlthunk_debugfs *debugfs,
+					int *event_num);
 };
 
 struct hlthunk_asic_funcs *hlthunk_get_asic_funcs(int fd);

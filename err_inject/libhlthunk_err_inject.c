@@ -70,14 +70,61 @@ hlthunk_public int hlthunk_err_inject_endless_command(int fd)
 
 hlthunk_public int hlthunk_err_inject_non_fatal_event(int fd, int *event_num)
 {
-	return -ENOTSUP;
+	struct hlthunk_asic_funcs *asic_funcs = hlthunk_get_asic_funcs(fd);
+	int rc;
+
+	rc = asic_funcs->generate_non_fatal_event(fd, event_num);
+	/* Let the driver time to handle the event */
+	sleep(5);
+	return rc;
 }
 
 hlthunk_public int hlthunk_err_inject_fatal_event(int fd, int *event_num)
 {
-	close(fd);
+	struct hlthunk_asic_funcs *asic_funcs = hlthunk_get_asic_funcs(fd);
+	struct hlthunk_debugfs debugfs;
+	int rc, i;
+	char pci_bus_id[13];
 
-	return -ENOTSUP;
+	rc = hlthunk_get_pci_bus_id_from_fd(fd,
+					    pci_bus_id, sizeof(pci_bus_id));
+	if (rc) {
+		hlthunk_close(fd);
+		return -ENODEV;
+	}
+
+	rc = hlthunk_debugfs_open(fd, &debugfs);
+	/* Close the fd to prevent the driver from killing us during reset */
+	hlthunk_close(fd);
+	if (rc)
+		return -ENOTSUP;
+
+	rc = asic_funcs->generate_fatal_event(&debugfs, event_num);
+	/* Close the fs to prevent the driver from killing us during reset */
+	hlthunk_debugfs_close(&debugfs);
+	if (rc) {
+		hlthunk_debugfs_close(&debugfs);
+		return rc;
+	}
+
+	printf("Wait for driver to detect the error\n");
+	sleep(5);
+
+	printf("Wait up to 60 sec for driver reset process to complete\n");
+	for (i = 0 ; i < 12 ; i++) {
+		fd = hlthunk_open(HLTHUNK_DEVICE_DONT_CARE, pci_bus_id);
+		if ((fd >= 0) &&
+		    (hlthunk_get_device_status_info(fd) !=
+				    HL_DEVICE_STATUS_IN_RESET))
+			break;
+		sleep(5);
+	}
+
+	if (fd < 0)
+		return -ENXIO;
+
+	close(fd);
+	return 0;
 }
 
 hlthunk_public int hlthunk_err_inject_loss_of_heartbeat(int fd)
