@@ -15,7 +15,13 @@
 #include "hlthunk.h"
 #include "libhlthunk_supp.h"
 #include "goya/goya_packets.h"
+#include "goya/goya.h"
+#include "goya/asic_reg/goya_regs.h"
 
+#define GOYA_ASYNC_EVENT_ID_TPC0_ECC 36 /* Non Fatal event */
+#define GOYA_ASYNC_EVENT_ID_TPC0_DEC 117 /* Fatal event */
+
+#define GOYA_EVENT_GEN_REG ((CFG_BASE) + (mmGIC_DISTRIBUTOR__5_GICD_SETSPI_NSR))
 
 static uint32_t goya_add_fence_pkt(void *buffer, uint32_t buf_off,
 					struct hlthunk_pkt_info *pkt_info)
@@ -45,9 +51,34 @@ static uint32_t goya_get_dma_down_qid(
 	return GOYA_QUEUE_ID_DMA_1;
 }
 
+static int goya_generate_non_fatal_event(int fd, int *event_num)
+{
+	struct hlthunk_debugfs debugfs;
+	int rc;
+
+	rc = hlthunk_debugfs_open(fd, &debugfs);
+	if (rc)
+		return -ENOTSUP;
+
+	*event_num = GOYA_ASYNC_EVENT_ID_TPC0_DEC;
+	rc = hlthunk_debugfs_write(&debugfs, GOYA_EVENT_GEN_REG, *event_num);
+	hlthunk_debugfs_close(&debugfs);
+
+	return rc;
+}
+
+static int goya_generate_fatal_event(struct hlthunk_debugfs *debugfs,
+					int *event_num)
+{
+	*event_num = GOYA_ASYNC_EVENT_ID_TPC0_ECC;
+	return hlthunk_debugfs_write(debugfs, GOYA_EVENT_GEN_REG, *event_num);
+}
+
 static struct hlthunk_asic_funcs asic_goya = {
 	.add_fence_pkt = goya_add_fence_pkt,
 	.get_dma_down_qid = goya_get_dma_down_qid,
+	.generate_non_fatal_event = goya_generate_non_fatal_event,
+	.generate_fatal_event = goya_generate_fatal_event,
 };
 
 struct hlthunk_asic_funcs *get_asic_funcs_goya(void)
