@@ -205,7 +205,8 @@ hlthunk_public int hlthunk_get_pci_bus_id_from_fd(int fd, char *pci_bus_id,
 	}
 
 	pid = getpid();
-	snprintf(str, 63, "lsof -F n /proc/%d/fd/%d > %s", pid, fd, tmp_name);
+	snprintf(str, 63, "lsof -F n /proc/%d/fd/%d > %s 2> /dev/null",
+			pid, fd, tmp_name);
 	if (system(str) == -1) {
 		rc = -1;
 		goto close_output;
