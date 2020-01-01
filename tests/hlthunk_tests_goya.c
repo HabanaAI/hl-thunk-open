@@ -217,6 +217,12 @@ static uint32_t goya_add_cp_dma_pkt(void *buffer, uint32_t buf_off,
 						sizeof(packet));
 }
 
+static uint32_t goya_add_load_and_exe_pkt(void *buffer, uint32_t buf_off,
+					struct hltests_pkt_info *pkt_info)
+{
+	return 0;
+}
+
 static uint32_t goya_add_monitor_and_fence(
 			enum hltests_dcore_separation_mode dcore_sep_mode,
 			void *buffer, uint32_t buf_off,
@@ -489,6 +495,7 @@ static const struct hltests_asic_funcs goya_funcs = {
 	.add_fence_pkt = goya_add_fence_pkt,
 	.add_dma_pkt = goya_add_dma_pkt,
 	.add_cp_dma_pkt = goya_add_cp_dma_pkt,
+	.add_load_and_exe_pkt = goya_add_load_and_exe_pkt,
 	.get_dma_down_qid = goya_get_dma_down_qid,
 	.get_dma_up_qid = goya_get_dma_up_qid,
 	.get_ddma_qid = goya_get_ddma_qid,

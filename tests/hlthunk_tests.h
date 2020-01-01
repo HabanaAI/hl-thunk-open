@@ -130,6 +130,21 @@ enum hl_tests_size_desc {
 	ENTRY_SIZE_32B
 };
 
+enum hl_tests_load_dst {
+	DST_PREDICATES = 0,
+	DST_SCALARS
+};
+
+enum hl_tests_predicates_map {
+	PMAP_NON_CONSECUTIVE = 0,
+	PMAP_CONSECUTIVE
+};
+
+enum hl_tests_exe_type {
+	ETYPE_ALL_OR_LOWER_RF = 0,
+	ETYPE_UPPER_RF
+};
+
 enum hltests_stream_id {
 	STREAM0 = 0,
 	STREAM1,
@@ -261,6 +276,14 @@ struct hltests_pkt_info {
 			uint64_t src_addr;
 			uint32_t size;
 		} cp_dma;
+		struct {
+			uint64_t src_addr;
+			uint8_t load;
+			uint8_t exe;
+			enum hl_tests_load_dst load_dst;
+			enum hl_tests_predicates_map pred_map;
+			enum hl_tests_exe_type exe_type;
+		} load_and_exe;
 	};
 };
 
@@ -317,6 +340,8 @@ struct hltests_asic_funcs {
 	uint32_t (*add_dma_pkt)(void *buffer, uint32_t buf_off,
 					struct hltests_pkt_info *pkt_info);
 	uint32_t (*add_cp_dma_pkt)(void *buffer, uint32_t buf_off,
+					struct hltests_pkt_info *pkt_info);
+	uint32_t (*add_load_and_exe_pkt)(void *buffer, uint32_t buf_off,
 					struct hltests_pkt_info *pkt_info);
 	uint32_t (*get_dma_down_qid)(
 			enum hltests_dcore_separation_mode dcore_sep_mode,
@@ -539,6 +564,9 @@ uint32_t hltests_add_dma_pkt(int fd, void *buffer, uint32_t buf_off,
 
 uint32_t hltests_add_cp_dma_pkt(int fd, void *buffer, uint32_t buf_off,
 				struct hltests_pkt_info *pkt_info);
+
+uint32_t hltests_add_load_and_exe_pkt(int fd, void *buffer, uint32_t buf_off,
+					struct hltests_pkt_info *pkt_info);
 
 uint32_t hltests_add_monitor_and_fence(int fd, void *buffer, uint32_t buf_off,
 		struct hltests_monitor_and_fence *mon_and_fence_info);
