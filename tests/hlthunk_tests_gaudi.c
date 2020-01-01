@@ -239,6 +239,31 @@ static uint32_t gaudi_add_cb_list_pkt(void *buffer, uint32_t buf_off,
 	return 0;
 }
 
+static uint32_t gaudi_add_load_and_exe_pkt(void *buffer, uint32_t buf_off,
+					struct hltests_pkt_info *pkt_info)
+{
+	struct packet_load_and_exe packet;
+
+	memset(&packet, 0, sizeof(packet));
+
+	packet.opcode = PACKET_LOAD_AND_EXE;
+	packet.eng_barrier = pkt_info->eb;
+	packet.reg_barrier = 1;
+	packet.msg_barrier = pkt_info->mb;
+	packet.src_addr = pkt_info->load_and_exe.src_addr;
+	packet.load = pkt_info->load_and_exe.load;
+	packet.exe = pkt_info->load_and_exe.exe;
+	packet.dst = pkt_info->load_and_exe.load_dst;
+	packet.etype = pkt_info->load_and_exe.exe_type;
+
+	packet.cfg = htole32(packet.cfg);
+	packet.ctl = htole32(packet.ctl);
+	packet.src_addr = htole64(packet.src_addr);
+
+	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
+						sizeof(packet));
+}
+
 static uint32_t gaudi_add_monitor_and_fence(
 			enum hltests_dcore_separation_mode dcore_sep_mode,
 			void *buffer, uint32_t buf_off,
@@ -756,6 +781,7 @@ static const struct hltests_asic_funcs gaudi_funcs = {
 	.add_fence_pkt = gaudi_add_fence_pkt,
 	.add_dma_pkt = gaudi_add_dma_pkt,
 	.add_cp_dma_pkt = gaudi_add_cp_dma_pkt,
+	.add_load_and_exe_pkt = gaudi_add_load_and_exe_pkt,
 	.get_dma_down_qid = gaudi_get_dma_down_qid,
 	.get_dma_up_qid = gaudi_get_dma_up_qid,
 	.get_ddma_qid = gaudi_get_ddma_qid,
