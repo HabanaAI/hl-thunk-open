@@ -63,7 +63,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunreachable-code -fvisibility=hidden")
 if (CMAKE_C_COMPILER_ID MATCHES "GNU")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-but-set-variable -Wlogical-op")
     if (NOT CMAKE_C_COMPILER_VERSION VERSION_LESS 7.0)
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-stringop-truncation")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-stringop-truncation -Wno-format-truncation")
     endif()
 endif()
 
