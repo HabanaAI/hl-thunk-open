@@ -56,6 +56,7 @@ struct hlthunk_asic_funcs {
 	int (*generate_non_fatal_event)(int fd, int *event_num);
 	int (*generate_fatal_event)(struct hlthunk_debugfs *debugfs,
 					int *event_num);
+	int (*halt_cpu)(struct hlthunk_debugfs *debugfs);
 };
 
 struct hlthunk_asic_funcs *hlthunk_get_asic_funcs(int fd);
