@@ -6,10 +6,10 @@
  */
 
 #include <errno.h>
+#include <unistd.h>
 
 #include "hlthunk.h"
 #include "hlthunk_err_inject.h"
-#include "specs/pci_ids.h"
 
 #define _GNU_SOURCE
 
@@ -23,13 +23,17 @@ hlthunk_public int hlthunk_err_inject_non_fatal_event(int fd, int *event_num)
 	return -ENOTSUP;
 }
 
-hlthunk_public int hlthunk_err_inject_fatal_event(int *fd, int *event_num)
+hlthunk_public int hlthunk_err_inject_fatal_event(int fd, int *event_num)
 {
+	close(fd);
+
 	return -ENOTSUP;
 }
 
 hlthunk_public int hlthunk_err_inject_loss_of_heartbeat(int fd)
 {
+	close(fd);
+
 	return -ENOTSUP;
 }
 
