@@ -79,6 +79,45 @@ struct hlthunk_cs_out {
 	uint32_t status;
 };
 
+struct hlthunk_functions_pointers {
+	/*
+	 * Functions that will be wrapped with profiler code to enable
+	 * profiling
+	 */
+	int (*fp_hlthunk_command_submission)(int fd, struct hlthunk_cs_in *in,
+					     struct hlthunk_cs_out *out);
+	int (*fp_hlthunk_open)(enum hlthunk_device_name device_name,
+			       const char *busid);
+	int (*fp_hlthunk_close)(int fd);
+	int (*fp_hlthunk_profiler_start)(int fd);
+	int (*fp_hlthunk_profiler_stop)(int fd);
+	int (*fp_hlthunk_profiler_get_trace)(int fd, void *buffer,
+					     uint64_t *size);
+
+	/* Function for the profiler to use */
+	uint64_t (*fp_hlthunk_device_memory_alloc)(int fd, uint64_t size,
+						bool contiguous, bool shared);
+	int (*fp_hlthunk_device_memory_free)(int fd, uint64_t handle);
+	uint64_t (*fp_hlthunk_device_memory_map)(int fd, uint64_t handle,
+						 uint64_t hint_addr);
+	uint64_t (*fp_hlthunk_host_memory_map)(int fd, void *host_virt_addr,
+					       uint64_t hint_addr,
+					       uint64_t host_size);
+	int (*fp_hlthunk_memory_unmap)(int fd, uint64_t device_virt_addr);
+	int (*fp_hlthunk_debug)(int fd, struct hl_debug_args *debug);
+	int (*fp_hlthunk_request_command_buffer)(int fd, uint32_t cb_size,
+						 uint64_t *cb_handle);
+	int (*fp_hlthunk_destroy_command_buffer)(int fd, uint64_t cb_handle);
+	int (*fp_hlthunk_wait_for_cs)(int fd, uint64_t seq,
+				      uint64_t timeout_us, uint32_t *status);
+	enum hlthunk_device_name (*fp_hlthunk_get_device_name_from_fd)(int fd);
+	int (*fp_hlthunk_get_pci_bus_id_from_fd)(int fd, char *pci_bus_id,
+						 int len);
+	int (*fp_hlthunk_get_device_index_from_pci_bus_id)(const char *busid);
+	void* (*fp_hlthunk_malloc)(int size);
+	void (*fp_hlthunk_free)(void *pt);
+};
+
 /**
  * This function opens the habanalabs device according to specified busid, or
  * according to the device name, if busid is NULL. If busid is specified but
@@ -376,6 +415,36 @@ hlthunk_public int hlthunk_hash_delete(void *t, unsigned long key);
 hlthunk_public int hlthunk_hash_next(void *t, unsigned long *key, void **value);
 hlthunk_public int hlthunk_hash_first(void *t, unsigned long *key,
 					void **value);
+
+
+/**
+ * This function starts an API controlled profiling session on a device
+ * @param fd file descriptor of the device to start profiling on
+ * @return 0 on success or negative value in case of error
+ */
+hlthunk_public int hlthunk_profiler_start(int fd);
+
+/**
+ * This function stops an API controlled profiling session on a device
+ * @param fd file descriptor of the device to stop profiling on
+ * @return 0 on success or negative value in case of error
+ */
+hlthunk_public int hlthunk_profiler_stop(int fd);
+
+/**
+ * This function retrieves the profiler trace created in an API controlled
+ * profiling session. This function should be called first with buffer = null
+ * in order to get the trace size, allocate the buffer according to this size
+ * and call again with the buffer allocated
+ * @param fd file descriptor of the device to get the trace from
+ * @param buffer a buffer to copy to trace to, if buffer = null then only
+ * retrieves the trace size
+ * @param size out param for the amount of bytes copied to buffer (or the trace
+ * size if buffer = null)
+ * @return 0 on success or negative value in case of error
+ */
+hlthunk_public int hlthunk_profiler_get_trace(int fd, void *buffer,
+					      uint64_t *size);
 
 #ifdef __cplusplus
 }   //extern "C"

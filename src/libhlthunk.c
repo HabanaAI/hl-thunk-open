@@ -19,10 +19,53 @@
 #include <string.h>
 #include <dirent.h>
 #include <linux/limits.h>
+#include <pthread.h>
+#include <dlfcn.h>
 
 int hlthunk_debug_level = HLTHUNK_DEBUG_LEVEL_NA;
 #define BUSID_WITHOUT_DOMAIN_LEN	7
 #define BUSID_WITH_DOMAIN_LEN		12
+
+/*
+ * This table holds the pointers to the functions that should be called for
+ * this operations. In case profiling the hl-thunk than the profiler will
+ * get this 'default' table, and this table's pointers will point to the
+ * profiler functions so it will wrap all this functions with profiling
+ */
+struct hlthunk_functions_pointers functions_pointers_table = {
+	.fp_hlthunk_command_submission = hlthunk_command_submission_original,
+	.fp_hlthunk_open = hlthunk_open_original,
+	.fp_hlthunk_close = hlthunk_close_original,
+	.fp_hlthunk_profiler_start = hlthunk_profiler_start_original,
+	.fp_hlthunk_profiler_stop = hlthunk_profiler_stop_original,
+	.fp_hlthunk_profiler_get_trace = hlthunk_profiler_get_trace_original,
+	.fp_hlthunk_debug = hlthunk_debug,
+	.fp_hlthunk_device_memory_alloc = hlthunk_device_memory_alloc,
+	.fp_hlthunk_device_memory_free = hlthunk_device_memory_free,
+	.fp_hlthunk_device_memory_map = hlthunk_device_memory_map,
+	.fp_hlthunk_host_memory_map = hlthunk_host_memory_map,
+	.fp_hlthunk_memory_unmap = hlthunk_memory_unmap,
+	.fp_hlthunk_request_command_buffer = hlthunk_request_command_buffer,
+	.fp_hlthunk_destroy_command_buffer = hlthunk_destroy_command_buffer,
+	.fp_hlthunk_wait_for_cs = hlthunk_wait_for_cs,
+	.fp_hlthunk_get_device_name_from_fd = hlthunk_get_device_name_from_fd,
+	.fp_hlthunk_get_pci_bus_id_from_fd = hlthunk_get_pci_bus_id_from_fd,
+	.fp_hlthunk_get_device_index_from_pci_bus_id =
+		hlthunk_get_device_index_from_pci_bus_id,
+	.fp_hlthunk_malloc = hlthunk_malloc,
+	.fp_hlthunk_free = hlthunk_free
+};
+
+struct global_hlthunk_members {
+	bool is_profiler_checked;
+	void *shared_object_handle;
+	pthread_mutex_t profiler_init_lock;
+};
+
+struct global_hlthunk_members global_members = {
+	.is_profiler_checked = false,
+	.shared_object_handle = NULL
+};
 
 static int hlthunk_ioctl(int fd, unsigned long request, void *arg)
 {
@@ -295,21 +338,49 @@ hlthunk_public void hlthunk_free(void *pt)
 		free(pt);
 }
 
-/**
- * This function opens the habanalabs device according to specified busid, or
- * according to the device name, if busid is NULL. If busid is specifies but
- * the device can't be opened, the function fails.
- * @param device_name name of the device that the user wants to open
- * @param busid pci address of the device on the host pci bus
- * @return file descriptor handle or negative value in case of error
- */
-hlthunk_public int hlthunk_open(enum hlthunk_device_name device_name,
-				const char *busid)
+void hlthunk_set_profiler(void)
+{
+	void (*set_profiler_function)(
+		struct hlthunk_functions_pointers *functions_table);
+	global_members.shared_object_handle =
+		dlopen("libSynapse_profiler.so", RTLD_LAZY);
+	if (global_members.shared_object_handle == NULL)
+		return;
+	*(void **) (&set_profiler_function) =
+		dlsym(global_members.shared_object_handle,
+		      "hlthunk_set_profiler");
+	if (set_profiler_function)
+		(*set_profiler_function)(&functions_pointers_table);
+}
+int hlthunk_open_original(enum hlthunk_device_name device_name,
+			  const char *busid)
 {
 	if (busid)
 		return hlthunk_open_by_busid(busid, HLTHUNK_NODE_PRIMARY);
 
 	return hlthunk_open_device_by_name(device_name, HLTHUNK_NODE_PRIMARY);
+}
+
+hlthunk_public int hlthunk_open(enum hlthunk_device_name device_name,
+				const char *busid)
+{
+	const char *env_var;
+
+	if (!global_members.is_profiler_checked) {
+		pthread_mutex_lock(&global_members.profiler_init_lock);
+
+		if (!global_members.is_profiler_checked) {
+			env_var = getenv("HABANA_PROFILE");
+			if (env_var && strcmp(env_var, "1") == 0)
+				hlthunk_set_profiler();
+
+			global_members.is_profiler_checked = true;
+		}
+
+		pthread_mutex_unlock(&global_members.profiler_init_lock);
+	}
+
+	return (*functions_pointers_table.fp_hlthunk_open)(device_name, busid);
 }
 
 hlthunk_public int hlthunk_open_control(int dev_id, const char *busid)
@@ -320,9 +391,14 @@ hlthunk_public int hlthunk_open_control(int dev_id, const char *busid)
 	return hlthunk_open_minor(dev_id, HLTHUNK_NODE_CONTROL);
 }
 
-hlthunk_public int hlthunk_close(int fd)
+int hlthunk_close_original(int fd)
 {
 	return close(fd);
+}
+
+hlthunk_public int hlthunk_close(int fd)
+{
+	return (*functions_pointers_table.fp_hlthunk_close)(fd);
 }
 
 hlthunk_public int hlthunk_get_hw_ip_info(int fd,
@@ -600,8 +676,8 @@ hlthunk_public int hlthunk_destroy_command_buffer(int fd, uint64_t cb_handle)
 	return hlthunk_ioctl(fd, HL_IOCTL_CB, &args);
 }
 
-hlthunk_public int hlthunk_command_submission(int fd, struct hlthunk_cs_in *in,
-						struct hlthunk_cs_out *out)
+int hlthunk_command_submission_original(int fd, struct hlthunk_cs_in *in,
+					struct hlthunk_cs_out *out)
 {
 	union hl_cs_args args;
 	struct hl_cs_in *hl_in;
@@ -626,6 +702,13 @@ hlthunk_public int hlthunk_command_submission(int fd, struct hlthunk_cs_in *in,
 	out->status = hl_out->status;
 
 	return 0;
+}
+
+hlthunk_public int hlthunk_command_submission(int fd, struct hlthunk_cs_in *in,
+					      struct hlthunk_cs_out *out)
+{
+	return (*functions_pointers_table.fp_hlthunk_command_submission)(
+				fd, in, out);
 }
 
 hlthunk_public int hlthunk_wait_for_cs(int fd, uint64_t seq,
@@ -797,4 +880,36 @@ hlthunk_public int hlthunk_memory_unmap(int fd, uint64_t device_virt_addr)
 hlthunk_public int hlthunk_debug(int fd, struct hl_debug_args *debug)
 {
 	return hlthunk_ioctl(fd, HL_IOCTL_DEBUG, debug);
+}
+
+int hlthunk_profiler_start_original(int fd)
+{
+	return -1;
+}
+
+hlthunk_public int hlthunk_profiler_start(int fd)
+{
+	return (*functions_pointers_table.fp_hlthunk_profiler_start)(fd);
+}
+
+int hlthunk_profiler_stop_original(int fd)
+{
+	return -1;
+}
+
+hlthunk_public int hlthunk_profiler_stop(int fd)
+{
+	return (*functions_pointers_table.fp_hlthunk_profiler_stop)(fd);
+}
+
+int hlthunk_profiler_get_trace_original(int fd, void *buffer, uint64_t *size)
+{
+	return -1;
+}
+
+hlthunk_public int hlthunk_profiler_get_trace(int fd, void *buffer,
+					      uint64_t *size)
+{
+	return (*functions_pointers_table.fp_hlthunk_profiler_get_trace)(
+				fd, buffer, size);
 }

@@ -55,6 +55,20 @@ do { \
 #define pr_debug(fmt, ...) \
 	hlthunk_print(HLTHUNK_DEBUG_LEVEL_DEBUG, fmt, ##__VA_ARGS__)
 
+
+/**
+ * Declerations of the original hlthunk functions implementations
+ * to be set as default functions in the functions pointers table
+ */
+int hlthunk_command_submission_original(int fd, struct hlthunk_cs_in *in,
+					struct hlthunk_cs_out *out);
+int hlthunk_open_original(enum hlthunk_device_name device_name,
+			  const char *busid);
+int hlthunk_close_original(int fd);
+int hlthunk_profiler_start_original(int fd);
+int hlthunk_profiler_stop_original(int fd);
+int hlthunk_profiler_get_trace_original(int fd, void *buffer, uint64_t *size);
+
 #undef hlthunk_public
 #define hlthunk_public
 
