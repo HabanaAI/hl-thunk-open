@@ -234,8 +234,8 @@ void hltest_host_dram_transfer_perf(void **state)
 	hltests_free_device_mem(fd, dram_addr);
 
 	if ((hltests_is_goya(fd)) && (!hltests_is_simulator(fd)) &&
-				(*host_dram_perf_outcome < 9.5f)) {
-		printf("HOST->DRAM must be at least 9.5 GB/Sec");
+				(*host_dram_perf_outcome < 9.0f)) {
+		printf("HOST->DRAM must be at least 9.0 GB/Sec");
 		fail();
 	}
 }
