@@ -913,3 +913,155 @@ hlthunk_public int hlthunk_profiler_get_trace(int fd, void *buffer,
 	return (*functions_pointers_table.fp_hlthunk_profiler_get_trace)(
 				fd, buffer, size);
 }
+
+hlthunk_public int hlthunk_debugfs_open(int fd,
+					struct hlthunk_debugfs *debugfs)
+{
+	char pci_bus_id[13];
+	char *path;
+	char clk_gate_str[4] = "0";
+	ssize_t size;
+	int device_idx, rc = 0;
+	int clk_gate_fd = -1, debugfs_addr_fd = -1, debugfs_data_fd = -1;
+
+	rc = hlthunk_get_pci_bus_id_from_fd(fd,
+					    pci_bus_id, sizeof(pci_bus_id));
+	if (rc)
+		return -ENODEV;
+
+	device_idx =
+		hlthunk_get_device_index_from_pci_bus_id(pci_bus_id);
+	if (device_idx < 0)
+		return -ENODEV;
+
+	path = hlthunk_malloc(PATH_MAX);
+	if (!path)
+		return -ENOMEM;
+
+	snprintf(path, PATH_MAX, "//sys/kernel/debug/habanalabs/hl%d/addr",
+			device_idx);
+
+	debugfs_addr_fd = open(path, O_WRONLY);
+	if (debugfs_addr_fd == -1) {
+		printf("Failed to open debugfs addr_fd (forgot sudo ?)\n");
+		rc = -EPERM;
+		goto err_exit;
+	}
+
+	snprintf(path, PATH_MAX, "//sys/kernel/debug/habanalabs/hl%d/data32",
+			device_idx);
+
+	debugfs_data_fd = open(path, O_RDWR);
+
+	if (debugfs_data_fd == -1) {
+		printf("Failed to open debugfs data_fd (forgot sudo ?)\n");
+		rc = -EPERM;
+		goto err_exit;
+	}
+
+	snprintf(path, PATH_MAX, "//sys/kernel/debug/habanalabs/hl%d/clk_gate",
+			device_idx);
+
+	clk_gate_fd = open(path, O_RDWR);
+
+	if (clk_gate_fd == -1) {
+		printf("Failed to open clk_gate_fd (forgot sudo ?)\n");
+		rc = -EPERM;
+		goto err_exit;
+	}
+
+	debugfs->addr_fd = debugfs_addr_fd;
+	debugfs->data_fd = debugfs_data_fd;
+	debugfs->clk_gate_fd = clk_gate_fd;
+
+	size = pread(debugfs->clk_gate_fd,
+		     debugfs->clk_gate_val, sizeof(debugfs->clk_gate_val), 0);
+	if (size < 0)
+		perror("Failed to read debugfs clk gate fd\n");
+
+	size = write(debugfs->clk_gate_fd, clk_gate_str,
+			strlen(clk_gate_str) + 1);
+	if (size < 0)
+		perror("Failed to write debugfs clk gate\n");
+
+	hlthunk_free(path);
+	return 0;
+
+err_exit:
+	if (clk_gate_fd != -1)
+		close(clk_gate_fd);
+
+	if (debugfs_addr_fd != -1)
+		close(debugfs_addr_fd);
+
+	if (debugfs_data_fd != -1)
+		close(debugfs_data_fd);
+
+	hlthunk_free(path);
+	return rc;
+}
+
+hlthunk_public int hlthunk_debugfs_read(struct hlthunk_debugfs *debugfs,
+					uint64_t full_address, uint32_t *val)
+{
+	char addr_str[64] = "", value[64] = "";
+	ssize_t size;
+
+	sprintf(addr_str, "0x%lx", full_address);
+
+	size = write(debugfs->addr_fd, addr_str, strlen(addr_str) + 1);
+	if (size < 0) {
+		perror("Failed to write to debugfs address fd\n");
+		return -errno;
+	}
+
+	size = pread(debugfs->data_fd, value, sizeof(value), 0);
+	if (size < 0) {
+		perror("Failed to read from debugfs data fd\n");
+		return -errno;
+	}
+
+	*val = strtoul(value, NULL, 16);
+	return 0;
+}
+
+hlthunk_public int hlthunk_debugfs_write(struct hlthunk_debugfs *debugfs,
+					 uint64_t full_address, uint32_t val)
+{
+	char addr_str[64] = "", val_str[64] = "";
+	ssize_t size;
+
+	sprintf(addr_str, "0x%lx", full_address);
+	sprintf(val_str, "0x%x", val);
+
+	size = write(debugfs->addr_fd, addr_str, strlen(addr_str) + 1);
+	if (size < 0) {
+		perror("Failed to write to debugfs address fd\n");
+		return -errno;
+	}
+
+	size = write(debugfs->data_fd, val_str, strlen(val_str) + 1);
+	if (size < 0) {
+		perror("Failed to write to debugfs data fd\n");
+		return -errno;
+	}
+
+	return 0;
+}
+
+hlthunk_public int hlthunk_debugfs_close(struct hlthunk_debugfs *debugfs)
+{
+	if (debugfs->addr_fd != -1)
+		close(debugfs->addr_fd);
+
+	if (debugfs->data_fd != -1)
+		close(debugfs->data_fd);
+
+	if (debugfs->clk_gate_fd != -1) {
+		write(debugfs->clk_gate_fd,
+		      debugfs->clk_gate_val, strlen(debugfs->clk_gate_val) + 1);
+		close(debugfs->clk_gate_fd);
+	}
+
+	return 0;
+}

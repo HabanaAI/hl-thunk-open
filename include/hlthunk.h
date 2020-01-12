@@ -118,6 +118,13 @@ struct hlthunk_functions_pointers {
 	void (*fp_hlthunk_free)(void *pt);
 };
 
+struct hlthunk_debugfs {
+	int addr_fd;
+	int data_fd;
+	int clk_gate_fd;
+	char clk_gate_val[4];
+};
+
 /**
  * This function opens the habanalabs device according to specified busid, or
  * according to the device name, if busid is NULL. If busid is specified but
@@ -445,6 +452,49 @@ hlthunk_public int hlthunk_profiler_stop(int fd);
  */
 hlthunk_public int hlthunk_profiler_get_trace(int fd, void *buffer,
 					      uint64_t *size);
+
+/**
+ * This function opens the debug file system of the habanalabs device already
+ * opened via the hlthunk_open routine.
+ * @param fd The file descriptor of the device as returned from the call to
+ * the hlthunk_open routine.
+ * @param debugfs The debug-fs information filled by the open routine.
+ * @return 0 upon success or negative value in case of error
+ */
+hlthunk_public int hlthunk_debugfs_open(int fd,
+					struct hlthunk_debugfs *debugfs);
+
+/**
+ * Using debugfs, this function returns the 32bit value read from the
+ * device address space at the specified address.
+ * @param debugfs Pointer to the device debug-fs information.
+ * @param full_address The 64 bit address in the device address space to read
+ * the from
+ * @param val The vslue read from the given address
+ * @return 0 upon success or negative value in case of error
+ */
+hlthunk_public int hlthunk_debugfs_read(struct hlthunk_debugfs *debugfs,
+					uint64_t full_address, uint32_t *val);
+
+/**
+ * Using debugfs, this function writes the 32bit value to the specified address
+ * in the device address space
+ * @param debugfs Pointer to the device debug-fs information.
+ * @param full_address The address in the device address space to writ the value
+ * to.
+ * @param val The vale to write.
+ * @return 0 upon success or negative value in case of error
+ */
+hlthunk_public int hlthunk_debugfs_write(struct hlthunk_debugfs *debugfs,
+					 uint64_t full_address, uint32_t val);
+
+/**
+ * This function closes the open debug file system of the habanalabs device.
+ * @param debugfs Pointer to the debug-fs information as filled by the
+ * hlthunk_debugfs_open routine
+ * @return 0 upon success or negative value in case of error
+ */
+hlthunk_public int hlthunk_debugfs_close(struct hlthunk_debugfs *debugfs);
 
 #ifdef __cplusplus
 }   //extern "C"
