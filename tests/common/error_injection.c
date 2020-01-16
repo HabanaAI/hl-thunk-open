@@ -47,8 +47,7 @@ void test_error_injection_non_fatal_event(void **state)
 	struct hlthunk_reset_count_info pre, post;
 	struct hlthunk_hw_ip_info hw_ip;
 	uint32_t *pre_hw_events, *post_hw_events;
-	int event_num;
-	int rc, fd = tests_state->fd;
+	int event_num = 0, rc, fd = tests_state->fd;
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
@@ -104,7 +103,7 @@ void test_error_injection_fatal_event(void **state)
 	struct hlthunk_reset_count_info pre, post;
 	struct hlthunk_hw_ip_info hw_ip;
 	uint32_t *pre_hw_events, *post_hw_events;
-	int event_num, rc, fd = tests_state->fd;
+	int event_num = 0, rc, fd = tests_state->fd;
 	char pci_bus_id[13];
 
 	rc = hlthunk_get_pci_bus_id_from_fd(fd, pci_bus_id, sizeof(pci_bus_id));
@@ -172,7 +171,7 @@ void test_error_injection_heartbeat(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_reset_count_info pre, post;
-	int event_num, rc, fd = tests_state->fd;
+	int rc, fd = tests_state->fd;
 	char pci_bus_id[13];
 
 	rc = hlthunk_get_pci_bus_id_from_fd(fd, pci_bus_id, sizeof(pci_bus_id));
@@ -204,7 +203,7 @@ void test_error_injection_thermal_event(void **state)
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
 	uint32_t *pre_hw_events, *post_hw_events;
-	int event_num, rc, fd = tests_state->fd;
+	int event_num = 0, rc, fd = tests_state->fd;
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
