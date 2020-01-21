@@ -988,9 +988,6 @@ hlthunk_public int hlthunk_debugfs_open(int fd,
 	return 0;
 
 err_exit:
-	if (clk_gate_fd != -1)
-		close(clk_gate_fd);
-
 	if (debugfs_addr_fd != -1)
 		close(debugfs_addr_fd);
 
@@ -1051,6 +1048,9 @@ hlthunk_public int hlthunk_debugfs_write(struct hlthunk_debugfs *debugfs,
 
 hlthunk_public int hlthunk_debugfs_close(struct hlthunk_debugfs *debugfs)
 {
+	ssize_t size;
+	int rc = 0;
+
 	if (debugfs->addr_fd != -1)
 		close(debugfs->addr_fd);
 
@@ -1058,10 +1058,16 @@ hlthunk_public int hlthunk_debugfs_close(struct hlthunk_debugfs *debugfs)
 		close(debugfs->data_fd);
 
 	if (debugfs->clk_gate_fd != -1) {
-		write(debugfs->clk_gate_fd,
-		      debugfs->clk_gate_val, strlen(debugfs->clk_gate_val) + 1);
+		size = write(debugfs->clk_gate_fd,
+			     debugfs->clk_gate_val,
+			     strlen(debugfs->clk_gate_val) + 1);
+		if (size < 0) {
+			perror("Failed to write to debugfs clk_gate fd\n");
+			rc = -EIO;
+		}
+
 		close(debugfs->clk_gate_fd);
 	}
 
-	return 0;
+	return rc;
 }
