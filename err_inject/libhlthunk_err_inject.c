@@ -5,6 +5,7 @@
  * All Rights Reserved.
  */
 
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -25,6 +26,8 @@
 
 #define PAGE_SIZE_4KB			(1UL << PAGE_SHIFT_4KB)
 #define PAGE_SIZE_64KB			(1UL << PAGE_SHIFT_64KB)
+
+#define TEMPERATURE_SKEW		5000
 
 hlthunk_public int hlthunk_err_inject_endless_command(int fd)
 {
@@ -175,13 +178,195 @@ hlthunk_public int hlthunk_err_inject_loss_of_heartbeat(int fd)
 	return 0;
 }
 
+static int open_device_temperature_file(int fd, const char *fname, int flags)
+{
+	const char *base_path = "/sys/bus/pci/devices/";
+	const char *hwmon_dir_name = "/hwmon/";
+	const char *device_hwmon_dir_prefix = "hwmon";
+	char pci_bus_id[13];
+	char *fd_path;
+	struct dirent *entry;
+	DIR *dir = NULL;
+	int rc, temp_fd;
+
+	if (fname == NULL || strlen(fname) > NAME_MAX)  {
+		printf("Invalid file name");
+		return -EINVAL;
+	}
+
+	rc = hlthunk_get_pci_bus_id_from_fd(fd, pci_bus_id, sizeof(pci_bus_id));
+	if (rc) {
+		printf("No PCI device was found for fd %d\n", fd);
+		return -ENODEV;
+	}
+
+	fd_path = malloc(PATH_MAX + 1);
+	if (fd_path == NULL) {
+		printf("Failed to allocate memory\n");
+		return -ENOMEM;
+	}
+
+	/* Open device hwmon dir
+	 *  example: /sys/bus/pci/devices/0000:01:00.0/hwmon/
+	 */
+	snprintf(fd_path, PATH_MAX, "%s%s%s",
+		 base_path, pci_bus_id, hwmon_dir_name);
+
+	dir = opendir(fd_path);
+	if (dir == NULL) {
+		rc = -errno;
+		printf("Failed to open device directory %s\n", fd_path);
+		goto exit;
+	}
+
+	while ((entry = readdir(dir)) != NULL) {
+		if (strstr(entry->d_name, device_hwmon_dir_prefix) != NULL)
+			break;
+	}
+	if (entry == NULL) {
+		printf("Failed to find device hwmon directory\n");
+		rc = -ENOENT;
+		goto exit;
+	}
+
+	/*
+	 * Create the paths to the requested temperature sensor attribute file
+	 *  example: /sys/bus/pci/devices/0000:01:00.0/hwmon/hwmon3/temp1_max
+	 */
+	snprintf(fd_path, PATH_MAX, "%s%s%s%s/%s", base_path,
+		 pci_bus_id, hwmon_dir_name, entry->d_name, fname);
+
+	temp_fd = open(fd_path, flags);
+	if (temp_fd < 0) {
+		rc = -errno;
+		printf("failed to open %s, %s\n", fd_path, strerror(errno));
+		goto exit;
+	}
+	rc = temp_fd;
+exit:
+	free(fd_path);
+	if (dir)
+		closedir(dir);
+	return rc;
+}
+
 hlthunk_public int hlthunk_err_inject_thermal_event(int fd)
 {
-	return -ENOTSUP;
+	long temp_max, temp_offset;
+	int temp_offset_fd, temp_max_fd;
+	ssize_t size;
+	int rc;
+	char value[64] = "";
+
+	temp_max_fd = open_device_temperature_file(fd,
+						     "temp1_max", O_RDONLY);
+	if (temp_max_fd < 0)
+		return temp_max_fd;
+
+	temp_offset_fd = open_device_temperature_file(fd,
+						      "temp1_offset", O_RDWR);
+	if (temp_offset_fd < 0) {
+		close(temp_max_fd);
+		return temp_offset_fd;
+	}
+
+	/* Read the max temperature */
+	size = pread(temp_max_fd, value, sizeof(value), 0);
+	if (size < 0) {
+		printf("Failed to read from temperature offset fd [rc %zd]\n",
+		       size);
+		rc = size;
+		goto exit;
+	}
+
+	temp_max = strtol(value, NULL, 10);
+
+	/* Read the temperature offset */
+	size = pread(temp_offset_fd, value, sizeof(value), 0);
+	if (size < 0) {
+		printf("Failed to read from temperature offset fd [rc %zd]\n",
+		       size);
+		rc = size;
+		goto exit;
+	}
+
+	temp_offset = strtol(value, NULL, 10);
+
+	/* Modify temperature offset */
+	sprintf(value, "%ld", temp_offset + temp_max + TEMPERATURE_SKEW);
+
+	size = write(temp_offset_fd, value, strlen(value) + 1);
+	if (size < 0) {
+		printf("Failed to write to temperature offset fd [rc %zd]\n",
+		       size);
+		rc = size;
+		goto exit;
+	}
+
+	printf("Wait for driver to detect the thermal event\n");
+	sleep(1);
+
+	rc = 0;
+exit:
+	close(temp_offset_fd);
+	close(temp_max_fd);
+	return rc;
 }
 
 hlthunk_public int hlthunk_err_eject_thermal_event(int fd)
 {
-	return -ENOTSUP;
-}
+	long temp_offset, temp_max;
+	int temp_offset_fd, temp_max_fd;
+	ssize_t size;
+	int rc = 0;
+	char value[64] = "";
 
+	temp_max_fd = open_device_temperature_file(fd,
+						   "temp1_max", O_RDONLY);
+	if (temp_max_fd < 0)
+		return temp_max_fd;
+
+	temp_offset_fd = open_device_temperature_file(fd,
+						      "temp1_offset", O_RDWR);
+	if (temp_offset_fd < 0) {
+		close(temp_max_fd);
+		return temp_offset_fd;
+	}
+
+	/* Read the max temperature */
+	size = pread(temp_max_fd, value, sizeof(value), 0);
+	if (size < 0) {
+		printf("Failed to read from temperature offset fd [rc %zd]\n",
+		       size);
+		rc = size;
+		goto exit;
+	}
+
+	temp_max = strtol(value, NULL, 10);
+
+	/* Read the temperature offset */
+	size = pread(temp_offset_fd, value, sizeof(value), 0);
+	if (size < 0) {
+		printf("Failed to read from temperature offset fd [rc %zd]\n",
+		       size);
+		rc = size;
+		goto exit;
+	}
+
+	temp_offset = strtol(value, NULL, 10);
+
+	/* Modify temperature offset */
+	sprintf(value, "%ld", temp_offset - temp_max - TEMPERATURE_SKEW);
+
+	size = write(temp_offset_fd, value, strlen(value) + 1);
+	if (size < 0) {
+		printf("Failed to write to temperature offset fd [rc %zd]\n",
+		       size);
+		rc = size;
+	}
+
+exit:
+	close(temp_max_fd);
+	close(temp_offset_fd);
+	return rc;
+}
