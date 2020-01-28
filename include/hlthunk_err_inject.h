@@ -57,14 +57,22 @@ hlthunk_public int hlthunk_err_inject_fatal_event(int fd, int *event_num);
 hlthunk_public int hlthunk_err_inject_loss_of_heartbeat(int fd);
 
 /**
- * This function causes an overheat situation which is should be
- * recognized and handled by the driver.
+ * This function causes an overheat situation which should be recognized and
+ * handled by the driver and system monitoring tools.
  * @param fd the file descriptor of the already opened habanalabs device
- * @param event_num the event number in the driver triggered by this error
  * @return 0 when the command was submitted successfully, negative value in case
  * of an error.
  */
-hlthunk_public int hlthunk_err_inject_thermal_event(int fd, int *event_num);
+hlthunk_public int hlthunk_err_inject_thermal_event(int fd);
+
+/**
+ * This function ceases the overheat situation caused by the
+ * hlthunk_err_inject_thermal_event routine.
+ * @param fd the file descriptor of the already opened habanalabs device
+ * @return 0 when the command was submitted successfully, negative value in case
+ * of an error.
+ */
+hlthunk_public int hlthunk_err_eject_thermal_event(int fd);
 
 #ifdef __cplusplus
 }   //extern "C"
