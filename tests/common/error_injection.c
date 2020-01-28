@@ -18,7 +18,96 @@
 #include <cmocka.h>
 #include <stdio.h>
 #include <errno.h>
+#include <dirent.h>
+#include <fcntl.h>
 
+static int get_device_temperature(int fd, const char *fname, long *temperature)
+{
+	const char *base_path = "/sys/bus/pci/devices/";
+	const char *hwmon_dir_name = "/hwmon/";
+	const char *device_hwmon_dir_prefix = "hwmon";
+	char pci_bus_id[13];
+	char value[64] = "";
+	char *fd_path;
+	struct dirent *entry;
+	DIR *dir = NULL;
+	size_t size;
+	int rc, temp_fd = -1;
+
+	if (fname == NULL || strlen(fname) > NAME_MAX)  {
+		printf("Invalid file name");
+		return -EINVAL;
+	}
+
+	rc = hlthunk_get_pci_bus_id_from_fd(fd, pci_bus_id, sizeof(pci_bus_id));
+	if (rc) {
+		printf("No PCI device was found for fd %d\n", fd);
+		return -ENODEV;
+	}
+
+	fd_path = malloc(PATH_MAX + 1);
+	if (fd_path == NULL) {
+		printf("Failed to allocate memory\n");
+		return -ENOMEM;
+	}
+
+	/* Open device hwmon dir
+	 *  example: /sys/bus/pci/devices/0000:01:00.0/hwmon/
+	 */
+	snprintf(fd_path, PATH_MAX, "%s%s%s",
+		 base_path, pci_bus_id, hwmon_dir_name);
+
+	dir = opendir(fd_path);
+	if (dir == NULL) {
+		rc = -errno;
+		printf("Failed to open device directory %s\n", fd_path);
+		goto exit;
+	}
+
+	while ((entry = readdir(dir)) != NULL) {
+		if (strstr(entry->d_name, device_hwmon_dir_prefix) != NULL)
+			break;
+	}
+	if (entry == NULL) {
+		printf("Failed to find device hwmon directory\n");
+		rc = -ENOENT;
+		goto exit;
+	}
+
+	/*
+	 * Create the paths to the requested temperature sensor attribute file
+	 *  example: /sys/bus/pci/devices/0000:01:00.0/hwmon/hwmon3/temp1_max
+	 */
+	snprintf(fd_path, PATH_MAX, "%s%s%s%s/%s", base_path,
+		 pci_bus_id, hwmon_dir_name, entry->d_name, fname);
+
+	temp_fd = open(fd_path, O_RDONLY);
+	if (temp_fd < 0) {
+		rc = -errno;
+		printf("failed to open %s, %s\n", fd_path, strerror(errno));
+		goto exit;
+	}
+
+	/* Read the temperature */
+	size = pread(temp_fd, value, sizeof(value), 0);
+	if (size < 0) {
+		rc = -errno;
+		goto exit;
+	}
+
+	*temperature = strtol(value, NULL, 10);
+
+exit:
+	free(fd_path);
+
+	if (temp_fd != -1)
+		close(temp_fd);
+
+	if (dir)
+		closedir(dir);
+
+	return rc;
+}
 
 void test_error_injection_endless_command(void **state)
 {
@@ -201,22 +290,34 @@ void test_error_injection_heartbeat(void **state)
 void test_error_injection_thermal_event(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	int rc, fd = tests_state->fd;
+	long temp_input, temp_max;
+	int rc, rc1, rc2, temp_fd, fd = tests_state->fd;
+
+	rc = get_device_temperature(fd, "temp1_input", &temp_input);
+	rc1 = get_device_temperature(fd, "temp1_max", &temp_max);
+	assert_int_equal(rc, 0);
+	assert_int_equal(rc1, 0);
+	if (temp_input > temp_max)
+		fail_msg("Cannot run test, input temperature is too high");
 
 	rc = hlthunk_err_inject_thermal_event(fd);
-	if (rc)
-		goto exit;
-
-	printf(
-	   "Waiting 60 Seconds for event to be recognized by external tools\n");
-	sleep(60);
-
-	rc = hlthunk_err_eject_thermal_event(fd);
-	if (rc)
-		printf("Failed to eject a thermal event\n");
-
-exit:
 	assert_int_equal(rc, 0);
+
+	sleep(1);
+
+	rc = get_device_temperature(fd, "temp1_input", &temp_input);
+	rc1 = hlthunk_err_eject_thermal_event(fd);
+
+	assert_int_equal(rc, 0);
+	assert_true(temp_input > temp_max);
+	assert_int_equal(rc1, 0);
+
+	sleep(1);
+
+	rc = get_device_temperature(fd, "temp1_input", &temp_input);
+	assert_int_equal(rc, 0);
+
+	assert_true(temp_input < temp_max);
 }
 
 const struct CMUnitTest ei_tests[] = {
