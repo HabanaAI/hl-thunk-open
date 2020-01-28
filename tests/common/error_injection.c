@@ -201,45 +201,22 @@ void test_error_injection_heartbeat(void **state)
 void test_error_injection_thermal_event(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	struct hlthunk_hw_ip_info hw_ip;
-	uint32_t *pre_hw_events, *post_hw_events;
-	int event_num = 0, rc, fd = tests_state->fd;
+	int rc, fd = tests_state->fd;
 
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
-	pre_hw_events = hlthunk_malloc(hw_ip.num_of_events);
-	assert_non_null(pre_hw_events);
-
-	post_hw_events = hlthunk_malloc(hw_ip.num_of_events);
-	assert_non_null(post_hw_events);
-
-	rc = hlthunk_get_hw_events_arr(fd, true,
-				       hw_ip.num_of_events, pre_hw_events);
+	rc = hlthunk_err_inject_thermal_event(fd);
 	if (rc)
 		goto exit;
 
-	rc = hlthunk_err_inject_thermal_event(fd, &event_num);
+	printf(
+	   "Waiting 60 Seconds for event to be recognized by external tools\n");
+	sleep(60);
+
+	rc = hlthunk_err_eject_thermal_event(fd);
 	if (rc)
-		goto exit;
-
-	if (event_num >= hw_ip.num_of_events || event_num < 0)
-		goto exit;
-
-	rc = hlthunk_get_hw_events_arr(fd, true,
-				       hw_ip.num_of_events, post_hw_events);
-	if (rc)
-		goto exit;
-
-	/* Verify thermal event was seen */
-	if (post_hw_events[event_num] == pre_hw_events[event_num])
-		fail_msg("Driver did not identify a thermal event");
+		printf("Failed to eject a thermal event\n");
 
 exit:
-	hlthunk_free(pre_hw_events);
-	hlthunk_free(post_hw_events);
 	assert_int_equal(rc, 0);
-	assert_false(event_num >= hw_ip.num_of_events || event_num < 0);
 }
 
 const struct CMUnitTest ei_tests[] = {

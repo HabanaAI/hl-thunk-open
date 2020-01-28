@@ -175,7 +175,13 @@ hlthunk_public int hlthunk_err_inject_loss_of_heartbeat(int fd)
 	return 0;
 }
 
-hlthunk_public int hlthunk_err_inject_thermal_event(int fd, int *event_num)
+hlthunk_public int hlthunk_err_inject_thermal_event(int fd)
 {
 	return -ENOTSUP;
 }
+
+hlthunk_public int hlthunk_err_eject_thermal_event(int fd)
+{
+	return -ENOTSUP;
+}
+
