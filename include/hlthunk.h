@@ -165,7 +165,7 @@ hlthunk_public int hlthunk_close(int fd);
  * @param fd file descriptor handle of habanalabs main or control device
  * @return PCI device ID of the acquired device
  */
-hlthunk_public enum hl_pci_ids hlthunk_get_device_id_from_fd(int fd);
+hlthunk_public uint32_t hlthunk_get_device_id_from_fd(int fd);
 
 /**
  * This function returns the matching device name (ASIC type) of a specific

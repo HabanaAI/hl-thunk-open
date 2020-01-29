@@ -733,7 +733,7 @@ hlthunk_public int hlthunk_wait_for_cs(int fd, uint64_t seq,
 	return rc;
 }
 
-hlthunk_public enum hl_pci_ids hlthunk_get_device_id_from_fd(int fd)
+hlthunk_public uint32_t hlthunk_get_device_id_from_fd(int fd)
 {
 	struct hlthunk_hw_ip_info hw_ip;
 
@@ -741,7 +741,7 @@ hlthunk_public enum hl_pci_ids hlthunk_get_device_id_from_fd(int fd)
 	if (hlthunk_get_hw_ip_info(fd, &hw_ip))
 		return PCI_IDS_INVALID;
 
-	return (enum hl_pci_ids) hw_ip.device_id;
+	return hw_ip.device_id;
 }
 
 hlthunk_public int hlthunk_get_info(int fd, struct hl_info_args *info)
