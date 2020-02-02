@@ -31,7 +31,7 @@ static int get_device_temperature(int fd, const char *fname, long *temperature)
 	char *fd_path;
 	struct dirent *entry;
 	DIR *dir = NULL;
-	size_t size;
+	ssize_t size;
 	int rc, temp_fd = -1;
 
 	if (fname == NULL || strlen(fname) > NAME_MAX)  {
