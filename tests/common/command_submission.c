@@ -18,22 +18,64 @@
 #include <errno.h>
 #include <unistd.h>
 
+static void submit_cs_nop(void **state, int num_of_pqe)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct hltests_cs_chunk execute_arr[64];
+	uint32_t cb_size = 0;
+	uint64_t seq = 0;
+	void *cb[64];
+	int rc, j, i, fd = tests_state->fd;
+
+	assert_in_range(num_of_pqe, 1, 64);
+
+	for (i = 0 ; i < num_of_pqe ; i++) {
+		cb[i] = hltests_create_cb(fd, 0x1000, EXTERNAL, 0);
+		assert_non_null(cb[i]);
+
+		cb_size = hltests_add_nop_pkt(fd, cb[i], 0, EB_FALSE, MB_FALSE);
+
+		execute_arr[i].cb_ptr = cb[i];
+		execute_arr[i].cb_size = cb_size;
+		execute_arr[i].queue_index =
+				hltests_get_dma_down_qid(fd, STREAM0);
+	}
+
+	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, num_of_pqe, 0, &seq);
+	assert_int_equal(rc, 0);
+
+	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
+	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
+
+	for (i = 0 ; i < num_of_pqe ; i++) {
+		rc = hltests_destroy_cb(fd, cb[i]);
+		assert_int_equal(rc, 0);
+	}
+}
+
 void test_cs_nop(void **state)
 {
-	struct hltests_state *tests_state =
-			(struct hltests_state *) *state;
-	uint32_t cb_size = 0;
-	void *cb;
-	int fd = tests_state->fd;
+	submit_cs_nop(state, 1);
+}
 
-	cb = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
-	assert_non_null(cb);
+void test_cs_nop_16PQE(void **state)
+{
+	submit_cs_nop(state, 16);
+}
 
-	cb_size = hltests_add_nop_pkt(fd, cb, cb_size, EB_FALSE, MB_FALSE);
+void test_cs_nop_32PQE(void **state)
+{
+	submit_cs_nop(state, 32);
+}
 
-	hltests_submit_and_wait_cs(fd, cb, cb_size,
-				hltests_get_dma_down_qid(fd, STREAM0),
-				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
+void test_cs_nop_48PQE(void **state)
+{
+	submit_cs_nop(state, 48);
+}
+
+void test_cs_nop_64PQE(void **state)
+{
+	submit_cs_nop(state, 64);
 }
 
 void test_cs_msg_long(void **state)
@@ -211,6 +253,14 @@ void test_cs_cq_wrap_around(void **state)
 
 const struct CMUnitTest cs_tests[] = {
 	cmocka_unit_test_setup(test_cs_nop, hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_cs_nop_16PQE,
+					hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_cs_nop_32PQE,
+					hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_cs_nop_48PQE,
+					hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_cs_nop_64PQE,
+					hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_cs_msg_long,
 					hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_cs_msg_long_2000,
