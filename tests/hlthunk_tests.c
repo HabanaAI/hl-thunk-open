@@ -1049,7 +1049,10 @@ static int fill_cs_chunk(struct hltests_device *hdev,
 	k = kh_get(ptr64, hdev->cb_table, (uint64_t) (uintptr_t) cb_ptr);
 	if (k == kh_end(hdev->cb_table)) {
 		pthread_mutex_unlock(&hdev->cb_table_lock);
-		return -EINVAL;
+
+		/* Can't find matching handle so treat this as address */
+		chunk->cb_handle = (__u64) cb_ptr;
+		goto out;
 	}
 
 	cb = kh_val(hdev->cb_table, k);
@@ -1057,6 +1060,8 @@ static int fill_cs_chunk(struct hltests_device *hdev,
 	pthread_mutex_unlock(&hdev->cb_table_lock);
 
 	chunk->cb_handle = cb->cb_handle;
+
+out:
 	chunk->queue_index = queue_index;
 	chunk->cb_size = cb_size;
 
