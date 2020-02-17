@@ -1734,7 +1734,7 @@ void hltests_mem_pool_free(void *data, uint64_t addr, uint64_t size)
 
 	pthread_mutex_lock(&mem_pool->lock);
 
-	for (i = start_page ; i < (start_page + npages) ; i++)
+	for (i = start_page ; i <= (start_page + npages) ; i++)
 		mem_pool->pool[i] = 0;
 
 	pthread_mutex_unlock(&mem_pool->lock);
