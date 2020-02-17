@@ -404,13 +404,6 @@ hlthunk_public int hlthunk_debug(int fd, struct hl_debug_args *debug);
 hlthunk_public void *hlthunk_malloc(int size);
 hlthunk_public void hlthunk_free(void *pt);
 
-/* Functions for random number generation */
-
-hlthunk_public void *hlthunk_random_create(unsigned long seed);
-hlthunk_public void hlthunk_random_destroy(void *state);
-hlthunk_public unsigned long hlthunk_random(void *state);
-hlthunk_public double hlthunk_random_double(void *state);
-
 /* Functions for hash table implementation */
 
 hlthunk_public void *hlthunk_hash_create(void);
