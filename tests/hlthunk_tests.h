@@ -122,7 +122,8 @@ enum hltests_stream_id {
 	STREAM0 = 0,
 	STREAM1,
 	STREAM2,
-	STREAM3
+	STREAM3,
+	NUM_OF_STREAMS
 };
 
 enum hltests_is_external {
@@ -146,15 +147,20 @@ enum hltests_contiguous {
 };
 
 enum hltests_dma_perf_test_results {
-	DMA_PERF_RESULTS_HOST_TO_DRAM,
-	DMA_PERF_RESULTS_HOST_TO_SRAM,
-	DMA_PERF_RESULTS_DRAM_TO_SRAM,
-	DMA_PERF_RESULTS_SRAM_TO_DRAM,
-	DMA_PERF_RESULTS_DRAM_TO_DRAM,
-	DMA_PERF_RESULTS_SRAM_TO_HOST,
-	DMA_PERF_RESULTS_DRAM_TO_HOST,
-	DMA_PERF_RESULTS_HOST_SRAM_BIDIR,
-	DMA_PERF_RESULTS_HOST_DRAM_BIDIR,
+	DMA_PERF_HOST2DRAM,
+	DMA_PERF_HOST2SRAM,
+	DMA_PERF_DRAM2SRAM_SINGLE_CH,
+	DMA_PERF_SRAM2DRAM_SINGLE_CH,
+	DMA_PERF_DRAM2DRAM_SINGLE_CH,
+	DMA_PERF_DRAM2SRAM_MULTI_CH,
+	DMA_PERF_SRAM2DRAM_MULTI_CH,
+	DMA_PERF_DRAM2DRAM_MULTI_CH,
+	DMA_PERF_SRAM_DRAM_BIDIR_FULL_CH,
+	DMA_PERF_DRAM2SRAM_5_CH,
+	DMA_PERF_SRAM2HOST,
+	DMA_PERF_DRAM2HOST,
+	DMA_PERF_HOST_SRAM_BIDIR,
+	DMA_PERF_HOST_DRAM_BIDIR,
 	DMA_PERF_RESULTS_MAX
 };
 
@@ -280,12 +286,12 @@ struct hltests_asic_funcs {
 	uint32_t (*get_dma_up_qid)(
 			enum hltests_dcore_separation_mode dcore_sep_mode,
 			enum hltests_stream_id stream);
-	uint32_t (*get_dma_dram_to_sram_qid)(
+	uint32_t (*get_ddma_qid)(
 			enum hltests_dcore_separation_mode dcore_sep_mode,
+			int dma_ch,
 			enum hltests_stream_id stream);
-	uint32_t (*get_dma_sram_to_dram_qid)(
-			enum hltests_dcore_separation_mode dcore_sep_mode,
-			enum hltests_stream_id stream);
+	uint8_t (*get_ddma_cnt)(
+			enum hltests_dcore_separation_mode dcore_sep_mode);
 	uint32_t (*get_tpc_qid)(
 			enum hltests_dcore_separation_mode dcore_sep_mode,
 			uint8_t tpc_id, enum hltests_stream_id stream);
@@ -461,10 +467,9 @@ uint32_t hltests_add_monitor_and_fence(int fd, void *buffer, uint32_t buf_off,
 
 uint32_t hltests_get_dma_down_qid(int fd, enum hltests_stream_id stream);
 uint32_t hltests_get_dma_up_qid(int fd, enum hltests_stream_id stream);
-uint32_t hltests_get_dma_dram_to_sram_qid(int fd,
+uint32_t hltests_get_ddma_qid(int fd, int dma_ch,
 					enum hltests_stream_id stream);
-uint32_t hltests_get_dma_sram_to_dram_qid(int fd,
-					enum hltests_stream_id stream);
+uint8_t hltests_get_ddma_cnt(int fd);
 uint32_t hltests_get_tpc_qid(int fd, uint8_t tpc_id,
 				enum hltests_stream_id stream);
 uint32_t hltests_get_mme_qid(int fd, uint8_t mme_id,

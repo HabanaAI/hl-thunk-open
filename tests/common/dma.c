@@ -418,7 +418,7 @@ void dma_4_queues(void **state, bool sram_only)
 	/* Fence on SOB0 + DMA from DRAM to SRAM */
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
 	mon_and_fence_info.queue_id =
-				hltests_get_dma_dram_to_sram_qid(fd, STREAM0);
+				hltests_get_ddma_qid(fd, 0, STREAM0);
 	mon_and_fence_info.cmdq_fence = true;
 	mon_and_fence_info.sob_id = sob[0];
 	mon_and_fence_info.mon_id = mon[0];
@@ -482,8 +482,7 @@ void dma_4_queues(void **state, bool sram_only)
 								&pkt_info);
 
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
-	mon_and_fence_info.queue_id =
-				hltests_get_dma_sram_to_dram_qid(fd, STREAM0);
+	mon_and_fence_info.queue_id = hltests_get_ddma_qid(fd, 1, STREAM0);
 	mon_and_fence_info.cmdq_fence = true;
 	mon_and_fence_info.sob_id = sob[1];
 	mon_and_fence_info.mon_id = mon[1];
@@ -592,13 +591,11 @@ void dma_4_queues(void **state, bool sram_only)
 
 	execute_arr[1].cb_ptr = cp_dma_cb[0];
 	execute_arr[1].cb_size = cp_dma_cb_size[0];
-	execute_arr[1].queue_index =
-				hltests_get_dma_dram_to_sram_qid(fd, STREAM0);
+	execute_arr[1].queue_index = hltests_get_ddma_qid(fd, 0, STREAM0);
 
 	execute_arr[2].cb_ptr = cp_dma_cb[1];
 	execute_arr[2].cb_size = cp_dma_cb_size[1];
-	execute_arr[2].queue_index =
-				hltests_get_dma_sram_to_dram_qid(fd, STREAM0);
+	execute_arr[2].queue_index = hltests_get_ddma_qid(fd, 1, STREAM0);
 
 	execute_arr[3].cb_ptr = dma_cb[1];
 	execute_arr[3].cb_size = dma_cb_size[1];

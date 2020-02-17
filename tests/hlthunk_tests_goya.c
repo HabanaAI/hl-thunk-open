@@ -383,18 +383,18 @@ static uint32_t goya_get_dma_up_qid(
 	return GOYA_QUEUE_ID_DMA_2;
 }
 
-static uint32_t goya_get_dma_dram_to_sram_qid(
+static uint32_t goya_get_ddma_qid(
 			enum hltests_dcore_separation_mode dcore_sep_mode,
+			int ch,
 			enum hltests_stream_id stream)
 {
-	return GOYA_QUEUE_ID_DMA_3;
+	return GOYA_QUEUE_ID_DMA_3 + ch;
 }
 
-static uint32_t goya_get_dma_sram_to_dram_qid(
-			enum hltests_dcore_separation_mode dcore_sep_mode,
-			enum hltests_stream_id stream)
+static uint8_t goya_get_ddma_cnt(
+			enum hltests_dcore_separation_mode dcore_sep_mode)
 {
-	return GOYA_QUEUE_ID_DMA_4;
+	return 2;
 }
 
 static uint32_t goya_get_tpc_qid(
@@ -470,8 +470,8 @@ static const struct hltests_asic_funcs goya_funcs = {
 	.add_cp_dma_pkt = goya_add_cp_dma_pkt,
 	.get_dma_down_qid = goya_get_dma_down_qid,
 	.get_dma_up_qid = goya_get_dma_up_qid,
-	.get_dma_dram_to_sram_qid = goya_get_dma_dram_to_sram_qid,
-	.get_dma_sram_to_dram_qid = goya_get_dma_sram_to_dram_qid,
+	.get_ddma_qid = goya_get_ddma_qid,
+	.get_ddma_cnt = goya_get_ddma_cnt,
 	.get_tpc_qid = goya_get_tpc_qid,
 	.get_mme_qid = goya_get_mme_qid,
 	.get_tpc_cnt = goya_get_tpc_cnt,
