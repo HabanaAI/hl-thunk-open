@@ -1689,7 +1689,7 @@ void hltests_mem_pool_fini(void *data)
 int hltests_mem_pool_alloc(void *data, uint64_t size, uint64_t *addr)
 {
 	struct mem_pool *mem_pool = (struct mem_pool *) data;
-	uint32_t needed_npages, curr_npages = 0, i, j, k;
+	uint32_t needed_npages, curr_npages, i, j, k;
 	bool found = false;
 
 	needed_npages = (size + mem_pool->page_size - 1) / mem_pool->page_size;
@@ -1697,7 +1697,7 @@ int hltests_mem_pool_alloc(void *data, uint64_t size, uint64_t *addr)
 	pthread_mutex_lock(&mem_pool->lock);
 
 	for (i = 0 ; i < mem_pool->pool_npages ; i++) {
-		for (j = i ; j < mem_pool->pool_npages ; j++) {
+		for (j = i, curr_npages = 0 ; j < mem_pool->pool_npages ; j++) {
 			if (mem_pool->pool[j]) {
 				i = j;
 				break;
