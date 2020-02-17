@@ -1289,20 +1289,20 @@ uint32_t hltests_get_dma_up_qid(int fd, enum hltests_stream_id stream)
 	return asic->get_dma_up_qid(DCORE_MODE_FULL_CHIP, stream);
 }
 
-uint32_t hltests_get_dma_dram_to_sram_qid(int fd, enum hltests_stream_id stream)
+uint32_t hltests_get_ddma_qid(int fd, int dma_ch, enum hltests_stream_id stream)
 {
 	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->get_dma_dram_to_sram_qid(DCORE_MODE_FULL_CHIP, stream);
+	return asic->get_ddma_qid(DCORE_MODE_FULL_CHIP, dma_ch,	stream);
 }
 
-uint32_t hltests_get_dma_sram_to_dram_qid(int fd, enum hltests_stream_id stream)
+uint8_t hltests_get_ddma_cnt(int fd)
 {
 	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->get_dma_sram_to_dram_qid(DCORE_MODE_FULL_CHIP, stream);
+	return asic->get_ddma_cnt(DCORE_MODE_FULL_CHIP);
 }
 
 uint32_t hltests_get_tpc_qid(int fd, uint8_t tpc_id,
