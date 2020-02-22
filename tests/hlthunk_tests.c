@@ -1729,12 +1729,14 @@ int hltests_mem_pool_alloc(void *data, uint64_t size, uint64_t *addr)
 void hltests_mem_pool_free(void *data, uint64_t addr, uint64_t size)
 {
 	struct mem_pool *mem_pool = (struct mem_pool *) data;
-	uint32_t start_page = (addr - mem_pool->start) / mem_pool->page_size,
-			npages = size / mem_pool->page_size, i;
+	uint32_t start_page, npages, i;
+
+	start_page = (addr - mem_pool->start) / mem_pool->page_size;
+	npages = (size + mem_pool->page_size - 1) / mem_pool->page_size;
 
 	pthread_mutex_lock(&mem_pool->lock);
 
-	for (i = start_page ; i <= (start_page + npages) ; i++)
+	for (i = start_page ; i < (start_page + npages) ; i++)
 		mem_pool->pool[i] = 0;
 
 	pthread_mutex_unlock(&mem_pool->lock);
