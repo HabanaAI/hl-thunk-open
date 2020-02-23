@@ -239,6 +239,7 @@ struct hltests_pkt_info {
 			uint64_t dst_addr;
 			uint32_t size;
 			enum hltests_goya_dma_direction dma_dir;
+			bool memset;
 		} dma;
 		struct {
 			uint64_t src_addr;

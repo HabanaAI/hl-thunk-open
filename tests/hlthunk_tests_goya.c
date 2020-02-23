@@ -179,6 +179,7 @@ static uint32_t goya_add_dma_pkt(void *buffer, uint32_t buf_off,
 	packet.dst_addr = pkt_info->dma.dst_addr;
 	packet.tsize = pkt_info->dma.size;
 	packet.dma_dir = pkt_info->dma.dma_dir;
+	packet.memset_mode = pkt_info->dma.memset;
 
 	packet.ctl = htole32(packet.ctl);
 	packet.tsize = htole32(packet.tsize);
