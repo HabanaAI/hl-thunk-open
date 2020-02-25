@@ -290,34 +290,31 @@ void test_error_injection_heartbeat(void **state)
 void test_error_injection_thermal_event(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	long temp_input, temp_max;
+	long temp_pre, temp_post;
 	int rc, rc1, rc2, temp_fd, fd = tests_state->fd;
 
-	rc = get_device_temperature(fd, "temp1_input", &temp_input);
-	rc1 = get_device_temperature(fd, "temp1_max", &temp_max);
+	rc = get_device_temperature(fd, "temp7_input", &temp_pre);
 	assert_int_equal(rc, 0);
-	assert_int_equal(rc1, 0);
-	if (temp_input > temp_max)
-		fail_msg("Cannot run test, input temperature is too high");
 
 	rc = hlthunk_err_inject_thermal_event(fd);
 	assert_int_equal(rc, 0);
 
 	sleep(1);
 
-	rc = get_device_temperature(fd, "temp1_input", &temp_input);
+	rc = get_device_temperature(fd, "temp7_input", &temp_post);
 	rc1 = hlthunk_err_eject_thermal_event(fd);
 
 	assert_int_equal(rc, 0);
-	assert_true(temp_input > temp_max);
+	/* The test faked an overheat of 100 Deg Celsius */
+	assert_true(temp_post > 100000);
 	assert_int_equal(rc1, 0);
 
 	sleep(1);
 
-	rc = get_device_temperature(fd, "temp1_input", &temp_input);
+	rc = get_device_temperature(fd, "temp7_input", &temp_pre);
 	assert_int_equal(rc, 0);
 
-	assert_true(temp_input < temp_max);
+	assert_true(temp_pre < temp_post);
 }
 
 const struct CMUnitTest ei_tests[] = {
