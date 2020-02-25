@@ -27,7 +27,7 @@
 #define PAGE_SIZE_4KB			(1UL << PAGE_SHIFT_4KB)
 #define PAGE_SIZE_64KB			(1UL << PAGE_SHIFT_64KB)
 
-#define TEMPERATURE_SKEW		5000
+#define OVERHEAT_TEMPERATURE		100000  /* 100 Degrees Celsius */
 
 hlthunk_public int hlthunk_err_inject_endless_command(int fd)
 {
@@ -252,34 +252,16 @@ exit:
 
 hlthunk_public int hlthunk_err_inject_thermal_event(int fd)
 {
-	long temp_max, temp_offset;
-	int temp_offset_fd, temp_max_fd;
+	long temp_offset;
+	int temp_offset_fd;
 	ssize_t size;
 	int rc;
 	char value[64] = "";
 
-	temp_max_fd = open_device_temperature_file(fd,
-						     "temp1_max", O_RDONLY);
-	if (temp_max_fd < 0)
-		return temp_max_fd;
-
 	temp_offset_fd = open_device_temperature_file(fd,
-						      "temp1_offset", O_RDWR);
-	if (temp_offset_fd < 0) {
-		close(temp_max_fd);
+						      "temp7_offset", O_RDWR);
+	if (temp_offset_fd < 0)
 		return temp_offset_fd;
-	}
-
-	/* Read the max temperature */
-	size = pread(temp_max_fd, value, sizeof(value), 0);
-	if (size < 0) {
-		printf("Failed to read from temperature offset fd [rc %zd]\n",
-		       size);
-		rc = size;
-		goto exit;
-	}
-
-	temp_max = strtol(value, NULL, 10);
 
 	/* Read the temperature offset */
 	size = pread(temp_offset_fd, value, sizeof(value), 0);
@@ -293,7 +275,7 @@ hlthunk_public int hlthunk_err_inject_thermal_event(int fd)
 	temp_offset = strtol(value, NULL, 10);
 
 	/* Modify temperature offset */
-	sprintf(value, "%ld", temp_offset + temp_max + TEMPERATURE_SKEW);
+	sprintf(value, "%ld", temp_offset + OVERHEAT_TEMPERATURE);
 
 	size = write(temp_offset_fd, value, strlen(value) + 1);
 	if (size < 0) {
@@ -309,40 +291,21 @@ hlthunk_public int hlthunk_err_inject_thermal_event(int fd)
 	rc = 0;
 exit:
 	close(temp_offset_fd);
-	close(temp_max_fd);
 	return rc;
 }
 
 hlthunk_public int hlthunk_err_eject_thermal_event(int fd)
 {
-	long temp_offset, temp_max;
-	int temp_offset_fd, temp_max_fd;
+	long temp_offset;
+	int temp_offset_fd;
 	ssize_t size;
 	int rc = 0;
 	char value[64] = "";
 
-	temp_max_fd = open_device_temperature_file(fd,
-						   "temp1_max", O_RDONLY);
-	if (temp_max_fd < 0)
-		return temp_max_fd;
-
 	temp_offset_fd = open_device_temperature_file(fd,
-						      "temp1_offset", O_RDWR);
-	if (temp_offset_fd < 0) {
-		close(temp_max_fd);
+						      "temp7_offset", O_RDWR);
+	if (temp_offset_fd < 0)
 		return temp_offset_fd;
-	}
-
-	/* Read the max temperature */
-	size = pread(temp_max_fd, value, sizeof(value), 0);
-	if (size < 0) {
-		printf("Failed to read from temperature offset fd [rc %zd]\n",
-		       size);
-		rc = size;
-		goto exit;
-	}
-
-	temp_max = strtol(value, NULL, 10);
 
 	/* Read the temperature offset */
 	size = pread(temp_offset_fd, value, sizeof(value), 0);
@@ -356,7 +319,7 @@ hlthunk_public int hlthunk_err_eject_thermal_event(int fd)
 	temp_offset = strtol(value, NULL, 10);
 
 	/* Modify temperature offset */
-	sprintf(value, "%ld", temp_offset - temp_max - TEMPERATURE_SKEW);
+	sprintf(value, "%ld", temp_offset - OVERHEAT_TEMPERATURE);
 
 	size = write(temp_offset_fd, value, strlen(value) + 1);
 	if (size < 0) {
@@ -366,7 +329,6 @@ hlthunk_public int hlthunk_err_eject_thermal_event(int fd)
 	}
 
 exit:
-	close(temp_max_fd);
 	close(temp_offset_fd);
 	return rc;
 }
