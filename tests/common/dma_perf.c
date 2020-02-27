@@ -107,10 +107,10 @@ static double hltests_transfer_perf(int fd,
 	/* return value in GB/Sec */
 	if (second_transfer)
 		return ((double)(first_transfer->size + second_transfer->size) *
-			num_of_transfers / time_diff) / 1024 / 1024 / 1024;
+			num_of_transfers / time_diff) / 1000 / 1000 / 1000;
 	else
 		return ((double)(first_transfer->size) *
-			num_of_transfers / time_diff) / 1024 / 1024 / 1024;
+			num_of_transfers / time_diff) / 1000 / 1000 / 1000;
 }
 
 void hltest_host_sram_perf(void **state)
@@ -441,7 +441,7 @@ static double indirect_perf_test(int fd, uint32_t num_of_dma_ch,
 
 	/* return value in GB/Sec */
 	return (((double)(total_dma_size) * num_of_lindma_pkts) / time_diff) /
-							1024 / 1024 / 1024;
+							1000 / 1000 / 1000;
 }
 
 void hltest_sram_dram_single_ch_perf(void **state)
