@@ -964,7 +964,7 @@ void hltest_dram_sram_5ch_perf(void **state)
 	uint32_t size;
 	int num_of_lindma_pkts, rc, ch, fd = tests_state->fd;
 	int num_of_ddma_ch = 5;
-	uint32_t queue_index[5] = {0, 1, 3, 4, 5};
+	uint32_t queue_index[5] = {0, 1, 2, 3, 4};
 	uint8_t factor = hltests_is_simulator(fd) ? 0xf : 0xff;
 
 	/* This test runs on Gaudi */
