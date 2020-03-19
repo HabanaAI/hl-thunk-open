@@ -13,6 +13,12 @@ include(DefineCompilerFlags)
 
 project(hl-thunk LANGUAGES C)
 
+# Reduce "warm" compilation time if ccache is available
+find_program(CCACHE_PROGRAM ccache)
+if (CCACHE_PROGRAM)
+    set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+endif()
+
 set(HLTHUNK "hl-thunk")
 set(HLTHUNK_PACKAGE "hl-thunk")
 set(HLTHUNK_COMPONENT "lib${HLTHUNK}")
