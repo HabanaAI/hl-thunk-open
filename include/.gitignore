@@ -33,3 +33,4 @@ specs/goya/asic_reg/dma_nrtr_regs.h
 specs/goya/asic_reg/pci_nrtr_regs.h
 specs/goya/asic_reg/dma_ch_?_regs.h
 specs/goya/asic_reg/psoc_etr_regs.h
+specs/goya/asic_reg/psoc_timestamp_regs.h
