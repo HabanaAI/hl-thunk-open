@@ -66,6 +66,11 @@ struct hlthunk_reset_count_info {
 	uint32_t soft_reset_count;
 };
 
+struct hlthunk_time_sync_info {
+	uint64_t device_time;
+	uint64_t host_time;
+};
+
 struct hlthunk_cs_in {
 	void *chunks_restore;
 	void *chunks_execute;
@@ -284,6 +289,17 @@ hlthunk_public int hlthunk_get_clk_rate(int fd, uint32_t *cur_clk_mhz,
  */
 hlthunk_public int hlthunk_get_reset_count_info(int fd,
 					struct hlthunk_reset_count_info *info);
+
+/**
+ * This function retrieves the device's time alongside the host's time
+ * for synchronization
+ * @param fd file descriptor handle of habanalabs main device
+ * @param info pointer to memory that will be filled by the function with the
+ * device's and host's times
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_get_time_sync_info(int fd,
+					struct hlthunk_time_sync_info *info);
 
 /**
  * This function retrieves miscellaneous information of a specific device

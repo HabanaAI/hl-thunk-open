@@ -643,6 +643,33 @@ hlthunk_public int hlthunk_get_reset_count_info(int fd,
 
 }
 
+hlthunk_public int hlthunk_get_time_sync_info(int fd,
+					struct hlthunk_time_sync_info *info)
+{
+	struct hl_info_args args;
+	struct hl_info_time_sync hl_time_sync;
+	int rc;
+
+	if (!info)
+		return -EINVAL;
+
+	memset(&args, 0, sizeof(args));
+	memset(&hl_time_sync, 0, sizeof(hl_time_sync));
+
+	args.op = HL_INFO_TIME_SYNC;
+	args.return_pointer = (__u64) (uintptr_t) &hl_time_sync;
+	args.return_size = sizeof(hl_time_sync);
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	if (rc)
+		return rc;
+
+	info->device_time = hl_time_sync.device_time;
+	info->host_time = hl_time_sync.host_time;
+
+	return 0;
+}
+
 hlthunk_public int hlthunk_request_command_buffer(int fd, uint32_t cb_size,
 							uint64_t *cb_handle)
 {
