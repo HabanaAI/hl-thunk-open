@@ -186,13 +186,32 @@ void test_print_reset_count(void **state)
 	hlthunk_close(fd);
 }
 
+void test_print_time_sync_info(void **state)
+{
+	const char *pciaddr = hltests_get_parser_pciaddr();
+	struct hlthunk_time_sync_info info;
+	int rc, fd;
+
+	fd = hlthunk_open_control(0, pciaddr);
+	assert_in_range(fd, 0, INT_MAX);
+
+	rc = hlthunk_get_time_sync_info(fd, &info);
+	assert_int_equal(rc, 0);
+
+	printf("\nDevice time: 0x%"PRIx64"\n", info.device_time);
+	printf("Host time: 0x%"PRIx64"\n\n", info.host_time);
+
+	hlthunk_close(fd);
+}
+
 const struct CMUnitTest control_tests[] = {
 	cmocka_unit_test(test_print_hw_ip_info),
 	cmocka_unit_test(test_print_hw_idle_info),
 	cmocka_unit_test(test_print_dram_usage_info_no_stop),
 	cmocka_unit_test(test_print_device_utilization_no_stop),
 	cmocka_unit_test(test_print_clk_rate),
-	cmocka_unit_test(test_print_reset_count)
+	cmocka_unit_test(test_print_reset_count),
+	cmocka_unit_test(test_print_time_sync_info)
 };
 
 static const char *const usage[] = {
