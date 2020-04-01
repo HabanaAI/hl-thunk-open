@@ -187,8 +187,9 @@ void test_cs_two_streams_with_fence(void **state)
 	mon_and_fence_info.sob_id = sob0;
 	mon_and_fence_info.mon_id = mon0;
 	mon_and_fence_info.mon_address = 0;
-	mon_and_fence_info.dec_val = 1;
-	mon_and_fence_info.target_val = 1;
+	mon_and_fence_info.sob_val = 1;
+	mon_and_fence_info.dec_fence = true;
+	mon_and_fence_info.mon_payload = 1;
 	cb_stream0_size = hltests_add_monitor_and_fence(fd, cb_stream0,
 					cb_stream0_size, &mon_and_fence_info);
 

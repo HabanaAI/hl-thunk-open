@@ -106,8 +106,9 @@ static void test_sm(void **state, bool is_tpc, bool is_wait, uint8_t engine_id)
 	mon_and_fence_info.sob_id = sob0;
 	mon_and_fence_info.mon_id = mon0;
 	mon_and_fence_info.mon_address = 0;
-	mon_and_fence_info.target_val = 1;
-	mon_and_fence_info.dec_val = 1;
+	mon_and_fence_info.sob_val = 1;
+	mon_and_fence_info.dec_fence = true;
+	mon_and_fence_info.mon_payload = 1;
 	offset = hltests_add_monitor_and_fence(fd, ext_cb, 0,
 						&mon_and_fence_info);
 	memset(&pkt_info, 0, sizeof(pkt_info));
@@ -245,8 +246,9 @@ static void test_sm_pingpong_upper_cp(void **state, bool is_tpc,
 	mon_and_fence_info.sob_id = sob[0];
 	mon_and_fence_info.mon_id = mon[0];
 	mon_and_fence_info.mon_address = 0;
-	mon_and_fence_info.target_val = 1;
-	mon_and_fence_info.dec_val = 1;
+	mon_and_fence_info.sob_val = 1;
+	mon_and_fence_info.dec_fence = true;
+	mon_and_fence_info.mon_payload = 1;
 	engine_cb_size = hltests_add_monitor_and_fence(fd, engine_cb, 0,
 							&mon_and_fence_info);
 	memset(&pkt_info, 0, sizeof(pkt_info));
@@ -309,8 +311,9 @@ static void test_sm_pingpong_upper_cp(void **state, bool is_tpc,
 	mon_and_fence_info.sob_id = sob[1];
 	mon_and_fence_info.mon_id = mon[1];
 	mon_and_fence_info.mon_address = 0;
-	mon_and_fence_info.target_val = 1;
-	mon_and_fence_info.dec_val = 1;
+	mon_and_fence_info.sob_val = 1;
+	mon_and_fence_info.dec_fence = true;
+	mon_and_fence_info.mon_payload = 1;
 	dmaup_cb_size = hltests_add_monitor_and_fence(fd, dmaup_cb, 0,
 							&mon_and_fence_info);
 

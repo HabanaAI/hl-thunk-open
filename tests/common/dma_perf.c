@@ -350,8 +350,9 @@ static double indirect_perf_test(int fd, uint32_t num_of_dma_ch,
 		mon_and_fence_info.sob_id = sob0 + 1;
 		mon_and_fence_info.mon_id = mon0 + 1 + ch;
 		mon_and_fence_info.mon_address = 0;
-		mon_and_fence_info.target_val = 1;
-		mon_and_fence_info.dec_val = 1;
+		mon_and_fence_info.sob_val = 1;
+		mon_and_fence_info.dec_fence = true;
+		mon_and_fence_info.mon_payload = 1;
 		lower_cb_offset = hltests_add_monitor_and_fence(fd,
 					lower_cb[ch], 0, &mon_and_fence_info);
 
@@ -411,8 +412,9 @@ static double indirect_perf_test(int fd, uint32_t num_of_dma_ch,
 	mon_and_fence_info.sob_id = sob0;
 	mon_and_fence_info.mon_id = mon0;
 	mon_and_fence_info.mon_address = 0;
-	mon_and_fence_info.target_val = num_of_dma_ch;
-	mon_and_fence_info.dec_val = num_of_dma_ch;
+	mon_and_fence_info.sob_val = num_of_dma_ch;
+	mon_and_fence_info.dec_fence = true;
+	mon_and_fence_info.mon_payload = 1;
 	cb_offset = hltests_add_monitor_and_fence(fd, cb, cb_offset,
 						&mon_and_fence_info);
 

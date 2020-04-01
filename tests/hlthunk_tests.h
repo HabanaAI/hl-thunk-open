@@ -249,13 +249,15 @@ struct hltests_pkt_info {
 };
 
 struct hltests_monitor_and_fence {
-	uint8_t queue_id;
+	uint64_t mon_address;
+	uint32_t mon_payload;
 	bool cmdq_fence;
+	bool dec_fence; /* decrement the fence once it reaches the gate value */
+	bool no_fence; /* true to avoid adding the fence packet */
 	uint16_t sob_id;
 	uint16_t mon_id;
-	uint64_t mon_address;
-	uint8_t dec_val; /* decrement the fence once it reach the target val */
-	uint8_t target_val;
+	uint16_t sob_val;
+	uint8_t queue_id;
 };
 
 struct hltests_asic_funcs {
@@ -465,7 +467,6 @@ uint32_t hltests_add_cp_dma_pkt(int fd, void *buffer, uint32_t buf_off,
 
 uint32_t hltests_add_monitor_and_fence(int fd, void *buffer, uint32_t buf_off,
 		struct hltests_monitor_and_fence *mon_and_fence_info);
-
 uint32_t hltests_get_dma_down_qid(int fd, enum hltests_stream_id stream);
 uint32_t hltests_get_dma_up_qid(int fd, enum hltests_stream_id stream);
 uint32_t hltests_get_ddma_qid(int fd, int dma_ch,

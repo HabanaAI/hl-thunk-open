@@ -113,8 +113,9 @@ void test_dma_4_queues(void **state)
 	mon_and_fence_info.sob_id = 0;
 	mon_and_fence_info.mon_id = 0;
 	mon_and_fence_info.mon_address = 0;
-	mon_and_fence_info.target_val = 1;
-	mon_and_fence_info.dec_val = 1;
+	mon_and_fence_info.sob_val = 1;
+	mon_and_fence_info.dec_fence = true;
+	mon_and_fence_info.mon_payload = 1;
 	dma_cb_size[1] = hltests_add_monitor_and_fence(fd, dma_cb[1],
 				dma_cb_size[1], &mon_and_fence_info);
 
@@ -149,8 +150,9 @@ void test_dma_4_queues(void **state)
 	mon_and_fence_info.sob_id = 1;
 	mon_and_fence_info.mon_id = 1;
 	mon_and_fence_info.mon_address = 0;
-	mon_and_fence_info.target_val = 1;
-	mon_and_fence_info.dec_val = 1;
+	mon_and_fence_info.sob_val = 1;
+	mon_and_fence_info.dec_fence = true;
+	mon_and_fence_info.mon_payload = 1;
 	dma_cb_size[2] = hltests_add_monitor_and_fence(fd, dma_cb[2],
 				dma_cb_size[2], &mon_and_fence_info);
 
@@ -185,8 +187,9 @@ void test_dma_4_queues(void **state)
 	mon_and_fence_info.sob_id = 2;
 	mon_and_fence_info.mon_id = 2;
 	mon_and_fence_info.mon_address = 0;
-	mon_and_fence_info.target_val = 1;
-	mon_and_fence_info.dec_val = 1;
+	mon_and_fence_info.sob_val = 1;
+	mon_and_fence_info.dec_fence = true;
+	mon_and_fence_info.mon_payload = 1;
 	dma_cb_size[3] = hltests_add_monitor_and_fence(fd, dma_cb[3],
 					dma_cb_size[3], &mon_and_fence_info);
 
