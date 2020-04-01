@@ -331,8 +331,18 @@ static double indirect_perf_test(int fd, uint32_t num_of_dma_ch,
 	sob0 = hltests_get_first_avail_sob(fd);
 	mon0 = hltests_get_first_avail_mon(fd);
 
+	/* SOB0/MON0 - used to signal from DDMA channels to PDMA that the DMA
+	 *             job is done.
+	 * SOB1/MON1+2 - used to signal from PDMA to DDMA channels that they
+	 *               can start the DMA operation. This is needed so they
+	 *               will start together
+	 * SOB2/MON3   - used to signal from DDMA channels to PDMA that they
+	 *               have started to execute their CB and they are waiting
+	 *               on the fence for SOB1
+	 */
+
 	/* Clear SOB before we start */
-	hltests_clear_sobs(fd, 2);
+	hltests_clear_sobs(fd, 3);
 
 	/* Setup lower CB for internal DMA engine */
 	for (ch = 0 ; ch < num_of_dma_ch ; ch++) {
@@ -344,6 +354,7 @@ static double indirect_perf_test(int fd, uint32_t num_of_dma_ch,
 		lower_cb_device_va[ch] = hltests_get_device_va_for_host_ptr(fd,
 								lower_cb[ch]);
 
+		/* Just configure and ARM the monitor but don't put the fence */
 		memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
 		mon_and_fence_info.queue_id = transfer[ch].queue_index;
 		mon_and_fence_info.cmdq_fence = true;
@@ -353,8 +364,29 @@ static double indirect_perf_test(int fd, uint32_t num_of_dma_ch,
 		mon_and_fence_info.sob_val = 1;
 		mon_and_fence_info.dec_fence = true;
 		mon_and_fence_info.mon_payload = 1;
+		mon_and_fence_info.no_fence = true;
 		lower_cb_offset = hltests_add_monitor_and_fence(fd,
 					lower_cb[ch], 0, &mon_and_fence_info);
+
+		/* add 1 to SOB2 by the DDMA QMAN */
+		memset(&pkt_info, 0, sizeof(pkt_info));
+		pkt_info.eb = EB_FALSE;
+		pkt_info.mb = MB_TRUE;
+		pkt_info.write_to_sob.mode = SOB_ADD;
+		pkt_info.write_to_sob.sob_id = sob0 + 2;
+		pkt_info.write_to_sob.value = 1;
+		lower_cb_offset = hltests_add_write_to_sob_pkt(fd, lower_cb[ch],
+						lower_cb_offset, &pkt_info);
+
+		/* Now put the fence of the monitor we configured before */
+		memset(&pkt_info, 0, sizeof(pkt_info));
+		pkt_info.eb = EB_FALSE;
+		pkt_info.mb = MB_TRUE;
+		pkt_info.fence.dec_val = 1;
+		pkt_info.fence.gate_val = 1;
+		pkt_info.fence.fence_id = 0;
+		lower_cb_offset = hltests_add_fence_pkt(fd, lower_cb[ch],
+						lower_cb_offset, &pkt_info);
 
 		memset(&pkt_info, 0, sizeof(pkt_info));
 		pkt_info.eb = EB_FALSE;
@@ -395,9 +427,24 @@ static double indirect_perf_test(int fd, uint32_t num_of_dma_ch,
 		execute_arr[ch].queue_index = transfer[ch].queue_index;
 	}
 
+	/* Setup CB for PDMA */
 	cb = hltests_create_cb(fd, 0x1000, EXTERNAL, 0);
 	assert_non_null(cb);
 
+	/* Add monitor to wait on all DDMA to announce they are ready */
+	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
+	mon_and_fence_info.queue_id = hltests_get_dma_down_qid(fd, STREAM0);
+	mon_and_fence_info.cmdq_fence = false;
+	mon_and_fence_info.sob_id = sob0 + 2;
+	mon_and_fence_info.mon_id = mon0 + 1 + num_of_dma_ch;
+	mon_and_fence_info.mon_address = 0;
+	mon_and_fence_info.sob_val = num_of_dma_ch;
+	mon_and_fence_info.dec_fence = true;
+	mon_and_fence_info.mon_payload = 1;
+	cb_offset = hltests_add_monitor_and_fence(fd, cb, cb_offset,
+						&mon_and_fence_info);
+
+	/* Now signal DDMA channels they can start executing */
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_TRUE;
 	pkt_info.mb = MB_TRUE;
@@ -406,6 +453,7 @@ static double indirect_perf_test(int fd, uint32_t num_of_dma_ch,
 	pkt_info.write_to_sob.mode = SOB_SET;
 	cb_offset = hltests_add_write_to_sob_pkt(fd, cb, 0, &pkt_info);
 
+	/* Wait for DDMA channels to announce they finished */
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
 	mon_and_fence_info.queue_id = hltests_get_dma_down_qid(fd, STREAM0);
 	mon_and_fence_info.cmdq_fence = false;
