@@ -61,8 +61,9 @@ static void *dma_thread_start(void *args)
 	mon_and_fence_info.sob_id = sob0;
 	mon_and_fence_info.mon_id = mon0;
 	mon_and_fence_info.mon_address = 0;
-	mon_and_fence_info.target_val = 1;
-	mon_and_fence_info.dec_val = 1;
+	mon_and_fence_info.sob_val = 1;
+	mon_and_fence_info.dec_fence = true;
+	mon_and_fence_info.mon_payload = 1;
 	cb_size[0] = hltests_add_monitor_and_fence(fd, cb[0], cb_size[0],
 							&mon_and_fence_info);
 
@@ -100,8 +101,9 @@ static void *dma_thread_start(void *args)
 	mon_and_fence_info.sob_id = sob8;
 	mon_and_fence_info.mon_id = mon1;
 	mon_and_fence_info.mon_address = 0;
-	mon_and_fence_info.target_val = 1;
-	mon_and_fence_info.dec_val = 1;
+	mon_and_fence_info.sob_val = 1;
+	mon_and_fence_info.dec_fence = true;
+	mon_and_fence_info.mon_payload = 1;
 	cb_size[1] = hltests_add_monitor_and_fence(fd, cb[1], cb_size[1],
 							&mon_and_fence_info);
 
@@ -423,8 +425,9 @@ void dma_4_queues(void **state, bool sram_only)
 	mon_and_fence_info.sob_id = sob[0];
 	mon_and_fence_info.mon_id = mon[0];
 	mon_and_fence_info.mon_address = 0;
-	mon_and_fence_info.target_val = 1;
-	mon_and_fence_info.dec_val = 1;
+	mon_and_fence_info.sob_val = 1;
+	mon_and_fence_info.dec_fence = true;
+	mon_and_fence_info.mon_payload = 1;
 	common_cb_buf_size[0] = hltests_add_monitor_and_fence(fd,
 				common_cb_buf[0], common_cb_buf_size[0],
 				&mon_and_fence_info);
@@ -487,8 +490,9 @@ void dma_4_queues(void **state, bool sram_only)
 	mon_and_fence_info.sob_id = sob[1];
 	mon_and_fence_info.mon_id = mon[1];
 	mon_and_fence_info.mon_address = 0;
-	mon_and_fence_info.target_val = 1;
-	mon_and_fence_info.dec_val = 1;
+	mon_and_fence_info.sob_val = 1;
+	mon_and_fence_info.dec_fence = true;
+	mon_and_fence_info.mon_payload = 1;
 	common_cb_buf_size[1] = hltests_add_monitor_and_fence(fd,
 				common_cb_buf[1], common_cb_buf_size[1],
 				&mon_and_fence_info);
@@ -567,8 +571,9 @@ void dma_4_queues(void **state, bool sram_only)
 	mon_and_fence_info.sob_id = sob[2];
 	mon_and_fence_info.mon_id = mon[2];
 	mon_and_fence_info.mon_address = 0;
-	mon_and_fence_info.target_val = 1;
-	mon_and_fence_info.dec_val = 1;
+	mon_and_fence_info.sob_val = 1;
+	mon_and_fence_info.dec_fence = true;
+	mon_and_fence_info.mon_payload = 1;
 	dma_cb_size[1] = hltests_add_monitor_and_fence(fd, dma_cb[1],
 					dma_cb_size[1], &mon_and_fence_info);
 	memset(&pkt_info, 0, sizeof(pkt_info));

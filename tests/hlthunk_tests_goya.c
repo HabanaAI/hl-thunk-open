@@ -222,7 +222,7 @@ static uint32_t goya_add_monitor_and_fence(
 	struct hltests_pkt_info pkt_info;
 	bool cmdq_fence = mon_and_fence_info->cmdq_fence;
 	uint8_t base = 0; /* monitor base address */
-	uint8_t fence_gate_val = 1;
+	uint8_t fence_gate_val = mon_and_fence_info->mon_payload;
 
 	switch (mon_and_fence_info->queue_id) {
 	case GOYA_QUEUE_ID_DMA_0:
@@ -295,8 +295,8 @@ static uint32_t goya_add_monitor_and_fence(
 			fence_addr = mmTPC7_QM_CP_FENCE0_RDATA;
 		break;
 	default:
-		printf("Failed to configure fence - invalid queue ID %d\n",
-				mon_and_fence_info->queue_id);
+		printf("Failed to configure fence - invalid QID %d\n",
+			mon_and_fence_info->queue_id);
 	}
 
 	if (mon_and_fence_info->mon_address)
@@ -314,7 +314,7 @@ static uint32_t goya_add_monitor_and_fence(
 			mon_and_fence_info->mon_id * 4) - monitor_base;
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
-	pkt_info.mb = MB_TRUE;
+	pkt_info.mb = MB_FALSE;
 	pkt_info.msg_short.base = base;
 	pkt_info.msg_short.address = msg_addr_offset;
 	pkt_info.msg_short.value = (uint32_t) address;
@@ -325,7 +325,7 @@ static uint32_t goya_add_monitor_and_fence(
 				mon_and_fence_info->mon_id * 4) - monitor_base;
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
-	pkt_info.mb = MB_TRUE;
+	pkt_info.mb = MB_FALSE;
 	pkt_info.msg_short.base = base;
 	pkt_info.msg_short.address = msg_addr_offset;
 	pkt_info.msg_short.value = (uint32_t) (address >> 32);
@@ -339,7 +339,7 @@ static uint32_t goya_add_monitor_and_fence(
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
-	pkt_info.mb = MB_TRUE;
+	pkt_info.mb = MB_FALSE;
 	pkt_info.msg_short.base = base;
 	pkt_info.msg_short.address = msg_addr_offset;
 	pkt_info.msg_short.value = fence_gate_val;
@@ -354,18 +354,22 @@ static uint32_t goya_add_monitor_and_fence(
 	pkt_info.mb = MB_TRUE;
 	pkt_info.arm_monitor.address = msg_addr_offset;
 	pkt_info.arm_monitor.mon_mode = EQUAL;
-	pkt_info.arm_monitor.sob_val = mon_and_fence_info->target_val;
+	pkt_info.arm_monitor.sob_val = mon_and_fence_info->sob_val;
 	pkt_info.arm_monitor.sob_id = mon_and_fence_info->sob_id;
 	buf_off = goya_add_arm_monitor_pkt(buffer, buf_off, &pkt_info);
 
 	/* Fence packet */
-	memset(&pkt_info, 0, sizeof(pkt_info));
-	pkt_info.eb = EB_FALSE;
-	pkt_info.mb = MB_TRUE;
-	pkt_info.fence.dec_val = mon_and_fence_info->dec_val;
-	pkt_info.fence.gate_val = fence_gate_val;
-	pkt_info.fence.fence_id = 0;
-	buf_off = goya_add_fence_pkt(buffer, buf_off, &pkt_info);
+	if (!(mon_and_fence_info->no_fence)) {
+		memset(&pkt_info, 0, sizeof(pkt_info));
+		pkt_info.eb = EB_FALSE;
+		pkt_info.mb = MB_TRUE;
+		pkt_info.fence.dec_val =
+			mon_and_fence_info->dec_fence ? fence_gate_val : 0;
+
+		pkt_info.fence.gate_val = fence_gate_val;
+		pkt_info.fence.fence_id = 0;
+		buf_off = goya_add_fence_pkt(buffer, buf_off, &pkt_info);
+	}
 
 	return buf_off;
 }

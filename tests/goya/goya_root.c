@@ -121,8 +121,9 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 	mon_and_fence_info.sob_id = 0;
 	mon_and_fence_info.mon_id = 0;
 	mon_and_fence_info.mon_address = 0;
-	mon_and_fence_info.target_val = 1;
-	mon_and_fence_info.dec_val = 1;
+	mon_and_fence_info.sob_val = 1;
+	mon_and_fence_info.dec_fence = true;
+	mon_and_fence_info.mon_payload = 1;
 	dma_cb_size = hltests_add_monitor_and_fence(fd, dma_cb,
 					dma_cb_size, &mon_and_fence_info);
 

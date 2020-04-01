@@ -1925,8 +1925,9 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	mon_and_fence_info.sob_id = sob[0];
 	mon_and_fence_info.mon_id = mon[0];
 	mon_and_fence_info.mon_address = 0;
-	mon_and_fence_info.target_val = 1;
-	mon_and_fence_info.dec_val = 1;
+	mon_and_fence_info.sob_val = 1;
+	mon_and_fence_info.dec_fence = true;
+	mon_and_fence_info.mon_payload = 1;
 	engine_common_cb_size = hltests_add_monitor_and_fence(fd,
 							engine_common_cb,
 							engine_common_cb_size,
@@ -2031,8 +2032,9 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	mon_and_fence_info.sob_id = sob[0] + 1;
 	mon_and_fence_info.mon_id = mon[0] + 1;
 	mon_and_fence_info.mon_address = 0;
-	mon_and_fence_info.target_val = 1;
-	mon_and_fence_info.dec_val = 1;
+	mon_and_fence_info.sob_val = 1;
+	mon_and_fence_info.dec_fence = true;
+	mon_and_fence_info.mon_payload = 1;
 	dmaup_cb_size = hltests_add_monitor_and_fence(fd, dmaup_cb,
 				dmaup_cb_size, &mon_and_fence_info);
 
