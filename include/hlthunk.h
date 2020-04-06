@@ -420,6 +420,13 @@ hlthunk_public int hlthunk_debug(int fd, struct hl_debug_args *debug);
 hlthunk_public void *hlthunk_malloc(int size);
 hlthunk_public void hlthunk_free(void *pt);
 
+/**
+ * This function returns a pointer to a char array containing the version. The
+ * char array should be freed using hlthunk_free
+ * @return valid pointer on success or null in case of error
+ */
+hlthunk_public char *hlthunk_get_version(void);
+
 /* Functions for hash table implementation */
 
 hlthunk_public void *hlthunk_hash_create(void);

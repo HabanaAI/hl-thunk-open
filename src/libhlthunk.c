@@ -22,6 +22,8 @@
 #include <pthread.h>
 #include <dlfcn.h>
 
+extern const char *HLTHUNK_SHA1_VERSION;
+
 int hlthunk_debug_level = HLTHUNK_DEBUG_LEVEL_NA;
 #define BUSID_WITHOUT_DOMAIN_LEN	7
 #define BUSID_WITH_DOMAIN_LEN		12
@@ -907,6 +909,20 @@ hlthunk_public int hlthunk_memory_unmap(int fd, uint64_t device_virt_addr)
 hlthunk_public int hlthunk_debug(int fd, struct hl_debug_args *debug)
 {
 	return hlthunk_ioctl(fd, HL_IOCTL_DEBUG, debug);
+}
+
+hlthunk_public char *hlthunk_get_version(void)
+{
+	char *version;
+
+	version = hlthunk_malloc(128);
+	if (!version)
+		return NULL;
+
+	snprintf(version, 127, "%d.%d.%d-%s", HL_DRIVER_MAJOR, HL_DRIVER_MINOR,
+		HL_DRIVER_PATCHLEVEL, HLTHUNK_SHA1_VERSION);
+
+	return version;
 }
 
 int hlthunk_profiler_start_original(int fd)
