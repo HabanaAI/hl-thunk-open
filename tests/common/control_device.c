@@ -204,6 +204,18 @@ void test_print_time_sync_info(void **state)
 	hlthunk_close(fd);
 }
 
+void test_print_hlthunk_version(void **state)
+{
+	char *version;
+
+	version = hlthunk_get_version();
+	assert_int_not_equal(version, NULL);
+
+	printf("hlthunk version: %s\n", version);
+
+	hlthunk_free(version);
+}
+
 const struct CMUnitTest control_tests[] = {
 	cmocka_unit_test(test_print_hw_ip_info),
 	cmocka_unit_test(test_print_hw_idle_info),
@@ -211,7 +223,8 @@ const struct CMUnitTest control_tests[] = {
 	cmocka_unit_test(test_print_device_utilization_no_stop),
 	cmocka_unit_test(test_print_clk_rate),
 	cmocka_unit_test(test_print_reset_count),
-	cmocka_unit_test(test_print_time_sync_info)
+	cmocka_unit_test(test_print_time_sync_info),
+	cmocka_unit_test(test_print_hlthunk_version)
 };
 
 static const char *const usage[] = {
