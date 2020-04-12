@@ -33,6 +33,7 @@ struct hltests_thread_params {
 };
 
 static pthread_mutex_t table_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_spinlock_t rand_lock;
 static khash_t(ptr) * dev_table;
 
 static enum hlthunk_device_name asic_name_for_testing =
@@ -141,17 +142,39 @@ static void destroy_cb_map(struct hltests_device *hdev)
 
 static int hltests_init(void)
 {
+	int rc;
+
+	rc = pthread_spin_init(&rand_lock, PTHREAD_PROCESS_PRIVATE);
+	if (rc) {
+		printf("Failed to initialize number randomizer lock [rc %d]\n",
+			rc);
+		return rc;
+	}
+
 	seed(time(NULL));
 
 	dev_table = kh_init(ptr);
+	if (!dev_table) {
+		rc = -ENOMEM;
+		printf("Failed to initialize device table [rc %d]\n", rc);
+		goto free_spinlock;
+	}
 
-	return dev_table ? 0 : -ENOMEM;
+	return 0;
+
+free_spinlock:
+	pthread_spin_destroy(&rand_lock);
+
+	return rc;
 }
 
 static void hltests_fini(void)
 {
-	if (dev_table)
-		kh_destroy(ptr, dev_table);
+	if (!dev_table)
+		return;
+
+	kh_destroy(ptr, dev_table);
+	pthread_spin_destroy(&rand_lock);
 }
 
 static void *hltests_thread_start(void *args)
@@ -1355,6 +1378,17 @@ uint16_t hltests_get_first_avail_mon(int fd)
 	return asic->get_first_avail_mon(DCORE_MODE_FULL_CHIP);
 }
 
+uint32_t hltests_rand_u32(void)
+{
+	uint32_t val;
+
+	pthread_spin_lock(&rand_lock);
+	val = rand_u32();
+	pthread_spin_unlock(&rand_lock);
+
+	return val;
+}
+
 void hltests_fill_rand_values(void *ptr, uint32_t size)
 {
 	uint32_t i, *p = ptr, rounddown_aligned_size, remainder, val;
@@ -1363,12 +1397,12 @@ void hltests_fill_rand_values(void *ptr, uint32_t size)
 	remainder = size - rounddown_aligned_size;
 
 	for (i = 0 ; i < rounddown_aligned_size ; i += sizeof(uint32_t), p++)
-		*p = rand_u32();
+		*p = hltests_rand_u32();
 
 	if (!remainder)
 		return;
 
-	val = rand_u32();
+	val = hltests_rand_u32();
 	for (i = 0 ; i < remainder ; i++) {
 		((uint8_t *) p)[i] = (uint8_t) (val & 0xff);
 		val >>= 8;

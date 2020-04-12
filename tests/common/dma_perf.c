@@ -717,7 +717,8 @@ void hltest_sram_dram_multi_ch_perf(void **state)
 
 		t->queue_index = hltests_get_ddma_qid(fd, ch, STREAM0);
 		t->src_addr = sram_addr + ch * (size / num_of_ddma_ch);
-		t->dst_addr = dram_addr + ch * (rand_u32() & factor) * size;
+		t->dst_addr =
+			dram_addr + ch * (hltests_rand_u32() & factor) * size;
 		t->size = size / num_of_ddma_ch;
 
 		assert_in_range(t->dst_addr, dram_addr,
@@ -782,7 +783,8 @@ void hltest_dram_sram_multi_ch_perf(void **state)
 		struct dma_perf_transfer *t = &transfer[ch];
 
 		t->queue_index = hltests_get_ddma_qid(fd, ch, STREAM0);
-		t->src_addr = dram_addr + ch * (rand_u32() & factor) * size;
+		t->src_addr =
+			dram_addr + ch * (hltests_rand_u32() & factor) * size;
 		t->dst_addr = sram_addr + ch * (size / num_of_ddma_ch);
 		t->size = size / num_of_ddma_ch;
 
@@ -848,8 +850,10 @@ void hltest_dram_dram_multi_ch_perf(void **state)
 		struct dma_perf_transfer *t = &transfer[ch];
 
 		t->queue_index = hltests_get_ddma_qid(fd, ch, STREAM0);
-		t->src_addr = dram_addr + ch * (rand_u32() & 0xff) * size;
-		t->dst_addr = dram_addr + ch * (rand_u32() & 0xff) * size;
+		t->src_addr =
+			dram_addr + ch * (hltests_rand_u32() & 0xff) * size;
+		t->dst_addr =
+			dram_addr + ch * (hltests_rand_u32() & 0xff) * size;
 		t->size = size / num_of_ddma_ch;
 
 		assert_in_range(t->src_addr, dram_addr,
@@ -923,7 +927,8 @@ void hltest_sram_dram_bidirectional_full_multi_ch_perf(void **state)
 		if ((ch == 1) || (ch == 2) || (ch == 5)) {
 			t->src_addr = sram_addr + ch * (size / num_of_ddma_ch);
 			t->dst_addr =
-				dram_addr + ch * (rand_u32() & factor) * size;
+				dram_addr + ch *
+					(hltests_rand_u32() & factor) * size;
 
 			assert_in_range(t->dst_addr, dram_addr,
 					dram_addr + hw_ip.dram_size);
@@ -932,7 +937,8 @@ void hltest_sram_dram_bidirectional_full_multi_ch_perf(void **state)
 		} else {
 			t->dst_addr = sram_addr + ch * (size / num_of_ddma_ch);
 			t->src_addr =
-				dram_addr + ch * (rand_u32() & factor) * size;
+				dram_addr + ch *
+					(hltests_rand_u32() & factor) * size;
 
 			assert_in_range(t->src_addr, dram_addr,
 					dram_addr + hw_ip.dram_size);
@@ -997,7 +1003,8 @@ void hltest_dram_sram_5ch_perf(void **state)
 
 		t->queue_index = hltests_get_ddma_qid(fd, queue_index[ch],
 							STREAM0);
-		t->src_addr = dram_addr + ch * (rand_u32() & factor) * size;
+		t->src_addr =
+			dram_addr + ch * (hltests_rand_u32() & factor) * size;
 		t->dst_addr = sram_addr + ch * (size / num_of_ddma_ch);
 		t->size = size / num_of_ddma_ch;
 

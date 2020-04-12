@@ -402,6 +402,7 @@ int hltests_teardown(void **state);
 int hltests_root_setup(void **state);
 int hltests_root_teardown(void **state);
 
+uint32_t hltests_rand_u32(void);
 void hltests_fill_rand_values(void *ptr, uint32_t size);
 void hltests_fill_seq_values(void *ptr, uint32_t size);
 
