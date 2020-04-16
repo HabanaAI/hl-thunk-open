@@ -19,6 +19,9 @@
 
 #define MAX_DMA_CH 6
 #define LIN_DMA_PKT_SIZE 24
+#define MAX_NUM_LIN_DMA_PKTS_IN_EXTERNAL_CB (HL_MAX_CB_SIZE / LIN_DMA_PKT_SIZE)
+
+#define LIN_DMA_SIZE_FOR_HOST 0x1000	/* 4KB per LIN_DMA packet */
 
 struct dma_perf_transfer {
 	uint64_t src_addr;
@@ -32,25 +35,61 @@ static double hltests_transfer_perf(int fd,
 				struct dma_perf_transfer *first_transfer,
 				struct dma_perf_transfer *second_transfer)
 {
-	struct hltests_cs_chunk execute_arr[2];
+	struct hltests_cs_chunk *execute_arr;
 	struct hltests_pkt_info pkt_info;
-	uint64_t num_of_transfers, i;
+	uint64_t num_of_lindma_pkts, num_of_lindma_pkts_per_cb, i, j;
 	struct timespec begin, end;
 	double time_diff;
-	void *cb1, *cb2;
+	void **cb1, **cb2;
 	int rc, num_of_cb = 1;
 	uint64_t seq = 0;
-	uint32_t offset_cb1 = 0, offset_cb2 = 0;
+	uint32_t num_of_cb_per_transfer, offset_cb1 = 0, offset_cb2 = 0;
 
 	if (hltests_is_simulator(fd))
-		num_of_transfers = 5;
+		num_of_lindma_pkts = 5;
 	else
-		num_of_transfers = 0x400000000ull / first_transfer->size;
+		num_of_lindma_pkts = 0x400000000ull / first_transfer->size;
 
-	cb1 = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
+	num_of_lindma_pkts_per_cb = num_of_lindma_pkts;
+	num_of_cb_per_transfer = 1;
+
+	if (num_of_lindma_pkts > MAX_NUM_LIN_DMA_PKTS_IN_EXTERNAL_CB) {
+		num_of_lindma_pkts_per_cb = MAX_NUM_LIN_DMA_PKTS_IN_EXTERNAL_CB;
+
+		num_of_cb_per_transfer =
+			(num_of_lindma_pkts / num_of_lindma_pkts_per_cb) + 1;
+
+		num_of_lindma_pkts = num_of_cb_per_transfer *
+					num_of_lindma_pkts_per_cb;
+	}
+
+	if (second_transfer)
+		num_of_cb = num_of_cb_per_transfer * 2;
+	else
+		num_of_cb = num_of_cb_per_transfer;
+
+	assert_in_range(num_of_cb, 1, HL_MAX_JOBS_PER_CS);
+
+	execute_arr = hlthunk_malloc(sizeof(struct hltests_cs_chunk) *
+					num_of_cb);
+	assert_non_null(execute_arr);
+
+	cb1 = hlthunk_malloc(sizeof(void *) * num_of_cb_per_transfer);
 	assert_non_null(cb1);
-	cb2 = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
+	cb2 = hlthunk_malloc(sizeof(void *) * num_of_cb_per_transfer);
 	assert_non_null(cb2);
+
+	for (i = 0 ; i < num_of_cb_per_transfer ; i++) {
+		uint64_t cb_size = num_of_lindma_pkts_per_cb * LIN_DMA_PKT_SIZE;
+
+		cb1[i] = hltests_create_cb(fd, cb_size, EXTERNAL, 0);
+		assert_non_null(cb1[i]);
+
+		if (second_transfer) {
+			cb2[i] = hltests_create_cb(fd, cb_size, EXTERNAL, 0);
+			assert_non_null(cb2[i]);
+		}
+	}
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
@@ -59,15 +98,20 @@ static double hltests_transfer_perf(int fd,
 	pkt_info.dma.dst_addr = first_transfer->dst_addr;
 	pkt_info.dma.size = first_transfer->size;
 	pkt_info.dma.dma_dir = first_transfer->dma_dir;
-	offset_cb1 = hltests_add_dma_pkt(fd, cb1, offset_cb1, &pkt_info);
 
-	execute_arr[0].cb_ptr = cb1;
-	execute_arr[0].cb_size = offset_cb1;
-	execute_arr[0].queue_index = first_transfer->queue_index;
+	for (i = 0 ; i < num_of_cb_per_transfer ; i++) {
+		for (j = 0 ; j < num_of_lindma_pkts_per_cb ; j++)
+			offset_cb1 = hltests_add_dma_pkt(fd, cb1[i], offset_cb1,
+							&pkt_info);
+
+		execute_arr[i].cb_ptr = cb1[i];
+		execute_arr[i].cb_size = offset_cb1;
+		execute_arr[i].queue_index = first_transfer->queue_index;
+
+		offset_cb1 = 0;
+	}
 
 	if (second_transfer) {
-		num_of_cb = 2;
-
 		memset(&pkt_info, 0, sizeof(pkt_info));
 		pkt_info.eb = EB_FALSE;
 		pkt_info.mb = MB_FALSE;
@@ -75,22 +119,26 @@ static double hltests_transfer_perf(int fd,
 		pkt_info.dma.dst_addr = second_transfer->dst_addr;
 		pkt_info.dma.size = second_transfer->size;
 		pkt_info.dma.dma_dir = second_transfer->dma_dir;
-		offset_cb2 = hltests_add_dma_pkt(fd, cb2, offset_cb2,
-							&pkt_info);
 
-		execute_arr[1].cb_ptr = cb2;
-		execute_arr[1].cb_size = offset_cb2;
-		execute_arr[1].queue_index = second_transfer->queue_index;
+		for (i = 0 ; i < num_of_cb_per_transfer ; i++) {
+			for (j = 0 ; j < num_of_lindma_pkts_per_cb ; j++)
+				offset_cb2 = hltests_add_dma_pkt(fd, cb2[i],
+							offset_cb2, &pkt_info);
+
+			execute_arr[num_of_cb_per_transfer + i].cb_ptr = cb2[i];
+			execute_arr[num_of_cb_per_transfer + i].cb_size =
+								offset_cb2;
+			execute_arr[num_of_cb_per_transfer + i].queue_index =
+						second_transfer->queue_index;
+
+			offset_cb2 = 0;
+		}
 	}
 
 	clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
 
-	for (i = 0 ; i <= num_of_transfers ; i++) {
-
-		rc = hltests_submit_cs(fd, NULL, 0, execute_arr, num_of_cb, 0,
-					&seq);
-		assert_int_equal(rc, 0);
-	}
+	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, num_of_cb, 0, &seq);
+	assert_int_equal(rc, 0);
 
 	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
 	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
@@ -99,18 +147,27 @@ static double hltests_transfer_perf(int fd,
 	time_diff = (end.tv_nsec - begin.tv_nsec) / 1000000000.0 +
 						(end.tv_sec  - begin.tv_sec);
 
-	rc = hltests_destroy_cb(fd, cb1);
-	assert_int_equal(rc, 0);
-	rc = hltests_destroy_cb(fd, cb2);
-	assert_int_equal(rc, 0);
+	for (i = 0 ; i < num_of_cb_per_transfer ; i++) {
+		rc = hltests_destroy_cb(fd, cb1[i]);
+		assert_int_equal(rc, 0);
+
+		if (second_transfer) {
+			rc = hltests_destroy_cb(fd, cb2[i]);
+			assert_int_equal(rc, 0);
+		}
+	}
+
+	hlthunk_free(cb1);
+	hlthunk_free(cb2);
+	hlthunk_free(execute_arr);
 
 	/* return value in GB/Sec */
 	if (second_transfer)
 		return ((double)(first_transfer->size + second_transfer->size) *
-			num_of_transfers / time_diff) / 1000 / 1000 / 1000;
+			num_of_lindma_pkts / time_diff) / 1000 / 1000 / 1000;
 	else
 		return ((double)(first_transfer->size) *
-			num_of_transfers / time_diff) / 1000 / 1000 / 1000;
+			num_of_lindma_pkts / time_diff) / 1000 / 1000 / 1000;
 }
 
 void hltest_host_sram_perf(void **state)
@@ -128,7 +185,8 @@ void hltest_host_sram_perf(void **state)
 	assert_int_equal(rc, 0);
 
 	sram_addr = hw_ip.sram_base_address;
-	size = 0x400000;
+
+	size = LIN_DMA_SIZE_FOR_HOST;
 
 	src_ptr = hltests_allocate_host_mem(fd, size, HUGE);
 	assert_non_null(src_ptr);
@@ -170,7 +228,8 @@ void hltest_sram_host_perf(void **state)
 	assert_int_equal(rc, 0);
 
 	sram_addr = hw_ip.sram_base_address;
-	size = 0x400000;
+
+	size = LIN_DMA_SIZE_FOR_HOST;
 
 	dst_ptr = hltests_allocate_host_mem(fd, size, HUGE);
 	assert_non_null(dst_ptr);
@@ -216,7 +275,7 @@ void hltest_host_dram_perf(void **state)
 		skip();
 	}
 
-	size = 0x400000;
+	size = LIN_DMA_SIZE_FOR_HOST;
 
 	assert_in_range(size, 1, hw_ip.dram_size);
 	dram_addr = hltests_allocate_device_mem(fd, size, NOT_CONTIGUOUS);
@@ -267,7 +326,7 @@ void hltest_dram_host_perf(void **state)
 		skip();
 	}
 
-	size = 0x2000000;
+	size = LIN_DMA_SIZE_FOR_HOST;
 
 	assert_in_range(size, 1, hw_ip.dram_size);
 	dram_addr = hltests_allocate_device_mem(fd, size, NOT_CONTIGUOUS);
@@ -1034,7 +1093,7 @@ void hltest_host_sram_bidirectional_perf(void **state)
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
-	size = 0x400000;
+	size = LIN_DMA_SIZE_FOR_HOST;
 
 	sram_addr1 = hw_ip.sram_base_address;
 	sram_addr2 = sram_addr1 + size;
@@ -1096,7 +1155,7 @@ void hltest_host_dram_bidirectional_perf(void **state)
 		skip();
 	}
 
-	host_to_dram_size = dram_to_host_size = 0x400000;
+	host_to_dram_size = dram_to_host_size = LIN_DMA_SIZE_FOR_HOST;
 
 	assert_in_range(host_to_dram_size + dram_to_host_size, 1,
 			hw_ip.dram_size);
