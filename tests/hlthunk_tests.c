@@ -267,6 +267,7 @@ int hltests_run_group_tests(const char *group_name,
 
 		if (!retval) {
 			printf("Thread %d has failed\n", i);
+			rc = -1;
 			goto out;
 		}
 	}
