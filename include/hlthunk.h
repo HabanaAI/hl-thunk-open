@@ -121,6 +121,8 @@ struct hlthunk_functions_pointers {
 	int (*fp_hlthunk_get_device_index_from_pci_bus_id)(const char *busid);
 	void* (*fp_hlthunk_malloc)(int size);
 	void (*fp_hlthunk_free)(void *pt);
+	int (*fp_hlthunk_get_time_sync_info)(int fd,
+					struct hlthunk_time_sync_info *info);
 };
 
 struct hlthunk_debugfs {

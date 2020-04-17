@@ -55,7 +55,8 @@ struct hlthunk_functions_pointers functions_pointers_table = {
 	.fp_hlthunk_get_device_index_from_pci_bus_id =
 		hlthunk_get_device_index_from_pci_bus_id,
 	.fp_hlthunk_malloc = hlthunk_malloc,
-	.fp_hlthunk_free = hlthunk_free
+	.fp_hlthunk_free = hlthunk_free,
+	.fp_hlthunk_get_time_sync_info = hlthunk_get_time_sync_info
 };
 
 struct global_hlthunk_members {
