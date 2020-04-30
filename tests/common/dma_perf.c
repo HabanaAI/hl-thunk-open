@@ -207,8 +207,8 @@ void hltest_host_sram_perf(void **state)
 	hltests_free_host_mem(fd, src_ptr);
 
 	if ((hltests_is_goya(fd)) && (!hltests_is_simulator(fd)) &&
-				(*host_sram_perf_outcome < 9.5f)) {
-		printf("HOST->SRAM must be at least 9.5 GB/Sec");
+				(*host_sram_perf_outcome < 9.0f)) {
+		printf("HOST->SRAM must be at least 9.0 GB/Sec");
 		fail();
 	}
 }
@@ -250,8 +250,8 @@ void hltest_sram_host_perf(void **state)
 	hltests_free_host_mem(fd, dst_ptr);
 
 	if ((hltests_is_goya(fd)) && (!hltests_is_simulator(fd)) &&
-				(*sram_host_perf_outcome < 10.71f)) {
-		printf("SRAM->HOST must be at least 10.71 GB/Sec");
+				(*sram_host_perf_outcome < 10.0f)) {
+		printf("SRAM->HOST must be at least 10.0 GB/Sec");
 		fail();
 	}
 }
@@ -301,8 +301,8 @@ void hltest_host_dram_perf(void **state)
 	hltests_free_device_mem(fd, dram_addr);
 
 	if ((hltests_is_goya(fd)) && (!hltests_is_simulator(fd)) &&
-				(*host_dram_perf_outcome < 9.0f)) {
-		printf("HOST->DRAM must be at least 9.0 GB/Sec");
+				(*host_dram_perf_outcome < 8.5f)) {
+		printf("HOST->DRAM must be at least 8.5 GB/Sec");
 		fail();
 	}
 }
@@ -352,8 +352,8 @@ void hltest_dram_host_perf(void **state)
 	hltests_free_device_mem(fd, dram_addr);
 
 	if ((hltests_is_goya(fd)) && (!hltests_is_simulator(fd)) &&
-				(*dram_host_perf_outcome < 11.2f)) {
-		printf("DRAM->HOST must be at least 11.2 GB/Sec");
+				(*dram_host_perf_outcome < 10.5f)) {
+		printf("DRAM->HOST must be at least 10.5 GB/Sec");
 		fail();
 	}
 }
@@ -1130,8 +1130,8 @@ void hltest_host_sram_bidirectional_perf(void **state)
 	hltests_free_host_mem(fd, dst_ptr);
 
 	if ((hltests_is_goya(fd)) && (!hltests_is_simulator(fd)) &&
-				(*host_sram_perf_outcome < 16.65f)) {
-		printf("HOST<->SRAM must be at least 16.65 GB/Sec");
+				(*host_sram_perf_outcome < 16.0f)) {
+		printf("HOST<->SRAM must be at least 16.0 GB/Sec");
 		fail();
 	}
 }
@@ -1201,8 +1201,8 @@ void hltest_host_dram_bidirectional_perf(void **state)
 	hltests_free_device_mem(fd, dram_ptr2);
 
 	if ((hltests_is_goya(fd)) && (!hltests_is_simulator(fd)) &&
-				(*host_dram_perf_outcome < 16.2f)) {
-		printf("HOST<->DRAM must be at least 16.2 GB/Sec");
+				(*host_dram_perf_outcome < 15.5f)) {
+		printf("HOST<->DRAM must be at least 15.5 GB/Sec");
 		fail();
 	}
 }
