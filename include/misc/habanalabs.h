@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
  *
- * Copyright 2016-2019 HabanaLabs, Ltd.
+ * Copyright 2016-2020 HabanaLabs, Ltd.
  * All Rights Reserved.
  *
  */
@@ -495,7 +495,11 @@ struct hl_debug_params_spmu {
 
 	/* Number of event types selection */
 	__u32 event_types_num;
-	__u32 pad;
+
+	/* TRC configuration register values */
+	__u32 pmtrc_val;
+	__u32 trc_ctrl_host_val;
+	__u32 trc_en_host_val;
 };
 
 /* Opcode for ETR component */
