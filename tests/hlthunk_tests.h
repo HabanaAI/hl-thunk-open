@@ -231,6 +231,7 @@ struct hltests_pkt_info {
 
 	enum hltests_eb eb;
 	enum hltests_mb mb;
+	uint8_t pred;
 	union {
 		struct {
 			uint32_t value;

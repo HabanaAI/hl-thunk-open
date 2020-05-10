@@ -46,6 +46,7 @@ static uint32_t gaudi_add_wreg32_pkt(void *buffer, uint32_t buf_off,
 	packet.eng_barrier = pkt_info->eb;
 	packet.msg_barrier = pkt_info->mb;
 	packet.reg_barrier = 1;
+	packet.pred = pkt_info->pred;
 
 	packet.ctl = htole32(packet.ctl);
 	packet.value = htole32(packet.value);
@@ -66,6 +67,7 @@ static uint32_t gaudi_add_arb_point_pkt(void *buffer, uint32_t buf_off,
 	packet.eng_barrier = pkt_info->eb;
 	packet.msg_barrier = pkt_info->mb;
 	packet.reg_barrier = 1;
+	packet.pred = pkt_info->pred;
 
 	packet.ctl = htole32(packet.ctl);
 	packet.cfg = htole32(packet.cfg);
@@ -85,6 +87,7 @@ static uint32_t gaudi_add_msg_long_pkt(void *buffer, uint32_t buf_off,
 	packet.eng_barrier = pkt_info->eb;
 	packet.msg_barrier = pkt_info->mb;
 	packet.reg_barrier = 1;
+	packet.pred = pkt_info->pred;
 
 	packet.ctl = htole32(packet.ctl);
 	packet.value = htole32(packet.value);
@@ -177,10 +180,10 @@ static uint32_t gaudi_add_fence_pkt(void *buffer, uint32_t buf_off,
 	packet.dec_val = pkt_info->fence.dec_val;
 	packet.target_val = pkt_info->fence.gate_val;
 	packet.id = pkt_info->fence.fence_id;
-	packet.pred = 0;
 	packet.eng_barrier = pkt_info->eb;
 	packet.msg_barrier = pkt_info->mb;
 	packet.reg_barrier = 1;
+	packet.pred = pkt_info->pred;
 
 	packet.ctl = htole32(packet.ctl);
 	packet.cfg = htole32(packet.cfg);
@@ -222,6 +225,7 @@ static uint32_t gaudi_add_cp_dma_pkt(void *buffer, uint32_t buf_off,
 	packet.eng_barrier = pkt_info->eb;
 	packet.msg_barrier = pkt_info->mb;
 	packet.reg_barrier = 1;
+	packet.pred = pkt_info->pred;
 	packet.src_addr = pkt_info->cp_dma.src_addr;
 	packet.tsize = pkt_info->cp_dma.size;
 
@@ -250,6 +254,7 @@ static uint32_t gaudi_add_load_and_exe_pkt(void *buffer, uint32_t buf_off,
 	packet.eng_barrier = pkt_info->eb;
 	packet.reg_barrier = 1;
 	packet.msg_barrier = pkt_info->mb;
+	packet.pred = pkt_info->pred;
 	packet.src_addr = pkt_info->load_and_exe.src_addr;
 	packet.load = pkt_info->load_and_exe.load;
 	packet.exe = pkt_info->load_and_exe.exe;
