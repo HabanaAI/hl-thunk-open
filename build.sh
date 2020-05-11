@@ -6,7 +6,7 @@ set -e
 
 SRCDIR=`dirname $0`
 BUILDDIR="$SRCDIR/build"
-
+ARCH=$(uname -m)
 if [ -d $BUILDDIR ]; then
 	rm -rf $BUILDDIR
 fi
@@ -18,6 +18,10 @@ if hash cmake3 2>/dev/null; then
     CMAKE=cmake3
 else
     CMAKE=cmake
+fi
+
+if [[ $ARCH =~ "ppc64" && ! -z "${SUDO_USER}" ]] ;then
+   source /home/$SUDO_USER/.bashrc
 fi
 
 cd "$BUILDDIR"
