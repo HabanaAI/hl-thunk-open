@@ -792,6 +792,170 @@ void test_cs_cq_wrap_around(void **state)
 		test_cs_nop(state);
 }
 
+static uint32_t load_predicates_and_test_msg_long(int fd,
+						uint64_t pred_buf_sram_addr,
+						uint64_t pred_buf_device_va,
+						uint64_t msg_long_dst_sram_addr,
+						uint64_t host_data_device_va,
+						uint8_t pred_id,
+						bool is_consecutive_map)
+{
+	struct hltests_pkt_info pkt_info;
+	enum hl_tests_predicates_map pred_map;
+	void *cb;
+	uint32_t cb_size, value;
+
+	pred_map = is_consecutive_map ? PMAP_CONSECUTIVE : PMAP_NON_CONSECUTIVE;
+
+	cb = hltests_create_cb(fd, sysconf(_SC_PAGESIZE), EXTERNAL, 0);
+	assert_non_null(cb);
+	cb_size = 0;
+
+	/* DMA predicates buffer from host to SRAM */
+	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
+				EB_FALSE, MB_FALSE, pred_buf_device_va,
+				pred_buf_sram_addr, 128, GOYA_DMA_HOST_TO_SRAM);
+
+	/* Initialize the MSG_LONG destination in SRAM */
+	hltests_fill_rand_values(&value, 4);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.msg_long.address = msg_long_dst_sram_addr;
+	pkt_info.msg_long.value = value;
+	cb_size = hltests_add_msg_long_pkt(fd, cb, cb_size, &pkt_info);
+
+	/* Load predicates */
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.load_and_exe.src_addr = pred_buf_sram_addr;
+	pkt_info.load_and_exe.load = 1;
+	pkt_info.load_and_exe.exe = 0;
+	pkt_info.load_and_exe.load_dst = DST_PREDICATES;
+	pkt_info.load_and_exe.pred_map = pred_map;
+	pkt_info.load_and_exe.exe_type = 0;
+	cb_size = hltests_add_load_and_exe_pkt(fd, cb, cb_size, &pkt_info);
+
+	/* MSG_LONG that depends on "pred_id" */
+	hltests_fill_rand_values(&value, 4);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.pred = pred_id;
+	pkt_info.msg_long.address = msg_long_dst_sram_addr;
+	pkt_info.msg_long.value = value;
+	cb_size = hltests_add_msg_long_pkt(fd, cb, cb_size, &pkt_info);
+
+	hltests_submit_and_wait_cs(fd, cb, cb_size,
+				hltests_get_dma_down_qid(fd, STREAM0),
+				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
+
+	/* DMA MSG_LONG destination from SRAM to host */
+	hltests_dma_transfer(fd, hltests_get_dma_up_qid(fd, STREAM0),
+				EB_FALSE, MB_FALSE, msg_long_dst_sram_addr,
+				host_data_device_va, 4, GOYA_DMA_SRAM_TO_HOST);
+
+	return value;
+}
+
+static void test_cs_load_predicates(void **state, bool is_consecutive_map)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct hlthunk_hw_ip_info hw_ip;
+	uint64_t pred_buf_sram_addr, pred_buf_device_va, msg_long_dst_sram_addr,
+			host_data_device_va;
+	uint32_t *host_data, pred_buf_byte_idx, pred_buf_relative_bit, value;
+	uint8_t *pred_buf, pred_id = 10;
+	int rc, fd = tests_state->fd;
+
+	/* Goya doesn't support LOAD_AND_EXE packets */
+	if (hltests_is_goya(fd)) {
+		printf("Test is not relevant for Goya, skipping\n");
+		skip();
+	}
+
+	/* Gaudi doesn't support LOAD_PRED with consecutive mapping */
+	if (hltests_is_gaudi(fd) && is_consecutive_map) {
+		printf("Test is not relevant for Gaudi, skipping\n");
+		skip();
+	}
+
+	/* SRAM MAP (base + )
+	 * 0x0    : 128 bytes for predicates data [P0-P31]
+	 * 0x1000 : MSG_LONG destination
+	 *
+	 * Test description:
+	 * 1. Load predicates with "pred_id" clear and verify that a dependent
+	 *    MSG_LONG packet is NOT performed.
+	 * 2. Load predicates with "pred_id" set and verify that a dependent
+	 *    MSG_LONG packet is performed.
+	 */
+
+	/* Only P1-P31 are valid because LOAD_PRED command doesn't update P0 */
+	assert_in_range(pred_id, 1, 31);
+
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+	pred_buf_sram_addr = hw_ip.sram_base_address;
+	msg_long_dst_sram_addr = hw_ip.sram_base_address + 0x1000;
+
+	/* Check alignment of predicates address to 128B */
+	assert_int_equal(pred_buf_sram_addr & 0x7f, 0);
+
+	pred_buf = hltests_allocate_host_mem(fd, 128, NOT_HUGE);
+	assert_non_null(pred_buf);
+	pred_buf_device_va = hltests_get_device_va_for_host_ptr(fd, pred_buf);
+
+	host_data = hltests_allocate_host_mem(fd, 4, NOT_HUGE);
+	assert_non_null(host_data);
+	host_data_device_va = hltests_get_device_va_for_host_ptr(fd, host_data);
+
+	if (is_consecutive_map) {
+		pred_buf_byte_idx = pred_id / 8;
+		pred_buf_relative_bit = pred_id % 8;
+	} else {
+		pred_buf_byte_idx = pred_id * 4;
+		pred_buf_relative_bit = 0;
+	}
+
+	/* Load predicates with "pred_id" clear and verify that a dependent
+	 * MSG_LONG packet is NOT performed.
+	 */
+	memset(pred_buf, 0, 128);
+	value = load_predicates_and_test_msg_long(fd, pred_buf_sram_addr,
+						pred_buf_device_va,
+						msg_long_dst_sram_addr,
+						host_data_device_va, pred_id,
+						is_consecutive_map);
+	assert_int_not_equal(*host_data, value);
+
+	/* Load predicates with "pred_id" set and verify that a dependent
+	 * MSG_LONG packet is performed.
+	 */
+	pred_buf[pred_buf_byte_idx] = 1 << pred_buf_relative_bit;
+	value = load_predicates_and_test_msg_long(fd, pred_buf_sram_addr,
+						pred_buf_device_va,
+						msg_long_dst_sram_addr,
+						host_data_device_va, pred_id,
+						is_consecutive_map);
+	assert_int_equal(*host_data, value);
+
+	/* Cleanup */
+	hltests_free_host_mem(fd, host_data);
+	hltests_free_host_mem(fd, pred_buf);
+}
+
+static void test_cs_load_pred_non_consecutive_map(void **state)
+{
+	test_cs_load_predicates(state, false);
+}
+
+static void test_cs_load_pred_consecutive_map(void **state)
+{
+	test_cs_load_predicates(state, true);
+}
+
 const struct CMUnitTest cs_tests[] = {
 	cmocka_unit_test_setup(test_cs_nop, hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_cs_nop_16PQE,
@@ -815,6 +979,10 @@ const struct CMUnitTest cs_tests[] = {
 	cmocka_unit_test_setup(test_cs_two_streams_with_wrr_arb,
 					hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_cs_cq_wrap_around,
+					hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_cs_load_pred_non_consecutive_map,
+					hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_cs_load_pred_consecutive_map,
 					hltests_ensure_device_operational)
 };
 
