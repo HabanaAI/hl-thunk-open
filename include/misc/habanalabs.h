@@ -486,7 +486,16 @@ struct hl_debug_params_bmon {
 
 	/* Trace source ID */
 	__u32 id;
-	__u32 pad;
+
+	/* Control register */
+	__u32 control;
+
+	/* Two more address ranges that the user can request to filter */
+	__u64 start_addr2;
+	__u64 end_addr2;
+
+	__u64 start_addr3;
+	__u64 end_addr3;
 };
 
 struct hl_debug_params_spmu {
