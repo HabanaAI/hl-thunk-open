@@ -48,6 +48,21 @@ void test_open_twice(void **state)
 	hlthunk_close(fd);
 }
 
+void test_open_by_module_id(void **state)
+{
+	int fd;
+
+	if (!hltests_get_parser_run_disabled_tests()) {
+		printf("Test is skipped because it is disabled by default\n");
+		skip();
+	}
+
+	fd = hlthunk_open_by_module_id(0);
+	assert_in_range(fd, 0, INT_MAX);
+
+	hlthunk_close(fd);
+}
+
 void test_open_close_without_ioctl(void **state)
 {
 	const char *pciaddr = hltests_get_parser_pciaddr();
@@ -95,6 +110,7 @@ void test_close_without_releasing_debug(void **state)
 
 const struct CMUnitTest open_close_tests[] = {
 	cmocka_unit_test(test_open_by_busid),
+	cmocka_unit_test(test_open_by_module_id),
 	cmocka_unit_test(test_open_twice),
 	cmocka_unit_test(test_open_close_without_ioctl),
 	cmocka_unit_test(test_close_without_releasing_debug)

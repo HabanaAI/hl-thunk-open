@@ -19,6 +19,7 @@
 #include <linux/mman.h>
 #include <time.h>
 #include <inttypes.h>
+#include <sys/ioctl.h>
 
 #ifndef MAP_HUGE_2MB
 	#define MAP_HUGE_2MB    (21 << MAP_HUGE_SHIFT)
@@ -49,9 +50,35 @@ static int num_devices = 1;
 static char asic_names[HLTHUNK_DEVICE_MAX][20] = {
 	"Goya",
 	"Placeholder1",
-	"Placeholder2",
+	"Gaudi",
 	"Invalid",
 	"Don't care"
+};
+
+static struct hltests_module_params_info default_module_params = {
+	.gaudi_huge_page_optimization = 1,
+	.timeout_locked = 5,
+	.reset_on_lockup = 1,
+	.pldm = 0,
+	.mmu_enable = 1,
+	.clock_gating = 1,
+	.mme_enable = 1,
+	.tpc_mask = 0x3FF,
+	.dram_enable = 1,
+	.cpu_enable = 1,
+	.reset_pcilink = 0,
+	.config_pll = 0,
+	.cpu_queues_enable = 1,
+	.fw_loading = 1,
+	.heartbeat = 1,
+	.axi_drain = 1,
+	.security_enable = 1,
+	.sram_scrambler_enable = 1,
+	.dram_scrambler_enable = 1,
+	.dram_size_ratio = 0,
+	.hbm_ecc_enable = 1,
+	.reserved = 0,
+	.hard_reset_on_fw_events = 1,
 };
 
 static struct hltests_device *get_hdev_from_fd(int fd)
@@ -341,6 +368,9 @@ int hltests_open(const char *busid)
 	case HLTHUNK_DEVICE_GOYA:
 		goya_tests_set_asic_funcs(hdev);
 		break;
+	case HLTHUNK_DEVICE_GAUDI:
+		gaudi_tests_set_asic_funcs(hdev);
+		break;
 	default:
 		printf("Invalid device type %d\n", hdev->device_id);
 		rc = -ENXIO;
@@ -348,9 +378,6 @@ int hltests_open(const char *busid)
 	}
 
 	hdev->asic_funcs->dram_pool_init(hdev);
-
-	hdev->debugfs_addr_fd = -1;
-	hdev->debugfs_data_fd = -1;
 
 	rc = create_mem_maps(hdev);
 	if (rc)
@@ -422,192 +449,176 @@ int hltests_cb_munmap(void *addr, size_t length)
 	return munmap(addr, length);
 }
 
-static int debugfs_open(int fd)
+static int debugfs_open(struct hltests_state *tests_state)
 {
-	struct hltests_device *hdev;
-	int debugfs_addr_fd, debugfs_data_fd;
+	int debugfs_addr_fd, debugfs_data_fd, clk_gate_fd;
+	const char *pciaddr = hltests_get_parser_pciaddr();
+	char path[PATH_MAX];
+	char clk_gate_str[4] = "0";
+	ssize_t size;
+	int device_idx;
 
-	hdev = get_hdev_from_fd(fd);
-	if (!hdev)
-		return -ENODEV;
+	if (pciaddr) {
+		device_idx = hlthunk_get_device_index_from_pci_bus_id(pciaddr);
+		if (device_idx < 0) {
+			printf("no device for the given PCI address\n");
+			return -EINVAL;
+		}
+	} else {
+		device_idx = 0;
+	}
 
-	debugfs_addr_fd =
-		open("//sys/kernel/debug/habanalabs/hl0/addr", O_WRONLY);
-	debugfs_data_fd =
-		open("//sys/kernel/debug/habanalabs/hl0/data32", O_RDWR);
+	snprintf(path, PATH_MAX, "//sys/kernel/debug/habanalabs/hl%d/addr",
+			device_idx);
 
-	if ((debugfs_addr_fd == -1) || (debugfs_data_fd == -1)) {
-		if (debugfs_addr_fd >= 0)
-			close(debugfs_addr_fd);
-		else if (debugfs_data_fd >= 0)
-			close(debugfs_data_fd);
-		printf("Failed to open DebugFS (Didn't run with sudo ?)\n");
+	debugfs_addr_fd = open(path, O_WRONLY);
+
+	if (debugfs_addr_fd == -1) {
+		printf("Failed to open debugfs_addr_fd (forgot sudo ?)\n");
 		return -EPERM;
 	}
 
-	hdev->debugfs_addr_fd = debugfs_addr_fd;
-	hdev->debugfs_data_fd = debugfs_data_fd;
+	snprintf(path, PATH_MAX, "//sys/kernel/debug/habanalabs/hl%d/data32",
+			device_idx);
+
+	debugfs_data_fd = open(path, O_RDWR);
+
+	if (debugfs_data_fd == -1) {
+		close(debugfs_addr_fd);
+		printf("Failed to open debugfs_data_fd (forgot sudo ?)\n");
+		return -EPERM;
+	}
+
+	snprintf(path, PATH_MAX, "//sys/kernel/debug/habanalabs/hl%d/clk_gate",
+			device_idx);
+
+	clk_gate_fd = open(path, O_RDWR);
+
+	if (clk_gate_fd == -1) {
+		close(debugfs_addr_fd);
+		close(debugfs_data_fd);
+		printf("Failed to open clk_gate_fd (forgot sudo ?)\n");
+		return -EPERM;
+	}
+
+	tests_state->debugfs.addr_fd = debugfs_addr_fd;
+	tests_state->debugfs.data_fd = debugfs_data_fd;
+	tests_state->debugfs.clk_gate_fd = clk_gate_fd;
+
+	size = pread(tests_state->debugfs.clk_gate_fd,
+			tests_state->debugfs.clk_gate_val,
+			sizeof(tests_state->debugfs.clk_gate_val), 0);
+	if (size < 0)
+		printf("Failed to read debugfs clk gate fd [rc %zd]\n", size);
+
+	size = write(tests_state->debugfs.clk_gate_fd, clk_gate_str,
+			strlen(clk_gate_str) + 1);
+	if (size < 0)
+		printf("Failed to write debugfs clk gate [rc %zd]\n", size);
 
 	return 0;
 }
 
-static int debugfs_close(int fd)
+static int debugfs_close(struct hltests_state *tests_state)
 {
-	struct hltests_device *hdev;
+	ssize_t size;
 
-	hdev = get_hdev_from_fd(fd);
-	if (!hdev)
-		return -ENODEV;
-
-	if ((hdev->debugfs_addr_fd == -1) || (hdev->debugfs_data_fd == -1))
+	if ((tests_state->debugfs.addr_fd == -1) ||
+		(tests_state->debugfs.data_fd == -1) ||
+		(tests_state->debugfs.clk_gate_fd == -1))
 		return -EFAULT;
 
-	close(hdev->debugfs_addr_fd);
-	close(hdev->debugfs_data_fd);
-	hdev->debugfs_addr_fd = -1;
-	hdev->debugfs_data_fd = -1;
+	size = write(tests_state->debugfs.clk_gate_fd,
+			tests_state->debugfs.clk_gate_val,
+			strlen(tests_state->debugfs.clk_gate_val) + 1);
+	if (size < 0)
+		printf("Failed to write debugfs clk gate [rc %zd]\n", size);
+
+	close(tests_state->debugfs.clk_gate_fd);
+	close(tests_state->debugfs.addr_fd);
+	close(tests_state->debugfs.data_fd);
+	tests_state->debugfs.clk_gate_fd = -1;
+	tests_state->debugfs.addr_fd = -1;
+	tests_state->debugfs.data_fd = -1;
 
 	return 0;
 }
 
-uint32_t hltests_debugfs_read(int fd, uint64_t full_address)
+uint32_t hltests_debugfs_read(int addr_fd, int data_fd, uint64_t full_address)
 {
-	struct hltests_device *hdev;
 	char addr_str[64] = "", value[64] = "";
 	ssize_t size;
 
-	hdev = get_hdev_from_fd(fd);
-	if (!hdev)
-		return -1;
-
 	sprintf(addr_str, "0x%lx", full_address);
 
-	size = write(hdev->debugfs_addr_fd, addr_str, strlen(addr_str) + 1);
+	size = write(addr_fd, addr_str, strlen(addr_str) + 1);
 	if (size < 0)
 		printf("Failed to write to debugfs address fd [rc %zd]\n",
 				size);
 
-	size = pread(hdev->debugfs_data_fd, value, sizeof(value), 0);
+	size = pread(data_fd, value, sizeof(value), 0);
 	if (size < 0)
 		printf("Failed to read from debugfs data fd [rc %zd]\n", size);
 
 	return strtoul(value, NULL, 16);
 }
 
-void hltests_debugfs_write(int fd, uint64_t full_address, uint32_t val)
+void hltests_debugfs_write(int addr_fd, int data_fd, uint64_t full_address,
+				uint32_t val)
 {
-	struct hltests_device *hdev;
 	char addr_str[64] = "", val_str[64] = "";
 	ssize_t size;
-
-	hdev = get_hdev_from_fd(fd);
-	if (!hdev)
-		return;
 
 	sprintf(addr_str, "0x%lx", full_address);
 	sprintf(val_str, "0x%x", val);
 
-	size = write(hdev->debugfs_addr_fd, addr_str, strlen(addr_str) + 1);
+	size = write(addr_fd, addr_str, strlen(addr_str) + 1);
 	if (size < 0)
 		printf("Failed to write to debugfs address fd [rc %zd]\n",
 				size);
 
-	size = write(hdev->debugfs_data_fd, val_str, strlen(val_str) + 1);
+	size = write(data_fd, val_str, strlen(val_str) + 1);
 	if (size < 0)
 		printf("Failed to write to debugfs data fd [rc %zd]\n", size);
-}
-
-static int is_param_enabled(enum hltests_kmd_param param, bool *val)
-{
-	int fd;
-	char c, path[100], *base_str = "/sys/module/habanalabs/parameters/",
-			*param_str;
-
-	memset(path, 0, sizeof(path));
-	memcpy(path, base_str, strlen(base_str));
-
-	switch (param) {
-	case KMD_PARAM_MMU:
-		param_str = "mmu_enable";
-		break;
-	case KMD_PARAM_SECURITY:
-		param_str = "security_enable";
-		break;
-	case KMD_PARAM_MME:
-		param_str = "mme_enable";
-		break;
-	default:
-		printf("Invalid KMD parameter %d\n", param);
-		return errno;
-	}
-
-	memcpy(path + strlen(base_str), param_str, strlen(param_str));
-
-	fd = open(path, O_RDONLY);
-	if (fd < 0) {
-		/* Probably working with upstream kernel so it is enabled */
-		*val = true;
-		return 0;
-	}
-
-	if (read(fd, &c, 1) <= 0) {
-		printf("Failed to read %s\n", path);
-		close(fd);
-		return errno;
-	}
-
-	close(fd);
-
-	*val = c == '1';
-
-	return 0;
 }
 
 int hltests_setup(void **state)
 {
 	struct hltests_state *tests_state;
-	int rc;
+	struct hltests_module_params_info module_params;
+	int rc, fd;
 
 	tests_state = hlthunk_malloc(sizeof(struct hltests_state));
 	if (!tests_state)
 		return -ENOMEM;
 
-	tests_state->fd = hltests_open(parser_pciaddr);
-	if (tests_state->fd < 0) {
-		printf("Failed to open device %d\n", tests_state->fd);
-		rc = tests_state->fd;
+	tests_state->debugfs.addr_fd = -1;
+	tests_state->debugfs.data_fd = -1;
+
+	fd = tests_state->fd = hltests_open(parser_pciaddr);
+	if (fd < 0) {
+		printf("Failed to open device %d\n", fd);
+		rc = fd;
 		goto free_state;
 	}
 
-	rc = is_param_enabled(KMD_PARAM_MMU, &tests_state->mmu);
+	memset(&module_params, 0, sizeof(module_params));
+	rc = hltests_get_module_params_info(fd, &module_params);
 	if (rc) {
-		printf("Failed to detect if MMU is enabled on device %d, %d\n",
-			tests_state->fd, rc);
+		printf("Failed to retrieve values of module parameters\n");
 		goto close_fd;
 	}
 
-	rc = is_param_enabled(KMD_PARAM_SECURITY, &tests_state->security);
-	if (rc) {
-		printf(
-			"Failed to detect if security is enabled on device %d, %d\n",
-			tests_state->fd, rc);
-		goto close_fd;
-	}
-
-	rc = is_param_enabled(KMD_PARAM_MME, &tests_state->mme);
-	if (rc) {
-		printf(
-			"Failed to detect if mme is enabled on device %d, %d\n",
-			tests_state->fd, rc);
-		goto close_fd;
-	}
+	tests_state->mme = !!module_params.mme_enable;
+	tests_state->mmu = !!module_params.mmu_enable;
+	tests_state->security = !!module_params.security_enable;
 
 	*state = tests_state;
 
 	return 0;
 
 close_fd:
-	if (hltests_close(tests_state->fd))
+	if (hltests_close(fd))
 		printf("Problem in closing FD, ignoring...\n");
 free_state:
 	hlthunk_free(tests_state);
@@ -641,20 +652,69 @@ int hltests_root_setup(void **state)
 		return rc;
 
 	tests_state = (struct hltests_state *) *state;
-	return debugfs_open(tests_state->fd);
+
+	return debugfs_open(tests_state);
 }
 
 int hltests_root_teardown(void **state)
 {
-	struct hltests_state *tests_state =
-					(struct hltests_state *) *state;
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
 
 	if (!tests_state)
 		return -EINVAL;
 
-	debugfs_close(tests_state->fd);
+	debugfs_close(tests_state);
 
 	return hltests_teardown(state);
+}
+
+int hltests_root_debug_setup(void **state)
+{
+	struct hltests_state *tests_state;
+
+	tests_state = hlthunk_malloc(sizeof(struct hltests_state));
+	if (!tests_state)
+		return -ENOMEM;
+
+	*state = tests_state;
+
+	return debugfs_open(tests_state);
+}
+
+int hltests_root_debug_teardown(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	int rc;
+
+	if (!tests_state)
+		return -EINVAL;
+
+	rc = debugfs_close(tests_state);
+
+	hlthunk_free(*state);
+
+	return rc;
+}
+
+static int hltests_ioctl(int fd, unsigned long request, void *arg)
+{
+	int ret;
+
+	do {
+		ret = ioctl(fd, request, arg);
+	} while (ret == -1 && (errno == EINTR || errno == EAGAIN));
+
+	return ret;
+}
+
+int hltests_get_module_params_info(int fd,
+				struct hltests_module_params_info *info)
+{
+	if (!info)
+		return -EINVAL;
+
+	*info = default_module_params;
+	return 0;
 }
 
 static void *allocate_huge_mem(uint64_t size)
@@ -1222,6 +1282,15 @@ uint32_t hltests_add_wreg32_pkt(int fd, void *buffer, uint32_t buf_off,
 	return asic->add_wreg32_pkt(buffer, buf_off, pkt_info);
 }
 
+uint32_t hltests_add_arb_point_pkt(int fd, void *buffer, uint32_t buf_off,
+					struct hltests_pkt_info *pkt_info)
+{
+	const struct hltests_asic_funcs *asic =
+			get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->add_arb_point_pkt(buffer, buf_off, pkt_info);
+}
+
 uint32_t hltests_add_msg_long_pkt(int fd, void *buffer, uint32_t buf_off,
 					struct hltests_pkt_info *pkt_info)
 {
@@ -1283,7 +1352,6 @@ uint32_t hltests_add_cp_dma_pkt(int fd, void *buffer, uint32_t buf_off,
 	const struct hltests_asic_funcs *asic =
 			get_hdev_from_fd(fd)->asic_funcs;
 
-
 	return asic->add_cp_dma_pkt(buffer, buf_off, pkt_info);
 }
 
@@ -1295,6 +1363,18 @@ uint32_t hltests_add_monitor_and_fence(int fd, void *buffer, uint32_t buf_off,
 
 	return asic->add_monitor_and_fence(DCORE_MODE_FULL_CHIP, buffer,
 					buf_off, mon_and_fence_info);
+}
+
+uint32_t hltests_add_arb_en_pkt(int fd, void *buffer, uint32_t buf_off,
+		struct hltests_pkt_info *pkt_info,
+		struct hltests_arb_info *arb_info,
+		uint32_t queue_id, bool enable)
+{
+	const struct hltests_asic_funcs *asic =
+			get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->add_arb_en_pkt(buffer, buf_off, pkt_info,
+			arb_info, queue_id, enable);
 }
 
 uint32_t hltests_get_dma_down_qid(int fd, enum hltests_stream_id stream)
@@ -1619,7 +1699,8 @@ static bool is_dev_idle_and_operational(int fd)
 
 	/* TODO: Remove when is_idle function is implemented on simulator */
 	device_id = hlthunk_get_device_id_from_fd(fd);
-	if (device_id == PCI_IDS_GOYA_SIMULATOR)
+	if (device_id == PCI_IDS_GOYA_SIMULATOR ||
+			device_id == PCI_IDS_GAUDI_SIMULATOR)
 		is_idle = true;
 	else
 		is_idle = hlthunk_is_device_idle(fd);
@@ -1632,32 +1713,21 @@ static bool is_dev_idle_and_operational(int fd)
 int hltests_ensure_device_operational(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	int fd = tests_state->fd;
-	int fd_for_timeout_locked, rc;
-	unsigned int timeout_locked, i;
-	char tmp_buff[4] = {0};
+	struct hltests_module_params_info module_params;
+	uint32_t timeout_locked, i;
+	int fd = tests_state->fd, rc;
 
 	if (is_dev_idle_and_operational(fd))
 		return 0;
 
-	fd_for_timeout_locked =
-		open("/sys/module/habanalabs/parameters/timeout_locked",
-								O_RDONLY);
-
-	if (fd_for_timeout_locked < 0) {
-		printf("Failed to open timeout_locked\n");
+	memset(&module_params, 0, sizeof(module_params));
+	rc = hltests_get_module_params_info(fd, &module_params);
+	if (rc) {
+		printf("Failed to retrieve values of module parameters\n");
 		return errno;
 	}
 
-	rc = read(fd_for_timeout_locked, &tmp_buff, sizeof(tmp_buff) - 1);
-	if (rc < 0) {
-		printf("Failed to read timeout_locked\n");
-		close(fd_for_timeout_locked);
-		return errno;
-	}
-
-	close(fd_for_timeout_locked);
-	sscanf(tmp_buff, "%d", &timeout_locked);
+	timeout_locked = module_params.timeout_locked;
 	if (timeout_locked > 1000)
 		timeout_locked = 1000;
 
@@ -1750,7 +1820,9 @@ int hltests_mem_pool_alloc(void *data, uint64_t size, uint64_t *addr)
 		}
 
 		if (found) {
-			*addr = mem_pool->start + i * mem_pool->page_size;
+			/* cast to avoid int overflow */
+			*addr = mem_pool->start +
+					((uint64_t) i) * mem_pool->page_size;
 			break;
 		}
 
@@ -1848,7 +1920,8 @@ bool hltests_is_simulator(int fd)
 {
 	struct hltests_device *hdev = get_hdev_from_fd(fd);
 
-	if (hdev->device_id == PCI_IDS_GOYA_SIMULATOR)
+	if (hdev->device_id == PCI_IDS_GOYA_SIMULATOR ||
+		hdev->device_id == PCI_IDS_GAUDI_SIMULATOR)
 		return true;
 
 	return false;
@@ -1856,13 +1929,23 @@ bool hltests_is_simulator(int fd)
 
 bool hltests_is_goya(int fd)
 {
-	struct hltests_device *hdev = get_hdev_from_fd(fd);
+	return (hlthunk_get_device_name_from_fd(fd) == HLTHUNK_DEVICE_GOYA);
+}
 
-	if (hdev->device_id == PCI_IDS_GOYA_SIMULATOR ||
-			hdev->device_id == PCI_IDS_GOYA)
-		return true;
+bool hltests_is_gaudi(int fd)
+{
+	return (hlthunk_get_device_name_from_fd(fd) == HLTHUNK_DEVICE_GAUDI);
+}
 
-	return false;
+bool hltests_is_pldm(int fd)
+{
+	struct hltests_module_params_info module_params;
+	int rc;
+
+	rc = hltests_get_module_params_info(fd, &module_params);
+	assert_int_equal(rc, 0);
+
+	return !!module_params.pldm;
 }
 
 void test_sm_pingpong_common_cp(void **state, bool is_tpc,
@@ -1885,11 +1968,23 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	uint16_t sob[2], mon[2];
 	int rc, fd = tests_state->fd;
 
-	/* This test can't run on Goya in case the cb is in host */
-	if ((hlthunk_get_device_name_from_fd(fd) == HLTHUNK_DEVICE_GOYA) &&
-			(common_cb_in_host)) {
-		printf("Test is skipped. Goya's common CP can't be in host\n");
-		skip();
+	/* Check conditions if CB is in the host */
+	if (common_cb_in_host) {
+
+		/* This test can't run on Goya */
+		if (hlthunk_get_device_name_from_fd(fd) ==
+						HLTHUNK_DEVICE_GOYA) {
+			printf(
+				"Test is skipped. Goya's common CP can't be in host\n");
+			skip();
+		}
+
+		/* This test can't run if mmu disabled */
+		if (!tests_state->mmu) {
+			printf(
+				"Test is skipped. MMU must be enabled\n");
+			skip();
+		}
 	}
 
 	/* SRAM MAP (base + ):
@@ -2136,7 +2231,7 @@ void hltests_clear_sobs(int fd, uint16_t num_of_sobs)
 	uint32_t cb_offset = 0, i;
 	uint16_t first_sob = hltests_get_first_avail_sob(fd);
 
-	cb = hltests_create_cb(fd,  MSG_LONG_SIZE * num_of_sobs, EXTERNAL, 0);
+	cb = hltests_create_cb(fd, HL_MAX_CB_SIZE, EXTERNAL, 0);
 	assert_non_null(cb);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));

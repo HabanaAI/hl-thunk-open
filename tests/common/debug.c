@@ -83,15 +83,18 @@ void test_print_hw_ip_info(void **state)
 
 	printf("\nDevice information:");
 	printf("\n-----------------------");
-	printf("\nDevice id        : 0x%x", hw_ip.device_id);
-	printf("\nDRAM enabled     : %d", hw_ip.dram_enabled);
-	printf("\nDRAM base address: 0x%lx", hw_ip.dram_base_address);
-	printf("\nDRAM size        : %lu (0x%lx)", hw_ip.dram_size,
+	printf("\nDevice id            : 0x%x", hw_ip.device_id);
+	printf("\nDRAM enabled         : %d", hw_ip.dram_enabled);
+	printf("\nDRAM base address    : 0x%lx", hw_ip.dram_base_address);
+	printf("\nDRAM size            : %lu (0x%lx)", hw_ip.dram_size,
 							hw_ip.dram_size);
-	printf("\nSRAM base address: 0x%lx", hw_ip.sram_base_address);
-	printf("\nSRAM size        : %u (0x%x)", hw_ip.sram_size,
+	printf("\nSRAM base address    : 0x%lx", hw_ip.sram_base_address);
+	printf("\nSRAM size            : %u (0x%x)", hw_ip.sram_size,
 							hw_ip.sram_size);
-	printf("\nTPC enabled mask : 0x%x", hw_ip.tpc_enabled_mask);
+	printf("\nTPC enabled mask     : 0x%x", hw_ip.tpc_enabled_mask);
+
+	if (hltests_is_gaudi(fd))
+		printf("\nModule ID            : %d\n", hw_ip.module_id);
 
 	printf("\n\n");
 }
@@ -109,6 +112,23 @@ static void print_engine_name(enum hlthunk_device_name device_id,
 			break;
 		case GOYA_ENGINE_ID_TPC_0 ... GOYA_ENGINE_ID_TPC_7:
 			printf("  TPC%d\n", engine_id - GOYA_ENGINE_ID_TPC_0);
+			break;
+		default:
+			fail_msg("Unexpected engine id %d\n", engine_id);
+		}
+	} else if (device_id == HLTHUNK_DEVICE_GAUDI) {
+		switch (engine_id) {
+		case GAUDI_ENGINE_ID_DMA_0 ... GAUDI_ENGINE_ID_DMA_7:
+			printf("  DMA%d\n", engine_id - GAUDI_ENGINE_ID_DMA_0);
+			break;
+		case GAUDI_ENGINE_ID_MME_0 ... GAUDI_ENGINE_ID_MME_3:
+			printf("  MME%d\n", engine_id - GAUDI_ENGINE_ID_MME_0);
+			break;
+		case GAUDI_ENGINE_ID_TPC_0 ... GAUDI_ENGINE_ID_TPC_7:
+			printf("  TPC%d\n", engine_id - GAUDI_ENGINE_ID_TPC_0);
+			break;
+		case GAUDI_ENGINE_ID_NIC_0 ... GAUDI_ENGINE_ID_NIC_9:
+			printf("  NIC%d\n", engine_id - GAUDI_ENGINE_ID_NIC_0);
 			break;
 		default:
 			fail_msg("Unexpected engine id %d\n", engine_id);
