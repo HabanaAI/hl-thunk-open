@@ -19,7 +19,7 @@ extern "C" {
 
 #define hlthunk_public  __attribute__((visibility("default")))
 
-#define HLTHUNK_MAX_MINOR		16
+#define HLTHUNK_MAX_MINOR		256
 #define HLTHUNK_DEV_NAME_PRIMARY	"/dev/hl%d"
 #define HLTHUNK_DEV_NAME_CONTROL	"/dev/hl_controlD%d"
 
@@ -53,6 +53,7 @@ struct hlthunk_hw_ip_info {
 	uint8_t tpc_enabled_mask;
 	uint8_t dram_enabled;
 	uint8_t armcp_version[HL_INFO_VERSION_MAX_LEN];
+	uint32_t module_id;
 	uint8_t card_name[HL_INFO_CARD_NAME_MAX_LEN];
 };
 
@@ -84,43 +85,81 @@ struct hlthunk_cs_out {
 	uint32_t status;
 };
 
+struct hlthunk_signal_in {
+	void *chunks_restore;
+	uint32_t num_chunks_restore;
+	uint32_t queue_index;
+	uint32_t flags;
+};
+
+struct hlthunk_signal_out {
+	uint64_t seq;
+	uint32_t status;
+};
+
+struct hlthunk_wait_for_signal {
+	uint64_t *signal_seq_arr;
+	uint32_t signal_seq_nr; /* value of 1 is currently supported */
+	uint32_t queue_index;
+	uint32_t flags;	/* currently unused */
+};
+
+struct hlthunk_wait_in {
+	void *chunks_restore;
+	uint32_t num_chunks_restore;
+	uint64_t *hlthunk_wait_for_signal;
+	uint32_t num_wait_for_signal; /* value of 1 is currently supported */
+	uint32_t flags;
+};
+
+struct hlthunk_wait_out {
+	uint64_t seq;
+	uint32_t status;
+};
+
 struct hlthunk_functions_pointers {
 	/*
 	 * Functions that will be wrapped with profiler code to enable
 	 * profiling
 	 */
 	int (*fp_hlthunk_command_submission)(int fd, struct hlthunk_cs_in *in,
-					     struct hlthunk_cs_out *out);
+						struct hlthunk_cs_out *out);
 	int (*fp_hlthunk_open)(enum hlthunk_device_name device_name,
-			       const char *busid);
+				const char *busid);
 	int (*fp_hlthunk_close)(int fd);
 	int (*fp_hlthunk_profiler_start)(int fd);
 	int (*fp_hlthunk_profiler_stop)(int fd);
 	int (*fp_hlthunk_profiler_get_trace)(int fd, void *buffer,
-					     uint64_t *size);
+						uint64_t *size);
 
 	/* Function for the profiler to use */
 	uint64_t (*fp_hlthunk_device_memory_alloc)(int fd, uint64_t size,
 						bool contiguous, bool shared);
 	int (*fp_hlthunk_device_memory_free)(int fd, uint64_t handle);
 	uint64_t (*fp_hlthunk_device_memory_map)(int fd, uint64_t handle,
-						 uint64_t hint_addr);
+							uint64_t hint_addr);
 	uint64_t (*fp_hlthunk_host_memory_map)(int fd, void *host_virt_addr,
-					       uint64_t hint_addr,
-					       uint64_t host_size);
+						uint64_t hint_addr,
+						uint64_t host_size);
 	int (*fp_hlthunk_memory_unmap)(int fd, uint64_t device_virt_addr);
 	int (*fp_hlthunk_debug)(int fd, struct hl_debug_args *debug);
 	int (*fp_hlthunk_request_command_buffer)(int fd, uint32_t cb_size,
-						 uint64_t *cb_handle);
+							uint64_t *cb_handle);
 	int (*fp_hlthunk_destroy_command_buffer)(int fd, uint64_t cb_handle);
 	int (*fp_hlthunk_wait_for_cs)(int fd, uint64_t seq,
-				      uint64_t timeout_us, uint32_t *status);
+					uint64_t timeout_us, uint32_t *status);
 	enum hlthunk_device_name (*fp_hlthunk_get_device_name_from_fd)(int fd);
 	int (*fp_hlthunk_get_pci_bus_id_from_fd)(int fd, char *pci_bus_id,
-						 int len);
+							int len);
 	int (*fp_hlthunk_get_device_index_from_pci_bus_id)(const char *busid);
 	void* (*fp_hlthunk_malloc)(int size);
 	void (*fp_hlthunk_free)(void *pt);
+	int (*fp_hlthunk_signal_submission)(int fd,
+					struct hlthunk_signal_in *in,
+					struct hlthunk_signal_out *out);
+	int (*fp_hlthunk_wait_for_signal)(int fd,
+					struct hlthunk_wait_in *in,
+					struct hlthunk_wait_out *out);
 	int (*fp_hlthunk_get_time_sync_info)(int fd,
 					struct hlthunk_time_sync_info *info);
 };
@@ -142,6 +181,14 @@ struct hlthunk_debugfs {
  */
 hlthunk_public int hlthunk_open(enum hlthunk_device_name device_name,
 				const char *busid);
+
+/**
+ * This function opens the habanalabs device according to a specified module id.
+ * This API is relevant only for ASICs that support this property
+ * @param module_id a number representing the module_id in the host machine
+ * @return file descriptor handle or negative value in case of error
+ */
+hlthunk_public int hlthunk_open_by_module_id(uint32_t module_id);
 
 /**
  * This function opens the habanalabs control device according to specified
@@ -350,6 +397,30 @@ hlthunk_public int hlthunk_command_submission(int fd, struct hlthunk_cs_in *in,
  */
 hlthunk_public int hlthunk_wait_for_cs(int fd, uint64_t seq,
 					uint64_t timeout_us, uint32_t *status);
+
+/**
+ * This function submits a job of a signal CS to a specific device
+ * @param fd file descriptor handle of habanalabs main device
+ * @param in pointer to a signal command submission input structure
+ * @param out pointer to a  signal command submission output structure
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_signal_submission(int fd,
+					struct hlthunk_signal_in *in,
+					struct hlthunk_signal_out *out);
+
+/**
+ * This function submits a job of a  wait CS to a specific device
+ * @param fd file descriptor handle of habanalabs main device
+ * @param in pointer to a wait command submission input structure
+ * @param out pointer to a wait command submission output structure
+ * @return 0 for success, negative value for failure. ULLONG_MAX is returned if
+ * the given signal CS was already completed. Undefined behavior if the given
+ * seq is not of a  signal CS
+ */
+hlthunk_public int hlthunk_wait_for_signal(int fd,
+					struct hlthunk_wait_in *in,
+					struct hlthunk_wait_out *out);
 
 /**
  * This function allocates DRAM memory on the device

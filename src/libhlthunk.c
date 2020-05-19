@@ -36,6 +36,8 @@ int hlthunk_debug_level = HLTHUNK_DEBUG_LEVEL_NA;
  */
 struct hlthunk_functions_pointers functions_pointers_table = {
 	.fp_hlthunk_command_submission = hlthunk_command_submission_original,
+	.fp_hlthunk_signal_submission = hlthunk_signal_submission_original,
+	.fp_hlthunk_wait_for_signal = hlthunk_wait_for_signal_original,
 	.fp_hlthunk_open = hlthunk_open_original,
 	.fp_hlthunk_close = hlthunk_close_original,
 	.fp_hlthunk_profiler_start = hlthunk_profiler_start_original,
@@ -219,6 +221,9 @@ hlthunk_public enum hlthunk_device_name hlthunk_get_device_name_from_fd(int fd)
 	case PCI_IDS_GOYA:
 	case PCI_IDS_GOYA_SIMULATOR:
 		return HLTHUNK_DEVICE_GOYA;
+	case PCI_IDS_GAUDI:
+	case PCI_IDS_GAUDI_SIMULATOR:
+		return HLTHUNK_DEVICE_GAUDI;
 	default:
 		printf("Invalid device type %d\n", device_id);
 		break;
@@ -345,16 +350,20 @@ void hlthunk_set_profiler(void)
 {
 	void (*set_profiler_function)(
 		struct hlthunk_functions_pointers *functions_table);
+
 	global_members.shared_object_handle =
 		dlopen("libSynapse_profiler.so", RTLD_LAZY);
 	if (global_members.shared_object_handle == NULL)
 		return;
+
 	*(void **) (&set_profiler_function) =
 		dlsym(global_members.shared_object_handle,
 		      "hlthunk_set_profiler");
+
 	if (set_profiler_function)
 		(*set_profiler_function)(&functions_pointers_table);
 }
+
 int hlthunk_open_original(enum hlthunk_device_name device_name,
 			  const char *busid)
 {
@@ -384,6 +393,71 @@ hlthunk_public int hlthunk_open(enum hlthunk_device_name device_name,
 	}
 
 	return (*functions_pointers_table.fp_hlthunk_open)(device_name, busid);
+}
+
+hlthunk_public int hlthunk_open_by_module_id(uint32_t module_id)
+{
+	const char *base_path = "/sys/class/habanalabs/";
+	const char *char_base_path = "/sys/dev/char/";
+	const char *device_prefix = "hl_controlD";
+	const char *dev_file_prefix = "dev";
+	const char *pci_addr_prefix = "pci_addr";
+	char dev_name[64], read_busid[16], sys_file_name[128];
+	int i, rc, ctrl_fd, major, minor, pci_fd;
+	bool found = false;
+	FILE *sys_file;
+
+	for (i = 0 ; i < HLTHUNK_MAX_MINOR ; i++) {
+		struct hlthunk_hw_ip_info hw_ip;
+
+		ctrl_fd = hlthunk_open_control(i, NULL);
+		if (ctrl_fd < 0)
+			continue;
+
+		rc = hlthunk_get_hw_ip_info(ctrl_fd, &hw_ip);
+
+		hlthunk_close(ctrl_fd);
+
+		if ((rc) || (hw_ip.module_id != module_id))
+			continue;
+
+		found = true;
+		break;
+	}
+
+	if (!found)
+		return -1;
+
+	sprintf(dev_name, "%s%d", device_prefix, i);
+
+	sprintf(sys_file_name, "%s%s/%s", base_path, dev_name, dev_file_prefix);
+
+	sys_file = fopen(sys_file_name, "r");
+	if (!sys_file)
+		return -1;
+
+	rc = fscanf(sys_file, "%d:%d", &major, &minor);
+	fclose(sys_file);
+
+	if (rc != 2)
+		return -1;
+
+	sprintf(sys_file_name, "%s%d:%d/%s", char_base_path, major, minor - 1,
+						pci_addr_prefix);
+
+	pci_fd = open(sys_file_name, O_RDONLY);
+	if (pci_fd < 0)
+		return pci_fd;
+
+	rc = read(pci_fd, read_busid, BUSID_WITH_DOMAIN_LEN);
+	close(pci_fd);
+
+	if (rc < 0)
+		return rc;
+
+	read_busid[BUSID_WITH_DOMAIN_LEN] = '\0';
+
+	return hlthunk_open(HLTHUNK_DEVICE_DONT_CARE, read_busid);
 }
 
 hlthunk_public int hlthunk_open_control(int dev_id, const char *busid)
@@ -442,6 +516,7 @@ hlthunk_public int hlthunk_get_hw_ip_info(int fd,
 		HL_INFO_VERSION_MAX_LEN);
 	memcpy(hw_ip->card_name, hl_hw_ip.card_name,
 		HL_INFO_CARD_NAME_MAX_LEN);
+	hw_ip->module_id = hl_hw_ip.module_id;
 
 	return 0;
 }
@@ -741,6 +816,114 @@ hlthunk_public int hlthunk_command_submission(int fd, struct hlthunk_cs_in *in,
 				fd, in, out);
 }
 
+int hlthunk_signal_submission_original(int fd,
+					struct hlthunk_signal_in *in,
+					struct hlthunk_signal_out *out)
+{
+	union hl_cs_args args;
+	struct hl_cs_chunk chunk_execute;
+	struct hl_cs_in *hl_in;
+	struct hl_cs_out *hl_out;
+	int rc;
+
+	memset(&args, 0, sizeof(args));
+	memset(&chunk_execute, 0, sizeof(chunk_execute));
+	chunk_execute.queue_index = in->queue_index;
+
+	hl_in = &args.in;
+	hl_in->chunks_restore = (__u64) (uintptr_t) in->chunks_restore;
+	hl_in->num_chunks_restore = in->num_chunks_restore;
+	hl_in->chunks_execute = (__u64) (uintptr_t) &chunk_execute;
+	hl_in->num_chunks_execute = 1;
+	hl_in->cs_flags = in->flags | HL_CS_FLAGS_SIGNAL;
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_CS, &args);
+	if (rc)
+		return rc;
+
+	hl_out = &args.out;
+
+	if (hl_out->status != HL_CS_STATUS_SUCCESS)
+		return -EINVAL;
+
+	hl_out = &args.out;
+	out->seq = hl_out->seq;
+	out->status = hl_out->status;
+
+	return 0;
+}
+
+hlthunk_public int hlthunk_signal_submission(int fd,
+					struct hlthunk_signal_in *in,
+					struct hlthunk_signal_out *out)
+{
+	return (*functions_pointers_table.fp_hlthunk_signal_submission)(
+				fd, in, out);
+}
+
+int hlthunk_wait_for_signal_original(int fd, struct hlthunk_wait_in *in,
+					struct hlthunk_wait_out *out)
+{
+	union hl_cs_args args;
+	struct hl_cs_chunk chunk_execute;
+	struct hlthunk_wait_for_signal *wait_for_signal;
+	struct hl_cs_in *hl_in;
+	struct hl_cs_out *hl_out;
+	int rc;
+
+	if (in->num_wait_for_signal != 1) {
+		printf(
+			"Currently only one wait for signal CS is supported in each ioctl\n");
+		return -EINVAL;
+	}
+
+	wait_for_signal =
+		(struct hlthunk_wait_for_signal *) in->hlthunk_wait_for_signal;
+
+	if (wait_for_signal->signal_seq_nr != 1) {
+		printf(
+			"Currently only one signal CS seq is supported in a wait for signal CS\n");
+		return -EINVAL;
+	}
+
+	memset(&args, 0, sizeof(args));
+	memset(&chunk_execute, 0, sizeof(chunk_execute));
+	chunk_execute.queue_index = wait_for_signal->queue_index;
+	chunk_execute.signal_seq_arr =
+			(__u64) (uintptr_t) wait_for_signal->signal_seq_arr;
+	chunk_execute.num_signal_seq_arr = 1;
+
+	hl_in = &args.in;
+	hl_in->chunks_restore = (__u64) (uintptr_t) in->chunks_restore;
+	hl_in->num_chunks_restore = in->num_chunks_restore;
+	hl_in->chunks_execute = (__u64) (uintptr_t) &chunk_execute;
+	hl_in->num_chunks_execute = 1;
+	hl_in->cs_flags = in->flags | HL_CS_FLAGS_WAIT;
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_CS, &args);
+	if (rc)
+		return rc;
+
+	hl_out = &args.out;
+
+	if (hl_out->status != HL_CS_STATUS_SUCCESS)
+		return -EINVAL;
+
+	hl_out = &args.out;
+	out->seq = hl_out->seq;
+	out->status = hl_out->status;
+
+	return 0;
+}
+
+hlthunk_public int hlthunk_wait_for_signal(int fd,
+					struct hlthunk_wait_in *in,
+					struct hlthunk_wait_out *out)
+{
+	return (*functions_pointers_table.fp_hlthunk_wait_for_signal)(
+				fd, in, out);
+}
+
 hlthunk_public int hlthunk_wait_for_cs(int fd, uint64_t seq,
 					uint64_t timeout_us, uint32_t *status)
 {
@@ -779,16 +962,6 @@ hlthunk_public int hlthunk_get_info(int fd, struct hl_info_args *info)
 	return hlthunk_ioctl(fd, HL_IOCTL_INFO, info);
 }
 
-/**
- * This function allocates DRAM memory on the device
- * @param fd file descriptor of the device on which to allocate the memory
- * @param size how much memory to allocate
- * @param contiguous whether the memory area will be physically contiguous
- * @param shared whether this memory can be shared with other user processes
- * on the device
- * @return opaque handle representing the memory allocation. 0 is returned
- * upon failure
- */
 hlthunk_public uint64_t hlthunk_device_memory_alloc(int fd, uint64_t size,
 						bool contiguous, bool shared)
 {
@@ -810,13 +983,6 @@ hlthunk_public uint64_t hlthunk_device_memory_alloc(int fd, uint64_t size,
 	return ioctl_args.out.handle;
 }
 
-/**
- * This function frees DRAM memory that was allocated on the device using
- * hlthunk_device_memory_alloc
- * @param fd file descriptor of the device that this memory belongs to
- * @param handle the opaque handle that represents this memory
- * @return 0 for success, negative value for failure
- */
 hlthunk_public int hlthunk_device_memory_free(int fd, uint64_t handle)
 {
 	union hl_mem_args ioctl_args;
@@ -828,16 +994,6 @@ hlthunk_public int hlthunk_device_memory_free(int fd, uint64_t handle)
 	return hlthunk_ioctl(fd, HL_IOCTL_MEMORY, &ioctl_args);
 }
 
-/**
- * This function asks the driver to map a previously allocated DRAM memory
- * to the device's MMU and to allocate for it a VA in the device address space
- * @param fd file descriptor of the device that this memory belongs to
- * @param handle the opaque handle that represents this memory
- * @param hint_addr the user can request from the driver that the VA will be
- * a specific address. The driver doesn't have to comply to this request but
- * will take it under consideration
- * @return VA in the device address space. 0 is returned upon failure
- */
 hlthunk_public uint64_t hlthunk_device_memory_map(int fd, uint64_t handle,
 							uint64_t hint_addr)
 {
@@ -856,17 +1012,6 @@ hlthunk_public uint64_t hlthunk_device_memory_map(int fd, uint64_t handle,
 	return ioctl_args.out.device_virt_addr;
 }
 
-/**
- * This function asks the driver to map a previously allocated host memory
- * to the device's MMU and to allocate for it a VA in the device address space
- * @param fd file descriptor of the device that this memory will be mapped to
- * @param host_virt_addr the user's VA of memory area on the host
- * @param hint_addr the user can request from the driver that the device VA will
- * be a specific address. The driver doesn't have to comply to this request but
- * will take it under consideration
- * @param host_size the size of the memory area
- * @return VA in the device address space. 0 is returned upon failure
- */
 hlthunk_public uint64_t hlthunk_host_memory_map(int fd, void *host_virt_addr,
 						uint64_t hint_addr,
 						uint64_t host_size)
@@ -888,14 +1033,6 @@ hlthunk_public uint64_t hlthunk_host_memory_map(int fd, void *host_virt_addr,
 	return ioctl_args.out.device_virt_addr;
 }
 
-/**
- * This function unmaps a mapping in the device's MMU that was previously done
- * using either hlthunk_device_memory_map or hlthunk_host_memory_map
- * @param fd file descriptor of the device that contains the mapping
- * @param device_virt_addr the VA in the device address space representing
- * the device or host memory area
- * @return 0 for success, negative value for failure
- */
 hlthunk_public int hlthunk_memory_unmap(int fd, uint64_t device_virt_addr)
 {
 	union hl_mem_args ioctl_args;
