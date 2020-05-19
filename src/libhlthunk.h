@@ -62,6 +62,10 @@ do { \
  */
 int hlthunk_command_submission_original(int fd, struct hlthunk_cs_in *in,
 					struct hlthunk_cs_out *out);
+int hlthunk_signal_submission_original(int fd, struct hlthunk_signal_in *in,
+					struct hlthunk_signal_out *out);
+int hlthunk_wait_for_signal_original(int fd, struct hlthunk_wait_in *in,
+					struct hlthunk_wait_out *out);
 int hlthunk_open_original(enum hlthunk_device_name device_name,
 			  const char *busid);
 int hlthunk_close_original(int fd);

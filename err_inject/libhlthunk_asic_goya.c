@@ -17,7 +17,6 @@
 #include "goya/goya_packets.h"
 #include "goya/goya.h"
 #include "goya/asic_reg/goya_regs.h"
-#include "goya/asic_reg/cpu_ca53_cfg_regs.h"
 
 #define GOYA_ASYNC_EVENT_ID_TPC0_ECC 36 /* Non Fatal event */
 #define GOYA_ASYNC_EVENT_ID_TPC0_DEC 117 /* Fatal event */

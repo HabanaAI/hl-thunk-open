@@ -46,6 +46,7 @@ struct hlthunk_cs_chunk {
 	uint32_t queue_index;
 };
 
+struct hlthunk_asic_funcs *get_asic_funcs_gaudi(void);
 struct hlthunk_asic_funcs *get_asic_funcs_goya(void);
 
 struct hlthunk_asic_funcs *hlthunk_get_asic_funcs(int fd)
@@ -53,6 +54,8 @@ struct hlthunk_asic_funcs *hlthunk_get_asic_funcs(int fd)
 	switch (hlthunk_get_device_name_from_fd(fd)) {
 	case HLTHUNK_DEVICE_GOYA:
 		return get_asic_funcs_goya();
+	case HLTHUNK_DEVICE_GAUDI:
+		return get_asic_funcs_gaudi();
 	default:
 		return NULL;
 	}
