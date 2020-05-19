@@ -52,6 +52,12 @@ static uint32_t goya_add_wreg32_pkt(void *buffer, uint32_t buf_off,
 						sizeof(packet));
 }
 
+static uint32_t goya_add_arb_point_pkt(void *buffer, uint32_t buf_off,
+					struct hltests_pkt_info *pkt_info)
+{
+	return buf_off;
+}
+
 static uint32_t goya_add_msg_long_pkt(void *buffer, uint32_t buf_off,
 					struct hltests_pkt_info *pkt_info)
 {
@@ -374,6 +380,14 @@ static uint32_t goya_add_monitor_and_fence(
 	return buf_off;
 }
 
+static uint32_t goya_add_arb_en_pkt(void *buffer, uint32_t buf_off,
+				    struct hltests_pkt_info *pkt_info,
+				    struct hltests_arb_info *arb_info,
+				    uint32_t queue_id, bool enable)
+{
+	return buf_off;
+}
+
 static uint32_t goya_get_dma_down_qid(
 			enum hltests_dcore_separation_mode dcore_sep_mode,
 			enum hltests_stream_id stream)
@@ -463,9 +477,11 @@ static void goya_dram_pool_free(struct hltests_device *hdev, uint64_t addr,
 }
 
 static const struct hltests_asic_funcs goya_funcs = {
+	.add_arb_en_pkt = goya_add_arb_en_pkt,
 	.add_monitor_and_fence = goya_add_monitor_and_fence,
 	.add_nop_pkt = goya_add_nop_pkt,
 	.add_wreg32_pkt = goya_add_wreg32_pkt,
+	.add_arb_point_pkt = goya_add_arb_point_pkt,
 	.add_msg_long_pkt = goya_add_msg_long_pkt,
 	.add_msg_short_pkt = goya_add_msg_short_pkt,
 	.add_arm_monitor_pkt = goya_add_arm_monitor_pkt,

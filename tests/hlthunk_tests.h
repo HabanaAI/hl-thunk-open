@@ -22,6 +22,8 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
+#define ARRAY_SIZE(arr)			(sizeof(arr) / sizeof((arr)[0]))
+
 #define WAIT_FOR_CS_DEFAULT_TIMEOUT	5000000 /* 5 sec */
 
 #define CS_FLAGS_FORCE_RESTORE		0x1
@@ -66,12 +68,17 @@
 #define PAGE_SIZE_2MB			(1UL << PAGE_SHIFT_2MB)
 #define PAGE_SIZE_16MB			(1UL << PAGE_SHIFT_16MB)
 
-#define MSG_LONG_SIZE			16
-
 #define DMA_TEST_INC_SRAM(func_name, state, size) \
 	void func_name(void **state) { hltests_dma_test(state, false, size); }
 #define DMA_TEST_INC_DRAM(func_name, state, size) \
 	void func_name(void **state) { hltests_dma_test(state, true, size); }
+
+#define RREG32(full_address) \
+		hltests_debugfs_read(tests_state->debugfs.addr_fd, \
+				tests_state->debugfs.data_fd, full_address)
+#define WREG32(full_address, val) \
+		hltests_debugfs_write(tests_state->debugfs.addr_fd, \
+				tests_state->debugfs.data_fd, full_address, val)
 
 KHASH_MAP_INIT_INT(ptr, void*)
 KHASH_MAP_INIT_INT64(ptr64, void*)
@@ -118,6 +125,11 @@ enum hl_tests_write_to_sob_mod {
 	SOB_ADD
 };
 
+enum hl_tests_size_desc {
+	ENTRY_SIZE_16B = 0,
+	ENTRY_SIZE_32B
+};
+
 enum hltests_stream_id {
 	STREAM0 = 0,
 	STREAM1,
@@ -132,8 +144,8 @@ enum hltests_is_external {
 };
 
 enum hltests_destroy_cb {
-	 DESTROY_CB_FALSE = 0,
-	 DESTROY_CB_TRUE
+	DESTROY_CB_FALSE = 0,
+	DESTROY_CB_TRUE
 };
 
 enum hltests_huge {
@@ -164,6 +176,13 @@ enum hltests_dma_perf_test_results {
 	DMA_PERF_RESULTS_MAX
 };
 
+struct hltests_debugfs {
+	int addr_fd;
+	int data_fd;
+	int clk_gate_fd;
+	char clk_gate_val[4];
+};
+
 struct hltests_device {
 	const struct hltests_asic_funcs *asic_funcs;
 
@@ -181,23 +200,16 @@ struct hltests_device {
 	void *priv;
 	int fd;
 	int refcnt;
-	int debugfs_addr_fd;
-	int debugfs_data_fd;
 	enum hl_pci_ids device_id;
 };
 
 struct hltests_state {
 	double perf_outcomes[DMA_PERF_RESULTS_MAX];
+	struct hltests_debugfs debugfs;
 	int fd;
 	bool mme;
 	bool mmu;
 	bool security;
-};
-
-enum hltests_kmd_param {
-	KMD_PARAM_MMU,
-	KMD_PARAM_SECURITY,
-	KMD_PARAM_MME
 };
 
 struct hltests_pkt_info {
@@ -209,6 +221,10 @@ struct hltests_pkt_info {
 			uint32_t value;
 			uint16_t reg_addr;
 		} wreg32;
+		struct {
+			uint8_t priority;
+			bool release;
+		} arb_point;
 		struct {
 			uint64_t address;
 			uint32_t value;
@@ -260,7 +276,24 @@ struct hltests_monitor_and_fence {
 	uint8_t queue_id;
 };
 
+enum hltests_arb {
+	ARB_PRIORITY = 0,
+	ARB_WRR
+};
+
+struct hltests_arb_info {
+	enum hltests_arb arb;
+	union {
+		uint32_t weight[NUM_OF_STREAMS];
+		uint32_t priority[NUM_OF_STREAMS];
+	};
+};
+
 struct hltests_asic_funcs {
+	uint32_t (*add_arb_en_pkt)(void *buffer, uint32_t buf_off,
+			struct hltests_pkt_info *pkt_info,
+			struct hltests_arb_info *arb_info,
+			uint32_t queue_id, bool enable);
 	uint32_t (*add_monitor_and_fence)(
 			enum hltests_dcore_separation_mode dcore_sep_mode,
 			void *buffer, uint32_t buf_off,
@@ -268,6 +301,8 @@ struct hltests_asic_funcs {
 	uint32_t (*add_nop_pkt)(void *buffer, uint32_t buf_off, bool eb,
 				bool mb);
 	uint32_t (*add_wreg32_pkt)(void *buffer, uint32_t buf_off,
+					struct hltests_pkt_info *pkt_info);
+	uint32_t (*add_arb_point_pkt)(void *buffer, uint32_t buf_off,
 					struct hltests_pkt_info *pkt_info);
 	uint32_t (*add_msg_long_pkt)(void *buffer, uint32_t buf_off,
 					struct hltests_pkt_info *pkt_info);
@@ -350,6 +385,32 @@ struct mem_pool {
 	uint8_t *pool;
 };
 
+struct hltests_module_params_info {
+	uint64_t tpc_mask;
+	uint32_t gaudi_huge_page_optimization;
+	uint32_t timeout_locked;
+	uint32_t reset_on_lockup;
+	uint32_t pldm;
+	uint32_t mmu_enable;
+	uint32_t clock_gating;
+	uint32_t mme_enable;
+	uint32_t dram_enable;
+	uint32_t cpu_enable;
+	uint32_t reset_pcilink;
+	uint32_t config_pll;
+	uint32_t cpu_queues_enable;
+	uint32_t fw_loading;
+	uint32_t heartbeat;
+	uint32_t axi_drain;
+	uint32_t security_enable;
+	uint32_t sram_scrambler_enable;
+	uint32_t dram_scrambler_enable;
+	uint32_t dram_size_ratio;
+	uint32_t hbm_ecc_enable;
+	uint32_t reserved;
+	uint32_t hard_reset_on_fw_events;
+};
+
 void hltests_parser(int argc, const char **argv, const char * const* usage,
 			enum hlthunk_device_name expected_device,
 			const struct CMUnitTest * const tests, int num_tests);
@@ -358,6 +419,8 @@ const char *hltests_get_config_filename(void);
 int hltests_get_parser_run_disabled_tests(void);
 bool hltests_is_simulator(int fd);
 bool hltests_is_goya(int fd);
+bool hltests_is_gaudi(int fd);
+bool hltests_is_pldm(int fd);
 
 int hltests_run_group_tests(const char *group_name,
 				const struct CMUnitTest * const tests,
@@ -373,8 +436,10 @@ int hltests_cb_munmap(void *addr, size_t length);
 
 int hltests_debugfs_open(int fd);
 int hltests_debugfs_close(int fd);
-uint32_t hltests_debugfs_read(int fd, uint64_t full_address);
-void hltests_debugfs_write(int fd, uint64_t full_address, uint32_t val);
+
+uint32_t hltests_debugfs_read(int addr_fd, int data_fd, uint64_t full_address);
+void hltests_debugfs_write(int addr_fd, int data_fd, uint64_t full_address,
+				uint32_t val);
 
 void *hltests_allocate_host_mem(int fd, uint64_t size, enum hltests_huge huge);
 void *hltests_allocate_device_mem(int fd, uint64_t size,
@@ -401,6 +466,11 @@ int hltests_setup(void **state);
 int hltests_teardown(void **state);
 int hltests_root_setup(void **state);
 int hltests_root_teardown(void **state);
+int hltests_root_debug_setup(void **state);
+int hltests_root_debug_teardown(void **state);
+
+int hltests_get_module_params_info(int fd,
+				struct hltests_module_params_info *info);
 
 uint32_t hltests_rand_u32(void);
 void hltests_fill_rand_values(void *ptr, uint32_t size);
@@ -427,6 +497,7 @@ void hltests_submit_and_wait_cs(int fd, void *cb_ptr, uint32_t cb_size,
 				int expected_val);
 
 int hltests_ensure_device_operational(void **state);
+
 void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 				bool common_cb_in_host, uint8_t tpc_id);
 
@@ -443,6 +514,9 @@ uint32_t hltests_add_nop_pkt(int fd, void *buffer, uint32_t buf_off,
 				enum hltests_eb eb, enum hltests_mb mb);
 
 uint32_t hltests_add_wreg32_pkt(int fd, void *buffer, uint32_t buf_off,
+					struct hltests_pkt_info *pkt_info);
+
+uint32_t hltests_add_arb_point_pkt(int fd, void *buffer, uint32_t buf_off,
 					struct hltests_pkt_info *pkt_info);
 
 uint32_t hltests_add_msg_long_pkt(int fd, void *buffer, uint32_t buf_off,
@@ -468,6 +542,10 @@ uint32_t hltests_add_cp_dma_pkt(int fd, void *buffer, uint32_t buf_off,
 
 uint32_t hltests_add_monitor_and_fence(int fd, void *buffer, uint32_t buf_off,
 		struct hltests_monitor_and_fence *mon_and_fence_info);
+uint32_t hltests_add_arb_en_pkt(int fd, void *buffer, uint32_t buf_off,
+		struct hltests_pkt_info *pkt_info,
+		struct hltests_arb_info *arb_info,
+		uint32_t queue_id, bool enable);
 uint32_t hltests_get_dma_down_qid(int fd, enum hltests_stream_id stream);
 uint32_t hltests_get_dma_up_qid(int fd, enum hltests_stream_id stream);
 uint32_t hltests_get_ddma_qid(int fd, int dma_ch,
@@ -483,5 +561,6 @@ uint16_t hltests_get_first_avail_sob(int fd);
 uint16_t hltests_get_first_avail_mon(int fd);
 
 void goya_tests_set_asic_funcs(struct hltests_device *hdev);
+void gaudi_tests_set_asic_funcs(struct hltests_device *hdev);
 
 #endif /* HLTHUNK_TESTS_H */

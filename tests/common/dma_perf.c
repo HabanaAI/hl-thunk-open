@@ -45,7 +45,9 @@ static double hltests_transfer_perf(int fd,
 	uint64_t seq = 0;
 	uint32_t num_of_cb_per_transfer, offset_cb1 = 0, offset_cb2 = 0;
 
-	if (hltests_is_simulator(fd))
+	if (hltests_is_pldm(fd))
+		num_of_lindma_pkts = 1;
+	else if (hltests_is_simulator(fd))
 		num_of_lindma_pkts = 5;
 	else
 		num_of_lindma_pkts = 0x400000000ull / first_transfer->size;
@@ -540,6 +542,12 @@ void hltest_sram_dram_single_ch_perf(void **state)
 	uint32_t size;
 	int rc, fd = tests_state->fd;
 
+	/* This test can't run if mmu disabled */
+	if (!tests_state->mmu) {
+		printf("Test is skipped. MMU must be enabled\n");
+		skip();
+	}
+
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
@@ -549,7 +557,11 @@ void hltest_sram_dram_single_ch_perf(void **state)
 	}
 
 	sram_addr = hw_ip.sram_base_address;
-	size = hw_ip.sram_size;
+
+	if (hltests_is_pldm(fd))
+		size = 0x100000;
+	else
+		size = hw_ip.sram_size;
 
 	assert_in_range(size, 1, hw_ip.dram_size);
 	dram_addr = hltests_allocate_device_mem(fd, size, NOT_CONTIGUOUS);
@@ -571,7 +583,9 @@ void hltest_sram_dram_single_ch_perf(void **state)
 	} else {
 		int num_of_lindma_pkts;
 
-		if (hltests_is_simulator(fd))
+		if (hltests_is_pldm(fd))
+			num_of_lindma_pkts = 1;
+		else if (hltests_is_simulator(fd))
 			num_of_lindma_pkts = 10;
 		else
 			num_of_lindma_pkts = 30000;
@@ -594,11 +608,21 @@ void hltest_dram_sram_single_ch_perf(void **state)
 	uint32_t size, queue_index;
 	int rc, fd = tests_state->fd;
 
+	/* This test can't run if mmu disabled */
+	if (!tests_state->mmu) {
+		printf("Test is skipped. MMU must be enabled\n");
+		skip();
+	}
+
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
 	sram_addr = hw_ip.sram_base_address;
-	size = hw_ip.sram_size;
+
+	if (hltests_is_pldm(fd))
+		size = 0x100000;
+	else
+		size = hw_ip.sram_size;
 
 	if (!hw_ip.dram_enabled) {
 		printf("DRAM is disabled so skipping test\n");
@@ -625,7 +649,9 @@ void hltest_dram_sram_single_ch_perf(void **state)
 	} else {
 		int num_of_lindma_pkts;
 
-		if (hltests_is_simulator(fd))
+		if (hltests_is_pldm(fd))
+			num_of_lindma_pkts = 1;
+		else if (hltests_is_simulator(fd))
 			num_of_lindma_pkts = 10;
 		else
 			num_of_lindma_pkts = 30000;
@@ -647,10 +673,19 @@ void hltest_dram_dram_single_ch_perf(void **state)
 	uint32_t size;
 	int rc, fd = tests_state->fd;
 
+	/* This test can't run if mmu disabled */
+	if (!tests_state->mmu) {
+		printf("Test is skipped. MMU must be enabled\n");
+		skip();
+	}
+
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
-	size = 0x400000;
+	if (hltests_is_pldm(fd))
+		size = 0x100000;
+	else
+		size = 0x400000;
 
 	if (!hw_ip.dram_enabled) {
 		printf("DRAM is disabled so skipping test\n");
@@ -677,7 +712,9 @@ void hltest_dram_dram_single_ch_perf(void **state)
 	} else {
 		int num_of_lindma_pkts;
 
-		if (hltests_is_simulator(fd))
+		if (hltests_is_pldm(fd))
+			num_of_lindma_pkts = 1;
+		else if (hltests_is_simulator(fd))
 			num_of_lindma_pkts = 10;
 		else
 			num_of_lindma_pkts = 130000;
@@ -708,7 +745,15 @@ void hltest_sram_dram_multi_ch_perf(void **state)
 		skip();
 	}
 
-	if (hltests_is_simulator(fd))
+	/* This test can't run if mmu disabled */
+	if (!tests_state->mmu) {
+		printf("Test is skipped. MMU must be enabled\n");
+		skip();
+	}
+
+	if (hltests_is_pldm(fd))
+		num_of_lindma_pkts = 1;
+	else if (hltests_is_simulator(fd))
 		num_of_lindma_pkts = 10;
 	else
 		num_of_lindma_pkts = 60000;
@@ -724,7 +769,11 @@ void hltest_sram_dram_multi_ch_perf(void **state)
 	assert_in_range(num_of_ddma_ch, 1, MAX_DMA_CH);
 
 	sram_addr = hw_ip.sram_base_address;
-	size = hw_ip.sram_size;
+
+	if (hltests_is_pldm(fd))
+		size = 0x100000;
+	else
+		size = hw_ip.sram_size;
 
 	sram_dram_perf_outcome =
 		&tests_state->perf_outcomes[DMA_PERF_SRAM2DRAM_MULTI_CH];
@@ -775,7 +824,15 @@ void hltest_dram_sram_multi_ch_perf(void **state)
 		skip();
 	}
 
-	if (hltests_is_simulator(fd))
+	/* This test can't run if mmu disabled */
+	if (!tests_state->mmu) {
+		printf("Test is skipped. MMU must be enabled\n");
+		skip();
+	}
+
+	if (hltests_is_pldm(fd))
+		num_of_lindma_pkts = 1;
+	else if (hltests_is_simulator(fd))
 		num_of_lindma_pkts = 10;
 	else
 		num_of_lindma_pkts = 60000;
@@ -791,7 +848,11 @@ void hltest_dram_sram_multi_ch_perf(void **state)
 	assert_in_range(num_of_ddma_ch, 1, MAX_DMA_CH);
 
 	sram_addr = hw_ip.sram_base_address;
-	size = hw_ip.sram_size;
+
+	if (hltests_is_pldm(fd))
+		size = 0x100000;
+	else
+		size = hw_ip.sram_size;
 
 	dram_sram_perf_outcome =
 		&tests_state->perf_outcomes[DMA_PERF_DRAM2SRAM_MULTI_CH];
@@ -840,13 +901,22 @@ void hltest_dram_dram_multi_ch_perf(void **state)
 		skip();
 	}
 
+	/* This test can't run if mmu disabled */
+	if (!tests_state->mmu) {
+		printf("Test is skipped. MMU must be enabled\n");
+		skip();
+	}
+
 	/* This test can't run on Simulator */
 	if (hltests_is_simulator(fd)) {
 		printf("Test is skipped for Simulator\n");
 		skip();
 	}
 
-	num_of_lindma_pkts = 40000;
+	if (hltests_is_pldm(fd))
+		num_of_lindma_pkts = 1;
+	else
+		num_of_lindma_pkts = 40000;
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
@@ -858,7 +928,10 @@ void hltest_dram_dram_multi_ch_perf(void **state)
 
 	assert_in_range(num_of_ddma_ch, 1, MAX_DMA_CH);
 
-	size = hw_ip.sram_size;
+	if (hltests_is_pldm(fd))
+		size = 0x100000;
+	else
+		size = hw_ip.sram_size;
 
 	dram_dram_perf_outcome =
 		&tests_state->perf_outcomes[DMA_PERF_DRAM2DRAM_MULTI_CH];
@@ -914,7 +987,15 @@ void hltest_sram_dram_bidirectional_full_multi_ch_perf(void **state)
 		skip();
 	}
 
-	if (hltests_is_simulator(fd))
+	/* This test can't run if mmu disabled */
+	if (!tests_state->mmu) {
+		printf("Test is skipped. MMU must be enabled\n");
+		skip();
+	}
+
+	if (hltests_is_pldm(fd))
+		num_of_lindma_pkts = 1;
+	else if (hltests_is_simulator(fd))
 		num_of_lindma_pkts = 10;
 	else
 		num_of_lindma_pkts = 60000;
@@ -930,7 +1011,11 @@ void hltest_sram_dram_bidirectional_full_multi_ch_perf(void **state)
 	assert_in_range(num_of_ddma_ch, 1, MAX_DMA_CH);
 
 	sram_addr = hw_ip.sram_base_address;
-	size = hw_ip.sram_size;
+
+	if (hltests_is_pldm(fd))
+		size = 0x100000;
+	else
+		size = hw_ip.sram_size;
 
 	sram_dram_perf_outcome =
 		&tests_state->perf_outcomes[DMA_PERF_SRAM_DRAM_BIDIR_FULL_CH];
@@ -996,7 +1081,15 @@ void hltest_dram_sram_5ch_perf(void **state)
 		skip();
 	}
 
-	if (hltests_is_simulator(fd))
+	/* This test can't run if mmu disabled */
+	if (!tests_state->mmu) {
+		printf("Test is skipped. MMU must be enabled\n");
+		skip();
+	}
+
+	if (hltests_is_pldm(fd))
+		num_of_lindma_pkts = 1;
+	else if (hltests_is_simulator(fd))
 		num_of_lindma_pkts = 10;
 	else
 		num_of_lindma_pkts = 60000;
@@ -1010,7 +1103,11 @@ void hltest_dram_sram_5ch_perf(void **state)
 	}
 
 	sram_addr = hw_ip.sram_base_address;
-	size = hw_ip.sram_size;
+
+	if (hltests_is_pldm(fd))
+		size = 0x100000;
+	else
+		size = hw_ip.sram_size;
 
 	dram_sram_perf_outcome =
 		&tests_state->perf_outcomes[DMA_PERF_DRAM2SRAM_5_CH];

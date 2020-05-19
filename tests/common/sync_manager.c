@@ -17,6 +17,22 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
+#include <pthread.h>
+
+#define SIG_WAIT_TH	2
+#define SIG_WAIT_CS	(64 / SIG_WAIT_TH)
+
+struct signal_wait_thread_params {
+	int fd;
+	int id;
+};
+
+static uint64_t sig_seqs[SIG_WAIT_CS];
+
+static uint64_t atomic_read(uint64_t *ptr)
+{
+	return __sync_fetch_and_add(ptr, 0);
+}
 
 static void test_sm(void **state, bool is_tpc, bool is_wait, uint8_t engine_id)
 {
@@ -176,11 +192,23 @@ static void test_sm_pingpong_upper_cp(void **state, bool is_tpc,
 	uint64_t seq;
 	uint16_t sob[2], mon[2];
 
-	/* This test can't run on Goya in case the cb is in host */
-	if ((hlthunk_get_device_name_from_fd(fd) == HLTHUNK_DEVICE_GOYA) &&
-			(upper_cb_in_host)) {
-		printf("Test is skipped. Goya's upper CP can't be in host\n");
-		skip();
+	/* Check conditions if CB is in the host */
+	if (upper_cb_in_host) {
+
+		/* This test can't run on Goya */
+		if (hlthunk_get_device_name_from_fd(fd) ==
+						HLTHUNK_DEVICE_GOYA) {
+			printf(
+				"Test is skipped. Goya's common CP can't be in host\n");
+			skip();
+		}
+
+		/* This test can't run if mmu disabled */
+		if (!tests_state->mmu) {
+			printf(
+				"Test is skipped. MMU must be enabled\n");
+			skip();
+		}
 	}
 
 	/* Get device information, especially tpc enabled mask */
@@ -591,6 +619,457 @@ void test_sm_pingpong_mme_common_cp_from_host(void **state)
 		test_sm_pingpong_common_cp(state, false, true, mme_id);
 }
 
+void test_sm_sob_cleanup_on_ctx_switch(void **state)
+{
+	struct hltests_state *tests_state =
+				(struct hltests_state *) *state;
+	char pci_bus_id[13];
+	void *cb;
+	struct hltests_pkt_info pkt_info;
+	struct hltests_monitor_and_fence mon_and_fence_info;
+	uint32_t cb_size;
+	uint16_t sob0, mon0;
+	int rc, fd = tests_state->fd;
+
+	sob0 = hltests_get_first_avail_sob(fd);
+	mon0 = hltests_get_first_avail_mon(fd);
+
+	/* Create CB that sets SOB0 to a non-zero value */
+	cb = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
+	assert_non_null(cb);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.write_to_sob.sob_id = sob0;
+	pkt_info.write_to_sob.value = 1;
+	pkt_info.write_to_sob.mode = SOB_SET;
+	cb_size = hltests_add_write_to_sob_pkt(fd, cb, 0, &pkt_info);
+
+	hltests_submit_and_wait_cs(fd, cb, cb_size,
+				hltests_get_dma_down_qid(fd, STREAM0),
+				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
+
+	/* Close and reopen the FD to cause a context switch */
+	rc = hlthunk_get_pci_bus_id_from_fd(fd, pci_bus_id, sizeof(pci_bus_id));
+	assert_int_equal(rc, 0);
+	rc = hltests_close(fd);
+	assert_int_equal(rc, 0);
+	fd = tests_state->fd = hltests_open(pci_bus_id);
+	assert_in_range(fd, 0, INT_MAX);
+
+	/*
+	 * Create CB that waits on SOB0 till it is zero.
+	 * SOB0 is expected to be zeroed due to the context switch.
+	 */
+	cb = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
+	assert_non_null(cb);
+
+	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
+	mon_and_fence_info.queue_id = hltests_get_dma_down_qid(fd, STREAM0);
+	mon_and_fence_info.cmdq_fence = false;
+	mon_and_fence_info.sob_id = sob0;
+	mon_and_fence_info.mon_id = mon0;
+	mon_and_fence_info.mon_address = 0;
+	mon_and_fence_info.sob_val = 0;
+	mon_and_fence_info.dec_fence = true;
+	mon_and_fence_info.mon_payload = 1;
+	cb_size = hltests_add_monitor_and_fence(fd, cb, 0, &mon_and_fence_info);
+
+	hltests_submit_and_wait_cs(fd, cb, cb_size,
+				hltests_get_dma_down_qid(fd, STREAM0),
+				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
+}
+
+static void *test_signal_wait_th(void *args)
+{
+	struct signal_wait_thread_params *params =
+				(struct signal_wait_thread_params *) args;
+	struct hlthunk_signal_in sig_in;
+	struct hlthunk_signal_out sig_out;
+	struct hlthunk_wait_in wait_in;
+	struct hlthunk_wait_out wait_out;
+	struct hlthunk_wait_for_signal wait_for_signal;
+	int i, rc, fd = params->fd, id = params->id, iters;
+
+	/* the max value of an SOB is 1 << 15 so we want to test a wraparound */
+	iters = 3 * ((1 << 15) + (1 << 14));
+
+	for (i = 0 ; i < iters ; i++) {
+		memset(&sig_in, 0, sizeof(sig_in));
+		memset(&sig_out, 0, sizeof(sig_out));
+		memset(&wait_in, 0, sizeof(wait_in));
+		memset(&wait_out, 0, sizeof(wait_out));
+		memset(&wait_for_signal, 0, sizeof(wait_for_signal));
+
+		sig_in.queue_index = id;
+
+		rc = hlthunk_signal_submission(fd, &sig_in, &sig_out);
+		assert_int_equal(rc, 0);
+
+		if (i & 1) {
+			rc = hltests_wait_for_cs_until_not_busy(fd,
+								sig_out.seq);
+			assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
+		}
+
+		wait_for_signal.queue_index = 7 - id;
+		wait_for_signal.signal_seq_arr = &sig_out.seq;
+		wait_for_signal.signal_seq_nr = 1;
+		wait_in.hlthunk_wait_for_signal = (uint64_t *) &wait_for_signal;
+		wait_in.num_wait_for_signal = 1;
+
+		rc = hlthunk_wait_for_signal(fd, &wait_in, &wait_out);
+		assert_int_equal(rc, 0);
+
+		/* check if the signal CS already finished */
+		if (wait_out.seq == ULLONG_MAX)
+			continue;
+
+		rc = hltests_wait_for_cs_until_not_busy(fd, wait_out.seq);
+		assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
+	}
+
+	return args;
+}
+
+static void *test_signal_wait_parallel_th(void *args)
+{
+	struct signal_wait_thread_params *params =
+				(struct signal_wait_thread_params *) args;
+	struct hlthunk_signal_in sig_in;
+	struct hlthunk_signal_out sig_out;
+	struct hlthunk_wait_in wait_in;
+	struct hlthunk_wait_out wait_out;
+	struct hlthunk_wait_for_signal wait_for_signal;
+	int i, j, rc, fd = params->fd, id = params->id, iters = 1000;
+
+	for (j = 0 ; j < iters ; j++) {
+		if (id & 1) {
+			for (i = 0 ; i < SIG_WAIT_CS ; i++) {
+				memset(&sig_in, 0, sizeof(sig_in));
+				memset(&sig_out, 0, sizeof(sig_out));
+
+				sig_in.queue_index = id;
+
+				rc = hlthunk_signal_submission(fd, &sig_in,
+								&sig_out);
+				assert_int_equal(rc, 0);
+
+				sig_seqs[i] = sig_out.seq;
+
+				/*
+				 * On every odd iteration, wait for the waiter
+				 * to finish so on the next iteration the signal
+				 * won't finish before the wait begins.
+				 */
+				if (i & 1)
+					while (atomic_read(&sig_seqs[i]))
+						;
+			}
+
+			/*
+			 * Wait for the last waiter to finish before starting a
+			 * new iteration
+			 */
+			while (atomic_read(&sig_seqs[SIG_WAIT_CS - 1]))
+				;
+		} else {
+			uint64_t sig_seq;
+
+			for (i = 0 ; i < SIG_WAIT_CS ; i++) {
+				memset(&wait_in, 0, sizeof(wait_in));
+				memset(&wait_out, 0, sizeof(wait_out));
+				memset(&wait_for_signal, 0,
+					sizeof(wait_for_signal));
+
+				/* Wait for a valid signal sequence number */
+				while (atomic_read(&sig_seqs[i]) == 0)
+					;
+
+				sig_seq = sig_seqs[i];
+
+				wait_for_signal.queue_index = 7 - id;
+				wait_for_signal.signal_seq_arr = &sig_seq;
+				wait_for_signal.signal_seq_nr = 1;
+				wait_in.hlthunk_wait_for_signal =
+						(uint64_t *) &wait_for_signal;
+				wait_in.num_wait_for_signal = 1;
+
+				rc = hlthunk_wait_for_signal(fd, &wait_in,
+								&wait_out);
+				assert_int_equal(rc, 0);
+
+				sig_seqs[i] = 0;
+
+				/* check if the signal CS already finished */
+				if (wait_out.seq == ULLONG_MAX)
+					continue;
+
+				rc = hltests_wait_for_cs_until_not_busy(fd,
+								wait_out.seq);
+				assert_int_equal(rc,
+						HL_WAIT_CS_STATUS_COMPLETED);
+			}
+		}
+	}
+
+	return args;
+}
+
+/*
+ * test_signal_wait_dma_th() - this thread function does DMA from host to device
+ * (down) on queue 0 and DMA from device to host (up) on queue 4.
+ * It basically checks that the DMA up waits for the DMA down to finish before
+ * starting execution.
+ * This is done with the new sync stream but also the classic signaling
+ * mechanism is supported for debug.
+ * In addition, the DMA size should be big enough so the DMA down won't
+ * naturally finish before DMA up started regardless of the signaling.
+ */
+static void *test_signal_wait_dma_th(void *args)
+{
+	struct signal_wait_thread_params *params =
+				(struct signal_wait_thread_params *) args;
+	struct hltests_cs_chunk execute_arr[1];
+	struct hltests_monitor_and_fence mon_and_fence_info;
+	struct hltests_pkt_info pkt_info;
+	struct hlthunk_hw_ip_info hw_ip;
+	struct hlthunk_signal_in sig_in;
+	struct hlthunk_signal_out sig_out;
+	struct hlthunk_wait_in wait_in;
+	struct hlthunk_wait_out wait_out;
+	struct hlthunk_wait_for_signal wait_for_signal;
+	void *buf[2], *cb[3], *dram_ptr;
+	uint64_t dram_addr, device_va[2], seq[3];
+	uint32_t dma_size, cb_size[3], queue_down, queue_up;
+	uint16_t sob0, mon0;
+	int i, j = 100, rc, fd = params->fd, id = params->id;
+	bool sync_stream_enable = true; /* for debug */
+
+	queue_down = hltests_get_dma_down_qid(fd, STREAM0);
+	queue_up = hltests_get_dma_up_qid(fd, STREAM0);
+
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+
+	if (!hw_ip.dram_enabled) {
+		printf("DRAM is disabled so skipping test\n");
+		skip();
+	}
+
+	if (hltests_is_simulator(fd))
+		dma_size = 1 << 24;
+	else
+		dma_size = 1 << 27;
+
+	dram_ptr = hltests_allocate_device_mem(fd, dma_size, CONTIGUOUS);
+	assert_non_null(dram_ptr);
+	dram_addr = (uint64_t) (uintptr_t) dram_ptr;
+
+	for (i = 0 ; i < 3 ; i++) {
+		cb[i] = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
+		assert_non_null(cb[i]);
+	}
+
+	for (i = 0 ; i < 2 ; i++) {
+		buf[i] = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
+		assert_non_null(buf[i]);
+		device_va[i] = hltests_get_device_va_for_host_ptr(fd, buf[i]);
+	}
+
+	hltests_fill_rand_values(buf[0], dma_size);
+
+	sob0 = hltests_get_first_avail_sob(fd);
+	mon0 = hltests_get_first_avail_mon(fd);
+
+	while (j--) {
+		memset(buf[1], 0, dma_size);
+		memset(cb_size, 0, sizeof(cb_size));
+
+		/* Clear SOB before we start */
+		memset(&pkt_info, 0, sizeof(pkt_info));
+		pkt_info.eb = EB_TRUE;
+		pkt_info.mb = MB_TRUE;
+		pkt_info.write_to_sob.sob_id = sob0 + id;
+		pkt_info.write_to_sob.value = 0;
+		pkt_info.write_to_sob.mode = SOB_SET;
+		cb_size[2] = hltests_add_write_to_sob_pkt(fd, cb[2], cb_size[2],
+						&pkt_info);
+
+		execute_arr[0].cb_ptr = cb[2];
+		execute_arr[0].cb_size = cb_size[2];
+		execute_arr[0].queue_index = queue_down;
+
+		rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, 0, &seq[2]);
+		assert_int_equal(rc, 0);
+
+		rc = hltests_wait_for_cs_until_not_busy(fd, seq[2]);
+		assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
+
+		/* DMA down */
+		memset(&pkt_info, 0, sizeof(pkt_info));
+		pkt_info.eb = EB_FALSE;
+		pkt_info.mb = MB_FALSE;
+		pkt_info.dma.src_addr = device_va[0];
+		pkt_info.dma.dst_addr = (uint64_t) (uintptr_t) dram_addr;
+		pkt_info.dma.size = dma_size;
+		pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_DRAM;
+		cb_size[0] = hltests_add_dma_pkt(fd, cb[0], cb_size[0],
+						&pkt_info);
+
+		if (!sync_stream_enable) {
+			memset(&pkt_info, 0, sizeof(pkt_info));
+			pkt_info.eb = EB_TRUE;
+			pkt_info.mb = MB_TRUE;
+			pkt_info.write_to_sob.sob_id = sob0 + id;
+			pkt_info.write_to_sob.value = 1;
+			pkt_info.write_to_sob.mode = SOB_ADD;
+			cb_size[0] = hltests_add_write_to_sob_pkt(fd, cb[0],
+						cb_size[0], &pkt_info);
+		}
+
+		execute_arr[0].cb_ptr = cb[0];
+		execute_arr[0].cb_size = cb_size[0];
+		execute_arr[0].queue_index = queue_down;
+
+		rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, 0, &seq[0]);
+		assert_int_equal(rc, 0);
+
+		if (sync_stream_enable) {
+			sig_in.queue_index = queue_down;
+			rc = hlthunk_signal_submission(fd, &sig_in, &sig_out);
+			assert_int_equal(rc, 0);
+
+			wait_for_signal.queue_index = queue_up;
+			wait_for_signal.signal_seq_arr = &sig_out.seq;
+			wait_for_signal.signal_seq_nr = 1;
+			wait_in.hlthunk_wait_for_signal =
+						(uint64_t *) &wait_for_signal;
+			wait_in.num_wait_for_signal = 1;
+
+			rc = hlthunk_wait_for_signal(fd, &wait_in, &wait_out);
+			assert_int_equal(rc, 0);
+		}
+
+		/* DMA up */
+		if (!sync_stream_enable) {
+			memset(&mon_and_fence_info, 0,
+					sizeof(mon_and_fence_info));
+			mon_and_fence_info.queue_id = queue_up;
+			mon_and_fence_info.cmdq_fence = true;
+			mon_and_fence_info.sob_id = sob0 + id;
+			mon_and_fence_info.mon_id = mon0 + id;
+			mon_and_fence_info.mon_address = 0;
+			mon_and_fence_info.sob_val = 1;
+			mon_and_fence_info.dec_fence = true;
+			mon_and_fence_info.mon_payload = 1;
+			cb_size[1] = hltests_add_monitor_and_fence(fd, cb[1],
+						cb_size[1],
+						&mon_and_fence_info);
+		}
+
+		memset(&pkt_info, 0, sizeof(pkt_info));
+		pkt_info.eb = EB_FALSE;
+		pkt_info.mb = MB_FALSE;
+		pkt_info.dma.src_addr = (uint64_t) (uintptr_t) dram_addr;
+		pkt_info.dma.dst_addr = device_va[1];
+		pkt_info.dma.size = dma_size;
+		pkt_info.dma.dma_dir = GOYA_DMA_DRAM_TO_HOST;
+		cb_size[1] = hltests_add_dma_pkt(fd, cb[1], cb_size[1],
+						&pkt_info);
+
+		execute_arr[0].cb_ptr = cb[1];
+		execute_arr[0].cb_size = cb_size[1];
+		execute_arr[0].queue_index = queue_up;
+
+		rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, 0, &seq[1]);
+		assert_int_equal(rc, 0);
+
+		/* Wait for DMA up to finish */
+		rc = hltests_wait_for_cs_until_not_busy(fd, seq[1]);
+		assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
+
+		/* compare host memories */
+		rc = hltests_mem_compare(buf[0], buf[1], dma_size);
+		assert_int_equal(rc, 0);
+	}
+
+	/* cleanup */
+	rc = hltests_free_device_mem(fd, dram_ptr);
+	assert_int_equal(rc, 0);
+
+	for (i = 0 ; i < 2 ; i++) {
+		rc = hltests_free_host_mem(fd, buf[i]);
+		assert_int_equal(rc, 0);
+	}
+
+	for (i = 0 ; i < 3 ; i++) {
+		rc = hltests_destroy_cb(fd, cb[i]);
+		assert_int_equal(rc, 0);
+	}
+
+	return args;
+}
+
+static void _test_signal_wait(void **state, void *(*__start_routine) (void *))
+{
+	struct hltests_state *tests_state =
+			(struct hltests_state *) *state;
+	pthread_t *thread_id;
+	struct signal_wait_thread_params *thread_params;
+	void *retval;
+	int i, rc, fd = tests_state->fd;
+
+	if (!hltests_is_gaudi(fd)) {
+		printf("Test is supported on Gaudi only, skipping.\n");
+		skip();
+	}
+
+	/* Allocate arrays for threads management */
+	thread_id = (pthread_t *) hlthunk_malloc(SIG_WAIT_TH *
+							sizeof(*thread_id));
+	assert_non_null(thread_id);
+
+	thread_params = (struct signal_wait_thread_params *)
+			hlthunk_malloc(SIG_WAIT_TH * sizeof(*thread_params));
+	assert_non_null(thread_params);
+
+	/* Create and execute threads */
+	for (i = 0 ; i < SIG_WAIT_TH ; i++) {
+		thread_params[i].fd = fd;
+		thread_params[i].id = i;
+		rc = pthread_create(&thread_id[i], NULL, __start_routine,
+					&thread_params[i]);
+		assert_int_equal(rc, 0);
+	}
+
+	/* Wait for the termination of the threads */
+	for (i = 0 ; i < SIG_WAIT_TH ; i++) {
+		rc = pthread_join(thread_id[i], &retval);
+		assert_int_equal(rc, 0);
+		assert_non_null(retval);
+	}
+
+	hlthunk_free(thread_id);
+	hlthunk_free(thread_params);
+}
+
+static void test_signal_wait(void **state)
+{
+	_test_signal_wait(state, test_signal_wait_th);
+}
+
+static void test_signal_wait_parallel(void **state)
+{
+	_test_signal_wait(state, test_signal_wait_parallel_th);
+}
+
+static void test_signal_wait_dma(void **state)
+{
+	_test_signal_wait(state, test_signal_wait_dma_th);
+}
+
 const struct CMUnitTest sm_tests[] = {
 	cmocka_unit_test_setup(test_sm_tpc, hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_sm_mme, hltests_ensure_device_operational),
@@ -610,6 +1089,14 @@ const struct CMUnitTest sm_tests[] = {
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_sm_pingpong_mme_common_cp_from_host,
 				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_sm_sob_cleanup_on_ctx_switch,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_signal_wait,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_signal_wait_parallel,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_signal_wait_dma,
+				hltests_ensure_device_operational)
 };
 
 static const char *const usage[] = {
@@ -625,5 +1112,5 @@ int main(int argc, const char **argv)
 			num_tests);
 
 	return hltests_run_group_tests("sync_manager", sm_tests, num_tests,
-					hltests_setup,  hltests_teardown);
+					hltests_setup, hltests_teardown);
 }

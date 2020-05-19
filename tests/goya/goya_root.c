@@ -155,7 +155,7 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 	assert_int_equal(rc, 0);
 
 	/* Verify that the protected register wasn't written */
-	val = hltests_debugfs_read(fd, cfg_address);
+	val = RREG32(cfg_address);
 	assert_int_not_equal(val, 0x789a0ded);
 }
 
@@ -165,12 +165,9 @@ void test_debugfs_sram_read_write(void **state)
 					(struct hltests_state *) *state;
 	uint32_t val;
 
-	hltests_debugfs_write(tests_state->fd, SRAM_BASE_ADDR + 0x200000,
-					0x99775533);
-	hltests_debugfs_write(tests_state->fd, SRAM_BASE_ADDR + 0x200000,
-					0x12345678);
-	val = hltests_debugfs_read(tests_state->fd,
-					SRAM_BASE_ADDR + 0x200000);
+	WREG32(SRAM_BASE_ADDR + 0x200000, 0x99775533);
+	WREG32(SRAM_BASE_ADDR + 0x200000, 0x12345678);
+	val = RREG32(SRAM_BASE_ADDR + 0x200000);
 
 	assert_int_equal(0x12345678, val);
 }
@@ -187,8 +184,8 @@ void test_write_to_cfg_space(void **state)
 
 	assert_in_range(page_size, PAGE_SIZE_4KB, PAGE_SIZE_64KB);
 
-	hltests_debugfs_write(fd, cfg_address, 0x55555555);
-	val = hltests_debugfs_read(fd, cfg_address);
+	WREG32(cfg_address, 0x55555555);
+	val = RREG32(cfg_address);
 	assert_int_equal(val, 0x55555555);
 
 	ptr = hltests_create_cb(fd, page_size, EXTERNAL, 0);
@@ -208,7 +205,7 @@ void test_write_to_cfg_space(void **state)
 				hltests_get_dma_down_qid(fd, STREAM0),
 				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_TIMEDOUT);
 
-	val = hltests_debugfs_read(fd, cfg_address);
+	val = RREG32(cfg_address);
 	assert_int_not_equal(val, 0xbaba0ded);
 }
 
@@ -232,10 +229,10 @@ void test_write_to_mmTPC_PLL_CLK_RLX_0_from_qman(void **state)
 
 	assert_in_range(page_size, PAGE_SIZE_4KB, PAGE_SIZE_64KB);
 
-	val_orig = hltests_debugfs_read(fd, CFG_BASE + mmTPC_PLL_CLK_RLX_0);
+	val_orig = RREG32(CFG_BASE + mmTPC_PLL_CLK_RLX_0);
 
-	hltests_debugfs_write(fd, CFG_BASE + mmTPC_PLL_CLK_RLX_0, 0x300030);
-	val = hltests_debugfs_read(fd, CFG_BASE + mmTPC_PLL_CLK_RLX_0);
+	WREG32(CFG_BASE + mmTPC_PLL_CLK_RLX_0, 0x300030);
+	val = RREG32(CFG_BASE + mmTPC_PLL_CLK_RLX_0);
 	assert_int_equal(val, 0x300030);
 
 	ptr = hltests_create_cb(fd, page_size, EXTERNAL, 0);
@@ -252,10 +249,10 @@ void test_write_to_mmTPC_PLL_CLK_RLX_0_from_qman(void **state)
 				hltests_get_dma_down_qid(fd, STREAM0),
 				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
 
-	val = hltests_debugfs_read(fd, CFG_BASE + mmTPC_PLL_CLK_RLX_0);
+	val = RREG32(CFG_BASE + mmTPC_PLL_CLK_RLX_0);
 	assert_int_equal(val, 0x400040);
 
-	hltests_debugfs_write(fd, CFG_BASE + mmTPC_PLL_CLK_RLX_0, val_orig);
+	WREG32(CFG_BASE + mmTPC_PLL_CLK_RLX_0, val_orig);
 }
 
 const struct CMUnitTest goya_root_tests[] = {

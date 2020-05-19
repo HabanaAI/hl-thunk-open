@@ -26,6 +26,7 @@ add_library(${HLTHUNK_TESTS_LIBRARY}
             STATIC
             hlthunk_tests.c
             hlthunk_tests_goya.c
+            hlthunk_tests_gaudi.c
             argparse/argparse.c
             inih/ini.c)
 target_link_libraries(${HLTHUNK_TESTS_LIBRARY} ${HLTHUNK_TESTS_LINK_LIBRARIES})
@@ -37,3 +38,4 @@ set(TEST_TARGET_LIBRARIES
 
 add_subdirectory(common)
 add_subdirectory(goya)
+add_subdirectory(gaudi)
