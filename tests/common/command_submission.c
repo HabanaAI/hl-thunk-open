@@ -956,6 +956,145 @@ static void test_cs_load_pred_consecutive_map(void **state)
 	test_cs_load_predicates(state, true);
 }
 
+static void load_scalars_and_exe_4_rfs(int fd, uint64_t scalar_buf_sram_addr,
+					uint64_t msg_long_dst_sram_addr,
+					uint64_t host_data_device_va,
+					bool is_separate_exe)
+{
+	struct hltests_pkt_info pkt_info;
+	void *cb;
+	uint32_t cb_size, value;
+
+	cb = hltests_create_cb(fd, sysconf(_SC_PAGESIZE), EXTERNAL, 0);
+	assert_non_null(cb);
+	cb_size = 0;
+
+	/* Initialize the MSG_LONG destination in SRAM */
+	hltests_fill_rand_values(&value, 4);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.msg_long.address = msg_long_dst_sram_addr;
+	pkt_info.msg_long.value = value;
+	cb_size = hltests_add_msg_long_pkt(fd, cb, cb_size, &pkt_info);
+
+	/* Load scalars data and execute the instruction with ETYPE=0 */
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.load_and_exe.src_addr = scalar_buf_sram_addr;
+	pkt_info.load_and_exe.load = 1;
+	pkt_info.load_and_exe.exe = is_separate_exe ? 0 : 1;
+	pkt_info.load_and_exe.load_dst = DST_SCALARS;
+	pkt_info.load_and_exe.pred_map = 0;
+	pkt_info.load_and_exe.exe_type = ETYPE_ALL_OR_LOWER_RF;
+	cb_size = hltests_add_load_and_exe_pkt(fd, cb, cb_size, &pkt_info);
+
+	if (is_separate_exe) {
+		memset(&pkt_info, 0, sizeof(pkt_info));
+		pkt_info.eb = EB_FALSE;
+		pkt_info.mb = MB_TRUE;
+		pkt_info.load_and_exe.src_addr = 0;
+		pkt_info.load_and_exe.load = 0;
+		pkt_info.load_and_exe.exe = 1;
+		pkt_info.load_and_exe.load_dst = 0;
+		pkt_info.load_and_exe.pred_map = 0;
+		pkt_info.load_and_exe.exe_type = ETYPE_ALL_OR_LOWER_RF;
+		cb_size = hltests_add_load_and_exe_pkt(fd, cb, cb_size,
+							&pkt_info);
+	}
+
+	hltests_submit_and_wait_cs(fd, cb, cb_size,
+				hltests_get_dma_down_qid(fd, STREAM0),
+				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
+
+	/* DMA MSG_LONG destination from SRAM to host */
+	hltests_dma_transfer(fd, hltests_get_dma_up_qid(fd, STREAM0),
+				EB_FALSE, MB_FALSE, msg_long_dst_sram_addr,
+				host_data_device_va, 4, GOYA_DMA_SRAM_TO_HOST);
+}
+
+static void test_cs_load_scalars_exe_4_rfs(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct hlthunk_hw_ip_info hw_ip;
+	struct hltests_pkt_info pkt_info;
+	uint64_t scalar_buf_sram_addr, scalar_buf_device_va,
+			msg_long_dst_sram_addr, host_data_device_va;
+	uint32_t *host_data, value;
+	uint8_t *scalar_buf;
+	int rc, fd = tests_state->fd;
+
+	/* Goya doesn't support LOAD_AND_EXE packets */
+	if (hltests_is_goya(fd)) {
+		printf("Test is not relevant for Goya, skipping\n");
+		skip();
+	}
+
+	/* SRAM MAP (base + )
+	 * 0x0    : 4 x 4 bytes for scalars data [R0-R3]
+	 * 0x1000 : MSG_LONG destination
+	 *
+	 * Test description:
+	 * 1. In a single LOAD_AND_EXE packet, load scalars data that include a
+	 *    MSG_LONG packet (16B), and execute the instruction with ETYPE=0
+	 *    (4 RFs).
+	 * 2. Verify that the MSG_LONG destination is updated as expected.
+	 * 3. Load scalars data that includes a MSG_LONG packet (16B).
+	 * 4. In a different LOAD_AND_EXE packet, execute the instruction with
+	 *    ETYPE=0 (4 RFs).
+	 * 5. Verify that the MSG_LONG destination is updated as expected.
+	 */
+
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+	scalar_buf_sram_addr = hw_ip.sram_base_address;
+	msg_long_dst_sram_addr = hw_ip.sram_base_address + 0x1000;
+
+	/* Check alignment of scalars address to 128B */
+	assert_int_equal(scalar_buf_sram_addr & 0x7f, 0);
+
+	scalar_buf = hltests_allocate_host_mem(fd, 32, NOT_HUGE);
+	assert_non_null(scalar_buf);
+	scalar_buf_device_va =
+			hltests_get_device_va_for_host_ptr(fd, scalar_buf);
+
+	host_data = hltests_allocate_host_mem(fd, 4, NOT_HUGE);
+	assert_non_null(host_data);
+	host_data_device_va = hltests_get_device_va_for_host_ptr(fd, host_data);
+
+	/* Prepare scalars buffer and DMA it from host to SRAM */
+	hltests_fill_rand_values(&value, 4);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.msg_long.address = msg_long_dst_sram_addr;
+	pkt_info.msg_long.value = value;
+	hltests_add_msg_long_pkt(fd, scalar_buf, 0, &pkt_info);
+
+	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
+				EB_FALSE, MB_FALSE, scalar_buf_device_va,
+				scalar_buf_sram_addr, 32,
+				GOYA_DMA_HOST_TO_SRAM);
+
+	/* Load and execute in a single packet */
+	load_scalars_and_exe_4_rfs(fd, scalar_buf_sram_addr,
+					msg_long_dst_sram_addr,
+					host_data_device_va, false);
+	assert_int_equal(*host_data, value);
+
+	/* Load and execute in separate packets */
+	load_scalars_and_exe_4_rfs(fd, scalar_buf_sram_addr,
+					msg_long_dst_sram_addr,
+					host_data_device_va, true);
+	assert_int_equal(*host_data, value);
+
+	/* Cleanup */
+	hltests_free_host_mem(fd, host_data);
+	hltests_free_host_mem(fd, scalar_buf);
+}
+
 const struct CMUnitTest cs_tests[] = {
 	cmocka_unit_test_setup(test_cs_nop, hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_cs_nop_16PQE,
@@ -983,6 +1122,8 @@ const struct CMUnitTest cs_tests[] = {
 	cmocka_unit_test_setup(test_cs_load_pred_non_consecutive_map,
 					hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_cs_load_pred_consecutive_map,
+					hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_cs_load_scalars_exe_4_rfs,
 					hltests_ensure_device_operational)
 };
 
