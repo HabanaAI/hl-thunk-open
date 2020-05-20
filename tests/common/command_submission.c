@@ -1095,6 +1095,155 @@ static void test_cs_load_scalars_exe_4_rfs(void **state)
 	hltests_free_host_mem(fd, scalar_buf);
 }
 
+static void load_scalars_and_exe_2_rfs(int fd, uint64_t scalar_buf_sram_addr,
+					uint16_t sob0, uint16_t mon0,
+					bool is_upper_rfs, bool is_separate_exe)
+{
+	struct hltests_pkt_info pkt_info;
+	struct hltests_monitor_and_fence mon_and_fence_info;
+	enum hl_tests_exe_type exe_type;
+	void *cb;
+	uint32_t cb_size;
+
+	exe_type = is_upper_rfs ? ETYPE_UPPER_RF : ETYPE_ALL_OR_LOWER_RF;
+
+	cb = hltests_create_cb(fd, sysconf(_SC_PAGESIZE), EXTERNAL, 0);
+	assert_non_null(cb);
+	cb_size = 0;
+
+	/* Clear SOB0 */
+	hltests_clear_sobs(fd, 1);
+
+	/* Load scalars data and execute the instruction */
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.load_and_exe.src_addr = scalar_buf_sram_addr;
+	pkt_info.load_and_exe.load = 1;
+	pkt_info.load_and_exe.exe = is_separate_exe ? 0 : 1;
+	pkt_info.load_and_exe.load_dst = DST_SCALARS;
+	pkt_info.load_and_exe.pred_map = 0;
+	pkt_info.load_and_exe.exe_type = exe_type;
+	cb_size = hltests_add_load_and_exe_pkt(fd, cb, cb_size, &pkt_info);
+
+	if (is_separate_exe) {
+		memset(&pkt_info, 0, sizeof(pkt_info));
+		pkt_info.eb = EB_FALSE;
+		pkt_info.mb = MB_TRUE;
+		pkt_info.load_and_exe.src_addr = 0;
+		pkt_info.load_and_exe.load = 0;
+		pkt_info.load_and_exe.exe = 1;
+		pkt_info.load_and_exe.load_dst = 0;
+		pkt_info.load_and_exe.pred_map = 0;
+		pkt_info.load_and_exe.exe_type = exe_type;
+		cb_size = hltests_add_load_and_exe_pkt(fd, cb, cb_size,
+							&pkt_info);
+	}
+
+	/* FENCE until SOB0 is 1 */
+	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
+	mon_and_fence_info.queue_id = hltests_get_dma_down_qid(fd, STREAM0);
+	mon_and_fence_info.cmdq_fence = false;
+	mon_and_fence_info.sob_id = sob0;
+	mon_and_fence_info.mon_id = mon0;
+	mon_and_fence_info.mon_address = 0;
+	mon_and_fence_info.sob_val = 1;
+	mon_and_fence_info.dec_fence = true;
+	mon_and_fence_info.mon_payload = 1;
+	cb_size = hltests_add_monitor_and_fence(fd, cb, cb_size,
+						&mon_and_fence_info);
+
+	hltests_submit_and_wait_cs(fd, cb, cb_size,
+				hltests_get_dma_down_qid(fd, STREAM0),
+				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
+}
+
+static void test_cs_load_scalars_exe_2_rfs(void **state, bool is_upper_rfs)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct hlthunk_hw_ip_info hw_ip;
+	struct hltests_pkt_info pkt_info;
+	uint64_t scalar_buf_sram_addr, scalar_buf_device_va;
+	uint32_t *host_data, scalar_buf_offset;
+	uint16_t sob0, mon0;
+	uint8_t *scalar_buf;
+	int rc, fd = tests_state->fd;
+
+	/* Goya doesn't support LOAD_AND_EXE packets */
+	if (hltests_is_goya(fd)) {
+		printf("Test is not relevant for Goya, skipping\n");
+		skip();
+	}
+
+	/* SRAM MAP (base + )
+	 * 0x0    : 4 x 4 bytes for scalars data [R0-R3]
+	 *
+	 * Test description:
+	 * 1. In a single LOAD_AND_EXE packet, load scalars data that includes a
+	 *    MSG_SHORT packet (8B) that writes 1 to SOB0, and execute the
+	 *    instruction with ETYPE value according to "is_upper_rfs".
+	 * 2. Add a FENCE and arm a monitor that waits until SOB0 is 1.
+	 * 3. Load scalars data that includes a MSG_SHORT packet (8B) that
+	 *    writes 1 to SOB0.
+	 * 4. In a different LOAD_AND_EXE packet, execute the instruction with
+	 *    ETYPE value according to "is_upper_rfs".
+	 * 5. Add a FENCE and arm a monitor that waits until SOB0 is 1.
+	 */
+
+	sob0 = hltests_get_first_avail_sob(fd);
+	mon0 = hltests_get_first_avail_mon(fd);
+
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+	scalar_buf_sram_addr = hw_ip.sram_base_address;
+
+	/* Check alignment of scalars address to 128B */
+	assert_int_equal(scalar_buf_sram_addr & 0x7f, 0);
+
+	scalar_buf = hltests_allocate_host_mem(fd, 32, NOT_HUGE);
+	assert_non_null(scalar_buf);
+	scalar_buf_device_va =
+			hltests_get_device_va_for_host_ptr(fd, scalar_buf);
+
+	/* Prepare scalars buffer and DMA it from host to SRAM */
+	scalar_buf_offset = is_upper_rfs ? 8 : 0;
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.write_to_sob.sob_id = sob0;
+	pkt_info.write_to_sob.value = 1;
+	pkt_info.write_to_sob.mode = SOB_SET;
+	hltests_add_write_to_sob_pkt(fd, scalar_buf, scalar_buf_offset,
+					&pkt_info);
+
+	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
+				EB_FALSE, MB_FALSE, scalar_buf_device_va,
+				scalar_buf_sram_addr, 32,
+				GOYA_DMA_HOST_TO_SRAM);
+
+	/* Load and execute in a single packet */
+	load_scalars_and_exe_2_rfs(fd, scalar_buf_sram_addr, sob0, mon0,
+					is_upper_rfs, false);
+
+	/* Load and execute in separate packets */
+	load_scalars_and_exe_2_rfs(fd, scalar_buf_sram_addr, sob0, mon0,
+					is_upper_rfs, true);
+
+	/* Cleanup */
+	hltests_free_host_mem(fd, scalar_buf);
+}
+
+static void test_cs_load_scalars_exe_lower_2_rfs(void **state)
+{
+	test_cs_load_scalars_exe_2_rfs(state, false);
+}
+
+static void test_cs_load_scalars_exe_upper_2_rfs(void **state)
+{
+	test_cs_load_scalars_exe_2_rfs(state, true);
+}
+
 const struct CMUnitTest cs_tests[] = {
 	cmocka_unit_test_setup(test_cs_nop, hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_cs_nop_16PQE,
@@ -1124,6 +1273,10 @@ const struct CMUnitTest cs_tests[] = {
 	cmocka_unit_test_setup(test_cs_load_pred_consecutive_map,
 					hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_cs_load_scalars_exe_4_rfs,
+					hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_cs_load_scalars_exe_lower_2_rfs,
+					hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_cs_load_scalars_exe_upper_2_rfs,
 					hltests_ensure_device_operational)
 };
 
