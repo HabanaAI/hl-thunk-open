@@ -57,8 +57,9 @@ static uint32_t gaudi_add_wreg32_pkt(void *buffer, uint32_t buf_off,
 static uint32_t gaudi_add_arb_point_pkt(void *buffer, uint32_t buf_off,
 					struct hltests_pkt_info *pkt_info)
 {
-	struct packet_arb_point packet = {0};
+	struct packet_arb_point packet;
 
+	memset(&packet, 0, sizeof(packet));
 	packet.opcode = PACKET_ARB_POINT;
 	packet.priority = pkt_info->arb_point.priority;
 	packet.rls = pkt_info->arb_point.release;
