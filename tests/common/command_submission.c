@@ -803,11 +803,14 @@ static uint32_t load_predicates_and_test_msg_long(int fd,
 	struct hltests_pkt_info pkt_info;
 	enum hl_tests_predicates_map pred_map;
 	void *cb;
-	uint32_t cb_size, value;
+	uint32_t page_size, cb_size, value;
 
 	pred_map = is_consecutive_map ? PMAP_CONSECUTIVE : PMAP_NON_CONSECUTIVE;
 
-	cb = hltests_create_cb(fd, sysconf(_SC_PAGESIZE), EXTERNAL, 0);
+	assert_int_not_equal(sysconf(_SC_PAGESIZE), -1);
+	page_size = (uint32_t) sysconf(_SC_PAGESIZE);
+
+	cb = hltests_create_cb(fd, page_size, EXTERNAL, 0);
 	assert_non_null(cb);
 	cb_size = 0;
 
@@ -963,9 +966,12 @@ static void load_scalars_and_exe_4_rfs(int fd, uint64_t scalar_buf_sram_addr,
 {
 	struct hltests_pkt_info pkt_info;
 	void *cb;
-	uint32_t cb_size, value;
+	uint32_t page_size, cb_size, value;
 
-	cb = hltests_create_cb(fd, sysconf(_SC_PAGESIZE), EXTERNAL, 0);
+	assert_int_not_equal(sysconf(_SC_PAGESIZE), -1);
+	page_size = (uint32_t) sysconf(_SC_PAGESIZE);
+
+	cb = hltests_create_cb(fd, page_size, EXTERNAL, 0);
 	assert_non_null(cb);
 	cb_size = 0;
 
@@ -1103,11 +1109,14 @@ static void load_scalars_and_exe_2_rfs(int fd, uint64_t scalar_buf_sram_addr,
 	struct hltests_monitor_and_fence mon_and_fence_info;
 	enum hl_tests_exe_type exe_type;
 	void *cb;
-	uint32_t cb_size;
+	uint32_t page_size, cb_size;
 
 	exe_type = is_upper_rfs ? ETYPE_UPPER_RF : ETYPE_ALL_OR_LOWER_RF;
 
-	cb = hltests_create_cb(fd, sysconf(_SC_PAGESIZE), EXTERNAL, 0);
+	assert_int_not_equal(sysconf(_SC_PAGESIZE), -1);
+	page_size = (uint32_t) sysconf(_SC_PAGESIZE);
+
+	cb = hltests_create_cb(fd, page_size, EXTERNAL, 0);
 	assert_non_null(cb);
 	cb_size = 0;
 
