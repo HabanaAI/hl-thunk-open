@@ -32,106 +32,130 @@ struct dma_perf_transfer {
 };
 
 static double execute_host_bidirectional_transfer(int fd,
-				struct dma_perf_transfer *first_transfer,
-				struct dma_perf_transfer *second_transfer)
+				struct dma_perf_transfer *host_to_device,
+				struct dma_perf_transfer *device_to_host)
 {
 	struct hltests_cs_chunk *execute_arr;
 	struct hltests_pkt_info pkt_info;
-	uint64_t num_of_lindma_pkts, num_of_lindma_pkts_per_cb, i, j;
 	struct timespec begin, end;
 	double time_diff;
-	void **cb1, **cb2;
-	int rc, num_of_cb = 1;
-	uint64_t seq = 0;
-	uint32_t num_of_cb_per_transfer, offset_cb1 = 0, offset_cb2 = 0;
+	void **h2d_cb, **d2h_cb;
+	int rc, h2d_num_of_cb = 1, d2h_num_of_cb = 1;
+	uint64_t h2d_lindma_pkts, h2d_lindma_pkts_per_cb, i, j,
+		d2h_lindma_pkts, d2h_lindma_pkts_per_cb, seq = 0;
+	uint32_t h2d_cb_offset = 0, d2h_cb_offset = 0;
 
-	if (hltests_is_pldm(fd))
-		num_of_lindma_pkts = 1;
-	else if (hltests_is_simulator(fd))
-		num_of_lindma_pkts = 5;
-	else
-		num_of_lindma_pkts = 0x400000000ull / first_transfer->size;
-
-	num_of_lindma_pkts_per_cb = num_of_lindma_pkts;
-	num_of_cb_per_transfer = 1;
-
-	if (num_of_lindma_pkts > MAX_NUM_LIN_DMA_PKTS_IN_EXTERNAL_CB) {
-		num_of_lindma_pkts_per_cb = MAX_NUM_LIN_DMA_PKTS_IN_EXTERNAL_CB;
-
-		num_of_cb_per_transfer =
-			(num_of_lindma_pkts / num_of_lindma_pkts_per_cb) + 1;
-
-		num_of_lindma_pkts = num_of_cb_per_transfer *
-					num_of_lindma_pkts_per_cb;
+	if (hltests_is_pldm(fd)) {
+		h2d_lindma_pkts = 1;
+		d2h_lindma_pkts = 1;
+	} else if (hltests_is_simulator(fd)) {
+		h2d_lindma_pkts = 5;
+		d2h_lindma_pkts = 5;
+	} else {
+		h2d_lindma_pkts = 0x43F9B1000ull / host_to_device->size;
+		d2h_lindma_pkts = 0x4A817C000ull / device_to_host->size;
 	}
 
-	num_of_cb = num_of_cb_per_transfer * 2;
-	assert_in_range(num_of_cb, 1, HL_MAX_JOBS_PER_CS);
+	h2d_lindma_pkts_per_cb = h2d_lindma_pkts;
+	h2d_num_of_cb = 1;
+
+	if (h2d_lindma_pkts > MAX_NUM_LIN_DMA_PKTS_IN_EXTERNAL_CB) {
+		h2d_lindma_pkts_per_cb = MAX_NUM_LIN_DMA_PKTS_IN_EXTERNAL_CB;
+
+		h2d_num_of_cb =
+			(h2d_lindma_pkts / h2d_lindma_pkts_per_cb) + 1;
+
+		h2d_lindma_pkts = h2d_num_of_cb *
+					h2d_lindma_pkts_per_cb;
+	}
+
+	assert_in_range(h2d_num_of_cb, 1, HL_MAX_JOBS_PER_CS / 2);
+
+	d2h_lindma_pkts_per_cb = d2h_lindma_pkts;
+	d2h_num_of_cb = 1;
+
+	if (d2h_lindma_pkts > MAX_NUM_LIN_DMA_PKTS_IN_EXTERNAL_CB) {
+		d2h_lindma_pkts_per_cb = MAX_NUM_LIN_DMA_PKTS_IN_EXTERNAL_CB;
+
+		d2h_num_of_cb =
+			(d2h_lindma_pkts / d2h_lindma_pkts_per_cb) + 1;
+
+		d2h_lindma_pkts = d2h_num_of_cb *
+					d2h_lindma_pkts_per_cb;
+	}
+
+
+	assert_in_range(d2h_num_of_cb, 1, HL_MAX_JOBS_PER_CS / 2);
 
 	execute_arr = hlthunk_malloc(sizeof(struct hltests_cs_chunk) *
-					num_of_cb);
+					(h2d_num_of_cb + d2h_num_of_cb));
 	assert_non_null(execute_arr);
 
-	cb1 = hlthunk_malloc(sizeof(void *) * num_of_cb_per_transfer);
-	assert_non_null(cb1);
-	cb2 = hlthunk_malloc(sizeof(void *) * num_of_cb_per_transfer);
-	assert_non_null(cb2);
+	h2d_cb = hlthunk_malloc(sizeof(void *) * h2d_num_of_cb);
+	assert_non_null(h2d_cb);
+	d2h_cb = hlthunk_malloc(sizeof(void *) * d2h_num_of_cb);
+	assert_non_null(d2h_cb);
 
-	for (i = 0 ; i < num_of_cb_per_transfer ; i++) {
-		uint64_t cb_size = num_of_lindma_pkts_per_cb * LIN_DMA_PKT_SIZE;
+	for (i = 0 ; i < h2d_num_of_cb ; i++) {
+		uint64_t cb_size = h2d_lindma_pkts_per_cb * LIN_DMA_PKT_SIZE;
 
-		cb1[i] = hltests_create_cb(fd, cb_size, EXTERNAL, 0);
-		assert_non_null(cb1[i]);
+		h2d_cb[i] = hltests_create_cb(fd, cb_size, EXTERNAL, 0);
+		assert_non_null(h2d_cb[i]);
+	}
 
-		cb2[i] = hltests_create_cb(fd, cb_size, EXTERNAL, 0);
-		assert_non_null(cb2[i]);
+	for (i = 0 ; i < d2h_num_of_cb ; i++) {
+		uint64_t cb_size = d2h_lindma_pkts_per_cb * LIN_DMA_PKT_SIZE;
+
+		d2h_cb[i] = hltests_create_cb(fd, cb_size, EXTERNAL, 0);
+		assert_non_null(d2h_cb[i]);
 	}
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_FALSE;
-	pkt_info.dma.src_addr = first_transfer->src_addr;
-	pkt_info.dma.dst_addr = first_transfer->dst_addr;
-	pkt_info.dma.size = first_transfer->size;
-	pkt_info.dma.dma_dir = first_transfer->dma_dir;
+	pkt_info.dma.src_addr = host_to_device->src_addr;
+	pkt_info.dma.dst_addr = host_to_device->dst_addr;
+	pkt_info.dma.size = host_to_device->size;
+	pkt_info.dma.dma_dir = host_to_device->dma_dir;
 
-	for (i = 0 ; i < num_of_cb_per_transfer ; i++) {
-		for (j = 0 ; j < num_of_lindma_pkts_per_cb ; j++)
-			offset_cb1 = hltests_add_dma_pkt(fd, cb1[i], offset_cb1,
-							&pkt_info);
+	for (i = 0 ; i < h2d_num_of_cb ; i++) {
+		for (j = 0 ; j < h2d_lindma_pkts_per_cb ; j++)
+			h2d_cb_offset = hltests_add_dma_pkt(fd, h2d_cb[i],
+						h2d_cb_offset, &pkt_info);
 
-		execute_arr[i].cb_ptr = cb1[i];
-		execute_arr[i].cb_size = offset_cb1;
-		execute_arr[i].queue_index = first_transfer->queue_index;
+		execute_arr[i].cb_ptr = h2d_cb[i];
+		execute_arr[i].cb_size = h2d_cb_offset;
+		execute_arr[i].queue_index = host_to_device->queue_index;
 
-		offset_cb1 = 0;
+		h2d_cb_offset = 0;
 	}
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_FALSE;
-	pkt_info.dma.src_addr = second_transfer->src_addr;
-	pkt_info.dma.dst_addr = second_transfer->dst_addr;
-	pkt_info.dma.size = second_transfer->size;
-	pkt_info.dma.dma_dir = second_transfer->dma_dir;
+	pkt_info.dma.src_addr = device_to_host->src_addr;
+	pkt_info.dma.dst_addr = device_to_host->dst_addr;
+	pkt_info.dma.size = device_to_host->size;
+	pkt_info.dma.dma_dir = device_to_host->dma_dir;
 
-	for (i = 0 ; i < num_of_cb_per_transfer ; i++) {
-		for (j = 0 ; j < num_of_lindma_pkts_per_cb ; j++)
-			offset_cb2 = hltests_add_dma_pkt(fd, cb2[i],
-						offset_cb2, &pkt_info);
+	for (i = 0 ; i < d2h_num_of_cb ; i++) {
+		for (j = 0 ; j < d2h_lindma_pkts_per_cb ; j++)
+			d2h_cb_offset = hltests_add_dma_pkt(fd, d2h_cb[i],
+						d2h_cb_offset, &pkt_info);
 
-		execute_arr[num_of_cb_per_transfer + i].cb_ptr = cb2[i];
-		execute_arr[num_of_cb_per_transfer + i].cb_size =
-							offset_cb2;
-		execute_arr[num_of_cb_per_transfer + i].queue_index =
-					second_transfer->queue_index;
+		execute_arr[h2d_num_of_cb + i].cb_ptr = d2h_cb[i];
+		execute_arr[h2d_num_of_cb + i].cb_size =
+							d2h_cb_offset;
+		execute_arr[h2d_num_of_cb + i].queue_index =
+					device_to_host->queue_index;
 
-		offset_cb2 = 0;
+		d2h_cb_offset = 0;
 	}
 
 	clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
 
-	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, num_of_cb, 0, &seq);
+	rc = hltests_submit_cs(fd, NULL, 0, execute_arr,
+				h2d_num_of_cb + d2h_num_of_cb, 0, &seq);
 	assert_int_equal(rc, 0);
 
 	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
@@ -141,21 +165,24 @@ static double execute_host_bidirectional_transfer(int fd,
 	time_diff = (end.tv_nsec - begin.tv_nsec) / 1000000000.0 +
 						(end.tv_sec  - begin.tv_sec);
 
-	for (i = 0 ; i < num_of_cb_per_transfer ; i++) {
-		rc = hltests_destroy_cb(fd, cb1[i]);
-		assert_int_equal(rc, 0);
-
-		rc = hltests_destroy_cb(fd, cb2[i]);
+	for (i = 0 ; i < h2d_num_of_cb ; i++) {
+		rc = hltests_destroy_cb(fd, h2d_cb[i]);
 		assert_int_equal(rc, 0);
 	}
 
-	hlthunk_free(cb1);
-	hlthunk_free(cb2);
+	for (i = 0 ; i < d2h_num_of_cb ; i++) {
+		rc = hltests_destroy_cb(fd, d2h_cb[i]);
+		assert_int_equal(rc, 0);
+	}
+
+	hlthunk_free(h2d_cb);
+	hlthunk_free(d2h_cb);
 	hlthunk_free(execute_arr);
 
 	/* return value in GB/Sec */
-	return ((double)(first_transfer->size + second_transfer->size) *
-			num_of_lindma_pkts / time_diff) / 1000 / 1000 / 1000;
+	return ((double)(host_to_device->size * h2d_lindma_pkts +
+			device_to_host->size * d2h_lindma_pkts) / time_diff) /
+			1000 / 1000 / 1000;
 }
 
 static double execute_host_transfer(int fd,
