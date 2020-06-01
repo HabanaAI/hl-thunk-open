@@ -8,6 +8,7 @@
 #include "hlthunk.h"
 #include "mersenne-twister.h"
 #include "hlthunk_tests.h"
+#include "ini.h"
 
 #include <stddef.h>
 #include <limits.h>
@@ -280,25 +281,52 @@ static double execute_host_transfer(int fd,
 			num_of_lindma_pkts / time_diff) / 1000 / 1000 / 1000;
 }
 
+struct dma_perf_cfg {
+	uint32_t dma_size;
+};
+
+static int dma_perf_parser(void *user, const char *section, const char *name,
+				const char *value)
+{
+	struct dma_perf_cfg *dma_cfg = (struct dma_perf_cfg *) user;
+	char *tmp;
+
+	if (MATCH("dma_perf", "host_dma_size"))
+		dma_cfg->dma_size = strtoul(value, NULL, 0);
+	else
+		return 0; /* unknown section/name, error */
+
+	return 1;
+}
+
 void test_host_sram_perf(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	const char *config_filename = hltests_get_config_filename();
 	struct dma_perf_transfer transfer;
 	struct hlthunk_hw_ip_info hw_ip;
 	double *host_sram_perf_outcome;
+	struct dma_perf_cfg cfg;
 	uint64_t host_addr, sram_addr;
 	void *src_ptr;
-	uint32_t size;
 	int rc, fd = tests_state->fd;
+
+	cfg.dma_size = LIN_DMA_SIZE_FOR_HOST;
+
+	if (config_filename) {
+		if (ini_parse(config_filename, dma_perf_parser, &cfg) < 0)
+			fail_msg("Can't load %s\n", config_filename);
+
+		printf("Configuration loaded from %s:\n", config_filename);
+		printf("dma_size = 0x%x\n", cfg.dma_size);
+	}
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
 	sram_addr = hw_ip.sram_base_address;
 
-	size = LIN_DMA_SIZE_FOR_HOST;
-
-	src_ptr = hltests_allocate_host_mem(fd, size, HUGE);
+	src_ptr = hltests_allocate_host_mem(fd, cfg.dma_size, HUGE);
 	assert_non_null(src_ptr);
 
 	host_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
@@ -309,7 +337,7 @@ void test_host_sram_perf(void **state)
 	transfer.queue_index = hltests_get_dma_down_qid(fd, STREAM0);
 	transfer.src_addr = host_addr;
 	transfer.dst_addr = sram_addr;
-	transfer.size = size;
+	transfer.size = cfg.dma_size;
 	transfer.dma_dir = GOYA_DMA_HOST_TO_SRAM;
 
 	*host_sram_perf_outcome = execute_host_transfer(fd, &transfer);
@@ -320,22 +348,31 @@ void test_host_sram_perf(void **state)
 void test_sram_host_perf(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	const char *config_filename = hltests_get_config_filename();
+	struct dma_perf_cfg cfg;
 	struct dma_perf_transfer transfer;
 	struct hlthunk_hw_ip_info hw_ip;
 	double *sram_host_perf_outcome;
 	uint64_t host_addr, sram_addr;
 	void *dst_ptr;
-	uint32_t size;
 	int rc, fd = tests_state->fd;
+
+	cfg.dma_size = LIN_DMA_SIZE_FOR_HOST;
+
+	if (config_filename) {
+		if (ini_parse(config_filename, dma_perf_parser, &cfg) < 0)
+			fail_msg("Can't load %s\n", config_filename);
+
+		printf("Configuration loaded from %s:\n", config_filename);
+		printf("dma_size = 0x%x\n", cfg.dma_size);
+	}
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
 	sram_addr = hw_ip.sram_base_address;
 
-	size = LIN_DMA_SIZE_FOR_HOST;
-
-	dst_ptr = hltests_allocate_host_mem(fd, size, HUGE);
+	dst_ptr = hltests_allocate_host_mem(fd, cfg.dma_size, HUGE);
 	assert_non_null(dst_ptr);
 
 	host_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
@@ -346,7 +383,7 @@ void test_sram_host_perf(void **state)
 	transfer.queue_index = hltests_get_dma_up_qid(fd, STREAM0);
 	transfer.src_addr = sram_addr;
 	transfer.dst_addr = host_addr;
-	transfer.size = size;
+	transfer.size = cfg.dma_size;
 	transfer.dma_dir = GOYA_DMA_SRAM_TO_HOST;
 
 	*sram_host_perf_outcome = execute_host_transfer(fd, &transfer);
@@ -357,13 +394,24 @@ void test_sram_host_perf(void **state)
 void test_host_dram_perf(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	const char *config_filename = hltests_get_config_filename();
+	struct dma_perf_cfg cfg;
 	struct dma_perf_transfer transfer;
 	struct hlthunk_hw_ip_info hw_ip;
 	double *host_dram_perf_outcome;
 	void *src_ptr, *dram_addr;
 	uint64_t host_addr;
 	int rc, fd = tests_state->fd;
-	uint32_t size;
+
+	cfg.dma_size = LIN_DMA_SIZE_FOR_HOST;
+
+	if (config_filename) {
+		if (ini_parse(config_filename, dma_perf_parser, &cfg) < 0)
+			fail_msg("Can't load %s\n", config_filename);
+
+		printf("Configuration loaded from %s:\n", config_filename);
+		printf("dma_size = 0x%x\n", cfg.dma_size);
+	}
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
@@ -373,13 +421,12 @@ void test_host_dram_perf(void **state)
 		skip();
 	}
 
-	size = LIN_DMA_SIZE_FOR_HOST;
-
-	assert_in_range(size, 1, hw_ip.dram_size);
-	dram_addr = hltests_allocate_device_mem(fd, size, NOT_CONTIGUOUS);
+	assert_in_range(cfg.dma_size, 1, hw_ip.dram_size);
+	dram_addr = hltests_allocate_device_mem(fd, cfg.dma_size,
+						NOT_CONTIGUOUS);
 	assert_non_null(dram_addr);
 
-	src_ptr = hltests_allocate_host_mem(fd, size, HUGE);
+	src_ptr = hltests_allocate_host_mem(fd, cfg.dma_size, HUGE);
 	assert_non_null(src_ptr);
 
 	host_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
@@ -390,7 +437,7 @@ void test_host_dram_perf(void **state)
 	transfer.queue_index = hltests_get_dma_down_qid(fd, STREAM0);
 	transfer.src_addr = host_addr;
 	transfer.dst_addr = (uint64_t) (uintptr_t) dram_addr;
-	transfer.size = size;
+	transfer.size = cfg.dma_size;
 	transfer.dma_dir = GOYA_DMA_HOST_TO_DRAM;
 
 	*host_dram_perf_outcome = execute_host_transfer(fd, &transfer);
@@ -402,13 +449,24 @@ void test_host_dram_perf(void **state)
 void test_dram_host_perf(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	const char *config_filename = hltests_get_config_filename();
+	struct dma_perf_cfg cfg;
 	struct dma_perf_transfer transfer;
 	struct hlthunk_hw_ip_info hw_ip;
 	double *dram_host_perf_outcome;
 	void *dst_ptr, *dram_addr;
 	uint64_t host_addr;
 	int rc, fd = tests_state->fd;
-	uint32_t size;
+
+	cfg.dma_size = LIN_DMA_SIZE_FOR_HOST;
+
+	if (config_filename) {
+		if (ini_parse(config_filename, dma_perf_parser, &cfg) < 0)
+			fail_msg("Can't load %s\n", config_filename);
+
+		printf("Configuration loaded from %s:\n", config_filename);
+		printf("dma_size = 0x%x\n", cfg.dma_size);
+	}
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
@@ -418,13 +476,12 @@ void test_dram_host_perf(void **state)
 		skip();
 	}
 
-	size = LIN_DMA_SIZE_FOR_HOST;
-
-	assert_in_range(size, 1, hw_ip.dram_size);
-	dram_addr = hltests_allocate_device_mem(fd, size, NOT_CONTIGUOUS);
+	assert_in_range(cfg.dma_size, 1, hw_ip.dram_size);
+	dram_addr = hltests_allocate_device_mem(fd, cfg.dma_size,
+						NOT_CONTIGUOUS);
 	assert_non_null(dram_addr);
 
-	dst_ptr = hltests_allocate_host_mem(fd, size, HUGE);
+	dst_ptr = hltests_allocate_host_mem(fd, cfg.dma_size, HUGE);
 	assert_non_null(dst_ptr);
 
 	host_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
@@ -435,7 +492,7 @@ void test_dram_host_perf(void **state)
 	transfer.queue_index = hltests_get_dma_up_qid(fd, STREAM0);
 	transfer.src_addr = (uint64_t) (uintptr_t) dram_addr;
 	transfer.dst_addr = host_addr;
-	transfer.size = size;
+	transfer.size = cfg.dma_size;
 	transfer.dma_dir = GOYA_DMA_DRAM_TO_HOST;
 
 	*dram_host_perf_outcome = execute_host_transfer(fd, &transfer);
@@ -1249,26 +1306,35 @@ void test_host_sram_bidirectional_perf(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct dma_perf_transfer host_to_sram_transfer, sram_to_host_transfer;
+	const char *config_filename = hltests_get_config_filename();
+	struct dma_perf_cfg cfg;
 	struct hlthunk_hw_ip_info hw_ip;
 	double *host_sram_perf_outcome;
 	uint64_t host_src_addr, host_dst_addr, sram_addr1, sram_addr2;
 	void *src_ptr, *dst_ptr;
-	uint32_t size;
 	int rc, fd = tests_state->fd;
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
-	size = LIN_DMA_SIZE_FOR_HOST;
+	cfg.dma_size = LIN_DMA_SIZE_FOR_HOST;
+
+	if (config_filename) {
+		if (ini_parse(config_filename, dma_perf_parser, &cfg) < 0)
+			fail_msg("Can't load %s\n", config_filename);
+
+		printf("Configuration loaded from %s:\n", config_filename);
+		printf("dma_size = 0x%x\n", cfg.dma_size);
+	}
 
 	sram_addr1 = hw_ip.sram_base_address;
-	sram_addr2 = sram_addr1 + size;
+	sram_addr2 = sram_addr1 + cfg.dma_size;
 
-	src_ptr = hltests_allocate_host_mem(fd, size, HUGE);
+	src_ptr = hltests_allocate_host_mem(fd, cfg.dma_size, HUGE);
 	assert_non_null(src_ptr);
 	host_src_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
 
-	dst_ptr = hltests_allocate_host_mem(fd, size, HUGE);
+	dst_ptr = hltests_allocate_host_mem(fd, cfg.dma_size, HUGE);
 	assert_non_null(dst_ptr);
 	host_dst_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
 
@@ -1279,14 +1345,14 @@ void test_host_sram_bidirectional_perf(void **state)
 			hltests_get_dma_down_qid(fd, STREAM0);
 	host_to_sram_transfer.src_addr = host_src_addr;
 	host_to_sram_transfer.dst_addr = sram_addr1;
-	host_to_sram_transfer.size = size;
+	host_to_sram_transfer.size = cfg.dma_size;
 	host_to_sram_transfer.dma_dir = GOYA_DMA_HOST_TO_SRAM;
 
 	sram_to_host_transfer.queue_index =
 			hltests_get_dma_up_qid(fd, STREAM0);
 	sram_to_host_transfer.src_addr = sram_addr2;
 	sram_to_host_transfer.dst_addr = host_dst_addr;
-	sram_to_host_transfer.size = size;
+	sram_to_host_transfer.size = cfg.dma_size;
 	sram_to_host_transfer.dma_dir = GOYA_DMA_SRAM_TO_HOST;
 
 	*host_sram_perf_outcome = execute_host_bidirectional_transfer(fd,
@@ -1300,11 +1366,12 @@ void test_host_dram_bidirectional_perf(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct dma_perf_transfer host_to_dram_transfer, dram_to_host_transfer;
+	const char *config_filename = hltests_get_config_filename();
+	struct dma_perf_cfg cfg;
 	struct hlthunk_hw_ip_info hw_ip;
 	double *host_dram_perf_outcome;
 	uint64_t host_src_addr, host_dst_addr;
 	void *src_ptr, *dst_ptr, *dram_ptr1, *dram_ptr2;
-	uint32_t host_to_dram_size, dram_to_host_size;
 	int rc, fd = tests_state->fd;
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
@@ -1315,22 +1382,30 @@ void test_host_dram_bidirectional_perf(void **state)
 		skip();
 	}
 
-	host_to_dram_size = dram_to_host_size = LIN_DMA_SIZE_FOR_HOST;
+	cfg.dma_size = LIN_DMA_SIZE_FOR_HOST;
 
-	assert_in_range(host_to_dram_size + dram_to_host_size, 1,
+	if (config_filename) {
+		if (ini_parse(config_filename, dma_perf_parser, &cfg) < 0)
+			fail_msg("Can't load %s\n", config_filename);
+
+		printf("Configuration loaded from %s:\n", config_filename);
+		printf("dma_size = 0x%x\n", cfg.dma_size);
+	}
+
+	assert_in_range(cfg.dma_size + cfg.dma_size, 1,
 			hw_ip.dram_size);
-	dram_ptr1 = hltests_allocate_device_mem(fd, host_to_dram_size,
+	dram_ptr1 = hltests_allocate_device_mem(fd, cfg.dma_size,
 						NOT_CONTIGUOUS);
 	assert_non_null(dram_ptr1);
-	dram_ptr2 = hltests_allocate_device_mem(fd, dram_to_host_size,
+	dram_ptr2 = hltests_allocate_device_mem(fd, cfg.dma_size,
 						NOT_CONTIGUOUS);
 	assert_non_null(dram_ptr2);
 
-	src_ptr = hltests_allocate_host_mem(fd, host_to_dram_size, HUGE);
+	src_ptr = hltests_allocate_host_mem(fd, cfg.dma_size, HUGE);
 	assert_non_null(src_ptr);
 	host_src_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
 
-	dst_ptr = hltests_allocate_host_mem(fd, dram_to_host_size, HUGE);
+	dst_ptr = hltests_allocate_host_mem(fd, cfg.dma_size, HUGE);
 	assert_non_null(dst_ptr);
 	host_dst_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
 
@@ -1341,14 +1416,14 @@ void test_host_dram_bidirectional_perf(void **state)
 			hltests_get_dma_down_qid(fd, STREAM0);
 	host_to_dram_transfer.src_addr = host_src_addr;
 	host_to_dram_transfer.dst_addr = (uint64_t) (uintptr_t) dram_ptr1;
-	host_to_dram_transfer.size = host_to_dram_size;
+	host_to_dram_transfer.size = cfg.dma_size;
 	host_to_dram_transfer.dma_dir = GOYA_DMA_HOST_TO_DRAM;
 
 	dram_to_host_transfer.queue_index =
 			hltests_get_dma_up_qid(fd, STREAM0);
 	dram_to_host_transfer.src_addr = (uint64_t) (uintptr_t) dram_ptr2;
 	dram_to_host_transfer.dst_addr = host_dst_addr;
-	dram_to_host_transfer.size = dram_to_host_size;
+	dram_to_host_transfer.size = cfg.dma_size;
 	dram_to_host_transfer.dma_dir = GOYA_DMA_DRAM_TO_HOST;
 
 	*host_dram_perf_outcome = execute_host_bidirectional_transfer(fd,
