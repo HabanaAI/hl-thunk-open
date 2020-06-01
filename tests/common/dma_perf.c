@@ -31,7 +31,7 @@ struct dma_perf_transfer {
 	enum hltests_goya_dma_direction dma_dir;
 };
 
-static double hltests_transfer_perf(int fd,
+static double execute_host_transfer(int fd,
 				struct dma_perf_transfer *first_transfer,
 				struct dma_perf_transfer *second_transfer)
 {
@@ -204,7 +204,7 @@ void test_host_sram_perf(void **state)
 	transfer.size = size;
 	transfer.dma_dir = GOYA_DMA_HOST_TO_SRAM;
 
-	*host_sram_perf_outcome = hltests_transfer_perf(fd, &transfer, NULL);
+	*host_sram_perf_outcome = execute_host_transfer(fd, &transfer, NULL);
 
 	hltests_free_host_mem(fd, src_ptr);
 }
@@ -241,7 +241,7 @@ void test_sram_host_perf(void **state)
 	transfer.size = size;
 	transfer.dma_dir = GOYA_DMA_SRAM_TO_HOST;
 
-	*sram_host_perf_outcome = hltests_transfer_perf(fd, &transfer, NULL);
+	*sram_host_perf_outcome = execute_host_transfer(fd, &transfer, NULL);
 
 	hltests_free_host_mem(fd, dst_ptr);
 }
@@ -285,7 +285,7 @@ void test_host_dram_perf(void **state)
 	transfer.size = size;
 	transfer.dma_dir = GOYA_DMA_HOST_TO_DRAM;
 
-	*host_dram_perf_outcome = hltests_transfer_perf(fd, &transfer, NULL);
+	*host_dram_perf_outcome = execute_host_transfer(fd, &transfer, NULL);
 
 	hltests_free_host_mem(fd, src_ptr);
 	hltests_free_device_mem(fd, dram_addr);
@@ -330,7 +330,7 @@ void test_dram_host_perf(void **state)
 	transfer.size = size;
 	transfer.dma_dir = GOYA_DMA_DRAM_TO_HOST;
 
-	*dram_host_perf_outcome = hltests_transfer_perf(fd, &transfer, NULL);
+	*dram_host_perf_outcome = execute_host_transfer(fd, &transfer, NULL);
 
 	hltests_free_host_mem(fd, dst_ptr);
 	hltests_free_device_mem(fd, dram_addr);
@@ -578,7 +578,7 @@ void test_sram_dram_single_ch_perf(void **state)
 	transfer.dma_dir = GOYA_DMA_SRAM_TO_DRAM;
 
 	if (hltests_is_goya(fd)) {
-		*sram_dram_perf_outcome = hltests_transfer_perf(fd, &transfer,
+		*sram_dram_perf_outcome = execute_host_transfer(fd, &transfer,
 								NULL);
 	} else {
 		int num_of_lindma_pkts;
@@ -644,7 +644,7 @@ void test_dram_sram_single_ch_perf(void **state)
 	transfer.dma_dir = GOYA_DMA_DRAM_TO_SRAM;
 
 	if (hltests_is_goya(fd)) {
-		*dram_sram_perf_outcome = hltests_transfer_perf(fd, &transfer,
+		*dram_sram_perf_outcome = execute_host_transfer(fd, &transfer,
 								NULL);
 	} else {
 		int num_of_lindma_pkts;
@@ -707,7 +707,7 @@ void test_dram_dram_single_ch_perf(void **state)
 	transfer.dma_dir = GOYA_DMA_DRAM_TO_DRAM;
 
 	if (hltests_is_goya(fd)) {
-		*dram_dram_perf_outcome = hltests_transfer_perf(fd, &transfer,
+		*dram_dram_perf_outcome = execute_host_transfer(fd, &transfer,
 								NULL);
 	} else {
 		int num_of_lindma_pkts;
@@ -1184,7 +1184,7 @@ void test_host_sram_bidirectional_perf(void **state)
 	sram_to_host_transfer.size = size;
 	sram_to_host_transfer.dma_dir = GOYA_DMA_SRAM_TO_HOST;
 
-	*host_sram_perf_outcome = hltests_transfer_perf(fd,
+	*host_sram_perf_outcome = execute_host_transfer(fd,
 				&host_to_sram_transfer, &sram_to_host_transfer);
 
 	hltests_free_host_mem(fd, src_ptr);
@@ -1246,7 +1246,7 @@ void test_host_dram_bidirectional_perf(void **state)
 	dram_to_host_transfer.size = dram_to_host_size;
 	dram_to_host_transfer.dma_dir = GOYA_DMA_DRAM_TO_HOST;
 
-	*host_dram_perf_outcome = hltests_transfer_perf(fd,
+	*host_dram_perf_outcome = execute_host_transfer(fd,
 				&host_to_dram_transfer, &dram_to_host_transfer);
 
 	hltests_free_host_mem(fd, src_ptr);
