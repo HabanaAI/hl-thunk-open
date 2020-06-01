@@ -172,7 +172,7 @@ static double hltests_transfer_perf(int fd,
 			num_of_lindma_pkts / time_diff) / 1000 / 1000 / 1000;
 }
 
-void hltest_host_sram_perf(void **state)
+void test_host_sram_perf(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct dma_perf_transfer transfer;
@@ -209,7 +209,7 @@ void hltest_host_sram_perf(void **state)
 	hltests_free_host_mem(fd, src_ptr);
 }
 
-void hltest_sram_host_perf(void **state)
+void test_sram_host_perf(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct dma_perf_transfer transfer;
@@ -246,7 +246,7 @@ void hltest_sram_host_perf(void **state)
 	hltests_free_host_mem(fd, dst_ptr);
 }
 
-void hltest_host_dram_perf(void **state)
+void test_host_dram_perf(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct dma_perf_transfer transfer;
@@ -291,7 +291,7 @@ void hltest_host_dram_perf(void **state)
 	hltests_free_device_mem(fd, dram_addr);
 }
 
-void hltest_dram_host_perf(void **state)
+void test_dram_host_perf(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct dma_perf_transfer transfer;
@@ -531,7 +531,7 @@ static double indirect_perf_test(int fd, uint32_t num_of_dma_ch,
 							1000 / 1000 / 1000;
 }
 
-void hltest_sram_dram_single_ch_perf(void **state)
+void test_sram_dram_single_ch_perf(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct dma_perf_transfer transfer;
@@ -597,7 +597,7 @@ void hltest_sram_dram_single_ch_perf(void **state)
 	hltests_free_device_mem(fd, dram_addr);
 }
 
-void hltest_dram_sram_single_ch_perf(void **state)
+void test_dram_sram_single_ch_perf(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct dma_perf_transfer transfer;
@@ -663,7 +663,7 @@ void hltest_dram_sram_single_ch_perf(void **state)
 	hltests_free_device_mem(fd, dram_addr);
 }
 
-void hltest_dram_dram_single_ch_perf(void **state)
+void test_dram_dram_single_ch_perf(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct dma_perf_transfer transfer;
@@ -726,7 +726,7 @@ void hltest_dram_dram_single_ch_perf(void **state)
 	hltests_free_device_mem(fd, dram_addr);
 }
 
-void hltest_sram_dram_multi_ch_perf(void **state)
+void test_sram_dram_multi_ch_perf(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct dma_perf_transfer transfer[MAX_DMA_CH];
@@ -805,7 +805,7 @@ void hltest_sram_dram_multi_ch_perf(void **state)
 	hltests_free_device_mem(fd, (void *) dram_addr);
 }
 
-void hltest_dram_sram_multi_ch_perf(void **state)
+void test_dram_sram_multi_ch_perf(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct dma_perf_transfer transfer[MAX_DMA_CH];
@@ -884,7 +884,7 @@ void hltest_dram_sram_multi_ch_perf(void **state)
 	hltests_free_device_mem(fd, (void *) dram_addr);
 }
 
-void hltest_dram_dram_multi_ch_perf(void **state)
+void test_dram_dram_multi_ch_perf(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct dma_perf_transfer transfer[MAX_DMA_CH];
@@ -968,7 +968,7 @@ void hltest_dram_dram_multi_ch_perf(void **state)
 	hltests_free_device_mem(fd, (void *) dram_addr);
 }
 
-void hltest_sram_dram_bidirectional_full_multi_ch_perf(void **state)
+void test_sram_dram_bidirectional_full_multi_ch_perf(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct dma_perf_transfer transfer[MAX_DMA_CH];
@@ -1061,7 +1061,7 @@ void hltest_sram_dram_bidirectional_full_multi_ch_perf(void **state)
 	hltests_free_device_mem(fd, (void *) dram_addr);
 }
 
-void hltest_dram_sram_5ch_perf(void **state)
+void test_dram_sram_5ch_perf(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct dma_perf_transfer transfer[MAX_DMA_CH];
@@ -1140,7 +1140,7 @@ void hltest_dram_sram_5ch_perf(void **state)
 	hltests_free_device_mem(fd, (void *) dram_addr);
 }
 
-void hltest_host_sram_bidirectional_perf(void **state)
+void test_host_sram_bidirectional_perf(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct dma_perf_transfer host_to_sram_transfer, sram_to_host_transfer;
@@ -1191,7 +1191,7 @@ void hltest_host_sram_bidirectional_perf(void **state)
 	hltests_free_host_mem(fd, dst_ptr);
 }
 
-void hltest_host_dram_bidirectional_perf(void **state)
+void test_host_dram_bidirectional_perf(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct dma_perf_transfer host_to_dram_transfer, dram_to_host_transfer;
@@ -1304,34 +1304,34 @@ static int hltests_perf_teardown(void **state)
 }
 
 const struct CMUnitTest dma_perf_tests[] = {
-	cmocka_unit_test_setup(hltest_host_sram_perf,
+	cmocka_unit_test_setup(test_host_sram_perf,
 				hltests_ensure_device_operational),
-	cmocka_unit_test_setup(hltest_sram_host_perf,
+	cmocka_unit_test_setup(test_sram_host_perf,
 				hltests_ensure_device_operational),
-	cmocka_unit_test_setup(hltest_host_dram_perf,
+	cmocka_unit_test_setup(test_host_dram_perf,
 				hltests_ensure_device_operational),
-	cmocka_unit_test_setup(hltest_dram_host_perf,
+	cmocka_unit_test_setup(test_dram_host_perf,
 				hltests_ensure_device_operational),
-	cmocka_unit_test_setup(hltest_host_sram_bidirectional_perf,
+	cmocka_unit_test_setup(test_host_sram_bidirectional_perf,
 				hltests_ensure_device_operational),
-	cmocka_unit_test_setup(hltest_host_dram_bidirectional_perf,
+	cmocka_unit_test_setup(test_host_dram_bidirectional_perf,
 				hltests_ensure_device_operational),
-	cmocka_unit_test_setup(hltest_sram_dram_single_ch_perf,
+	cmocka_unit_test_setup(test_sram_dram_single_ch_perf,
 				hltests_ensure_device_operational),
-	cmocka_unit_test_setup(hltest_dram_sram_single_ch_perf,
+	cmocka_unit_test_setup(test_dram_sram_single_ch_perf,
 				hltests_ensure_device_operational),
-	cmocka_unit_test_setup(hltest_dram_dram_single_ch_perf,
+	cmocka_unit_test_setup(test_dram_dram_single_ch_perf,
 				hltests_ensure_device_operational),
-	cmocka_unit_test_setup(hltest_sram_dram_multi_ch_perf,
+	cmocka_unit_test_setup(test_sram_dram_multi_ch_perf,
 				hltests_ensure_device_operational),
-	cmocka_unit_test_setup(hltest_dram_sram_multi_ch_perf,
+	cmocka_unit_test_setup(test_dram_sram_multi_ch_perf,
 				hltests_ensure_device_operational),
-	cmocka_unit_test_setup(hltest_dram_dram_multi_ch_perf,
+	cmocka_unit_test_setup(test_dram_dram_multi_ch_perf,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(
-			hltest_sram_dram_bidirectional_full_multi_ch_perf,
+			test_sram_dram_bidirectional_full_multi_ch_perf,
 			hltests_ensure_device_operational),
-	cmocka_unit_test_setup(hltest_dram_sram_5ch_perf,
+	cmocka_unit_test_setup(test_dram_sram_5ch_perf,
 			hltests_ensure_device_operational)
 };
 
