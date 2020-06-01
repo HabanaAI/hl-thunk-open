@@ -31,7 +31,7 @@ struct dma_perf_transfer {
 	enum hltests_goya_dma_direction dma_dir;
 };
 
-static double execute_host_transfer(int fd,
+static double execute_host_bidirectional_transfer(int fd,
 				struct dma_perf_transfer *first_transfer,
 				struct dma_perf_transfer *second_transfer)
 {
@@ -65,11 +65,7 @@ static double execute_host_transfer(int fd,
 					num_of_lindma_pkts_per_cb;
 	}
 
-	if (second_transfer)
-		num_of_cb = num_of_cb_per_transfer * 2;
-	else
-		num_of_cb = num_of_cb_per_transfer;
-
+	num_of_cb = num_of_cb_per_transfer * 2;
 	assert_in_range(num_of_cb, 1, HL_MAX_JOBS_PER_CS);
 
 	execute_arr = hlthunk_malloc(sizeof(struct hltests_cs_chunk) *
@@ -87,10 +83,8 @@ static double execute_host_transfer(int fd,
 		cb1[i] = hltests_create_cb(fd, cb_size, EXTERNAL, 0);
 		assert_non_null(cb1[i]);
 
-		if (second_transfer) {
-			cb2[i] = hltests_create_cb(fd, cb_size, EXTERNAL, 0);
-			assert_non_null(cb2[i]);
-		}
+		cb2[i] = hltests_create_cb(fd, cb_size, EXTERNAL, 0);
+		assert_non_null(cb2[i]);
 	}
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
@@ -113,28 +107,26 @@ static double execute_host_transfer(int fd,
 		offset_cb1 = 0;
 	}
 
-	if (second_transfer) {
-		memset(&pkt_info, 0, sizeof(pkt_info));
-		pkt_info.eb = EB_FALSE;
-		pkt_info.mb = MB_FALSE;
-		pkt_info.dma.src_addr = second_transfer->src_addr;
-		pkt_info.dma.dst_addr = second_transfer->dst_addr;
-		pkt_info.dma.size = second_transfer->size;
-		pkt_info.dma.dma_dir = second_transfer->dma_dir;
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.dma.src_addr = second_transfer->src_addr;
+	pkt_info.dma.dst_addr = second_transfer->dst_addr;
+	pkt_info.dma.size = second_transfer->size;
+	pkt_info.dma.dma_dir = second_transfer->dma_dir;
 
-		for (i = 0 ; i < num_of_cb_per_transfer ; i++) {
-			for (j = 0 ; j < num_of_lindma_pkts_per_cb ; j++)
-				offset_cb2 = hltests_add_dma_pkt(fd, cb2[i],
-							offset_cb2, &pkt_info);
+	for (i = 0 ; i < num_of_cb_per_transfer ; i++) {
+		for (j = 0 ; j < num_of_lindma_pkts_per_cb ; j++)
+			offset_cb2 = hltests_add_dma_pkt(fd, cb2[i],
+						offset_cb2, &pkt_info);
 
-			execute_arr[num_of_cb_per_transfer + i].cb_ptr = cb2[i];
-			execute_arr[num_of_cb_per_transfer + i].cb_size =
-								offset_cb2;
-			execute_arr[num_of_cb_per_transfer + i].queue_index =
-						second_transfer->queue_index;
+		execute_arr[num_of_cb_per_transfer + i].cb_ptr = cb2[i];
+		execute_arr[num_of_cb_per_transfer + i].cb_size =
+							offset_cb2;
+		execute_arr[num_of_cb_per_transfer + i].queue_index =
+					second_transfer->queue_index;
 
-			offset_cb2 = 0;
-		}
+		offset_cb2 = 0;
 	}
 
 	clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
@@ -153,10 +145,8 @@ static double execute_host_transfer(int fd,
 		rc = hltests_destroy_cb(fd, cb1[i]);
 		assert_int_equal(rc, 0);
 
-		if (second_transfer) {
-			rc = hltests_destroy_cb(fd, cb2[i]);
-			assert_int_equal(rc, 0);
-		}
+		rc = hltests_destroy_cb(fd, cb2[i]);
+		assert_int_equal(rc, 0);
 	}
 
 	hlthunk_free(cb1);
@@ -164,11 +154,102 @@ static double execute_host_transfer(int fd,
 	hlthunk_free(execute_arr);
 
 	/* return value in GB/Sec */
-	if (second_transfer)
-		return ((double)(first_transfer->size + second_transfer->size) *
+	return ((double)(first_transfer->size + second_transfer->size) *
 			num_of_lindma_pkts / time_diff) / 1000 / 1000 / 1000;
+}
+
+static double execute_host_transfer(int fd,
+				struct dma_perf_transfer *transfer)
+{
+	struct hltests_cs_chunk *execute_arr;
+	struct hltests_pkt_info pkt_info;
+	uint64_t num_of_lindma_pkts, num_of_lindma_pkts_per_cb, i, j;
+	struct timespec begin, end;
+	double time_diff;
+	void **cb1;
+	int rc, num_of_cb = 1;
+	uint64_t seq = 0;
+	uint32_t num_of_cb_per_transfer, offset_cb1 = 0;
+
+	if (hltests_is_pldm(fd))
+		num_of_lindma_pkts = 1;
+	else if (hltests_is_simulator(fd))
+		num_of_lindma_pkts = 5;
 	else
-		return ((double)(first_transfer->size) *
+		num_of_lindma_pkts = 0x400000000ull / transfer->size;
+
+	num_of_lindma_pkts_per_cb = num_of_lindma_pkts;
+	num_of_cb_per_transfer = 1;
+
+	if (num_of_lindma_pkts > MAX_NUM_LIN_DMA_PKTS_IN_EXTERNAL_CB) {
+		num_of_lindma_pkts_per_cb = MAX_NUM_LIN_DMA_PKTS_IN_EXTERNAL_CB;
+
+		num_of_cb_per_transfer =
+			(num_of_lindma_pkts / num_of_lindma_pkts_per_cb) + 1;
+
+		num_of_lindma_pkts = num_of_cb_per_transfer *
+					num_of_lindma_pkts_per_cb;
+	}
+
+	num_of_cb = num_of_cb_per_transfer;
+	assert_in_range(num_of_cb, 1, HL_MAX_JOBS_PER_CS);
+
+	execute_arr = hlthunk_malloc(sizeof(struct hltests_cs_chunk) *
+					num_of_cb);
+	assert_non_null(execute_arr);
+
+	cb1 = hlthunk_malloc(sizeof(void *) * num_of_cb_per_transfer);
+	assert_non_null(cb1);
+
+	for (i = 0 ; i < num_of_cb_per_transfer ; i++) {
+		uint64_t cb_size = num_of_lindma_pkts_per_cb * LIN_DMA_PKT_SIZE;
+
+		cb1[i] = hltests_create_cb(fd, cb_size, EXTERNAL, 0);
+		assert_non_null(cb1[i]);
+	}
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.dma.src_addr = transfer->src_addr;
+	pkt_info.dma.dst_addr = transfer->dst_addr;
+	pkt_info.dma.size = transfer->size;
+	pkt_info.dma.dma_dir = transfer->dma_dir;
+
+	for (i = 0 ; i < num_of_cb_per_transfer ; i++) {
+		for (j = 0 ; j < num_of_lindma_pkts_per_cb ; j++)
+			offset_cb1 = hltests_add_dma_pkt(fd, cb1[i], offset_cb1,
+							&pkt_info);
+
+		execute_arr[i].cb_ptr = cb1[i];
+		execute_arr[i].cb_size = offset_cb1;
+		execute_arr[i].queue_index = transfer->queue_index;
+
+		offset_cb1 = 0;
+	}
+
+	clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
+
+	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, num_of_cb, 0, &seq);
+	assert_int_equal(rc, 0);
+
+	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
+	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
+
+	clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+	time_diff = (end.tv_nsec - begin.tv_nsec) / 1000000000.0 +
+						(end.tv_sec  - begin.tv_sec);
+
+	for (i = 0 ; i < num_of_cb_per_transfer ; i++) {
+		rc = hltests_destroy_cb(fd, cb1[i]);
+		assert_int_equal(rc, 0);
+	}
+
+	hlthunk_free(cb1);
+	hlthunk_free(execute_arr);
+
+	/* return value in GB/Sec */
+	return ((double)(transfer->size) *
 			num_of_lindma_pkts / time_diff) / 1000 / 1000 / 1000;
 }
 
@@ -204,7 +285,7 @@ void test_host_sram_perf(void **state)
 	transfer.size = size;
 	transfer.dma_dir = GOYA_DMA_HOST_TO_SRAM;
 
-	*host_sram_perf_outcome = execute_host_transfer(fd, &transfer, NULL);
+	*host_sram_perf_outcome = execute_host_transfer(fd, &transfer);
 
 	hltests_free_host_mem(fd, src_ptr);
 }
@@ -241,7 +322,7 @@ void test_sram_host_perf(void **state)
 	transfer.size = size;
 	transfer.dma_dir = GOYA_DMA_SRAM_TO_HOST;
 
-	*sram_host_perf_outcome = execute_host_transfer(fd, &transfer, NULL);
+	*sram_host_perf_outcome = execute_host_transfer(fd, &transfer);
 
 	hltests_free_host_mem(fd, dst_ptr);
 }
@@ -285,7 +366,7 @@ void test_host_dram_perf(void **state)
 	transfer.size = size;
 	transfer.dma_dir = GOYA_DMA_HOST_TO_DRAM;
 
-	*host_dram_perf_outcome = execute_host_transfer(fd, &transfer, NULL);
+	*host_dram_perf_outcome = execute_host_transfer(fd, &transfer);
 
 	hltests_free_host_mem(fd, src_ptr);
 	hltests_free_device_mem(fd, dram_addr);
@@ -330,7 +411,7 @@ void test_dram_host_perf(void **state)
 	transfer.size = size;
 	transfer.dma_dir = GOYA_DMA_DRAM_TO_HOST;
 
-	*dram_host_perf_outcome = execute_host_transfer(fd, &transfer, NULL);
+	*dram_host_perf_outcome = execute_host_transfer(fd, &transfer);
 
 	hltests_free_host_mem(fd, dst_ptr);
 	hltests_free_device_mem(fd, dram_addr);
@@ -578,8 +659,7 @@ void test_sram_dram_single_ch_perf(void **state)
 	transfer.dma_dir = GOYA_DMA_SRAM_TO_DRAM;
 
 	if (hltests_is_goya(fd)) {
-		*sram_dram_perf_outcome = execute_host_transfer(fd, &transfer,
-								NULL);
+		*sram_dram_perf_outcome = execute_host_transfer(fd, &transfer);
 	} else {
 		int num_of_lindma_pkts;
 
@@ -644,8 +724,7 @@ void test_dram_sram_single_ch_perf(void **state)
 	transfer.dma_dir = GOYA_DMA_DRAM_TO_SRAM;
 
 	if (hltests_is_goya(fd)) {
-		*dram_sram_perf_outcome = execute_host_transfer(fd, &transfer,
-								NULL);
+		*dram_sram_perf_outcome = execute_host_transfer(fd, &transfer);
 	} else {
 		int num_of_lindma_pkts;
 
@@ -707,8 +786,7 @@ void test_dram_dram_single_ch_perf(void **state)
 	transfer.dma_dir = GOYA_DMA_DRAM_TO_DRAM;
 
 	if (hltests_is_goya(fd)) {
-		*dram_dram_perf_outcome = execute_host_transfer(fd, &transfer,
-								NULL);
+		*dram_dram_perf_outcome = execute_host_transfer(fd, &transfer);
 	} else {
 		int num_of_lindma_pkts;
 
@@ -1184,7 +1262,7 @@ void test_host_sram_bidirectional_perf(void **state)
 	sram_to_host_transfer.size = size;
 	sram_to_host_transfer.dma_dir = GOYA_DMA_SRAM_TO_HOST;
 
-	*host_sram_perf_outcome = execute_host_transfer(fd,
+	*host_sram_perf_outcome = execute_host_bidirectional_transfer(fd,
 				&host_to_sram_transfer, &sram_to_host_transfer);
 
 	hltests_free_host_mem(fd, src_ptr);
@@ -1246,7 +1324,7 @@ void test_host_dram_bidirectional_perf(void **state)
 	dram_to_host_transfer.size = dram_to_host_size;
 	dram_to_host_transfer.dma_dir = GOYA_DMA_DRAM_TO_HOST;
 
-	*host_dram_perf_outcome = execute_host_transfer(fd,
+	*host_dram_perf_outcome = execute_host_bidirectional_transfer(fd,
 				&host_to_dram_transfer, &dram_to_host_transfer);
 
 	hltests_free_host_mem(fd, src_ptr);
