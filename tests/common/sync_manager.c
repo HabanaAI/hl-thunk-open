@@ -1057,6 +1057,14 @@ static void _test_signal_wait(void **state, void *(*__start_routine) (void *))
 
 static void test_signal_wait(void **state)
 {
+	int fd = ((struct hltests_state *)*state)->fd;
+
+	if (hltests_is_simulator(fd) &&
+	    !hltests_get_parser_run_disabled_tests()) {
+		printf("Test is skipped by default in simulator\n");
+		skip();
+	}
+
 	_test_signal_wait(state, test_signal_wait_th);
 }
 
