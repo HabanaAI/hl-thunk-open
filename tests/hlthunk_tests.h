@@ -276,6 +276,7 @@ struct hltests_pkt_info {
 		struct {
 			uint64_t src_addr;
 			uint32_t size;
+			uint8_t upper_cp;
 		} cp_dma;
 		struct {
 			uint64_t src_addr;
