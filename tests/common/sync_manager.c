@@ -937,6 +937,9 @@ static void *test_signal_wait_dma_th(void *args)
 		assert_int_equal(rc, 0);
 
 		if (sync_stream_enable) {
+			memset(&sig_in, 0, sizeof(sig_in));
+			memset(&sig_out, 0, sizeof(sig_out));
+
 			sig_in.queue_index = queue_down;
 			rc = hlthunk_signal_submission(fd, &sig_in, &sig_out);
 			assert_int_equal(rc, 0);
