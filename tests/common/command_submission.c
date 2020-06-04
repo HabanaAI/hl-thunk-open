@@ -17,19 +17,55 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
+#include <time.h>
 
 #define ARB_MST_QUIET_PER_DEFAULT 0x10
 #define ARB_MST_QUIET_PER_SIMULATOR 0x186A0
 #define PLDM_MAX_NUM_PQE_FOR_TESTING 32
 
-static void submit_cs_nop(void **state, int num_of_pqe)
+void measure_cs_nop(struct hltests_state *tests_state,
+			struct hltests_cs_chunk *execute_arr, int num_of_pqe,
+			uint16_t wait_after_submit_cnt)
+{
+	int rc, i, j, loop_cnt, wait_after_cs_cnt, fd = tests_state->fd;
+	struct timespec begin, end;
+	double time_diff;
+	uint64_t seq = 0;
+
+	loop_cnt = 500000;
+	wait_after_cs_cnt = wait_after_submit_cnt;
+
+	clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
+
+	for (i = 0, j = wait_after_cs_cnt ; i < loop_cnt ; i++) {
+		rc = hltests_submit_cs(fd, NULL, 0, execute_arr,
+					num_of_pqe, 0, &seq);
+		assert_int_equal(rc, 0);
+
+		if (!--j) {
+			rc = hltests_wait_for_cs_until_not_busy(fd, seq);
+			assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
+			j = wait_after_cs_cnt;
+		}
+	}
+
+	clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+	time_diff = (end.tv_nsec - begin.tv_nsec) / 1000000000.0 +
+						(end.tv_sec  - begin.tv_sec);
+
+	printf("time = %.3fus\n", (time_diff / loop_cnt) * 1000000);
+}
+
+
+static void submit_cs_nop(void **state, int num_of_pqe,
+				uint16_t wait_after_submit_cnt)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hltests_cs_chunk execute_arr[64];
 	uint32_t cb_size = 0;
 	uint64_t seq = 0;
 	void *cb[64];
-	int rc, j, i, fd = tests_state->fd;
+	int rc, i, fd = tests_state->fd;
 
 	if (hltests_is_pldm(fd) && (num_of_pqe > PLDM_MAX_NUM_PQE_FOR_TESTING))
 		skip();
@@ -48,11 +84,17 @@ static void submit_cs_nop(void **state, int num_of_pqe)
 				hltests_get_dma_down_qid(fd, STREAM0);
 	}
 
-	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, num_of_pqe, 0, &seq);
-	assert_int_equal(rc, 0);
+	if (!wait_after_submit_cnt) {
+		rc = hltests_submit_cs(fd, NULL, 0, execute_arr, num_of_pqe, 0,
+					&seq);
+		assert_int_equal(rc, 0);
 
-	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
-	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
+		rc = hltests_wait_for_cs_until_not_busy(fd, seq);
+		assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
+	} else {
+		measure_cs_nop(tests_state, execute_arr, num_of_pqe,
+				wait_after_submit_cnt);
+	}
 
 	for (i = 0 ; i < num_of_pqe ; i++) {
 		rc = hltests_destroy_cb(fd, cb[i]);
@@ -62,33 +104,65 @@ static void submit_cs_nop(void **state, int num_of_pqe)
 
 void test_cs_nop(void **state)
 {
-	submit_cs_nop(state, 1);
+	submit_cs_nop(state, 1, 0);
 }
 
 void test_cs_nop_16PQE(void **state)
 {
-	submit_cs_nop(state, 16);
+	submit_cs_nop(state, 16, 0);
 }
 
 void test_cs_nop_32PQE(void **state)
 {
-	submit_cs_nop(state, 32);
+	submit_cs_nop(state, 32, 0);
 }
 
 void test_cs_nop_48PQE(void **state)
 {
-	submit_cs_nop(state, 48);
+	submit_cs_nop(state, 48, 0);
 }
 
 void test_cs_nop_64PQE(void **state)
 {
-	submit_cs_nop(state, 64);
+	submit_cs_nop(state, 64, 0);
+}
+
+void test_and_measure_wait_after_submit_cs_nop(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	int fd = tests_state->fd;
+
+	if (hltests_is_simulator(fd) || hltests_is_pldm(fd))
+		skip();
+
+	submit_cs_nop(state, 1, 1);
+}
+
+void test_and_measure_wait_after_64_submit_cs_nop(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	int fd = tests_state->fd;
+
+	if (hltests_is_simulator(fd) || hltests_is_pldm(fd))
+		skip();
+
+	submit_cs_nop(state, 1, 64);
+}
+
+void test_and_measure_wait_after_256_submit_cs_nop(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	int fd = tests_state->fd;
+
+	if (hltests_is_simulator(fd) || hltests_is_pldm(fd))
+		skip();
+
+	submit_cs_nop(state, 1, 256);
 }
 
 void test_cs_msg_long(void **state)
 {
-	struct hltests_state *tests_state =
-			(struct hltests_state *) *state;
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
 	struct hltests_pkt_info pkt_info;
 	uint32_t cb_size = 0;
@@ -1503,6 +1577,12 @@ const struct CMUnitTest cs_tests[] = {
 	cmocka_unit_test_setup(test_cs_nop_48PQE,
 					hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_cs_nop_64PQE,
+					hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_and_measure_wait_after_submit_cs_nop,
+					hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_and_measure_wait_after_64_submit_cs_nop,
+					hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_and_measure_wait_after_256_submit_cs_nop,
 					hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_cs_msg_long,
 					hltests_ensure_device_operational),
