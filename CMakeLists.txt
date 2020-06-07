@@ -1,6 +1,6 @@
 # COPYRIGHT (c) 2019 Habanalabs Ltd. See COPYING.md file
 
-cmake_minimum_required(VERSION 3.5.1 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.0.1 FATAL_ERROR)
 
 # Specify search path for CMake modules to be loaded by include() 
 # and find_package()

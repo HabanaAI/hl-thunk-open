@@ -149,11 +149,14 @@ void seed(uint32_t value)
    * masking with 0xFFFFFFFF below.
    */
 
-  state.MT[0] = value;
-  state.index = SIZE;
+	uint_fast32_t i;
 
-  for ( uint_fast32_t i=1; i<SIZE; ++i )
-    state.MT[i] = 0x6c078965*(state.MT[i-1] ^ state.MT[i-1]>>30) + i;
+	state.MT[0] = value;
+	state.index = SIZE;
+
+	for (i = 1 ; i < SIZE ; ++i)
+		state.MT[i] = 0x6c078965
+			* (state.MT[i - 1] ^ state.MT[i - 1] >> 30) + i;
 }
 
 uint32_t rand_u32()
