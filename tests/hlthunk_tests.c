@@ -1865,6 +1865,7 @@ void hltests_parser(int argc, const char **argv, const char * const* usage,
 	struct argparse argparse;
 	const char *test = NULL;
 	int list = 0;
+	int i;
 
 	struct argparse_option options[] = {
 		OPT_HELP(),
@@ -1888,7 +1889,7 @@ void hltests_parser(int argc, const char **argv, const char * const* usage,
 	if (list) {
 		printf("\nList of tests:");
 		printf("\n-----------------\n\n");
-		for (int i = 0 ; i < num_tests ; i++)
+		for (i = 0 ; i < num_tests ; i++)
 			printf("%s\n", tests[i].name);
 		printf("\n");
 		exit(0);
