@@ -214,7 +214,7 @@ struct packet_lin_dma {
 		__u32 ctl;
 	};
 	__u64 src_addr;
-        union {
+	union {
 		struct {
 			__u64 dst_addr : 56 ;
 			__u64 context_id_high :8;
@@ -283,6 +283,9 @@ struct packet_wait {
 struct packet_load_and_exe {
 	union {
 		struct {
+			/* dst=1 means scalar mode which isn't allowed on
+			 * external queues
+			 */
 			__u32 dst :1;
 			__u32 :7;
 			__u32 load :1;
