@@ -238,6 +238,32 @@ void test_print_hlthunk_version(void **state)
 	hlthunk_free(version);
 }
 
+void test_print_cs_drop_statistics(void **state)
+{
+	const char *pciaddr = hltests_get_parser_pciaddr();
+	struct hlthunk_cs_counters_info info;
+	int rc, fd;
+
+	fd = hlthunk_open_control(0, pciaddr);
+	assert_in_range(fd, 0, INT_MAX);
+
+	rc = hlthunk_get_cs_counters_info(fd, &info);
+	assert_int_equal(rc, 0);
+
+	printf("\nout_of_mem_drop_cnt: %lu\n", info.out_of_mem_drop_cnt);
+	printf("parsing_drop_cnt: %lu\n", info.parsing_drop_cnt);
+	printf("queue_full_drop_cnt: %lu\n", info.queue_full_drop_cnt);
+	printf("device_in_reset_drop_cnt: %lu\n",
+			info.device_in_reset_drop_cnt);
+	printf("ctx_out_of_mem_drop_cnt: %lu\n", info.ctx_out_of_mem_drop_cnt);
+	printf("ctx_parsing_drop_cnt: %lu\n", info.ctx_parsing_drop_cnt);
+	printf("ctx_queue_full_drop_cnt: %lu\n", info.ctx_queue_full_drop_cnt);
+	printf("ctx_device_in_reset_drop_cnt: %lu\n",
+			info.ctx_device_in_reset_drop_cnt);
+
+	hlthunk_close(fd);
+}
+
 const struct CMUnitTest control_tests[] = {
 	cmocka_unit_test(test_print_hw_ip_info),
 	cmocka_unit_test(test_print_hw_idle_info),
@@ -246,7 +272,8 @@ const struct CMUnitTest control_tests[] = {
 	cmocka_unit_test(test_print_clk_rate),
 	cmocka_unit_test(test_print_reset_count),
 	cmocka_unit_test(test_print_time_sync_info),
-	cmocka_unit_test(test_print_hlthunk_version)
+	cmocka_unit_test(test_print_hlthunk_version),
+	cmocka_unit_test(test_print_cs_drop_statistics)
 };
 
 static const char *const usage[] = {

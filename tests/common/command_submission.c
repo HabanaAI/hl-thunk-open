@@ -1349,6 +1349,114 @@ static void test_cs_load_scalars_exe_upper_2_rfs(void **state)
 	test_cs_load_scalars_exe_2_rfs(state, true);
 }
 
+#define CS_DROP_NUM_CS		256
+#define CS_DROP_NUM_CB_PER_CS	256
+
+static void test_cs_drop(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct hltests_cs_chunk execute_arr[CS_DROP_NUM_CB_PER_CS];
+	struct hlthunk_cs_counters_info info_start, info_end;
+	struct hlthunk_wait_for_signal wait_for_signal;
+	struct hlthunk_signal_in sig_in;
+	struct hlthunk_signal_out sig_out;
+	struct hlthunk_wait_in wait_in;
+	struct hlthunk_wait_out wait_out;
+	struct hltests_pkt_info pkt_info;
+	struct hlthunk_hw_ip_info hw_ip;
+	void *src_data, *cb[CS_DROP_NUM_CB_PER_CS];
+	uint64_t drop_cnt, src_data_device_va, device_data_address, seq;
+	uint32_t queue_down, queue_up, cb_size = 0;
+	int rc, i, j, fd = tests_state->fd;
+
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+
+	if (hltests_is_simulator(fd)) {
+		printf("Test is not relevant for Simulator, skipping\n");
+		skip();
+	}
+
+	if (hltests_is_goya(fd)) {
+		printf("Test is  not supported on Goya, skipping.\n");
+		skip();
+	}
+
+	rc = hlthunk_get_cs_counters_info(fd, &info_start);
+	assert_int_equal(rc, 0);
+
+	queue_down = hltests_get_dma_down_qid(fd, STREAM0);
+	queue_up = hltests_get_dma_up_qid(fd, STREAM0);
+	src_data = hltests_allocate_host_mem(fd, 0x100000, NOT_HUGE);
+	device_data_address = hw_ip.sram_base_address + 0x1000;
+	src_data_device_va = hltests_get_device_va_for_host_ptr(fd, src_data);
+
+	memset(&sig_in, 0, sizeof(sig_in));
+	memset(&sig_out, 0, sizeof(sig_out));
+	memset(&wait_in, 0, sizeof(wait_in));
+	memset(&wait_out, 0, sizeof(wait_out));
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.dma.src_addr = src_data_device_va;
+	pkt_info.dma.dst_addr = device_data_address;
+	pkt_info.dma.size = 0x100000;
+
+	/*
+	 * Submit multiple command submissions containing DMA transfers.
+	 * In between those command submissions, submit a couple of sync stream
+	 * command submissions: 'signal_submission' and 'wait_for_signal'
+	 * Statistically 1% of the sync stream command submissions
+	 * will be dropped
+	 */
+	for (i = 0 ; i < CS_DROP_NUM_CS ; i++) {
+		for (j = 0 ; j < CS_DROP_NUM_CB_PER_CS ; j++) {
+			cb[j] = hltests_create_cb(fd, 512, EXTERNAL, 0);
+			assert_non_null(cb[j]);
+
+			cb_size = hltests_add_dma_pkt(fd, cb[j], 0, &pkt_info);
+			execute_arr[j].cb_ptr = cb[j];
+			execute_arr[j].cb_size = cb_size;
+			execute_arr[j].queue_index =
+					hltests_get_dma_down_qid(fd, STREAM0);
+		}
+
+		rc = hltests_submit_cs(fd, NULL, 0, execute_arr,
+				CS_DROP_NUM_CB_PER_CS, 0, &seq);
+		assert_int_equal(rc, 0);
+
+		sig_in.queue_index = queue_down;
+		rc = hlthunk_signal_submission(fd, &sig_in, &sig_out);
+		assert_int_equal(rc, 0);
+
+		wait_for_signal.queue_index = queue_up;
+		wait_for_signal.signal_seq_arr = &sig_out.seq;
+		wait_for_signal.signal_seq_nr = 1;
+		wait_in.hlthunk_wait_for_signal = (uint64_t *)&wait_for_signal;
+		wait_in.num_wait_for_signal = 1;
+		rc = hlthunk_wait_for_signal(fd, &wait_in, &wait_out);
+		assert_int_equal(rc, 0);
+
+		for (j = 0 ; j < CS_DROP_NUM_CB_PER_CS ; j++) {
+			rc = hltests_destroy_cb(fd, cb[j]);
+			assert_int_equal(rc, 0);
+		}
+	}
+
+	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
+	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
+
+	rc = hlthunk_get_cs_counters_info(fd, &info_end);
+	assert_int_equal(rc, 0);
+
+	drop_cnt = info_end.ctx_queue_full_drop_cnt
+			- info_start.ctx_queue_full_drop_cnt;
+	assert_int_equal(!drop_cnt, 0);
+
+	rc = hltests_free_host_mem(fd, src_data);
+	assert_int_equal(rc, 0);
+}
+
 const struct CMUnitTest cs_tests[] = {
 	cmocka_unit_test_setup(test_cs_nop, hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_cs_nop_16PQE,
@@ -1382,6 +1490,8 @@ const struct CMUnitTest cs_tests[] = {
 	cmocka_unit_test_setup(test_cs_load_scalars_exe_lower_2_rfs,
 					hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_cs_load_scalars_exe_upper_2_rfs,
+					hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_cs_drop,
 					hltests_ensure_device_operational)
 };
 
