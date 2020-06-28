@@ -72,6 +72,17 @@ struct hlthunk_time_sync_info {
 	uint64_t host_time;
 };
 
+struct hlthunk_cs_counters_info {
+	uint64_t out_of_mem_drop_cnt;
+	uint64_t parsing_drop_cnt;
+	uint64_t queue_full_drop_cnt;
+	uint64_t device_in_reset_drop_cnt;
+	uint64_t ctx_out_of_mem_drop_cnt;
+	uint64_t ctx_parsing_drop_cnt;
+	uint64_t ctx_queue_full_drop_cnt;
+	uint64_t ctx_device_in_reset_drop_cnt;
+};
+
 struct hlthunk_cs_in {
 	void *chunks_restore;
 	void *chunks_execute;
@@ -162,6 +173,8 @@ struct hlthunk_functions_pointers {
 					struct hlthunk_wait_out *out);
 	int (*fp_hlthunk_get_time_sync_info)(int fd,
 					struct hlthunk_time_sync_info *info);
+	int (*fp_hlthunk_get_cs_counters_info)(int fd,
+					struct hlthunk_cs_counters_info *info);
 };
 
 struct hlthunk_debugfs {
@@ -349,6 +362,16 @@ hlthunk_public int hlthunk_get_reset_count_info(int fd,
  */
 hlthunk_public int hlthunk_get_time_sync_info(int fd,
 					struct hlthunk_time_sync_info *info);
+
+/**
+ * This function retrieves the device's cs counters information
+ * @param fd file descriptor handle of habanalabs main device
+ * @param info pointer to memory that will be filled by the function with the
+ * cs counters
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_get_cs_counters_info(int fd,
+					struct hlthunk_cs_counters_info *info);
 
 /**
  * This function retrieves miscellaneous information of a specific device

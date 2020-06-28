@@ -748,6 +748,48 @@ hlthunk_public int hlthunk_get_time_sync_info(int fd,
 	return 0;
 }
 
+hlthunk_public int hlthunk_get_cs_counters_info(int fd,
+					struct hlthunk_cs_counters_info *info)
+{
+	struct hl_info_args args;
+	struct hl_info_cs_counters hl_cs_counters;
+	int rc;
+
+	if (!info)
+		return -EINVAL;
+
+	memset(&args, 0, sizeof(args));
+	memset(&hl_cs_counters, 0, sizeof(hl_cs_counters));
+
+	args.op = HL_INFO_CS_COUNTERS;
+	args.return_pointer = (__u64) (uintptr_t) &hl_cs_counters;
+	args.return_size = sizeof(hl_cs_counters);
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	if (rc)
+		return rc;
+
+	info->device_in_reset_drop_cnt =
+			hl_cs_counters.cs_counters.device_in_reset_drop_cnt;
+	info->out_of_mem_drop_cnt =
+			hl_cs_counters.cs_counters.out_of_mem_drop_cnt;
+	info->parsing_drop_cnt =
+			hl_cs_counters.cs_counters.parsing_drop_cnt;
+	info->queue_full_drop_cnt =
+			hl_cs_counters.cs_counters.queue_full_drop_cnt;
+
+	info->ctx_device_in_reset_drop_cnt =
+			hl_cs_counters.ctx_cs_counters.device_in_reset_drop_cnt;
+	info->ctx_out_of_mem_drop_cnt =
+			hl_cs_counters.ctx_cs_counters.out_of_mem_drop_cnt;
+	info->ctx_parsing_drop_cnt =
+			hl_cs_counters.ctx_cs_counters.parsing_drop_cnt;
+	info->ctx_queue_full_drop_cnt =
+			hl_cs_counters.ctx_cs_counters.queue_full_drop_cnt;
+
+	return 0;
+}
+
 hlthunk_public int hlthunk_request_command_buffer(int fd, uint32_t cb_size,
 							uint64_t *cb_handle)
 {
