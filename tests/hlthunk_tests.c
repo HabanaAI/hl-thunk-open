@@ -454,7 +454,7 @@ static int debugfs_open(struct hltests_state *tests_state)
 	int debugfs_addr_fd, debugfs_data_fd, clk_gate_fd;
 	const char *pciaddr = hltests_get_parser_pciaddr();
 	char path[PATH_MAX];
-	char clk_gate_str[4] = "0";
+	char clk_gate_str[16] = "0";
 	ssize_t size;
 	int device_idx;
 
