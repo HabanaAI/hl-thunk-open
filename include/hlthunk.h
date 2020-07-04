@@ -181,7 +181,7 @@ struct hlthunk_debugfs {
 	int addr_fd;
 	int data_fd;
 	int clk_gate_fd;
-	char clk_gate_val[4];
+	char clk_gate_val[16];
 };
 
 /**

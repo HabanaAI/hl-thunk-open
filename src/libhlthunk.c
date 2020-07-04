@@ -1142,7 +1142,7 @@ hlthunk_public int hlthunk_debugfs_open(int fd,
 {
 	char pci_bus_id[13];
 	char *path;
-	char clk_gate_str[4] = "0";
+	char clk_gate_str[16] = "0";
 	ssize_t size;
 	int device_idx, rc = 0;
 	int clk_gate_fd = -1, debugfs_addr_fd = -1, debugfs_data_fd = -1;
