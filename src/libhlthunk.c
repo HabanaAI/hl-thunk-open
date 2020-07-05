@@ -34,32 +34,8 @@ int hlthunk_debug_level = HLTHUNK_DEBUG_LEVEL_NA;
  * get this 'default' table, and this table's pointers will point to the
  * profiler functions so it will wrap all this functions with profiling
  */
-struct hlthunk_functions_pointers functions_pointers_table = {
-	.fp_hlthunk_command_submission = hlthunk_command_submission_original,
-	.fp_hlthunk_signal_submission = hlthunk_signal_submission_original,
-	.fp_hlthunk_wait_for_signal = hlthunk_wait_for_signal_original,
-	.fp_hlthunk_open = hlthunk_open_original,
-	.fp_hlthunk_close = hlthunk_close_original,
-	.fp_hlthunk_profiler_start = hlthunk_profiler_start_original,
-	.fp_hlthunk_profiler_stop = hlthunk_profiler_stop_original,
-	.fp_hlthunk_profiler_get_trace = hlthunk_profiler_get_trace_original,
-	.fp_hlthunk_debug = hlthunk_debug,
-	.fp_hlthunk_device_memory_alloc = hlthunk_device_memory_alloc,
-	.fp_hlthunk_device_memory_free = hlthunk_device_memory_free,
-	.fp_hlthunk_device_memory_map = hlthunk_device_memory_map,
-	.fp_hlthunk_host_memory_map = hlthunk_host_memory_map,
-	.fp_hlthunk_memory_unmap = hlthunk_memory_unmap,
-	.fp_hlthunk_request_command_buffer = hlthunk_request_command_buffer,
-	.fp_hlthunk_destroy_command_buffer = hlthunk_destroy_command_buffer,
-	.fp_hlthunk_wait_for_cs = hlthunk_wait_for_cs,
-	.fp_hlthunk_get_device_name_from_fd = hlthunk_get_device_name_from_fd,
-	.fp_hlthunk_get_pci_bus_id_from_fd = hlthunk_get_pci_bus_id_from_fd,
-	.fp_hlthunk_get_device_index_from_pci_bus_id =
-		hlthunk_get_device_index_from_pci_bus_id,
-	.fp_hlthunk_malloc = hlthunk_malloc,
-	.fp_hlthunk_free = hlthunk_free,
-	.fp_hlthunk_get_time_sync_info = hlthunk_get_time_sync_info
-};
+struct hlthunk_functions_pointers functions_pointers_table =
+	INIT_FUNCS_POINTERS_TABLE;
 
 struct global_hlthunk_members {
 	bool is_profiler_checked;
@@ -1135,6 +1111,28 @@ hlthunk_public int hlthunk_profiler_get_trace(int fd, void *buffer,
 {
 	return (*functions_pointers_table.fp_hlthunk_profiler_get_trace)(
 				fd, buffer, size);
+}
+
+void hlthunk_profiler_destroy_original(void)
+{
+	pthread_mutex_lock(&global_members.profiler_init_lock);
+
+	global_members.is_profiler_checked = false;
+	struct hlthunk_functions_pointers reset_functions_pointers_table =
+		INIT_FUNCS_POINTERS_TABLE;
+	functions_pointers_table = reset_functions_pointers_table;
+
+	if (global_members.shared_object_handle) {
+		dlclose(global_members.shared_object_handle);
+		global_members.shared_object_handle = NULL;
+	}
+
+	pthread_mutex_unlock(&global_members.profiler_init_lock);
+}
+
+hlthunk_public void hlthunk_profiler_destroy(void)
+{
+	(*functions_pointers_table.fp_hlthunk_profiler_destroy)();
 }
 
 hlthunk_public int hlthunk_debugfs_open(int fd,
