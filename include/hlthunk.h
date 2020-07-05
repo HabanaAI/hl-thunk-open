@@ -175,6 +175,7 @@ struct hlthunk_functions_pointers {
 					struct hlthunk_time_sync_info *info);
 	int (*fp_hlthunk_get_cs_counters_info)(int fd,
 					struct hlthunk_cs_counters_info *info);
+	void (*fp_hlthunk_profiler_destroy)(void);
 };
 
 struct hlthunk_debugfs {
@@ -564,6 +565,13 @@ hlthunk_public int hlthunk_profiler_stop(int fd);
  */
 hlthunk_public int hlthunk_profiler_get_trace(int fd, void *buffer,
 					      uint64_t *size);
+
+/**
+ * This function destroys profiler instance if it existed
+ * As long as env var HABANA_PROFILE=1, the profiler will reinitialize
+ * on the next hlthunk_open call
+ */
+hlthunk_public void hlthunk_profiler_destroy(void);
 
 /**
  * This function opens the debug file system of the habanalabs device already

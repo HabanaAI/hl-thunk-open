@@ -60,6 +60,34 @@ do { \
  * Declerations of the original hlthunk functions implementations
  * to be set as default functions in the functions pointers table
  */
+#define INIT_FUNCS_POINTERS_TABLE {\
+	.fp_hlthunk_command_submission = hlthunk_command_submission_original,\
+	.fp_hlthunk_signal_submission = hlthunk_signal_submission_original,\
+	.fp_hlthunk_wait_for_signal = hlthunk_wait_for_signal_original,\
+	.fp_hlthunk_open = hlthunk_open_original,\
+	.fp_hlthunk_close = hlthunk_close_original,\
+	.fp_hlthunk_profiler_start = hlthunk_profiler_start_original,\
+	.fp_hlthunk_profiler_stop = hlthunk_profiler_stop_original,\
+	.fp_hlthunk_profiler_get_trace = hlthunk_profiler_get_trace_original,\
+	.fp_hlthunk_profiler_destroy = hlthunk_profiler_destroy_original,\
+	.fp_hlthunk_debug = hlthunk_debug,\
+	.fp_hlthunk_device_memory_alloc = hlthunk_device_memory_alloc,\
+	.fp_hlthunk_device_memory_free = hlthunk_device_memory_free,\
+	.fp_hlthunk_device_memory_map = hlthunk_device_memory_map,\
+	.fp_hlthunk_host_memory_map = hlthunk_host_memory_map,\
+	.fp_hlthunk_memory_unmap = hlthunk_memory_unmap,\
+	.fp_hlthunk_request_command_buffer = hlthunk_request_command_buffer,\
+	.fp_hlthunk_destroy_command_buffer = hlthunk_destroy_command_buffer,\
+	.fp_hlthunk_wait_for_cs = hlthunk_wait_for_cs,\
+	.fp_hlthunk_get_device_name_from_fd = hlthunk_get_device_name_from_fd,\
+	.fp_hlthunk_get_pci_bus_id_from_fd = hlthunk_get_pci_bus_id_from_fd,\
+	.fp_hlthunk_get_device_index_from_pci_bus_id =\
+		hlthunk_get_device_index_from_pci_bus_id,\
+	.fp_hlthunk_malloc = hlthunk_malloc,\
+	.fp_hlthunk_free = hlthunk_free,\
+	.fp_hlthunk_get_time_sync_info = hlthunk_get_time_sync_info\
+}
+
 int hlthunk_command_submission_original(int fd, struct hlthunk_cs_in *in,
 					struct hlthunk_cs_out *out);
 int hlthunk_signal_submission_original(int fd, struct hlthunk_signal_in *in,
@@ -72,6 +100,7 @@ int hlthunk_close_original(int fd);
 int hlthunk_profiler_start_original(int fd);
 int hlthunk_profiler_stop_original(int fd);
 int hlthunk_profiler_get_trace_original(int fd, void *buffer, uint64_t *size);
+void hlthunk_profiler_destroy_original(void);
 
 #undef hlthunk_public
 #define hlthunk_public
