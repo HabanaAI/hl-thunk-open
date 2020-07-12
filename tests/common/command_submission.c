@@ -1377,6 +1377,11 @@ static void test_cs_drop(void **state)
 		skip();
 	}
 
+	if (hltests_is_pldm(fd)) {
+		printf("Test is not relevant for PLDM, skipping\n");
+		skip();
+	}
+
 	if (hltests_is_goya(fd)) {
 		printf("Test is  not supported on Goya, skipping.\n");
 		skip();
