@@ -88,6 +88,19 @@ struct hlthunk_cs_counters_info {
 	uint64_t ctx_device_in_reset_drop_cnt;
 };
 
+struct hlthunk_pci_counters_info {
+	uint64_t rx_throughput;
+	uint64_t tx_throughput;
+	uint32_t replay_cnt;
+};
+
+#define HLTHUNK_CLK_THROTTLE_POWER	0x1
+#define HLTHUNK_CLK_THROTTLE_THERMAL	0x2
+
+struct hlthunk_clk_throttle_info {
+	uint32_t clk_throttle_reason_bitmask;
+};
+
 struct hlthunk_cs_in {
 	void *chunks_restore;
 	void *chunks_execute;
@@ -389,6 +402,26 @@ hlthunk_public int hlthunk_get_sync_manager_info(int fd, int dcore_id,
  */
 hlthunk_public int hlthunk_get_cs_counters_info(int fd,
 					struct hlthunk_cs_counters_info *info);
+
+/**
+ * This function retrieves the device's pci counters information
+ * @param fd file descriptor handle of habanalabs main device
+ * @param info pointer to memory that will be filled by the function with the
+ * pci counters information
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_get_pci_counters_info(int fd,
+					struct hlthunk_pci_counters_info *info);
+
+/**
+ * This function retrieves the device's clock throttling inforamtion
+ * @param fd file descriptor handle of habanalabs main device
+ * @param info pointer to memory that will be filled by the function with the
+ * clock throttling information
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_get_clk_throttle_info(int fd,
+					struct hlthunk_clk_throttle_info *info);
 
 /**
  * This function retrieves miscellaneous information of a specific device

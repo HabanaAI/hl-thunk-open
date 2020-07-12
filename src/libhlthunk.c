@@ -794,6 +794,60 @@ hlthunk_public int hlthunk_get_cs_counters_info(int fd,
 	return 0;
 }
 
+hlthunk_public int hlthunk_get_pci_counters_info(int fd,
+				struct hlthunk_pci_counters_info *info)
+{
+	struct hl_info_args args;
+	struct hl_info_pci_counters pci_counters;
+	int rc;
+
+	if (!info)
+		return -EINVAL;
+
+	memset(&args, 0, sizeof(args));
+	memset(&pci_counters, 0, sizeof(pci_counters));
+
+	args.op = HL_INFO_PCI_COUNTERS;
+	args.return_pointer = (__u64) (uintptr_t) &pci_counters;
+	args.return_size = sizeof(pci_counters);
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	if (rc)
+		return rc;
+
+	info->rx_throughput = pci_counters.rx_throughput;
+	info->tx_throughput = pci_counters.tx_throughput;
+	info->replay_cnt = pci_counters.replay_cnt;
+
+	return 0;
+}
+
+hlthunk_public int hlthunk_get_clk_throttle_info(int fd,
+				struct hlthunk_clk_throttle_info *info)
+{
+	struct hl_info_args args;
+	struct hl_info_clk_throttle clk_throttle;
+	int rc;
+
+	if (!info)
+		return -EINVAL;
+
+	memset(&args, 0, sizeof(args));
+	memset(&clk_throttle, 0, sizeof(clk_throttle));
+
+	args.op = HL_INFO_CLK_THROTTLE_REASON;
+	args.return_pointer = (__u64) (uintptr_t) &clk_throttle;
+	args.return_size = sizeof(clk_throttle);
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	if (rc)
+		return rc;
+
+	info->clk_throttle_reason_bitmask = clk_throttle.clk_throttling_reason;
+
+	return 0;
+}
+
 hlthunk_public int hlthunk_request_command_buffer(int fd, uint32_t cb_size,
 							uint64_t *cb_handle)
 {
