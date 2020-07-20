@@ -264,6 +264,7 @@ enum hl_device_status {
  * HL_INFO_TIME_SYNC     - Retrieve the device's time alongside the host's time
  *                         for synchronization.
  * HL_INFO_CS_COUNTERS   - Retrieve command submission counters
+ * HL_INFO_SYNC_MANAGER  - Retrieve sync manager info per dcore
  */
 #define HL_INFO_HW_IP_INFO		0
 #define HL_INFO_HW_EVENTS		1
@@ -276,6 +277,7 @@ enum hl_device_status {
 #define HL_INFO_RESET_COUNT		9
 #define HL_INFO_TIME_SYNC		10
 #define HL_INFO_CS_COUNTERS		11
+#define HL_INFO_SYNC_MANAGER		14
 
 #define HL_INFO_VERSION_MAX_LEN	128
 #define HL_INFO_CARD_NAME_MAX_LEN	16
@@ -341,6 +343,16 @@ struct hl_info_time_sync {
 };
 
 /**
+ * struct hl_info_sync_manager - sync manager information
+ * @first_available_sync_object: first available sob
+ * @first_available_monitor: first available monitor
+ */
+struct hl_info_sync_manager {
+	__u32 first_available_sync_object;
+	__u32 first_available_monitor;
+};
+
+/**
  * struct hl_info_cs_counters - command submission counters
  * @out_of_mem_drop_cnt: dropped due to memory allocation issue
  * @parsing_drop_cnt: dropped due to error in packet parsing
@@ -375,6 +387,8 @@ struct hl_info_args {
 	__u32 op;
 
 	union {
+		/* Dcore id for which the information is relevant for */
+		__u32 dcore_id;
 		/* Context ID - Currently not in use */
 		__u32 ctx_id;
 		/* Period value for utilization rate (100ms - 1000ms, in 100ms

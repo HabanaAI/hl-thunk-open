@@ -72,6 +72,11 @@ struct hlthunk_time_sync_info {
 	uint64_t host_time;
 };
 
+struct hlthunk_sync_manager_info {
+	uint32_t first_available_sync_object;
+	uint32_t first_available_monitor;
+};
+
 struct hlthunk_cs_counters_info {
 	uint64_t out_of_mem_drop_cnt;
 	uint64_t parsing_drop_cnt;
@@ -363,6 +368,17 @@ hlthunk_public int hlthunk_get_reset_count_info(int fd,
  */
 hlthunk_public int hlthunk_get_time_sync_info(int fd,
 					struct hlthunk_time_sync_info *info);
+
+/**
+ * This function retrieves the device's sync manager information
+ * @param fd file descriptor handle of habanalabs main device
+ * @dcore_id dcore id to fetch relevant sm info from
+ * @param info pointer to memory that will be filled by the function with the
+ * sync manager information
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_get_sync_manager_info(int fd, int dcore_id,
+					struct hlthunk_sync_manager_info *info);
 
 /**
  * This function retrieves the device's cs counters information
