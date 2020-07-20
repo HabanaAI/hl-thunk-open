@@ -724,6 +724,34 @@ hlthunk_public int hlthunk_get_time_sync_info(int fd,
 	return 0;
 }
 
+hlthunk_public int hlthunk_get_sync_manager_info(int fd, int dcore_id,
+					struct hlthunk_sync_manager_info *info)
+{
+	struct hl_info_args args;
+	struct hl_info_sync_manager sm_info;
+	int rc;
+
+	if (!info)
+		return -EINVAL;
+
+	memset(&args, 0, sizeof(args));
+	memset(&sm_info, 0, sizeof(sm_info));
+
+	args.op = HL_INFO_SYNC_MANAGER;
+	args.dcore_id = dcore_id;
+	args.return_pointer = (__u64) (uintptr_t) &sm_info;
+	args.return_size = sizeof(sm_info);
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	if (rc)
+		return rc;
+
+	info->first_available_monitor = sm_info.first_available_monitor;
+	info->first_available_sync_object = sm_info.first_available_sync_object;
+
+	return 0;
+}
+
 hlthunk_public int hlthunk_get_cs_counters_info(int fd,
 					struct hlthunk_cs_counters_info *info)
 {
