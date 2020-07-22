@@ -264,6 +264,43 @@ void test_print_cs_drop_statistics(void **state)
 	hlthunk_close(fd);
 }
 
+void test_print_pci_counters(void **state)
+{
+	const char *pciaddr = hltests_get_parser_pciaddr();
+	struct hlthunk_pci_counters_info info;
+	int rc, fd;
+
+	fd = hlthunk_open_control(0, pciaddr);
+	assert_in_range(fd, 0, INT_MAX);
+
+	rc = hlthunk_get_pci_counters_info(fd, &info);
+	assert_int_equal(rc, 0);
+
+	printf("\nrx_throughput: %lu\n", info.rx_throughput);
+	printf("tx_throughput: %lu\n", info.tx_throughput);
+	printf("replay counter: %u\n", info.replay_cnt);
+
+	hlthunk_close(fd);
+}
+
+void test_print_clk_throttling_reason(void **state)
+{
+	const char *pciaddr = hltests_get_parser_pciaddr();
+	struct hlthunk_clk_throttle_info info;
+	int rc, fd;
+
+	fd = hlthunk_open_control(0, pciaddr);
+	assert_in_range(fd, 0, INT_MAX);
+
+	rc = hlthunk_get_clk_throttle_info(fd, &info);
+	assert_int_equal(rc, 0);
+
+	printf("\nclk throttling bitmask: %u\n",
+			info.clk_throttle_reason_bitmask);
+
+	hlthunk_close(fd);
+}
+
 const struct CMUnitTest control_tests[] = {
 	cmocka_unit_test(test_print_hw_ip_info),
 	cmocka_unit_test(test_print_hw_idle_info),
@@ -273,7 +310,9 @@ const struct CMUnitTest control_tests[] = {
 	cmocka_unit_test(test_print_reset_count),
 	cmocka_unit_test(test_print_time_sync_info),
 	cmocka_unit_test(test_print_hlthunk_version),
-	cmocka_unit_test(test_print_cs_drop_statistics)
+	cmocka_unit_test(test_print_cs_drop_statistics),
+	cmocka_unit_test(test_print_pci_counters),
+	cmocka_unit_test(test_print_clk_throttling_reason)
 };
 
 static const char *const usage[] = {
