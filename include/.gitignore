@@ -2,6 +2,7 @@ specs/hl_boot_if.h
 specs/qman_if.h
 specs/simulator.h
 specs/armcp_if.h
+specs/cpucp_if.h
 
 specs/goya/goya_async_events.h
 specs/goya/goya_coresight.h
