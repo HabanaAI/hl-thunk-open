@@ -62,6 +62,8 @@
 
 #define NIC_MAC_LANES_START	0
 
+#define NIC_PHY_TX_TAPS_NUM	5
+
 #define NUMBER_OF_IF		8
 
 #define DEVICE_CACHE_LINE_SIZE	128
