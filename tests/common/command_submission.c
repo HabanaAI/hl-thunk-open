@@ -18,6 +18,9 @@
 #include <errno.h>
 #include <unistd.h>
 
+#define ARB_MST_QUIET_PER_DEFAULT 0x10
+#define ARB_MST_QUIET_PER_SIMULATOR 0x186A0
+
 static void submit_cs_nop(void **state, int num_of_pqe)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
@@ -529,6 +532,7 @@ void test_cs_two_streams_with_arb(void **state)
 	arb_info.priority[STREAM0] = 1;
 	arb_info.priority[STREAM1] = 2;
 	arb_info.priority[STREAM2] = 3;
+	arb_info.arb_mst_quiet_val = ARB_MST_QUIET_PER_DEFAULT;
 
 	/* Stream 0: Fence on SOB0 + LIN_DMA from host src0 to SRAM dst0 */
 	/* Stream 1: Fence on SOB0 + LIN_DMA from host src1 to SRAM dst1 */
@@ -575,12 +579,6 @@ void test_cs_two_streams_with_priority_arb(void **state)
 		skip();
 	}
 
-	/* This test can't run on Simulator */
-	if (hltests_is_simulator(fd)) {
-		printf("Test is not relevant for Simulator, skipping\n");
-		skip();
-	}
-
 	/* SRAM MAP (base + )
 	 * 0x0    : data1
 	 * 0x1000 : data2
@@ -620,6 +618,11 @@ void test_cs_two_streams_with_priority_arb(void **state)
 	arb_info.priority[STREAM0] = 2;
 	arb_info.priority[STREAM1] = 1;
 	arb_info.priority[STREAM2] = 3;
+
+	if (hltests_is_simulator(fd))
+		arb_info.arb_mst_quiet_val = ARB_MST_QUIET_PER_SIMULATOR;
+	else
+		arb_info.arb_mst_quiet_val = ARB_MST_QUIET_PER_DEFAULT;
 
 	/* Stream 0: Fence on SOB0 + LIN_DMA from host src0 to SRAM */
 	/* Stream 1: Fence on SOB0 + LIN_DMA from host src1 to SRAM */
@@ -686,6 +689,27 @@ void test_cs_two_streams_with_priority_arb(void **state)
 
 	rc = hltests_mem_compare(src_data[0], dst_data, dma_size);
 	assert_int_equal(rc, 0);
+
+	if (hltests_is_simulator(fd)) {
+		void *cb_arbiter;
+		uint32_t cb_arbiter_size = 0;
+
+		/* Restore arb_mst_quiet register value */
+		cb_arbiter = hltests_create_cb(fd, 0x1000, EXTERNAL, 0);
+		assert_non_null(cb_arbiter);
+
+		memset(&pkt_info, 0, sizeof(pkt_info));
+		pkt_info.eb = EB_FALSE;
+		pkt_info.mb = MB_FALSE;
+		arb_info.arb_mst_quiet_val = ARB_MST_QUIET_PER_DEFAULT;
+		cb_arbiter_size = hltests_add_arb_en_pkt(fd, cb_arbiter,
+				cb_arbiter_size, &pkt_info, &arb_info,
+				hltests_get_dma_down_qid(fd, STREAM0), true);
+
+		hltests_submit_and_wait_cs(fd, cb_arbiter, cb_arbiter_size,
+				hltests_get_dma_down_qid(fd, STREAM0),
+				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
+	}
 
 	for (i = 0 ; i < 3 ; i++) {
 		rc = hltests_free_host_mem(fd, data[i]);
