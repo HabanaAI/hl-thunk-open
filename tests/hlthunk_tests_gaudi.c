@@ -486,7 +486,7 @@ static uint32_t gaudi_add_monitor_and_fence(
 }
 
 static int gaudi_get_arb_cfg_reg_off(uint32_t queue_id, uint32_t *cfg_offset,
-		uint32_t *wrr_cfg_offset)
+		uint32_t *wrr_cfg_offset, uint32_t *arb_mst_quiet)
 {
 	switch (queue_id) {
 	case GAUDI_QUEUE_ID_DMA_0_0:
@@ -495,6 +495,7 @@ static int gaudi_get_arb_cfg_reg_off(uint32_t queue_id, uint32_t *cfg_offset,
 	case GAUDI_QUEUE_ID_DMA_0_3:
 		*cfg_offset = mmDMA0_QM_ARB_CFG_0;
 		*wrr_cfg_offset = mmDMA0_QM_ARB_WRR_WEIGHT_0;
+		*arb_mst_quiet = mmDMA0_QM_ARB_MST_QUIET_PER;
 		break;
 	case GAUDI_QUEUE_ID_DMA_1_0:
 	case GAUDI_QUEUE_ID_DMA_1_1:
@@ -502,6 +503,7 @@ static int gaudi_get_arb_cfg_reg_off(uint32_t queue_id, uint32_t *cfg_offset,
 	case GAUDI_QUEUE_ID_DMA_1_3:
 		*cfg_offset = mmDMA1_QM_ARB_CFG_0;
 		*wrr_cfg_offset = mmDMA1_QM_ARB_WRR_WEIGHT_0;
+		*arb_mst_quiet = mmDMA1_QM_ARB_MST_QUIET_PER;
 		break;
 	case GAUDI_QUEUE_ID_DMA_2_0:
 	case GAUDI_QUEUE_ID_DMA_2_1:
@@ -509,6 +511,7 @@ static int gaudi_get_arb_cfg_reg_off(uint32_t queue_id, uint32_t *cfg_offset,
 	case GAUDI_QUEUE_ID_DMA_2_3:
 		*cfg_offset = mmDMA2_QM_ARB_CFG_0;
 		*wrr_cfg_offset = mmDMA2_QM_ARB_WRR_WEIGHT_0;
+		*arb_mst_quiet = mmDMA2_QM_ARB_MST_QUIET_PER;
 		break;
 	case GAUDI_QUEUE_ID_DMA_3_0:
 	case GAUDI_QUEUE_ID_DMA_3_1:
@@ -516,6 +519,7 @@ static int gaudi_get_arb_cfg_reg_off(uint32_t queue_id, uint32_t *cfg_offset,
 	case GAUDI_QUEUE_ID_DMA_3_3:
 		*cfg_offset = mmDMA3_QM_ARB_CFG_0;
 		*wrr_cfg_offset = mmDMA3_QM_ARB_WRR_WEIGHT_0;
+		*arb_mst_quiet = mmDMA3_QM_ARB_MST_QUIET_PER;
 		break;
 	case GAUDI_QUEUE_ID_DMA_4_0:
 	case GAUDI_QUEUE_ID_DMA_4_1:
@@ -523,6 +527,7 @@ static int gaudi_get_arb_cfg_reg_off(uint32_t queue_id, uint32_t *cfg_offset,
 	case GAUDI_QUEUE_ID_DMA_4_3:
 		*cfg_offset = mmDMA4_QM_ARB_CFG_0;
 		*wrr_cfg_offset = mmDMA4_QM_ARB_WRR_WEIGHT_0;
+		*arb_mst_quiet = mmDMA4_QM_ARB_MST_QUIET_PER;
 		break;
 	case GAUDI_QUEUE_ID_DMA_5_0:
 	case GAUDI_QUEUE_ID_DMA_5_1:
@@ -530,6 +535,7 @@ static int gaudi_get_arb_cfg_reg_off(uint32_t queue_id, uint32_t *cfg_offset,
 	case GAUDI_QUEUE_ID_DMA_5_3:
 		*cfg_offset = mmDMA5_QM_ARB_CFG_0;
 		*wrr_cfg_offset = mmDMA5_QM_ARB_WRR_WEIGHT_0;
+		*arb_mst_quiet = mmDMA5_QM_ARB_MST_QUIET_PER;
 		break;
 	case GAUDI_QUEUE_ID_DMA_6_0:
 	case GAUDI_QUEUE_ID_DMA_6_1:
@@ -537,6 +543,7 @@ static int gaudi_get_arb_cfg_reg_off(uint32_t queue_id, uint32_t *cfg_offset,
 	case GAUDI_QUEUE_ID_DMA_6_3:
 		*cfg_offset = mmDMA6_QM_ARB_CFG_0;
 		*wrr_cfg_offset = mmDMA6_QM_ARB_WRR_WEIGHT_0;
+		*arb_mst_quiet = mmDMA6_QM_ARB_MST_QUIET_PER;
 		break;
 	case GAUDI_QUEUE_ID_DMA_7_0:
 	case GAUDI_QUEUE_ID_DMA_7_1:
@@ -544,6 +551,7 @@ static int gaudi_get_arb_cfg_reg_off(uint32_t queue_id, uint32_t *cfg_offset,
 	case GAUDI_QUEUE_ID_DMA_7_3:
 		*cfg_offset = mmDMA7_QM_ARB_CFG_0;
 		*wrr_cfg_offset = mmDMA7_QM_ARB_WRR_WEIGHT_0;
+		*arb_mst_quiet = mmDMA7_QM_ARB_MST_QUIET_PER;
 		break;
 	case GAUDI_QUEUE_ID_MME_0_0:
 	case GAUDI_QUEUE_ID_MME_0_1:
@@ -551,6 +559,7 @@ static int gaudi_get_arb_cfg_reg_off(uint32_t queue_id, uint32_t *cfg_offset,
 	case GAUDI_QUEUE_ID_MME_0_3:
 		*cfg_offset = mmMME0_QM_ARB_CFG_0;
 		*wrr_cfg_offset = mmMME0_QM_ARB_WRR_WEIGHT_0;
+		*arb_mst_quiet = mmMME0_QM_ARB_MST_QUIET_PER;
 		break;
 	case GAUDI_QUEUE_ID_MME_1_0:
 	case GAUDI_QUEUE_ID_MME_1_1:
@@ -558,6 +567,7 @@ static int gaudi_get_arb_cfg_reg_off(uint32_t queue_id, uint32_t *cfg_offset,
 	case GAUDI_QUEUE_ID_MME_1_3:
 		*cfg_offset = mmMME2_QM_ARB_CFG_0;
 		*wrr_cfg_offset = mmMME2_QM_ARB_WRR_WEIGHT_0;
+		*arb_mst_quiet = mmMME2_QM_ARB_MST_QUIET_PER;
 		break;
 	case GAUDI_QUEUE_ID_TPC_0_0:
 	case GAUDI_QUEUE_ID_TPC_0_1:
@@ -565,6 +575,7 @@ static int gaudi_get_arb_cfg_reg_off(uint32_t queue_id, uint32_t *cfg_offset,
 	case GAUDI_QUEUE_ID_TPC_0_3:
 		*cfg_offset = mmTPC0_QM_ARB_CFG_0;
 		*wrr_cfg_offset = mmTPC0_QM_ARB_WRR_WEIGHT_0;
+		*arb_mst_quiet = mmTPC0_QM_ARB_MST_QUIET_PER;
 		break;
 	case GAUDI_QUEUE_ID_TPC_1_0:
 	case GAUDI_QUEUE_ID_TPC_1_1:
@@ -572,6 +583,7 @@ static int gaudi_get_arb_cfg_reg_off(uint32_t queue_id, uint32_t *cfg_offset,
 	case GAUDI_QUEUE_ID_TPC_1_3:
 		*cfg_offset = mmTPC1_QM_ARB_CFG_0;
 		*wrr_cfg_offset = mmTPC1_QM_ARB_WRR_WEIGHT_0;
+		*arb_mst_quiet = mmTPC1_QM_ARB_MST_QUIET_PER;
 		break;
 	case GAUDI_QUEUE_ID_TPC_2_0:
 	case GAUDI_QUEUE_ID_TPC_2_1:
@@ -579,6 +591,7 @@ static int gaudi_get_arb_cfg_reg_off(uint32_t queue_id, uint32_t *cfg_offset,
 	case GAUDI_QUEUE_ID_TPC_2_3:
 		*cfg_offset = mmTPC2_QM_ARB_CFG_0;
 		*wrr_cfg_offset = mmTPC2_QM_ARB_WRR_WEIGHT_0;
+		*arb_mst_quiet = mmTPC2_QM_ARB_MST_QUIET_PER;
 		break;
 	case GAUDI_QUEUE_ID_TPC_3_0:
 	case GAUDI_QUEUE_ID_TPC_3_1:
@@ -586,6 +599,7 @@ static int gaudi_get_arb_cfg_reg_off(uint32_t queue_id, uint32_t *cfg_offset,
 	case GAUDI_QUEUE_ID_TPC_3_3:
 		*cfg_offset = mmTPC3_QM_ARB_CFG_0;
 		*wrr_cfg_offset = mmTPC3_QM_ARB_WRR_WEIGHT_0;
+		*arb_mst_quiet = mmTPC3_QM_ARB_MST_QUIET_PER;
 		break;
 	case GAUDI_QUEUE_ID_TPC_4_0:
 	case GAUDI_QUEUE_ID_TPC_4_1:
@@ -593,6 +607,7 @@ static int gaudi_get_arb_cfg_reg_off(uint32_t queue_id, uint32_t *cfg_offset,
 	case GAUDI_QUEUE_ID_TPC_4_3:
 		*cfg_offset = mmTPC4_QM_ARB_CFG_0;
 		*wrr_cfg_offset = mmTPC4_QM_ARB_WRR_WEIGHT_0;
+		*arb_mst_quiet = mmTPC4_QM_ARB_MST_QUIET_PER;
 		break;
 	case GAUDI_QUEUE_ID_TPC_5_0:
 	case GAUDI_QUEUE_ID_TPC_5_1:
@@ -600,6 +615,7 @@ static int gaudi_get_arb_cfg_reg_off(uint32_t queue_id, uint32_t *cfg_offset,
 	case GAUDI_QUEUE_ID_TPC_5_3:
 		*cfg_offset = mmTPC5_QM_ARB_CFG_0;
 		*wrr_cfg_offset = mmTPC5_QM_ARB_WRR_WEIGHT_0;
+		*arb_mst_quiet = mmTPC5_QM_ARB_MST_QUIET_PER;
 		break;
 	case GAUDI_QUEUE_ID_TPC_6_0:
 	case GAUDI_QUEUE_ID_TPC_6_1:
@@ -607,6 +623,7 @@ static int gaudi_get_arb_cfg_reg_off(uint32_t queue_id, uint32_t *cfg_offset,
 	case GAUDI_QUEUE_ID_TPC_6_3:
 		*cfg_offset = mmTPC6_QM_ARB_CFG_0;
 		*wrr_cfg_offset = mmTPC6_QM_ARB_WRR_WEIGHT_0;
+		*arb_mst_quiet = mmTPC6_QM_ARB_MST_QUIET_PER;
 		break;
 	case GAUDI_QUEUE_ID_TPC_7_0:
 	case GAUDI_QUEUE_ID_TPC_7_1:
@@ -614,6 +631,7 @@ static int gaudi_get_arb_cfg_reg_off(uint32_t queue_id, uint32_t *cfg_offset,
 	case GAUDI_QUEUE_ID_TPC_7_3:
 		*cfg_offset = mmTPC7_QM_ARB_CFG_0;
 		*wrr_cfg_offset = mmTPC7_QM_ARB_WRR_WEIGHT_0;
+		*arb_mst_quiet = mmTPC7_QM_ARB_MST_QUIET_PER;
 		break;
 	default:
 		printf("QMAN id %u does not support arbitration\n", queue_id);
@@ -628,17 +646,23 @@ static uint32_t gaudi_add_arb_en_pkt(void *buffer, uint32_t buf_off,
 				     struct hltests_arb_info *arb_info,
 				     uint32_t queue_id, bool enable)
 {
-	uint32_t i, arb_reg_off, arb_wrr_reg_off;
+	uint32_t i, arb_reg_off, arb_wrr_reg_off, arb_mst_quiet_off;
 	int rc;
 
 	rc = gaudi_get_arb_cfg_reg_off(queue_id, &arb_reg_off,
-			&arb_wrr_reg_off);
+			&arb_wrr_reg_off, &arb_mst_quiet_off);
 	if (rc)
 		return buf_off;
 
 	/* Set all QMAN Arbiter arb/master/enable */
 	pkt_info->msg_long.value = !!arb_info->arb << 0 | 1 << 4 | enable << 8;
 	pkt_info->msg_long.address = CFG_BASE + arb_reg_off;
+
+	buf_off = gaudi_add_msg_long_pkt(buffer, buf_off, pkt_info);
+
+	/* Set QMAN quiet period Between Grants */
+	pkt_info->msg_long.value = arb_info->arb_mst_quiet_val;
+	pkt_info->msg_long.address = CFG_BASE + arb_mst_quiet_off;
 
 	buf_off = gaudi_add_msg_long_pkt(buffer, buf_off, pkt_info);
 

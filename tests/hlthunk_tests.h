@@ -312,6 +312,7 @@ struct hltests_arb_info {
 		uint32_t weight[NUM_OF_STREAMS];
 		uint32_t priority[NUM_OF_STREAMS];
 	};
+	uint32_t arb_mst_quiet_val;
 };
 
 struct hltests_asic_funcs {
