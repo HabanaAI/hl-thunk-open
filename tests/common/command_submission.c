@@ -20,6 +20,7 @@
 
 #define ARB_MST_QUIET_PER_DEFAULT 0x10
 #define ARB_MST_QUIET_PER_SIMULATOR 0x186A0
+#define PLDM_MAX_NUM_PQE_FOR_TESTING 32
 
 static void submit_cs_nop(void **state, int num_of_pqe)
 {
@@ -29,6 +30,9 @@ static void submit_cs_nop(void **state, int num_of_pqe)
 	uint64_t seq = 0;
 	void *cb[64];
 	int rc, j, i, fd = tests_state->fd;
+
+	if (hltests_is_pldm(fd) && (num_of_pqe > PLDM_MAX_NUM_PQE_FOR_TESTING))
+		skip();
 
 	assert_in_range(num_of_pqe, 1, 64);
 
@@ -807,13 +811,16 @@ void test_cs_two_streams_with_wrr_arb(void **state)
 	}
 }
 
-#define CQ_WRAP_AROUND_TEST_NUM_OF_CS	1000
-
 void test_cs_cq_wrap_around(void **state)
 {
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int i;
+	uint32_t cq_wrap_around_num_of_cs = 1000;
 
-	for (i = 0 ; i < CQ_WRAP_AROUND_TEST_NUM_OF_CS ; i++)
+	if (hltests_is_pldm(tests_state->fd))
+		skip();
+
+	for (i = 0 ; i < cq_wrap_around_num_of_cs ; i++)
 		test_cs_nop(state);
 }
 

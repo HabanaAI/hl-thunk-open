@@ -36,6 +36,9 @@ void test_map_bigger_than_4GB(void **state)
 	uint32_t dma_dir_down, dma_dir_up;
 	int rc, fd = tests_state->fd;
 
+	if (hltests_is_pldm(fd))
+		skip();
+
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
@@ -162,11 +165,21 @@ static void allocate_device_mem_until_full(void **state,
 
 void test_alloc_device_mem_until_full(void **state)
 {
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+
+	if (hltests_is_pldm(tests_state->fd))
+		skip();
+
 	allocate_device_mem_until_full(state, NOT_CONTIGUOUS);
 }
 
 void test_alloc_device_mem_until_full_contiguous(void **state)
 {
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+
+	if (hltests_is_pldm(tests_state->fd))
+		skip();
+
 	allocate_device_mem_until_full(state, CONTIGUOUS);
 }
 

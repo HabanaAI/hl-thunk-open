@@ -65,6 +65,9 @@ void test_dma_entire_dram_random(void **state)
 	int i, rc, fd = tests_state->fd;
 	kvec_t(struct dma_chunk) array;
 
+	if (hltests_is_pldm(fd))
+		skip();
+
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 

@@ -287,6 +287,12 @@ void test_dma_8_threads(void **state)
 
 void test_dma_64_threads(void **state)
 {
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	int fd = tests_state->fd;
+
+	if (hltests_is_pldm(fd))
+		skip();
+
 	test_dma_threads(state, 64);
 }
 
