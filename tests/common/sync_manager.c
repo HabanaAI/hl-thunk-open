@@ -1026,8 +1026,8 @@ static void _test_signal_wait(void **state, void *(*__start_routine) (void *))
 	void *retval;
 	int i, rc, fd = tests_state->fd;
 
-	if (!hltests_is_gaudi(fd)) {
-		printf("Test is supported on Gaudi only, skipping.\n");
+	if (hltests_is_goya(fd) || hltests_is_pldm(fd)) {
+		printf("Test not supported on Goya/PLDM, skipping.\n");
 		skip();
 	}
 

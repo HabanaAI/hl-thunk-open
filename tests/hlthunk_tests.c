@@ -1599,6 +1599,9 @@ int hltests_dma_test(void **state, bool is_ddr, uint64_t size)
 	bool is_huge = size > 32 * 1024;
 	int rc, fd = tests_state->fd;
 
+	if (hltests_is_pldm(fd) && size > PLDM_MAX_DMA_SIZE_FOR_TESTING)
+		skip();
+
 	/* Sanity and memory allocation */
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);

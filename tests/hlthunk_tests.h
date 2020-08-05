@@ -80,6 +80,8 @@
 		hltests_debugfs_write(tests_state->debugfs.addr_fd, \
 				tests_state->debugfs.data_fd, full_address, val)
 
+#define PLDM_MAX_DMA_SIZE_FOR_TESTING SZ_64K
+
 KHASH_MAP_INIT_INT(ptr, void*)
 KHASH_MAP_INIT_INT64(ptr64, void*)
 

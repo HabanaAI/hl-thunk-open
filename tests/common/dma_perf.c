@@ -724,7 +724,7 @@ void test_sram_dram_single_ch_perf(void **state)
 	sram_addr = hw_ip.sram_base_address;
 
 	if (hltests_is_pldm(fd))
-		size = 0x100000;
+		size = 0x1000;
 	else
 		size = hw_ip.sram_size;
 
@@ -784,7 +784,7 @@ void test_dram_sram_single_ch_perf(void **state)
 	sram_addr = hw_ip.sram_base_address;
 
 	if (hltests_is_pldm(fd))
-		size = 0x100000;
+		size = 0x1000;
 	else
 		size = hw_ip.sram_size;
 
@@ -846,7 +846,7 @@ void test_dram_dram_single_ch_perf(void **state)
 	assert_int_equal(rc, 0);
 
 	if (hltests_is_pldm(fd))
-		size = 0x100000;
+		size = 0x1000;
 	else
 		size = 0x400000;
 
@@ -932,9 +932,10 @@ void test_sram_dram_multi_ch_perf(void **state)
 
 	sram_addr = hw_ip.sram_base_address;
 
-	if (hltests_is_pldm(fd))
-		size = 0x100000;
-	else
+	if (hltests_is_pldm(fd)) {
+		size = 0x1000;
+		num_of_ddma_ch = 1;
+	} else
 		size = hw_ip.sram_size;
 
 	sram_dram_perf_outcome =
@@ -1012,7 +1013,7 @@ void test_dram_sram_multi_ch_perf(void **state)
 	sram_addr = hw_ip.sram_base_address;
 
 	if (hltests_is_pldm(fd))
-		size = 0x100000;
+		size = 0x1000;
 	else
 		size = hw_ip.sram_size;
 
@@ -1091,7 +1092,7 @@ void test_dram_dram_multi_ch_perf(void **state)
 	assert_in_range(num_of_ddma_ch, 1, MAX_DMA_CH);
 
 	if (hltests_is_pldm(fd))
-		size = 0x100000;
+		size = 0x1000;
 	else
 		size = hw_ip.sram_size;
 
@@ -1143,6 +1144,9 @@ void test_sram_dram_bidirectional_full_multi_ch_perf(void **state)
 	int num_of_ddma_ch = hltests_get_ddma_cnt(fd);
 	uint8_t factor = hltests_is_simulator(fd) ? 0xf : 0xff;
 
+	if (hltests_is_pldm(fd))
+		skip();
+
 	/* This test can't run on Goya */
 	if (hlthunk_get_device_name_from_fd(fd) == HLTHUNK_DEVICE_GOYA) {
 		printf("Test is skipped for GOYA\n");
@@ -1155,9 +1159,7 @@ void test_sram_dram_bidirectional_full_multi_ch_perf(void **state)
 		skip();
 	}
 
-	if (hltests_is_pldm(fd))
-		num_of_lindma_pkts = 1;
-	else if (hltests_is_simulator(fd))
+	if (hltests_is_simulator(fd))
 		num_of_lindma_pkts = 10;
 	else
 		num_of_lindma_pkts = 60000;
@@ -1174,10 +1176,7 @@ void test_sram_dram_bidirectional_full_multi_ch_perf(void **state)
 
 	sram_addr = hw_ip.sram_base_address;
 
-	if (hltests_is_pldm(fd))
-		size = 0x100000;
-	else
-		size = hw_ip.sram_size;
+	size = hw_ip.sram_size;
 
 	sram_dram_perf_outcome =
 		&tests_state->perf_outcomes[DMA_PERF_SRAM_DRAM_BIDIR_FULL_CH];
@@ -1267,7 +1266,7 @@ void test_dram_sram_5ch_perf(void **state)
 	sram_addr = hw_ip.sram_base_address;
 
 	if (hltests_is_pldm(fd))
-		size = 0x100000;
+		size = 0x1000;
 	else
 		size = hw_ip.sram_size;
 
