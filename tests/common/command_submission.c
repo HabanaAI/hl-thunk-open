@@ -779,6 +779,7 @@ void test_cs_two_streams_with_wrr_arb(void **state)
 	arb_info.weight[STREAM1] = 1;
 	arb_info.weight[STREAM2] = 1;
 	arb_info.weight[STREAM3] = 1;
+	arb_info.arb_mst_quiet_val = ARB_MST_QUIET_PER_DEFAULT;
 
 	/* Stream 0: Fence on SOB0 + LIN_DMA from host src0 to SRAM dst0 */
 	/* Stream 1: Fence on SOB0 + LIN_DMA from host src1 to SRAM dst1 */
