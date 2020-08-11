@@ -101,6 +101,10 @@ struct hlthunk_clk_throttle_info {
 	uint32_t clk_throttle_reason_bitmask;
 };
 
+struct hlthunk_energy_info {
+	uint64_t total_energy_consumption;
+};
+
 struct hlthunk_cs_in {
 	void *chunks_restore;
 	void *chunks_execute;
@@ -422,6 +426,17 @@ hlthunk_public int hlthunk_get_pci_counters_info(int fd,
  */
 hlthunk_public int hlthunk_get_clk_throttle_info(int fd,
 					struct hlthunk_clk_throttle_info *info);
+
+/**
+ * This function retrieves the device's total energy consumption
+ * in millijoules (mJ), since the driver was loaded.
+ * @param fd file descriptor handle of habanalabs main device
+ * @param info pointer to memory, where to fill the total energy consumption
+ * info.
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_get_total_energy_consumption_info(int fd,
+				struct hlthunk_energy_info *info);
 
 /**
  * This function retrieves miscellaneous information of a specific device

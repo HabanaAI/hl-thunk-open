@@ -848,6 +848,31 @@ hlthunk_public int hlthunk_get_clk_throttle_info(int fd,
 	return 0;
 }
 
+hlthunk_public int hlthunk_get_total_energy_consumption_info(int fd,
+			struct hlthunk_energy_info *info)
+{
+	struct hl_info_args args;
+	int rc;
+	struct hl_info_energy energy_info;
+
+	if (!info)
+		return -EINVAL;
+
+	memset(&args, 0, sizeof(args));
+
+	args.op = HL_INFO_TOTAL_ENERGY;
+	args.return_pointer = (__u64) (uintptr_t) &energy_info;
+	args.return_size = sizeof(energy_info);
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	if (rc)
+		return rc;
+
+	info->total_energy_consumption = energy_info.total_energy_consumption;
+
+	return 0;
+}
+
 hlthunk_public int hlthunk_request_command_buffer(int fd, uint32_t cb_size,
 							uint64_t *cb_handle)
 {
