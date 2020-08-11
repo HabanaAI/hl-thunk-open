@@ -301,6 +301,24 @@ void test_print_clk_throttling_reason(void **state)
 	hlthunk_close(fd);
 }
 
+void test_print_total_energy_consumption(void **state)
+{
+	const char *pciaddr = hltests_get_parser_pciaddr();
+	struct hlthunk_energy_info energy_info = {0};
+	int rc, fd;
+
+	fd = hlthunk_open_control(0, pciaddr);
+	assert_in_range(fd, 0, INT_MAX);
+
+	rc = hlthunk_get_total_energy_consumption_info(fd, &energy_info);
+	assert_int_equal(rc, 0);
+
+	printf("\nTotal energy consumption: %lu(mj)\n",
+			energy_info.total_energy_consumption);
+
+	hlthunk_close(fd);
+}
+
 const struct CMUnitTest control_tests[] = {
 	cmocka_unit_test(test_print_hw_ip_info),
 	cmocka_unit_test(test_print_hw_idle_info),
@@ -312,7 +330,8 @@ const struct CMUnitTest control_tests[] = {
 	cmocka_unit_test(test_print_hlthunk_version),
 	cmocka_unit_test(test_print_cs_drop_statistics),
 	cmocka_unit_test(test_print_pci_counters),
-	cmocka_unit_test(test_print_clk_throttling_reason)
+	cmocka_unit_test(test_print_clk_throttling_reason),
+	cmocka_unit_test(test_print_total_energy_consumption)
 };
 
 static const char *const usage[] = {
