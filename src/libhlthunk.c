@@ -544,7 +544,7 @@ hlthunk_public enum hl_device_status hlthunk_get_device_status_info(int fd)
 }
 
 static int hlthunk_get_hw_idle_info(int fd, uint32_t *is_idle,
-					uint32_t *busy_engines_mask)
+					uint64_t *busy_engines_mask)
 {
 	struct hl_info_args args;
 	struct hl_info_hw_idle hl_hw_idle;
@@ -561,14 +561,16 @@ static int hlthunk_get_hw_idle_info(int fd, uint32_t *is_idle,
 		return rc;
 
 	*is_idle = hl_hw_idle.is_idle;
-	*busy_engines_mask = hl_hw_idle.busy_engines_mask;
+	*busy_engines_mask = hl_hw_idle.busy_engines_mask_ext;
 
 	return 0;
 }
 
 hlthunk_public bool hlthunk_is_device_idle(int fd)
 {
-	uint32_t is_idle, mask;
+	uint32_t is_idle;
+	uint64_t mask;
+
 	int rc;
 
 	rc = hlthunk_get_hw_idle_info(fd, &is_idle, &mask);
@@ -578,7 +580,7 @@ hlthunk_public bool hlthunk_is_device_idle(int fd)
 	return !!is_idle;
 }
 
-hlthunk_public int hlthunk_get_busy_engines_mask(int fd, uint32_t *mask)
+hlthunk_public int hlthunk_get_busy_engines_mask(int fd, uint64_t *mask)
 {
 	uint32_t is_idle;
 	int rc;
