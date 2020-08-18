@@ -5,6 +5,7 @@
  * All Rights Reserved.
  */
 
+#include "hl_function_versioning.h"
 #include "libhlthunk.h"
 #include "specs/common/pci_ids.h"
 #include "specs/common/shim_types.h"
