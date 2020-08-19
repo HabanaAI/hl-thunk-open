@@ -214,7 +214,7 @@ hlthunk_public int hlthunk_get_pci_bus_id_from_fd(int fd, char *pci_bus_id,
 	const char *base_path = "/sys/class/habanalabs/";
 	const char *pci_bus_prefix = "pci_addr";
 	const char *device_prefix = "hl";
-	char tmp_name[32], str[64], dev_name[16], read_busid[16],
+	char tmp_name[32], str[128], dev_name[16], read_busid[16],
 				pci_bus_file_name[128], *p;
 	FILE *output;
 	pid_t pid;
@@ -232,7 +232,7 @@ hlthunk_public int hlthunk_get_pci_bus_id_from_fd(int fd, char *pci_bus_id,
 	}
 
 	pid = getpid();
-	snprintf(str, 63, "lsof -F n /proc/%d/fd/%d > %s 2> /dev/null",
+	snprintf(str, 127, "lsof -F n /proc/%d/fd/%d > %s 2> /dev/null",
 			pid, fd, tmp_name);
 	if (system(str) == -1) {
 		rc = -1;
