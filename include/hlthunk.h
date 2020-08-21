@@ -22,7 +22,6 @@ extern "C" {
 #define HLTHUNK_MAX_MINOR		256
 #define HLTHUNK_DEV_NAME_PRIMARY	"/dev/hl%d"
 #define HLTHUNK_DEV_NAME_CONTROL	"/dev/hl_controlD%d"
-#define MAX_NUM_OF_BUSY_ENGINES		64
 
 enum hlthunk_node_type {
 	HLTHUNK_NODE_PRIMARY,
