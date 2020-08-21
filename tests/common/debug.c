@@ -162,7 +162,7 @@ void test_print_hw_idle_info(void **state)
 	device_id = hlthunk_get_device_name_from_fd(fd);
 
 	printf("Busy engine(s):\n");
-	for (i = 0 ; i < MAX_NUM_OF_BUSY_ENGINES; i++)
+	for (i = 0 ; i < sizeof(busy_engines_mask) * CHAR_BIT ; i++)
 		if (busy_engines_mask & (1 << i))
 			print_engine_name(device_id, i);
 out:
