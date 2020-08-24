@@ -481,14 +481,14 @@ hlthunk_public int hlthunk_get_hw_ip_info(int fd,
 	hw_ip->sram_size = hl_hw_ip.sram_size;
 	hw_ip->num_of_events = hl_hw_ip.num_of_events;
 	hw_ip->device_id = hl_hw_ip.device_id;
-	hw_ip->armcp_cpld_version = hl_hw_ip.cpld_version;
+	hw_ip->cpld_version = hl_hw_ip.cpld_version;
 	hw_ip->psoc_pci_pll_nr = hl_hw_ip.psoc_pci_pll_nr;
 	hw_ip->psoc_pci_pll_nf = hl_hw_ip.psoc_pci_pll_nf;
 	hw_ip->psoc_pci_pll_od = hl_hw_ip.psoc_pci_pll_od;
 	hw_ip->psoc_pci_pll_div_factor = hl_hw_ip.psoc_pci_pll_div_factor;
 	hw_ip->tpc_enabled_mask = hl_hw_ip.tpc_enabled_mask;
 	hw_ip->dram_enabled = hl_hw_ip.dram_enabled;
-	memcpy(hw_ip->armcp_version, hl_hw_ip.cpucp_version,
+	memcpy(hw_ip->cpucp_version, hl_hw_ip.cpucp_version,
 		HL_INFO_VERSION_MAX_LEN);
 	memcpy(hw_ip->card_name, hl_hw_ip.card_name,
 		HL_INFO_CARD_NAME_MAX_LEN);

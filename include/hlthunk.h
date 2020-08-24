@@ -45,14 +45,14 @@ struct hlthunk_hw_ip_info {
 	uint32_t sram_size;
 	uint32_t num_of_events;
 	uint32_t device_id; /* PCI Device ID */
-	uint32_t armcp_cpld_version;
+	uint32_t cpld_version;
 	uint32_t psoc_pci_pll_nr;
 	uint32_t psoc_pci_pll_nf;
 	uint32_t psoc_pci_pll_od;
 	uint32_t psoc_pci_pll_div_factor;
 	uint8_t tpc_enabled_mask;
 	uint8_t dram_enabled;
-	uint8_t armcp_version[HL_INFO_VERSION_MAX_LEN];
+	uint8_t cpucp_version[HL_INFO_VERSION_MAX_LEN];
 	uint32_t module_id;
 	uint8_t card_name[HL_INFO_CARD_NAME_MAX_LEN];
 };
