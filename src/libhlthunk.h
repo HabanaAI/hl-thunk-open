@@ -74,8 +74,8 @@ do { \
 	.fp_hlthunk_device_memory_alloc = hlthunk_device_memory_alloc,\
 	.fp_hlthunk_device_memory_free = hlthunk_device_memory_free,\
 	.fp_hlthunk_device_memory_map = hlthunk_device_memory_map,\
-	.fp_hlthunk_host_memory_map = hlthunk_host_memory_map,\
-	.fp_hlthunk_memory_unmap = hlthunk_memory_unmap,\
+	.fp_hlthunk_host_memory_map = hlthunk_host_memory_map_original,\
+	.fp_hlthunk_memory_unmap = hlthunk_memory_unmap_original,\
 	.fp_hlthunk_request_command_buffer = hlthunk_request_command_buffer,\
 	.fp_hlthunk_destroy_command_buffer = hlthunk_destroy_command_buffer,\
 	.fp_hlthunk_wait_for_cs = hlthunk_wait_for_cs,\
@@ -101,6 +101,10 @@ int hlthunk_profiler_start_original(int fd);
 int hlthunk_profiler_stop_original(int fd);
 int hlthunk_profiler_get_trace_original(int fd, void *buffer, uint64_t *size);
 void hlthunk_profiler_destroy_original(void);
+uint64_t hlthunk_host_memory_map_original(int fd, void *host_virt_addr,
+					  uint64_t hint_addr,
+					  uint64_t host_size);
+int hlthunk_memory_unmap_original(int fd, uint64_t device_virt_addr);
 
 #undef hlthunk_public
 #define hlthunk_public
