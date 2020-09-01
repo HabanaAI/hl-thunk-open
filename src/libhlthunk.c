@@ -776,22 +776,26 @@ hlthunk_public int hlthunk_get_cs_counters_info(int fd,
 		return rc;
 
 	info->device_in_reset_drop_cnt =
-			hl_cs_counters.cs_counters.device_in_reset_drop_cnt;
+		hl_cs_counters.cs_counters.device_in_reset_drop_cnt;
 	info->out_of_mem_drop_cnt =
-			hl_cs_counters.cs_counters.out_of_mem_drop_cnt;
+		hl_cs_counters.cs_counters.out_of_mem_drop_cnt;
 	info->parsing_drop_cnt =
-			hl_cs_counters.cs_counters.parsing_drop_cnt;
+		hl_cs_counters.cs_counters.parsing_drop_cnt;
 	info->queue_full_drop_cnt =
-			hl_cs_counters.cs_counters.queue_full_drop_cnt;
+		hl_cs_counters.cs_counters.queue_full_drop_cnt;
+	info->max_cs_in_flight_drop_cnt =
+		hl_cs_counters.cs_counters.max_cs_in_flight_drop_cnt;
 
 	info->ctx_device_in_reset_drop_cnt =
-			hl_cs_counters.ctx_cs_counters.device_in_reset_drop_cnt;
+		hl_cs_counters.ctx_cs_counters.device_in_reset_drop_cnt;
 	info->ctx_out_of_mem_drop_cnt =
-			hl_cs_counters.ctx_cs_counters.out_of_mem_drop_cnt;
+		hl_cs_counters.ctx_cs_counters.out_of_mem_drop_cnt;
 	info->ctx_parsing_drop_cnt =
-			hl_cs_counters.ctx_cs_counters.parsing_drop_cnt;
+		hl_cs_counters.ctx_cs_counters.parsing_drop_cnt;
 	info->ctx_queue_full_drop_cnt =
-			hl_cs_counters.ctx_cs_counters.queue_full_drop_cnt;
+		hl_cs_counters.ctx_cs_counters.queue_full_drop_cnt;
+	info->max_cs_in_flight_drop_cnt =
+		hl_cs_counters.ctx_cs_counters.max_cs_in_flight_drop_cnt;
 
 	return 0;
 }
