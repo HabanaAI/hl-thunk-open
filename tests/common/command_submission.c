@@ -1475,8 +1475,6 @@ static void test_cs_drop(void **state)
 	uint32_t queue_down, queue_up, cb_size = 0;
 	int rc, i, j, fd = tests_state->fd;
 
-	skip(); /* TODO: remove after new feature in driver gets in */
-
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
