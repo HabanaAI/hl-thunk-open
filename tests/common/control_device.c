@@ -253,11 +253,15 @@ void test_print_cs_drop_statistics(void **state)
 	printf("\nout_of_mem_drop_cnt: %lu\n", info.out_of_mem_drop_cnt);
 	printf("parsing_drop_cnt: %lu\n", info.parsing_drop_cnt);
 	printf("queue_full_drop_cnt: %lu\n", info.queue_full_drop_cnt);
+	printf("max CS in-flight drop_cnt: %lu\n",
+			info.max_cs_in_flight_drop_cnt);
 	printf("device_in_reset_drop_cnt: %lu\n",
 			info.device_in_reset_drop_cnt);
 	printf("ctx_out_of_mem_drop_cnt: %lu\n", info.ctx_out_of_mem_drop_cnt);
 	printf("ctx_parsing_drop_cnt: %lu\n", info.ctx_parsing_drop_cnt);
 	printf("ctx_queue_full_drop_cnt: %lu\n", info.ctx_queue_full_drop_cnt);
+	printf("ctx max CS in-flight drop_cnt: %lu\n",
+			info.ctx_max_cs_in_flight_drop_cnt);
 	printf("ctx_device_in_reset_drop_cnt: %lu\n",
 			info.ctx_device_in_reset_drop_cnt);
 
