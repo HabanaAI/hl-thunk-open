@@ -86,6 +86,8 @@ struct hlthunk_cs_counters_info {
 	uint64_t ctx_parsing_drop_cnt;
 	uint64_t ctx_queue_full_drop_cnt;
 	uint64_t ctx_device_in_reset_drop_cnt;
+	uint64_t max_cs_in_flight_drop_cnt;
+	uint64_t ctx_max_cs_in_flight_drop_cnt;
 };
 
 struct hlthunk_pci_counters_info {
