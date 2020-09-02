@@ -78,6 +78,7 @@ do { \
 	.fp_hlthunk_memory_unmap = hlthunk_memory_unmap_original,\
 	.fp_hlthunk_request_command_buffer = hlthunk_request_command_buffer,\
 	.fp_hlthunk_destroy_command_buffer = hlthunk_destroy_command_buffer,\
+	.fp_hlthunk_get_cb_usage_count = hlthunk_get_cb_usage_count,\
 	.fp_hlthunk_wait_for_cs = hlthunk_wait_for_cs,\
 	.fp_hlthunk_get_device_name_from_fd = hlthunk_get_device_name_from_fd,\
 	.fp_hlthunk_get_pci_bus_id_from_fd = hlthunk_get_pci_bus_id_from_fd,\

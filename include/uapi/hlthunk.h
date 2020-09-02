@@ -198,6 +198,8 @@ struct hlthunk_functions_pointers {
 	int (*fp_hlthunk_wait_for_collective_sig)(int fd,
 					struct hlthunk_wait_in *in,
 					struct hlthunk_wait_out *out);
+	int (*fp_hlthunk_get_cb_usage_count)(int fd, uint64_t cb_handle,
+						uint32_t *usage_cnt);
 };
 
 struct hlthunk_debugfs {
@@ -475,6 +477,16 @@ hlthunk_public int hlthunk_request_command_buffer(int fd, uint32_t cb_size,
  * @return 0 for success, negative value for failure
  */
 hlthunk_public int hlthunk_destroy_command_buffer(int fd, uint64_t cb_handle);
+
+/**
+ * This function retrieves the usage count of a CB for a specific device
+ * @param fd file descriptor handle of habanalabs main device
+ * @param cb_handle handle of the CB
+ * @param usage_cnt pointer to uint32_t to store the usage count of the CB
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_get_cb_usage_count(int fd, uint64_t cb_handle,
+						uint32_t *usage_cnt);
 
 /**
  * This function submits a set of jobs to a specific device
