@@ -947,6 +947,25 @@ hlthunk_public int hlthunk_destroy_command_buffer(int fd, uint64_t cb_handle)
 	return hlthunk_ioctl(fd, HL_IOCTL_CB, &args);
 }
 
+hlthunk_public int hlthunk_get_cb_usage_count(int fd, uint64_t cb_handle,
+						uint32_t *usage_cnt)
+{
+	union hl_cb_args args;
+	int rc;
+
+	memset(&args, 0, sizeof(args));
+	args.in.op = HL_CB_OP_INFO;
+	args.in.cb_handle = cb_handle;
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_CB, &args);
+	if (rc)
+		return rc;
+
+	*usage_cnt = args.out.usage_cnt;
+
+	return 0;
+}
+
 int hlthunk_command_submission_original(int fd, struct hlthunk_cs_in *in,
 					struct hlthunk_cs_out *out)
 {
