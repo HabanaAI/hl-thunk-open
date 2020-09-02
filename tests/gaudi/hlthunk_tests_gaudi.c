@@ -5,7 +5,7 @@
  * All Rights Reserved.
  */
 
-#include "hlthunk_tests.h"
+#include "common/hlthunk_tests.h"
 #include "hlthunk.h"
 #include "gaudi/gaudi.h"
 #include "gaudi/gaudi_packets.h"

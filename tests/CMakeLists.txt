@@ -24,9 +24,9 @@ set(HLTHUNK_TESTS_LINK_LIBRARIES
 # create test library
 add_library(${HLTHUNK_TESTS_LIBRARY}
             STATIC
-            hlthunk_tests.c
-            hlthunk_tests_goya.c
-            hlthunk_tests_gaudi.c
+            common/hlthunk_tests.c
+            goya/hlthunk_tests_goya.c
+            gaudi/hlthunk_tests_gaudi.c
             argparse/argparse.c
             inih/ini.c)
 target_link_libraries(${HLTHUNK_TESTS_LIBRARY} ${HLTHUNK_TESTS_LINK_LIBRARIES})

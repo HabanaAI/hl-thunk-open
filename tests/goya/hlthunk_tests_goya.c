@@ -5,7 +5,7 @@
  * All Rights Reserved.
  */
 
-#include "hlthunk_tests.h"
+#include "common/hlthunk_tests.h"
 #include "goya/goya.h"
 #include "goya/goya_packets.h"
 #include "goya/asic_reg/goya_regs.h"

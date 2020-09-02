@@ -6,7 +6,7 @@
  */
 
 #include "hlthunk.h"
-#include "hlthunk_tests.h"
+#include "common/hlthunk_tests.h"
 #include "gaudi/gaudi.h"
 #include "gaudi/asic_reg/gaudi_regs.h"
 #include "gaudi/gaudi_packets.h"

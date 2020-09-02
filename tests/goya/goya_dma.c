@@ -6,7 +6,7 @@
  */
 
 #include "hlthunk.h"
-#include "hlthunk_tests.h"
+#include "common/hlthunk_tests.h"
 
 #include <stdarg.h>
 #include <stddef.h>
