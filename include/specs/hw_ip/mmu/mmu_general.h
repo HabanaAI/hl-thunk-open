@@ -31,8 +31,9 @@
 #define HOP3_SHIFT			21
 #define HOP4_SHIFT			12
 
-#define PTE_PHYS_ADDR_SHIFT		12
-#define PTE_PHYS_ADDR_MASK		~OFFSET_MASK
+#define MMU_ARCH_5_HOPS			5
+
+#define HOP_PHYS_ADDR_MASK		(~FLAGS_MASK)
 
 #define HL_PTE_SIZE			sizeof(u64)
 #define HOP_TABLE_SIZE			PAGE_SIZE_4KB
