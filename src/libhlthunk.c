@@ -794,7 +794,7 @@ hlthunk_public int hlthunk_get_cs_counters_info(int fd,
 		hl_cs_counters.ctx_cs_counters.parsing_drop_cnt;
 	info->ctx_queue_full_drop_cnt =
 		hl_cs_counters.ctx_cs_counters.queue_full_drop_cnt;
-	info->max_cs_in_flight_drop_cnt =
+	info->ctx_max_cs_in_flight_drop_cnt =
 		hl_cs_counters.ctx_cs_counters.max_cs_in_flight_drop_cnt;
 
 	return 0;
