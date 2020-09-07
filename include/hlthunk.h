@@ -481,7 +481,9 @@ hlthunk_public int hlthunk_command_submission(int fd, struct hlthunk_cs_in *in,
  * finished executing
  * @param fd file descriptor handle of habanalabs main device
  * @param seq sequence number of command submission
- * @param timeout_us absolute timeout to wait in microseconds
+ * @param timeout_us absolute timeout to wait in microseconds. If the timeout
+ * value is 0, the driver won't sleep at all. It will check the status of the
+ * CS and return immediately
  * @param status pointer to uint32_t to store the wait status
  * @return 0 for success, negative value for failure
  */
