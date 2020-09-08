@@ -567,6 +567,12 @@ void test_cs_two_streams_with_arb(void **state)
 		skip();
 	}
 
+	/* TODO: re-enable the test on PLDM when SW-19239 is fixed */
+	if (hltests_is_pldm(tests_state->fd)) {
+		printf("Test is temporarily disabled on PLDM, skipping\n");
+		skip();
+	}
+
 	/* SRAM MAP (base + )
 	 * 0x0    : data1
 	 * 0x1000 : data2
