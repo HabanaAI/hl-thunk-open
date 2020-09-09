@@ -85,7 +85,9 @@ do { \
 		hlthunk_get_device_index_from_pci_bus_id,\
 	.fp_hlthunk_malloc = hlthunk_malloc,\
 	.fp_hlthunk_free = hlthunk_free,\
-	.fp_hlthunk_get_time_sync_info = hlthunk_get_time_sync_info\
+	.fp_hlthunk_get_time_sync_info = hlthunk_get_time_sync_info,\
+	.fp_hlthunk_wait_for_collective_sig = \
+		hlthunk_wait_for_collective_signal_original\
 }
 
 int hlthunk_command_submission_original(int fd, struct hlthunk_cs_in *in,
@@ -94,6 +96,8 @@ int hlthunk_signal_submission_original(int fd, struct hlthunk_signal_in *in,
 					struct hlthunk_signal_out *out);
 int hlthunk_wait_for_signal_original(int fd, struct hlthunk_wait_in *in,
 					struct hlthunk_wait_out *out);
+int hlthunk_wait_for_collective_signal_original(int fd,
+		struct hlthunk_wait_in *in, struct hlthunk_wait_out *out);
 int hlthunk_open_original(enum hlthunk_device_name device_name,
 			  const char *busid);
 int hlthunk_close_original(int fd);

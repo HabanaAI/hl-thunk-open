@@ -1055,11 +1055,76 @@ int hlthunk_wait_for_signal_original(int fd, struct hlthunk_wait_in *in,
 	return 0;
 }
 
+int hlthunk_wait_for_collective_signal_original(int fd,
+		struct hlthunk_wait_in *in, struct hlthunk_wait_out *out)
+{
+	union hl_cs_args args;
+	struct hl_cs_chunk chunk_execute;
+	struct hlthunk_wait_for_signal *wait_for_signal;
+	struct hl_cs_in *hl_in;
+	struct hl_cs_out *hl_out;
+	int rc;
+
+	if (in->num_wait_for_signal != 1) {
+		printf(
+			"Currently only one wait for signal CS is supported in each ioctl\n");
+		return -EINVAL;
+	}
+
+	wait_for_signal =
+		(struct hlthunk_wait_for_signal *) in->hlthunk_wait_for_signal;
+
+	if (wait_for_signal->signal_seq_nr != 1) {
+		printf(
+			"Currently only one signal CS seq is supported in a wait for signal CS\n");
+		return -EINVAL;
+	}
+
+	memset(&args, 0, sizeof(args));
+	memset(&chunk_execute, 0, sizeof(chunk_execute));
+	chunk_execute.queue_index = wait_for_signal->queue_index;
+	chunk_execute.signal_seq_arr =
+		(__u64) (uintptr_t) wait_for_signal->signal_seq_arr;
+	chunk_execute.num_signal_seq_arr = 1;
+	chunk_execute.collective_engine_id =
+			wait_for_signal->collective_engine_id;
+
+	hl_in = &args.in;
+	hl_in->chunks_restore = (__u64) (uintptr_t) in->chunks_restore;
+	hl_in->num_chunks_restore = in->num_chunks_restore;
+	hl_in->chunks_execute = (__u64) (uintptr_t) &chunk_execute;
+	hl_in->num_chunks_execute = 1;
+	hl_in->cs_flags = in->flags | HL_CS_FLAGS_COLLECTIVE_WAIT;
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_CS, &args);
+	if (rc)
+		return rc;
+
+	hl_out = &args.out;
+
+	if (hl_out->status != HL_CS_STATUS_SUCCESS)
+		return -EINVAL;
+
+	hl_out = &args.out;
+	out->seq = hl_out->seq;
+	out->status = hl_out->status;
+
+	return 0;
+}
+
 hlthunk_public int hlthunk_wait_for_signal(int fd,
 					struct hlthunk_wait_in *in,
 					struct hlthunk_wait_out *out)
 {
 	return (*functions_pointers_table.fp_hlthunk_wait_for_signal)(
+				fd, in, out);
+}
+
+hlthunk_public int hlthunk_wait_for_collective_signal(int fd,
+					struct hlthunk_wait_in *in,
+					struct hlthunk_wait_out *out)
+{
+	return (*functions_pointers_table.fp_hlthunk_wait_for_collective_sig)(
 				fd, in, out);
 }
 
