@@ -136,7 +136,8 @@ struct hlthunk_wait_for_signal {
 	uint64_t *signal_seq_arr;
 	uint32_t signal_seq_nr; /* value of 1 is currently supported */
 	uint32_t queue_index;
-	uint32_t flags;	/* currently unused */
+	uint32_t flags; /* currently unused */
+	uint32_t collective_engine_id;
 };
 
 struct hlthunk_wait_in {
@@ -200,6 +201,11 @@ struct hlthunk_functions_pointers {
 	int (*fp_hlthunk_get_cs_counters_info)(int fd,
 					struct hlthunk_cs_counters_info *info);
 	void (*fp_hlthunk_profiler_destroy)(void);
+	int (*fp_hlthunk_request_mapped_command_buffer)(int fd,
+					uint32_t cb_size, uint64_t *cb_handle);
+	int (*fp_hlthunk_wait_for_collective_sig)(int fd,
+					struct hlthunk_wait_in *in,
+					struct hlthunk_wait_out *out);
 };
 
 struct hlthunk_debugfs {
@@ -511,6 +517,19 @@ hlthunk_public int hlthunk_signal_submission(int fd,
  * seq is not of a  signal CS
  */
 hlthunk_public int hlthunk_wait_for_signal(int fd,
+					struct hlthunk_wait_in *in,
+					struct hlthunk_wait_out *out);
+
+/**
+ * This function submits a job of a  wait CS to a specific device
+ * @param fd file descriptor handle of habanalabs main device
+ * @param in pointer to a wait command submission input structure
+ * @param out pointer to a wait command submission output structure
+ * @return 0 for success, negative value for failure. ULLONG_MAX is returned if
+ * the given signal CS was already completed. Undefined behavior if the given
+ * seq is not of a  signal CS
+ */
+hlthunk_public int hlthunk_wait_for_collective_signal(int fd,
 					struct hlthunk_wait_in *in,
 					struct hlthunk_wait_out *out);
 
