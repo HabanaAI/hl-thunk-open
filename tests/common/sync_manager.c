@@ -23,7 +23,9 @@
 
 struct signal_wait_thread_params {
 	int fd;
-	int id;
+	int queue_id;
+	bool collective_wait;
+	int engine_id;
 };
 
 static uint64_t sig_seqs[SIG_WAIT_CS];
@@ -689,7 +691,7 @@ static void *test_signal_wait_th(void *args)
 	struct hlthunk_wait_in wait_in;
 	struct hlthunk_wait_out wait_out;
 	struct hlthunk_wait_for_signal wait_for_signal;
-	int i, rc, fd = params->fd, id = params->id, iters;
+	int i, rc, fd = params->fd, queue_id = params->queue_id, iters;
 
 	/* the max value of an SOB is 1 << 15 so we want to test a wraparound */
 	iters = 3 * ((1 << 15) + (1 << 14));
@@ -701,7 +703,7 @@ static void *test_signal_wait_th(void *args)
 		memset(&wait_out, 0, sizeof(wait_out));
 		memset(&wait_for_signal, 0, sizeof(wait_for_signal));
 
-		sig_in.queue_index = id;
+		sig_in.queue_index = queue_id;
 
 		rc = hlthunk_signal_submission(fd, &sig_in, &sig_out);
 		assert_int_equal(rc, 0);
@@ -712,7 +714,7 @@ static void *test_signal_wait_th(void *args)
 			assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
 		}
 
-		wait_for_signal.queue_index = 7 - id;
+		wait_for_signal.queue_index = 7 - queue_id;
 		wait_for_signal.signal_seq_arr = &sig_out.seq;
 		wait_for_signal.signal_seq_nr = 1;
 		wait_in.hlthunk_wait_for_signal = (uint64_t *) &wait_for_signal;
@@ -741,15 +743,16 @@ static void *test_signal_wait_parallel_th(void *args)
 	struct hlthunk_wait_in wait_in;
 	struct hlthunk_wait_out wait_out;
 	struct hlthunk_wait_for_signal wait_for_signal;
-	int i, j, rc, fd = params->fd, id = params->id, iters = 1000;
+	int i, j, rc, fd = params->fd, queue_id = params->queue_id;
+	int iters = 1000;
 
 	for (j = 0 ; j < iters ; j++) {
-		if (id & 1) {
+		if (queue_id & 1) {
 			for (i = 0 ; i < SIG_WAIT_CS ; i++) {
 				memset(&sig_in, 0, sizeof(sig_in));
 				memset(&sig_out, 0, sizeof(sig_out));
 
-				sig_in.queue_index = id;
+				sig_in.queue_index = queue_id;
 
 				rc = hlthunk_signal_submission(fd, &sig_in,
 								&sig_out);
@@ -775,6 +778,7 @@ static void *test_signal_wait_parallel_th(void *args)
 				;
 		} else {
 			uint64_t sig_seq;
+			uint32_t collective_engine = params->engine_id;
 
 			for (i = 0 ; i < SIG_WAIT_CS ; i++) {
 				memset(&wait_in, 0, sizeof(wait_in));
@@ -788,16 +792,26 @@ static void *test_signal_wait_parallel_th(void *args)
 
 				sig_seq = sig_seqs[i];
 
-				wait_for_signal.queue_index = 7 - id;
+				wait_for_signal.queue_index =
+							7 - queue_id;
 				wait_for_signal.signal_seq_arr = &sig_seq;
 				wait_for_signal.signal_seq_nr = 1;
+				wait_for_signal.collective_engine_id =
+						collective_engine;
 				wait_in.hlthunk_wait_for_signal =
 						(uint64_t *) &wait_for_signal;
 				wait_in.num_wait_for_signal = 1;
 
-				rc = hlthunk_wait_for_signal(fd, &wait_in,
-								&wait_out);
-				assert_int_equal(rc, 0);
+				if (params->collective_wait) {
+					rc =
+					hlthunk_wait_for_collective_signal(fd,
+							&wait_in, &wait_out);
+					assert_int_equal(rc, 0);
+				} else {
+					rc = hlthunk_wait_for_signal(fd,
+							&wait_in, &wait_out);
+					assert_int_equal(rc, 0);
+				}
 
 				sig_seqs[i] = 0;
 
@@ -843,7 +857,7 @@ static void *test_signal_wait_dma_th(void *args)
 	uint64_t dram_addr, device_va[2], seq[3];
 	uint32_t dma_size, cb_size[3], queue_down, queue_up;
 	uint16_t sob0, mon0;
-	int i, j = 100, rc, fd = params->fd, id = params->id;
+	int i, j = 100, rc, fd = params->fd, queue_id = params->queue_id;
 	bool sync_stream_enable = true; /* for debug */
 
 	queue_down = hltests_get_dma_down_qid(fd, STREAM0);
@@ -890,7 +904,7 @@ static void *test_signal_wait_dma_th(void *args)
 		memset(&pkt_info, 0, sizeof(pkt_info));
 		pkt_info.eb = EB_TRUE;
 		pkt_info.mb = MB_TRUE;
-		pkt_info.write_to_sob.sob_id = sob0 + id;
+		pkt_info.write_to_sob.sob_id = sob0 + queue_id;
 		pkt_info.write_to_sob.value = 0;
 		pkt_info.write_to_sob.mode = SOB_SET;
 		cb_size[2] = hltests_add_write_to_sob_pkt(fd, cb[2], cb_size[2],
@@ -921,7 +935,7 @@ static void *test_signal_wait_dma_th(void *args)
 			memset(&pkt_info, 0, sizeof(pkt_info));
 			pkt_info.eb = EB_TRUE;
 			pkt_info.mb = MB_TRUE;
-			pkt_info.write_to_sob.sob_id = sob0 + id;
+			pkt_info.write_to_sob.sob_id = sob0 + queue_id;
 			pkt_info.write_to_sob.value = 1;
 			pkt_info.write_to_sob.mode = SOB_ADD;
 			cb_size[0] = hltests_add_write_to_sob_pkt(fd, cb[0],
@@ -962,8 +976,8 @@ static void *test_signal_wait_dma_th(void *args)
 					sizeof(mon_and_fence_info));
 			mon_and_fence_info.queue_id = queue_up;
 			mon_and_fence_info.cmdq_fence = true;
-			mon_and_fence_info.sob_id = sob0 + id;
-			mon_and_fence_info.mon_id = mon0 + id;
+			mon_and_fence_info.sob_id = sob0 + queue_id;
+			mon_and_fence_info.mon_id = mon0 + queue_id;
 			mon_and_fence_info.mon_address = 0;
 			mon_and_fence_info.sob_val = 1;
 			mon_and_fence_info.dec_fence = true;
@@ -1016,7 +1030,8 @@ static void *test_signal_wait_dma_th(void *args)
 	return args;
 }
 
-static void _test_signal_wait(void **state, void *(*__start_routine) (void *))
+static void _test_signal_wait(void **state, bool collective_wait,
+		void *(*__start_routine)(void *))
 {
 	struct hltests_state *tests_state =
 			(struct hltests_state *) *state;
@@ -1051,7 +1066,10 @@ static void _test_signal_wait(void **state, void *(*__start_routine) (void *))
 	/* Create and execute threads */
 	for (i = 0 ; i < SIG_WAIT_TH ; i++) {
 		thread_params[i].fd = fd;
-		thread_params[i].id = i;
+		thread_params[i].queue_id = i;
+		thread_params[i].collective_wait = collective_wait;
+		thread_params[i].engine_id = GAUDI_ENGINE_ID_DMA_5;
+
 		rc = pthread_create(&thread_id[i], NULL, __start_routine,
 					&thread_params[i]);
 		assert_int_equal(rc, 0);
@@ -1078,17 +1096,33 @@ static void test_signal_wait(void **state)
 		skip();
 	}
 
-	_test_signal_wait(state, test_signal_wait_th);
+	_test_signal_wait(state, false, test_signal_wait_th);
 }
 
 static void test_signal_wait_parallel(void **state)
 {
-	_test_signal_wait(state, test_signal_wait_parallel_th);
+	int fd = ((struct hltests_state *)*state)->fd;
+
+	_test_signal_wait(state, false, test_signal_wait_parallel_th);
+}
+
+static void test_signal_collective_wait_parallel(void **state)
+{
+	int fd = ((struct hltests_state *)*state)->fd;
+
+	if (!hltests_is_gaudi(fd)) {
+		printf("Test is relevant only for Gaudi, skipping\n");
+		skip();
+	}
+
+	_test_signal_wait(state, true, test_signal_wait_parallel_th);
 }
 
 static void test_signal_wait_dma(void **state)
 {
-	_test_signal_wait(state, test_signal_wait_dma_th);
+	int fd = ((struct hltests_state *)*state)->fd;
+
+	_test_signal_wait(state, false, test_signal_wait_dma_th);
 }
 
 const struct CMUnitTest sm_tests[] = {
@@ -1117,6 +1151,8 @@ const struct CMUnitTest sm_tests[] = {
 	cmocka_unit_test_setup(test_signal_wait_parallel,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_signal_wait_dma,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_signal_collective_wait_parallel,
 				hltests_ensure_device_operational)
 };
 
