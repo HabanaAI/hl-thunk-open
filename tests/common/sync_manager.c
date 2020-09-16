@@ -844,7 +844,7 @@ static void *test_signal_wait_dma_th(void *args)
 {
 	struct signal_wait_thread_params *params =
 				(struct signal_wait_thread_params *) args;
-	struct hltests_cs_chunk execute_arr[1];
+	struct hltests_cs_chunk execute_arr[2], restore_arr[1];
 	struct hltests_monitor_and_fence mon_and_fence_info;
 	struct hltests_pkt_info pkt_info;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -853,12 +853,19 @@ static void *test_signal_wait_dma_th(void *args)
 	struct hlthunk_wait_in wait_in;
 	struct hlthunk_wait_out wait_out;
 	struct hlthunk_wait_for_signal wait_for_signal;
-	void *buf[2], *cb[3], *dram_ptr;
-	uint64_t dram_addr, device_va[2], seq[3];
-	uint32_t dma_size, cb_size[3], queue_down, queue_up;
-	uint16_t sob0, mon0;
+	void *buf[2], *cb[3], *dram_ptr, *common_cb_buf, *cp_dma_cb,
+		*restore_cb;
+	uint64_t dram_addr, device_va[2], seq[3], common_cb_address,
+		cp_dma_cb_address, common_cb_device_va, cp_dma_cb_device_va;
+	uint32_t dma_size, cb_size[3], queue_down, queue_up,
+		collective_engine = params->engine_id, common_cb_buf_size,
+		cp_dma_cb_size, restore_cb_size;
+	uint16_t sob0, mon0, execute_arr_len, restore_arr_len;
 	int i, j = 100, rc, fd = params->fd, queue_id = params->queue_id;
 	bool sync_stream_enable = true; /* for debug */
+
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
 
 	queue_down = hltests_get_dma_down_qid(fd, STREAM0);
 	queue_up = hltests_get_dma_up_qid(fd, STREAM0);
@@ -875,6 +882,33 @@ static void *test_signal_wait_dma_th(void *args)
 		dma_size = 1 << 24;
 	else
 		dma_size = 1 << 27;
+
+	/* SRAM MAP (base + )
+	 * 0x3000 : common cb for thread 0
+	 * 0x4000 : common cb for thread 1
+	 * 0x5000 : cp dma cb for thread 0
+	 * 0x6000 : cp dma cb for thread 1
+	 */
+	common_cb_address =
+		hw_ip.sram_base_address + 0x3000 + (queue_id * 0x1000);
+	cp_dma_cb_address =
+		hw_ip.sram_base_address + 0x5000 + (queue_id * 0x1000);
+
+	/* Allocate a common cb buffer to hold dma packets for cp_dma */
+	common_cb_buf = hltests_allocate_host_mem(fd, 0x1000, NOT_HUGE);
+	assert_non_null(common_cb_buf);
+	memset(common_cb_buf, 0, 0x1000);
+	common_cb_buf_size = 0;
+	common_cb_device_va =
+		hltests_get_device_va_for_host_ptr(fd, common_cb_buf);
+
+	restore_cb = hltests_create_cb(fd, 0x1000, EXTERNAL, 0);
+	assert_non_null(restore_cb);
+
+	/* Internal CB for CP_DMA */
+	cp_dma_cb = hltests_create_cb(fd, 0x1000, INTERNAL, cp_dma_cb_address);
+	assert_non_null(cp_dma_cb);
+	cp_dma_cb_device_va = hltests_get_device_va_for_host_ptr(fd, cp_dma_cb);
 
 	dram_ptr = hltests_allocate_device_mem(fd, dma_size, CONTIGUOUS);
 	assert_non_null(dram_ptr);
@@ -899,6 +933,9 @@ static void *test_signal_wait_dma_th(void *args)
 	while (j--) {
 		memset(buf[1], 0, dma_size);
 		memset(cb_size, 0, sizeof(cb_size));
+		restore_cb_size = 0;
+		common_cb_buf_size = 0;
+		cp_dma_cb_size = 0;
 
 		/* Clear SOB before we start */
 		memset(&pkt_info, 0, sizeof(pkt_info));
@@ -920,71 +957,115 @@ static void *test_signal_wait_dma_th(void *args)
 		rc = hltests_wait_for_cs_until_not_busy(fd, seq[2]);
 		assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
 
-		/* DMA down */
-		memset(&pkt_info, 0, sizeof(pkt_info));
-		pkt_info.eb = EB_FALSE;
-		pkt_info.mb = MB_FALSE;
-		pkt_info.dma.src_addr = device_va[0];
-		pkt_info.dma.dst_addr = (uint64_t) (uintptr_t) dram_addr;
-		pkt_info.dma.size = dma_size;
-		pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_DRAM;
-		cb_size[0] = hltests_add_dma_pkt(fd, cb[0], cb_size[0],
-						&pkt_info);
-
-		if (!sync_stream_enable) {
+		if (params->collective_wait) {
+			/* common cb buf holds the inner LIN_DMA */
 			memset(&pkt_info, 0, sizeof(pkt_info));
-			pkt_info.eb = EB_TRUE;
+			pkt_info.eb = EB_FALSE;
 			pkt_info.mb = MB_TRUE;
-			pkt_info.write_to_sob.sob_id = sob0 + queue_id;
-			pkt_info.write_to_sob.value = 1;
-			pkt_info.write_to_sob.mode = SOB_ADD;
-			cb_size[0] = hltests_add_write_to_sob_pkt(fd, cb[0],
-						cb_size[0], &pkt_info);
+			pkt_info.dma.src_addr =
+				(uint64_t) (uintptr_t) device_va[0];
+			pkt_info.dma.dst_addr =
+					(uint64_t) (uintptr_t) dram_addr;
+			pkt_info.dma.size = dma_size;
+			common_cb_buf_size = hltests_add_dma_pkt(fd,
+				common_cb_buf, common_cb_buf_size, &pkt_info);
+
+			/* cp_dma will execute packets located in common cb */
+			pkt_info.eb = EB_FALSE;
+			pkt_info.mb = MB_TRUE;
+			pkt_info.cp_dma.src_addr = common_cb_address;
+			pkt_info.cp_dma.size = common_cb_buf_size;
+			cp_dma_cb_size = hltests_add_cp_dma_pkt(fd, cp_dma_cb,
+					cp_dma_cb_size, &pkt_info);
+
+			/* Restore cb copies common cb and cp_dma cb to sram */
+			memset(&pkt_info, 0, sizeof(pkt_info));
+			pkt_info.eb = EB_FALSE;
+			pkt_info.mb = MB_TRUE;
+			pkt_info.dma.src_addr = common_cb_device_va;
+			pkt_info.dma.dst_addr = common_cb_address;
+			pkt_info.dma.size = common_cb_buf_size;
+			restore_cb_size = hltests_add_dma_pkt(fd, restore_cb,
+					restore_cb_size, &pkt_info);
+
+			memset(&pkt_info, 0, sizeof(pkt_info));
+			pkt_info.eb = EB_FALSE;
+			pkt_info.mb = MB_TRUE;
+			pkt_info.dma.src_addr = cp_dma_cb_device_va;
+			pkt_info.dma.dst_addr = cp_dma_cb_address;
+			pkt_info.dma.size = cp_dma_cb_size;
+			restore_cb_size = hltests_add_dma_pkt(fd, restore_cb,
+					restore_cb_size, &pkt_info);
+		} else {
+			/* DMA down */
+			memset(&pkt_info, 0, sizeof(pkt_info));
+			pkt_info.eb = EB_FALSE;
+			pkt_info.mb = MB_FALSE;
+			pkt_info.dma.src_addr = device_va[0];
+			pkt_info.dma.dst_addr =
+				(uint64_t) (uintptr_t) dram_addr;
+			pkt_info.dma.size = dma_size;
+			pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_DRAM;
+			cb_size[0] = hltests_add_dma_pkt(fd, cb[0], cb_size[0],
+					&pkt_info);
 		}
 
-		execute_arr[0].cb_ptr = cb[0];
-		execute_arr[0].cb_size = cb_size[0];
-		execute_arr[0].queue_index = queue_down;
+		if (params->collective_wait) {
+			restore_arr[0].cb_ptr = restore_cb;
+			restore_arr[0].cb_size = restore_cb_size;
+			restore_arr[0].queue_index = queue_down;
 
-		rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, 0, &seq[0]);
+			execute_arr[0].cb_ptr = cp_dma_cb;
+			execute_arr[0].cb_size = cp_dma_cb_size;
+			execute_arr[0].queue_index = GAUDI_QUEUE_ID_DMA_5_0;
+
+			cb_size[2] = hltests_add_nop_pkt(fd, cb[2], 0,
+					EB_FALSE, MB_FALSE);
+			execute_arr[1].cb_ptr = cb[2];
+			execute_arr[1].cb_size = cb_size[2];
+			execute_arr[1].queue_index = queue_down;
+			restore_arr_len = 1;
+			execute_arr_len = 2;
+		} else {
+			execute_arr[0].cb_ptr = cb[0];
+			execute_arr[0].cb_size = cb_size[0];
+			execute_arr[0].queue_index = queue_down;
+			execute_arr_len = 1;
+			restore_arr_len = 0;
+		}
+
+		rc = hltests_submit_cs(fd, restore_arr, restore_arr_len,
+				execute_arr, execute_arr_len,
+				CS_FLAGS_FORCE_RESTORE, &seq[0]);
 		assert_int_equal(rc, 0);
 
-		if (sync_stream_enable) {
-			memset(&sig_in, 0, sizeof(sig_in));
-			memset(&sig_out, 0, sizeof(sig_out));
-			memset(&wait_in, 0, sizeof(wait_in));
-			memset(&wait_out, 0, sizeof(wait_out));
+		memset(&sig_in, 0, sizeof(sig_in));
+		memset(&sig_out, 0, sizeof(sig_out));
+		memset(&wait_in, 0, sizeof(wait_in));
+		memset(&wait_out, 0, sizeof(wait_out));
 
-			sig_in.queue_index = queue_down;
-			rc = hlthunk_signal_submission(fd, &sig_in, &sig_out);
+		sig_in.queue_index = queue_down;
+		rc = hlthunk_signal_submission(fd, &sig_in, &sig_out);
+		assert_int_equal(rc, 0);
+
+		wait_for_signal.queue_index = queue_up;
+		wait_for_signal.signal_seq_arr = &sig_out.seq;
+		wait_for_signal.signal_seq_nr = 1;
+		wait_for_signal.collective_engine_id =
+				collective_engine;
+		wait_in.hlthunk_wait_for_signal =
+					(uint64_t *) &wait_for_signal;
+		wait_in.num_wait_for_signal = 1;
+
+		if (params->collective_wait) {
+			rc =
+			hlthunk_wait_for_collective_signal(fd,
+					&wait_in, &wait_out);
 			assert_int_equal(rc, 0);
-
-			wait_for_signal.queue_index = queue_up;
-			wait_for_signal.signal_seq_arr = &sig_out.seq;
-			wait_for_signal.signal_seq_nr = 1;
-			wait_in.hlthunk_wait_for_signal =
-						(uint64_t *) &wait_for_signal;
-			wait_in.num_wait_for_signal = 1;
-
-			rc = hlthunk_wait_for_signal(fd, &wait_in, &wait_out);
+		} else {
+			rc = hlthunk_wait_for_signal(fd,
+					&wait_in, &wait_out);
 			assert_int_equal(rc, 0);
-		}
-
-		/* DMA up */
-		if (!sync_stream_enable) {
-			memset(&mon_and_fence_info, 0,
-					sizeof(mon_and_fence_info));
-			mon_and_fence_info.queue_id = queue_up;
-			mon_and_fence_info.cmdq_fence = true;
-			mon_and_fence_info.sob_id = sob0 + queue_id;
-			mon_and_fence_info.mon_id = mon0 + queue_id;
-			mon_and_fence_info.mon_address = 0;
-			mon_and_fence_info.sob_val = 1;
-			mon_and_fence_info.dec_fence = true;
-			mon_and_fence_info.mon_payload = 1;
-			cb_size[1] = hltests_add_monitor_and_fence(fd, cb[1],
-						cb_size[1],
-						&mon_and_fence_info);
 		}
 
 		memset(&pkt_info, 0, sizeof(pkt_info));
@@ -1022,10 +1103,18 @@ static void *test_signal_wait_dma_th(void *args)
 		assert_int_equal(rc, 0);
 	}
 
+	hltests_free_host_mem(fd, common_cb_buf);
+
 	for (i = 0 ; i < 3 ; i++) {
 		rc = hltests_destroy_cb(fd, cb[i]);
 		assert_int_equal(rc, 0);
 	}
+
+	rc = hltests_destroy_cb(fd, cp_dma_cb);
+	assert_int_equal(rc, 0);
+
+	rc = hltests_destroy_cb(fd, restore_cb);
+	assert_int_equal(rc, 0);
 
 	return args;
 }
@@ -1125,6 +1214,18 @@ static void test_signal_wait_dma(void **state)
 	_test_signal_wait(state, false, test_signal_wait_dma_th);
 }
 
+static void test_signal_collective_wait_dma(void **state)
+{
+	int fd = ((struct hltests_state *)*state)->fd;
+
+	if (!hltests_is_gaudi(fd)) {
+		printf("Test is relevant only for Gaudi, skipping\n");
+		skip();
+	}
+
+	_test_signal_wait(state, true, test_signal_wait_dma_th);
+}
+
 const struct CMUnitTest sm_tests[] = {
 	cmocka_unit_test_setup(test_sm_tpc, hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_sm_mme, hltests_ensure_device_operational),
@@ -1151,6 +1252,8 @@ const struct CMUnitTest sm_tests[] = {
 	cmocka_unit_test_setup(test_signal_wait_parallel,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_signal_wait_dma,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_signal_collective_wait_dma,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_signal_collective_wait_parallel,
 				hltests_ensure_device_operational)
