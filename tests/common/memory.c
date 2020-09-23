@@ -183,12 +183,110 @@ void test_alloc_device_mem_until_full_contiguous(void **state)
 	allocate_device_mem_until_full(state, CONTIGUOUS);
 }
 
+void test_submit_after_unmap(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct hlthunk_hw_ip_info hw_ip;
+	void *device_addr, *src_ptr;
+	uint64_t host_src_addr, size;
+	int rc, fd = tests_state->fd;
+
+	if (!hltests_get_parser_run_disabled_tests()) {
+		printf("This test need to be run with -d flag\n");
+		skip();
+	}
+
+	size = 0x1000;
+
+	/* Sanity and memory allocation */
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+
+	device_addr = (void *) (uintptr_t) hw_ip.sram_base_address;
+
+	src_ptr = hltests_allocate_host_mem(fd, size, false);
+	assert_non_null(src_ptr);
+	hltests_fill_rand_values(src_ptr, size);
+	host_src_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
+
+	/* Cleanup */
+	rc = hltests_free_host_mem(fd, src_ptr);
+	assert_int_equal(rc, 0);
+
+	/* DMA: host->device */
+	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
+			EB_FALSE, MB_TRUE, host_src_addr,
+			(uint64_t) (uintptr_t) device_addr,
+			size, GOYA_DMA_HOST_TO_SRAM);
+
+}
+
+void test_submit_and_close(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	uint64_t seq, host_src_addr, size, cb_size, device_addr;
+	struct hltests_cs_chunk execute_arr;
+	struct hltests_pkt_info pkt_info;
+	void *src_ptr, *cb;
+	struct hlthunk_hw_ip_info hw_ip;
+	int i, rc, fd = tests_state->fd;
+	uint32_t cb_offset = 0;
+
+	if (!hltests_get_parser_run_disabled_tests()) {
+		printf("This test need to be run with -d flag\n");
+		skip();
+	}
+
+	size = 0x1000;
+
+	/* Sanity and memory allocation */
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+
+	device_addr = hw_ip.sram_base_address;
+
+	src_ptr = hltests_allocate_host_mem(fd, size, false);
+	assert_non_null(src_ptr);
+	hltests_fill_rand_values(src_ptr, size);
+	host_src_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
+
+	cb_size = 0x200000 - 128;
+
+	cb = hltests_create_cb(fd, cb_size, EXTERNAL, 0);
+	assert_non_null(cb);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.dma.src_addr = host_src_addr;
+	pkt_info.dma.dst_addr = device_addr;
+	pkt_info.dma.size = size;
+	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_SRAM;
+
+	for (i = 0 ; i < (cb_size / 24) ; i++)
+		cb_offset = hltests_add_dma_pkt(fd, cb, cb_offset, &pkt_info);
+
+	execute_arr.cb_ptr = cb;
+	execute_arr.cb_size = cb_offset;
+	execute_arr.queue_index = hltests_get_dma_down_qid(fd, STREAM0);
+
+	rc = hltests_submit_cs(fd, NULL, 0, &execute_arr, 1, 0, &seq);
+	assert_int_equal(rc, 0);
+
+	rc = hltests_destroy_cb(fd, cb);
+	assert_int_equal(rc, 0);
+}
+
 const struct CMUnitTest memory_tests[] = {
 	cmocka_unit_test_setup(test_map_bigger_than_4GB,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_alloc_device_mem_until_full,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_alloc_device_mem_until_full_contiguous,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_submit_after_unmap,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_submit_and_close,
 				hltests_ensure_device_operational)
 };
 
