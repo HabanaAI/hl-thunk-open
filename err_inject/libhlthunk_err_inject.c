@@ -15,8 +15,8 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "hlthunk.h"
-#include "hlthunk_err_inject.h"
+#include "uapi/hlthunk.h"
+#include "uapi/hlthunk_err_inject.h"
 #include "libhlthunk_supp.h"
 
 #define _GNU_SOURCE

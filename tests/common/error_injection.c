@@ -5,9 +5,8 @@
  * All Rights Reserved.
  */
 
-#include "hlthunk.h"
 #include "hlthunk_tests.h"
-#include "hlthunk_err_inject.h"
+#include "uapi/hlthunk_err_inject.h"
 
 #include <stdarg.h>
 #include <stdbool.h>

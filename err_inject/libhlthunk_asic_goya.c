@@ -12,7 +12,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "hlthunk.h"
+#include "uapi/hlthunk.h"
 #include "libhlthunk_supp.h"
 #include "goya/goya_packets.h"
 #include "goya/goya.h"

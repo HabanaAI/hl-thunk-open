@@ -8,8 +8,8 @@
 #ifndef LIBHLTHUNK_H
 #define LIBHLTHUNK_H
 
-#include "hlthunk.h"
-#include "specs/version.h"
+#include "uapi/hlthunk.h"
+#include "specs/common/version.h"
 
 #define _STRINGIFY(x)	#x
 #define STRINGIFY(x)	_STRINGIFY(x)
