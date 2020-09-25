@@ -27,6 +27,7 @@ add_library(${HLTHUNK_TESTS_LIBRARY}
             common/hlthunk_tests.c
             goya/hlthunk_tests_goya.c
             gaudi/hlthunk_tests_gaudi.c
+            mersenne-twister/mersenne-twister.c
             argparse/argparse.c
             inih/ini.c)
 target_link_libraries(${HLTHUNK_TESTS_LIBRARY} ${HLTHUNK_TESTS_LINK_LIBRARIES})

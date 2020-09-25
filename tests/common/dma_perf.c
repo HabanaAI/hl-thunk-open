@@ -5,8 +5,6 @@
  * All Rights Reserved.
  */
 
-#include "hlthunk.h"
-#include "mersenne-twister.h"
 #include "hlthunk_tests.h"
 #include "ini.h"
 
