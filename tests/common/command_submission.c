@@ -5,7 +5,6 @@
  * All Rights Reserved.
  */
 
-#include "hlthunk.h"
 #include "hlthunk_tests.h"
 
 #include <stdarg.h>

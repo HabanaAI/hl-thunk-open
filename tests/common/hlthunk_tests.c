@@ -6,7 +6,7 @@
  */
 
 #include "hlthunk_tests.h"
-#include "mersenne-twister.h"
+#include "mersenne-twister/mersenne-twister.h"
 #include "argparse.h"
 
 #include <stdio.h>
