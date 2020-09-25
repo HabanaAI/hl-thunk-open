@@ -8,9 +8,9 @@
 #ifndef HLTHUNK_TESTS_H
 #define HLTHUNK_TESTS_H
 
-#include "hlthunk.h"
+#include "uapi/hlthunk.h"
 #include "khash.h"
-#include "specs/pci_ids.h"
+#include "specs/common/pci_ids.h"
 
 #include <stdint.h>
 #include <sys/types.h>

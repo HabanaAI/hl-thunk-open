@@ -5,10 +5,10 @@
  * All Rights Reserved.
  */
 
-#include "hlthunk.h"
-#include "hlthunk_err_inject.h"
+#include "uapi/hlthunk.h"
+#include "uapi/hlthunk_err_inject.h"
 #include "libhlthunk_supp.h"
-#include "specs/pci_ids.h"
+#include "specs/common/pci_ids.h"
 
 #include <errno.h>
 #include <fcntl.h>

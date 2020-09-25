@@ -12,7 +12,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "hlthunk.h"
+#include "uapi/hlthunk.h"
 #include "libhlthunk_supp.h"
 #include "gaudi/gaudi_packets.h"
 #include "gaudi/gaudi.h"
