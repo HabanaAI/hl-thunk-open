@@ -324,6 +324,7 @@ hlthunk_public void hlthunk_free(void *pt)
 
 void hlthunk_set_profiler(void)
 {
+#ifndef DISABLE_PROFILER
 	void (*set_profiler_function)(
 		struct hlthunk_functions_pointers *functions_table);
 
@@ -338,6 +339,10 @@ void hlthunk_set_profiler(void)
 
 	if (set_profiler_function)
 		(*set_profiler_function)(&functions_pointers_table);
+#else
+	printf(
+		"HABANA_PROFILE is set to 1, but profiler is not supported in this build\n");
+#endif
 }
 
 int hlthunk_open_original(enum hlthunk_device_name device_name,

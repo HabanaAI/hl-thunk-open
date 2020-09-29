@@ -23,3 +23,4 @@ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/version.c.in" "${CMAKE_CURRENT_BINAR
 # Build shared/static libraries from all specified source files
 add_library(${HLTHUNK_TARGET} SHARED ${SRC} ${CMAKE_CURRENT_BINARY_DIR}/version.c)
 add_library(${HLTHUNK_TARGET}-static STATIC ${SRC} ${CMAKE_CURRENT_BINARY_DIR}/version.c)
+target_compile_definitions(${HLTHUNK_TARGET}-static PUBLIC DISABLE_PROFILER)
