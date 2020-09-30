@@ -183,8 +183,9 @@ void test_print_clk_rate(void **state)
 	rc = hlthunk_get_clk_rate(fd, &cur_clk, &max_clk);
 	assert_int_equal(rc, 0);
 
-	printf("\nCurrent clock rate: %dMHz\n", cur_clk);
-	printf("Maximum clock rate: %dMHz\n\n", max_clk);
+	printf("\n");
+	printf("Current clock rate  : %dMHz\n", cur_clk);
+	printf("Maximum clock rate  : %dMHz\n\n", max_clk);
 
 	hlthunk_close(fd);
 }
@@ -201,8 +202,9 @@ void test_print_reset_count(void **state)
 	rc = hlthunk_get_reset_count_info(fd, &info);
 	assert_int_equal(rc, 0);
 
-	printf("\nHard reset count: %d\n", info.hard_reset_count);
-	printf("Soft reset count: %d\n\n", info.soft_reset_count);
+	printf("\n");
+	printf("Hard reset count  : %d\n", info.hard_reset_count);
+	printf("Soft reset count  : %d\n\n", info.soft_reset_count);
 
 	hlthunk_close(fd);
 }
@@ -219,8 +221,9 @@ void test_print_time_sync_info(void **state)
 	rc = hlthunk_get_time_sync_info(fd, &info);
 	assert_int_equal(rc, 0);
 
-	printf("\nDevice time: 0x%"PRIx64"\n", info.device_time);
-	printf("Host time: 0x%"PRIx64"\n\n", info.host_time);
+	printf("\n");
+	printf("Device time  : 0x%"PRIx64"\n", info.device_time);
+	printf("Host time    : 0x%"PRIx64"\n\n", info.host_time);
 
 	hlthunk_close(fd);
 }
@@ -232,7 +235,7 @@ void test_print_hlthunk_version(void **state)
 	version = hlthunk_get_version();
 	assert_int_not_equal(version, NULL);
 
-	printf("hlthunk version: %s\n", version);
+	printf("\nhlthunk version: %s\n\n", version);
 
 	hlthunk_free(version);
 }
@@ -249,20 +252,36 @@ void test_print_cs_drop_statistics(void **state)
 	rc = hlthunk_get_cs_counters_info(fd, &info);
 	assert_int_equal(rc, 0);
 
-	printf("\nout_of_mem_drop_cnt: %lu\n", info.out_of_mem_drop_cnt);
-	printf("parsing_drop_cnt: %lu\n", info.parsing_drop_cnt);
-	printf("queue_full_drop_cnt: %lu\n", info.queue_full_drop_cnt);
-	printf("max CS in-flight drop_cnt: %lu\n",
-			info.max_cs_in_flight_drop_cnt);
-	printf("device_in_reset_drop_cnt: %lu\n",
-			info.device_in_reset_drop_cnt);
-	printf("ctx_out_of_mem_drop_cnt: %lu\n", info.ctx_out_of_mem_drop_cnt);
-	printf("ctx_parsing_drop_cnt: %lu\n", info.ctx_parsing_drop_cnt);
-	printf("ctx_queue_full_drop_cnt: %lu\n", info.ctx_queue_full_drop_cnt);
-	printf("ctx max CS in-flight drop_cnt: %lu\n",
-			info.ctx_max_cs_in_flight_drop_cnt);
-	printf("ctx_device_in_reset_drop_cnt: %lu\n",
-			info.ctx_device_in_reset_drop_cnt);
+	printf("\n");
+	printf("out_of_mem_drop_cnt            : %lu\n",
+						info.out_of_mem_drop_cnt);
+
+	printf("parsing_drop_cnt               : %lu\n",
+						info.parsing_drop_cnt);
+
+	printf("queue_full_drop_cnt            : %lu\n",
+						info.queue_full_drop_cnt);
+
+	printf("max CS in-flight drop_cnt      : %lu\n",
+						info.max_cs_in_flight_drop_cnt);
+
+	printf("device_in_reset_drop_cnt       : %lu\n",
+						info.device_in_reset_drop_cnt);
+
+	printf("ctx_out_of_mem_drop_cnt        : %lu\n",
+						info.ctx_out_of_mem_drop_cnt);
+
+	printf("ctx_parsing_drop_cnt           : %lu\n",
+						info.ctx_parsing_drop_cnt);
+
+	printf("ctx_queue_full_drop_cnt        : %lu\n",
+						info.ctx_queue_full_drop_cnt);
+
+	printf("ctx max CS in-flight drop_cnt  : %lu\n",
+					info.ctx_max_cs_in_flight_drop_cnt);
+
+	printf("ctx_device_in_reset_drop_cnt   : %lu\n\n",
+					info.ctx_device_in_reset_drop_cnt);
 
 	hlthunk_close(fd);
 }
@@ -279,9 +298,10 @@ void test_print_pci_counters(void **state)
 	rc = hlthunk_get_pci_counters_info(fd, &info);
 	assert_int_equal(rc, 0);
 
-	printf("\nrx_throughput: %lu\n", info.rx_throughput);
-	printf("tx_throughput: %lu\n", info.tx_throughput);
-	printf("replay counter: %u\n", info.replay_cnt);
+	printf("\n");
+	printf("rx_throughput   : %lu\n", info.rx_throughput);
+	printf("tx_throughput   : %lu\n", info.tx_throughput);
+	printf("replay counter  : %u\n\n", info.replay_cnt);
 
 	hlthunk_close(fd);
 }
@@ -298,7 +318,7 @@ void test_print_clk_throttling_reason(void **state)
 	rc = hlthunk_get_clk_throttle_info(fd, &info);
 	assert_int_equal(rc, 0);
 
-	printf("\nclk throttling bitmask: %u\n",
+	printf("\nclk throttling bitmask: %u\n\n",
 			info.clk_throttle_reason_bitmask);
 
 	hlthunk_close(fd);
@@ -316,7 +336,7 @@ void test_print_total_energy_consumption(void **state)
 	rc = hlthunk_get_total_energy_consumption_info(fd, &energy_info);
 	assert_int_equal(rc, 0);
 
-	printf("\nTotal energy consumption: %lu(mj)\n",
+	printf("\nTotal energy consumption: %lu(mj)\n\n",
 			energy_info.total_energy_consumption);
 
 	hlthunk_close(fd);
