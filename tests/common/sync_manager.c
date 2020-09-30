@@ -1020,13 +1020,22 @@ static void _test_signal_wait(void **state, void *(*__start_routine) (void *))
 {
 	struct hltests_state *tests_state =
 			(struct hltests_state *) *state;
-	pthread_t *thread_id;
 	struct signal_wait_thread_params *thread_params;
-	void *retval;
+	struct hlthunk_hw_ip_info hw_ip;
 	int i, rc, fd = tests_state->fd;
+	pthread_t *thread_id;
+	void *retval;
 
 	if (hltests_is_goya(fd) || hltests_is_pldm(fd)) {
 		printf("Test not supported on Goya/PLDM, skipping.\n");
+		skip();
+	}
+
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+
+	if (!hw_ip.dram_enabled) {
+		printf("DRAM is disabled so skipping test\n");
 		skip();
 	}
 
