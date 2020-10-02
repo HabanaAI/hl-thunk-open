@@ -439,6 +439,7 @@ struct hltests_module_params_info {
 	uint32_t hbm_ecc_enable;
 	uint32_t reserved;
 	uint32_t hard_reset_on_fw_events;
+	uint32_t fw_loading_ext;
 };
 
 void hltests_parser(int argc, const char **argv, const char * const* usage,

@@ -69,7 +69,7 @@ static struct hltests_module_params_info default_module_params = {
 	.reset_pcilink = 0,
 	.config_pll = 0,
 	.cpu_queues_enable = 1,
-	.fw_loading = 1,
+	.fw_loading = 0x3,
 	.heartbeat = 1,
 	.axi_drain = 1,
 	.security_enable = 1,
@@ -79,6 +79,7 @@ static struct hltests_module_params_info default_module_params = {
 	.hbm_ecc_enable = 1,
 	.reserved = 0,
 	.hard_reset_on_fw_events = 1,
+	.fw_loading_ext = 0
 };
 
 static struct hltests_device *get_hdev_from_fd(int fd)
