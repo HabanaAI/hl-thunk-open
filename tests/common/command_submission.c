@@ -1518,6 +1518,17 @@ static void test_cs_drop(void **state)
 	pkt_info.dma.dst_addr = device_data_address;
 	pkt_info.dma.size = 0x100000;
 
+	for (j = 0 ; j < CS_DROP_NUM_CB_PER_CS ; j++) {
+		cb[j] = hltests_create_cb(fd, 512, EXTERNAL, 0);
+		assert_non_null(cb[j]);
+
+		cb_size = hltests_add_dma_pkt(fd, cb[j], 0, &pkt_info);
+		execute_arr[j].cb_ptr = cb[j];
+		execute_arr[j].cb_size = cb_size;
+		execute_arr[j].queue_index =
+				hltests_get_dma_down_qid(fd, STREAM0);
+	}
+
 	/*
 	 * Submit multiple command submissions containing DMA transfers.
 	 * In between those command submissions, submit a couple of sync stream
@@ -1526,17 +1537,6 @@ static void test_cs_drop(void **state)
 	 * will be dropped
 	 */
 	for (i = 0 ; i < CS_DROP_NUM_CS ; i++) {
-		for (j = 0 ; j < CS_DROP_NUM_CB_PER_CS ; j++) {
-			cb[j] = hltests_create_cb(fd, 512, EXTERNAL, 0);
-			assert_non_null(cb[j]);
-
-			cb_size = hltests_add_dma_pkt(fd, cb[j], 0, &pkt_info);
-			execute_arr[j].cb_ptr = cb[j];
-			execute_arr[j].cb_size = cb_size;
-			execute_arr[j].queue_index =
-					hltests_get_dma_down_qid(fd, STREAM0);
-		}
-
 		rc = hltests_submit_cs(fd, NULL, 0, execute_arr,
 				CS_DROP_NUM_CB_PER_CS, 0, &seq);
 		assert_int_equal(rc, 0);
@@ -1552,11 +1552,6 @@ static void test_cs_drop(void **state)
 		wait_in.num_wait_for_signal = 1;
 		rc = hlthunk_wait_for_signal(fd, &wait_in, &wait_out);
 		assert_int_equal(rc, 0);
-
-		for (j = 0 ; j < CS_DROP_NUM_CB_PER_CS ; j++) {
-			rc = hltests_destroy_cb(fd, cb[j]);
-			assert_int_equal(rc, 0);
-		}
 	}
 
 	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
@@ -1568,6 +1563,11 @@ static void test_cs_drop(void **state)
 	drop_cnt = info_end.ctx_queue_full_drop_cnt
 			- info_start.ctx_queue_full_drop_cnt;
 	assert_int_equal(!drop_cnt, 0);
+
+	for (j = 0 ; j < CS_DROP_NUM_CB_PER_CS ; j++) {
+		rc = hltests_destroy_cb(fd, cb[j]);
+		assert_int_equal(rc, 0);
+	}
 
 	rc = hltests_free_host_mem(fd, src_data);
 	assert_int_equal(rc, 0);
