@@ -536,6 +536,7 @@ hlthunk_public enum hl_device_status hlthunk_get_device_status_info(int fd)
 	int rc;
 
 	memset(&args, 0, sizeof(args));
+	memset(&hl_dev_status, 0, sizeof(hl_dev_status));
 
 	args.op = HL_INFO_DEVICE_STATUS;
 	args.return_pointer = (__u64) (uintptr_t) &hl_dev_status;
@@ -556,6 +557,7 @@ static int hlthunk_get_hw_idle_info(int fd, uint32_t *is_idle,
 	int rc;
 
 	memset(&args, 0, sizeof(args));
+	memset(&hl_hw_idle, 0, sizeof(hl_hw_idle));
 
 	args.op = HL_INFO_HW_IDLE;
 	args.return_pointer = (__u64) (uintptr_t) &hl_hw_idle;
@@ -862,14 +864,15 @@ hlthunk_public int hlthunk_get_clk_throttle_info(int fd,
 hlthunk_public int hlthunk_get_total_energy_consumption_info(int fd,
 			struct hlthunk_energy_info *info)
 {
+	struct hl_info_energy energy_info;
 	struct hl_info_args args;
 	int rc;
-	struct hl_info_energy energy_info;
 
 	if (!info)
 		return -EINVAL;
 
 	memset(&args, 0, sizeof(args));
+	memset(&energy_info, 0, sizeof(energy_info));
 
 	args.op = HL_INFO_TOTAL_ENERGY;
 	args.return_pointer = (__u64) (uintptr_t) &energy_info;
