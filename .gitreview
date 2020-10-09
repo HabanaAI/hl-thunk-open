@@ -1,0 +1,4 @@
+[gerrit]
+host=gerrit.habana-labs.com
+project=hl-thunk
+defaultbranch=master
