@@ -53,16 +53,17 @@ void test_dma_entire_dram_random(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	const char *config_filename = hltests_get_config_filename();
-	struct hltests_cs_chunk execute_arr[1];
+	struct hltests_cs_chunk execute_arr[2];
 	struct hltests_pkt_info pkt_info;
 	struct hlthunk_hw_ip_info hw_ip;
 	struct dma_entire_dram_cfg cfg;
 	struct dma_chunk chunk;
-	void *buf[2], *cb, *dram_ptr;
+	void *buf[2], *cb[2], *dram_ptr;
 	uint64_t dram_size, dram_addr, dram_addr_end, device_va[2], seq;
-	uint32_t offset, cb_size = 0, vec_len, packets_size;
+	uint32_t offset, cb_size[2], vec_len, packets_size;
 	int i, rc, fd = tests_state->fd;
 	kvec_t(struct dma_chunk) array;
+	bool split_cs = false;
 
 	if (hltests_is_pldm(fd))
 		skip();
@@ -75,8 +76,14 @@ void test_dma_entire_dram_random(void **state)
 		skip();
 	}
 
+	/* if mmu is disabled split to 2 cb's */
+	if (!tests_state->mmu)
+		split_cs = true;
+
 	cfg.dma_size = 1 << 21; /* 2MB */
 	cfg.zone_size = 1 << 24; /* 16MB */
+	cb[0] = NULL;
+	cb[1] = NULL;
 
 	if (config_filename) {
 		if (ini_parse(config_filename, dma_dram_parser, &cfg) < 0)
@@ -134,11 +141,22 @@ void test_dma_entire_dram_random(void **state)
 	}
 
 	vec_len = kv_size(array);
+
+	if (split_cs)
+		vec_len = vec_len >> 1;
+
 	packets_size = 24 * vec_len;
 
 	/* DMA down */
-	cb = hltests_create_cb(fd, packets_size, EXTERNAL, 0);
-	assert_non_null(cb);
+	cb_size[0] = 0;
+	cb[0] = hltests_create_cb(fd, packets_size, EXTERNAL, 0);
+	assert_non_null(cb[0]);
+
+	if (split_cs) {
+		cb_size[1] = 0;
+		cb[1] = hltests_create_cb(fd, packets_size, EXTERNAL, 0);
+		assert_non_null(cb[1]);
+	}
 
 	for (i = 0 ; i < vec_len ; i++) {
 		chunk = kv_A(array, i);
@@ -149,17 +167,59 @@ void test_dma_entire_dram_random(void **state)
 		pkt_info.dma.dst_addr = (uint64_t) (uintptr_t) chunk.dram_addr;
 		pkt_info.dma.size = cfg.dma_size;
 		pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_DRAM;
-		cb_size = hltests_add_dma_pkt(fd, cb, cb_size, &pkt_info);
+		cb_size[0] =
+			hltests_add_dma_pkt(fd, cb[0], cb_size[0], &pkt_info);
 	}
 
-	hltests_submit_and_wait_cs(fd, cb, cb_size,
-				hltests_get_dma_down_qid(fd, STREAM0),
-				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
-	cb_size = 0;
+	for (i = vec_len ; (i < vec_len * 2) && split_cs ; i++) {
+		chunk = kv_A(array, i);
+		memset(&pkt_info, 0, sizeof(pkt_info));
+		pkt_info.eb = EB_FALSE;
+		pkt_info.mb = MB_TRUE;
+		pkt_info.dma.src_addr = chunk.input_device_va;
+		pkt_info.dma.dst_addr = (uint64_t) (uintptr_t) chunk.dram_addr;
+		pkt_info.dma.size = cfg.dma_size;
+		pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_DRAM;
+		cb_size[1] =
+			hltests_add_dma_pkt(fd, cb[1], cb_size[1], &pkt_info);
+	}
+
+	execute_arr[0].cb_ptr = cb[0];
+	execute_arr[0].cb_size = cb_size[0];
+	execute_arr[0].queue_index = hltests_get_dma_down_qid(fd, STREAM0);
+
+	if (split_cs) {
+		execute_arr[1].cb_ptr = cb[1];
+		execute_arr[1].cb_size = cb_size[1];
+		execute_arr[1].queue_index =
+			hltests_get_dma_down_qid(fd, STREAM0);
+	}
+
+	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, split_cs ? 2 : 1, 0,
+									&seq);
+	assert_int_equal(rc, 0);
+
+	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
+	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
+
+	rc = hltests_destroy_cb(fd, cb[0]);
+	assert_int_equal(rc, 0);
+
+	if (split_cs) {
+		rc = hltests_destroy_cb(fd, cb[1]);
+		assert_int_equal(rc, 0);
+	}
 
 	/* DMA up */
-	cb = hltests_create_cb(fd, packets_size, EXTERNAL, 0);
-	assert_non_null(cb);
+	cb_size[0] = 0;
+	cb[0] = hltests_create_cb(fd, packets_size, EXTERNAL, 0);
+	assert_non_null(cb[0]);
+
+	if (split_cs) {
+		cb_size[1] = 0;
+		cb[1] = hltests_create_cb(fd, packets_size, EXTERNAL, 0);
+		assert_non_null(cb[1]);
+	}
 
 	for (i = 0 ; i < vec_len ; i++) {
 		chunk = kv_A(array, i);
@@ -170,14 +230,51 @@ void test_dma_entire_dram_random(void **state)
 		pkt_info.dma.dst_addr = chunk.output_device_va;
 		pkt_info.dma.size = cfg.dma_size;
 		pkt_info.dma.dma_dir = GOYA_DMA_DRAM_TO_HOST;
-		cb_size = hltests_add_dma_pkt(fd, cb, cb_size, &pkt_info);
+		cb_size[0] =
+			hltests_add_dma_pkt(fd, cb[0], cb_size[0], &pkt_info);
 	}
 
-	hltests_submit_and_wait_cs(fd, cb, cb_size,
-				hltests_get_dma_up_qid(fd, STREAM0),
-				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
+	for (i = vec_len ; (i < vec_len * 2) && split_cs ; i++) {
+		chunk = kv_A(array, i);
+		memset(&pkt_info, 0, sizeof(pkt_info));
+		pkt_info.eb = EB_FALSE;
+		pkt_info.mb = MB_TRUE;
+		pkt_info.dma.src_addr = (uint64_t) (uintptr_t) chunk.dram_addr;
+		pkt_info.dma.dst_addr = chunk.output_device_va;
+		pkt_info.dma.size = cfg.dma_size;
+		pkt_info.dma.dma_dir = GOYA_DMA_DRAM_TO_HOST;
+		cb_size[1] =
+			hltests_add_dma_pkt(fd, cb[1], cb_size[1], &pkt_info);
+	}
 
-	cb_size = 0;
+	execute_arr[0].cb_ptr = cb[0];
+	execute_arr[0].cb_size = cb_size[0];
+	execute_arr[0].queue_index = hltests_get_dma_up_qid(fd, STREAM0);
+
+	if (split_cs) {
+		execute_arr[1].cb_ptr = cb[1];
+		execute_arr[1].cb_size = cb_size[1];
+		execute_arr[1].queue_index =
+			hltests_get_dma_up_qid(fd, STREAM0);
+	}
+
+	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, split_cs ? 2 : 1, 0,
+									&seq);
+	assert_int_equal(rc, 0);
+
+	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
+	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
+
+	rc = hltests_destroy_cb(fd, cb[0]);
+	assert_int_equal(rc, 0);
+
+	if (split_cs) {
+		rc = hltests_destroy_cb(fd, cb[1]);
+		assert_int_equal(rc, 0);
+	}
+
+	if (split_cs)
+		vec_len = vec_len * 2;
 
 	/* compare host memories */
 	for (i = 0 ; i < vec_len ; i++) {
