@@ -246,7 +246,7 @@ void test_print_hlthunk_version(void **state)
 void test_print_cs_drop_statistics(void **state)
 {
 	const char *pciaddr = hltests_get_parser_pciaddr();
-	struct hlthunk_cs_counters_info info;
+	struct hl_info_cs_counters info;
 	int rc, fd;
 
 	fd = hlthunk_open_control(0, pciaddr);
@@ -256,34 +256,34 @@ void test_print_cs_drop_statistics(void **state)
 	assert_int_equal(rc, 0);
 
 	printf("\n");
-	printf("out_of_mem_drop_cnt            : %lu\n",
-						info.out_of_mem_drop_cnt);
+	printf("out_of_mem_drop_cnt            : %llu\n",
+						info.total_out_of_mem_drop_cnt);
 
-	printf("parsing_drop_cnt               : %lu\n",
-						info.parsing_drop_cnt);
+	printf("parsing_drop_cnt               : %llu\n",
+						info.total_parsing_drop_cnt);
 
-	printf("queue_full_drop_cnt            : %lu\n",
-						info.queue_full_drop_cnt);
+	printf("queue_full_drop_cnt            : %llu\n",
+						info.total_queue_full_drop_cnt);
 
-	printf("max CS in-flight drop_cnt      : %lu\n",
-						info.max_cs_in_flight_drop_cnt);
+	printf("max CS in-flight drop_cnt      : %llu\n",
+					info.total_max_cs_in_flight_drop_cnt);
 
-	printf("device_in_reset_drop_cnt       : %lu\n",
-						info.device_in_reset_drop_cnt);
+	printf("device_in_reset_drop_cnt       : %llu\n",
+					info.total_device_in_reset_drop_cnt);
 
-	printf("ctx_out_of_mem_drop_cnt        : %lu\n",
+	printf("ctx_out_of_mem_drop_cnt        : %llu\n",
 						info.ctx_out_of_mem_drop_cnt);
 
-	printf("ctx_parsing_drop_cnt           : %lu\n",
+	printf("ctx_parsing_drop_cnt           : %llu\n",
 						info.ctx_parsing_drop_cnt);
 
-	printf("ctx_queue_full_drop_cnt        : %lu\n",
+	printf("ctx_queue_full_drop_cnt        : %llu\n",
 						info.ctx_queue_full_drop_cnt);
 
-	printf("ctx max CS in-flight drop_cnt  : %lu\n",
+	printf("ctx max CS in-flight drop_cnt  : %llu\n",
 					info.ctx_max_cs_in_flight_drop_cnt);
 
-	printf("ctx_device_in_reset_drop_cnt   : %lu\n\n",
+	printf("ctx_device_in_reset_drop_cnt   : %llu\n\n",
 					info.ctx_device_in_reset_drop_cnt);
 
 	hlthunk_close(fd);

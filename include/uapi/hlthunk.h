@@ -77,19 +77,6 @@ struct hlthunk_sync_manager_info {
 	uint32_t first_available_monitor;
 };
 
-struct hlthunk_cs_counters_info {
-	uint64_t out_of_mem_drop_cnt;
-	uint64_t parsing_drop_cnt;
-	uint64_t queue_full_drop_cnt;
-	uint64_t device_in_reset_drop_cnt;
-	uint64_t ctx_out_of_mem_drop_cnt;
-	uint64_t ctx_parsing_drop_cnt;
-	uint64_t ctx_queue_full_drop_cnt;
-	uint64_t ctx_device_in_reset_drop_cnt;
-	uint64_t max_cs_in_flight_drop_cnt;
-	uint64_t ctx_max_cs_in_flight_drop_cnt;
-};
-
 struct hlthunk_pci_counters_info {
 	uint64_t rx_throughput;
 	uint64_t tx_throughput;
@@ -199,7 +186,7 @@ struct hlthunk_functions_pointers {
 	int (*fp_hlthunk_get_time_sync_info)(int fd,
 					struct hlthunk_time_sync_info *info);
 	int (*fp_hlthunk_get_cs_counters_info)(int fd,
-					struct hlthunk_cs_counters_info *info);
+					struct hl_info_cs_counters *info);
 	void (*fp_hlthunk_profiler_destroy)(void);
 	int (*fp_hlthunk_request_mapped_command_buffer)(int fd,
 					uint32_t cb_size, uint64_t *cb_handle);
@@ -413,7 +400,7 @@ hlthunk_public int hlthunk_get_sync_manager_info(int fd, int dcore_id,
  * @return 0 for success, negative value for failure
  */
 hlthunk_public int hlthunk_get_cs_counters_info(int fd,
-					struct hlthunk_cs_counters_info *info);
+					struct hl_info_cs_counters *info);
 
 /**
  * This function retrieves the device's pci counters information

@@ -1467,7 +1467,7 @@ static void test_cs_drop(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hltests_cs_chunk execute_arr[CS_DROP_NUM_CB_PER_CS];
-	struct hlthunk_cs_counters_info info_start, info_end;
+	struct hl_info_cs_counters info_start, info_end;
 	struct hlthunk_wait_for_signal wait_for_signal;
 	struct hlthunk_signal_in sig_in;
 	struct hlthunk_signal_out sig_out;
