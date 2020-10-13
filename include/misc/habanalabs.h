@@ -432,6 +432,13 @@ struct hl_info_cs_counters {
 	__u64 ctx_max_cs_in_flight_drop_cnt;
 };
 
+enum gaudi_dcores {
+	HL_GAUDI_WS_DCORE,
+	HL_GAUDI_WN_DCORE,
+	HL_GAUDI_EN_DCORE,
+	HL_GAUDI_ES_DCORE
+};
+
 struct hl_info_args {
 	/* Location of relevant struct in userspace */
 	__u64 return_pointer;
