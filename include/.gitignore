@@ -64,7 +64,8 @@ specs/gaudi/asic_reg/pcie_dbi_regs.h
 specs/gaudi/asic_reg/pcie_msi_regs.h
 specs/gaudi/asic_reg/psoc_spi_regs.h
 specs/gaudi/asic_reg/stlb_regs.h
-specs/gaudi/asic_reg/mme?_ctrl_regs.h
+specs/gaudi/asic_reg/mme1_ctrl_regs.h
+specs/gaudi/asic_reg/mme3_ctrl_regs.h
 specs/gaudi/asic_reg/mme?_sbab_regs.h
 specs/gaudi/asic_reg/mme?_acc_regs.h
 specs/gaudi/asic_reg/dma_if_?_?_down_regs.h
