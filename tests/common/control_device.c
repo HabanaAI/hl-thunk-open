@@ -8,6 +8,9 @@
 #include "hlthunk_tests.h"
 #include "ini.h"
 
+#include "goya/goya_async_events.h"
+#include "gaudi/gaudi_async_events.h"
+
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
@@ -342,6 +345,60 @@ void test_print_total_energy_consumption(void **state)
 	hlthunk_close(fd);
 }
 
+void print_events_counters(bool aggregate)
+{
+	const char *pciaddr = hltests_get_parser_pciaddr();
+	uint32_t hw_events_arr_size;
+	uint32_t *hw_events_arr;
+	int i, rc, fd;
+
+	fd = hlthunk_open_control(0, pciaddr);
+	assert_in_range(fd, 0, INT_MAX);
+
+	rc = hlthunk_get_device_name_from_fd(fd);
+	switch (rc) {
+	case HLTHUNK_DEVICE_GOYA:
+		hw_events_arr_size = GOYA_ASYNC_EVENT_ID_SIZE;
+		break;
+
+	case HLTHUNK_DEVICE_GAUDI:
+		hw_events_arr_size = GAUDI_EVENT_SIZE;
+		break;
+
+	default:
+		printf("Invalid device %d\n", rc);
+		fail();
+		break;
+	}
+
+	hw_events_arr = (uint32_t *) hlthunk_malloc(hw_events_arr_size *
+							sizeof(uint32_t));
+	assert_int_not_equal(hw_events_arr, 0);
+
+	rc = hlthunk_get_hw_events_arr(fd, aggregate, hw_events_arr_size,
+					hw_events_arr);
+	assert_int_equal(rc, 0);
+
+	for (i = 0 ; i < hw_events_arr_size ; i++)
+		printf("\nhw_events_arr[%d]: %d", i, hw_events_arr[i]);
+
+	printf("\n");
+
+	hlthunk_close(fd);
+
+	hlthunk_free((void *) hw_events_arr);
+}
+
+void test_print_events_counters(void **state)
+{
+	print_events_counters(false);
+}
+
+void test_print_events_counters_aggregate(void **state)
+{
+	print_events_counters(true);
+}
+
 const struct CMUnitTest control_tests[] = {
 	cmocka_unit_test(test_print_hw_ip_info),
 	cmocka_unit_test(test_print_hw_idle_info),
@@ -354,7 +411,9 @@ const struct CMUnitTest control_tests[] = {
 	cmocka_unit_test(test_print_cs_drop_statistics),
 	cmocka_unit_test(test_print_pci_counters),
 	cmocka_unit_test(test_print_clk_throttling_reason),
-	cmocka_unit_test(test_print_total_energy_consumption)
+	cmocka_unit_test(test_print_total_energy_consumption),
+	cmocka_unit_test(test_print_events_counters),
+	cmocka_unit_test(test_print_events_counters_aggregate)
 };
 
 static const char *const usage[] = {
