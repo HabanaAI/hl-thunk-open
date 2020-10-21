@@ -4,7 +4,6 @@ specs/simulator.h
 specs/armcp_if.h
 specs/cpucp_if.h
 
-specs/goya/goya_async_events.h
 specs/goya/goya_coresight.h
 specs/goya/goya_fw_if.h
 specs/goya/goya_reg_map.h
@@ -35,8 +34,8 @@ specs/goya/asic_reg/pci_nrtr_regs.h
 specs/goya/asic_reg/dma_ch_?_regs.h
 specs/goya/asic_reg/psoc_etr_regs.h
 specs/goya/asic_reg/psoc_timestamp_regs.h
+specs/goya/asic_reg/*_masks.h
 
-specs/gaudi/gaudi_async_events.h
 specs/gaudi/gaudi_coresight.h
 specs/gaudi/gaudi_fw_if.h
 specs/gaudi/gaudi_reg_map.h

@@ -2,7 +2,10 @@
 
 project(commontests C)
 
-include_directories(${CMAKE_SOURCE_DIR}/include)
+include_directories(
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/include/specs
+)
 
 set(COMMON_UNIT_TESTS
     open_close
