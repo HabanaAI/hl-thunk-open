@@ -1218,6 +1218,9 @@ static void test_signal_collective_wait_dma(void **state)
 {
 	int fd = ((struct hltests_state *)*state)->fd;
 
+	printf("Test is temporarily disabled\n");
+	skip();
+
 	if (!hltests_is_gaudi(fd)) {
 		printf("Test is relevant only for Gaudi, skipping\n");
 		skip();
