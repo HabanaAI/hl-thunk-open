@@ -368,7 +368,7 @@ void print_events_counters(bool aggregate)
 	default:
 		printf("Invalid device %d\n", rc);
 		fail();
-		break;
+		return;
 	}
 
 	hw_events_arr = (uint32_t *) hlthunk_malloc(hw_events_arr_size *
