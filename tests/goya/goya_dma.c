@@ -26,7 +26,7 @@ void test_dma_4_queues(void **state)
 	struct hltests_monitor_and_fence mon_and_fence_info;
 	void *host_src, *host_dst, *dram_addr[2], *restore_cb, *dma_cb[4];
 	uint64_t host_src_device_va, host_dst_device_va, sram_addr, seq;
-	uint32_t dma_size, page_size, restore_cb_size = 0, dma_cb_size[4];
+	uint32_t dma_size, restore_cb_size = 0, dma_cb_size[4];
 	int rc, fd = tests_state->fd, i;
 
 	/* SRAM MAP (base + ):
@@ -44,8 +44,6 @@ void test_dma_4_queues(void **state)
 	 */
 
 	dma_size = 128;
-	page_size = sysconf(_SC_PAGESIZE);
-	assert_in_range(page_size, PAGE_SIZE_4KB, PAGE_SIZE_64KB);
 
 	memset(dma_cb_size, 0, sizeof(dma_cb_size));
 
@@ -78,7 +76,7 @@ void test_dma_4_queues(void **state)
 	/* CB for first DMA QMAN:
 	 * Transfer data from host to DRAM + signal SOB0.
 	 */
-	dma_cb[0] = hltests_create_cb(fd, page_size, EXTERNAL, 0);
+	dma_cb[0] = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(dma_cb[0]);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
@@ -103,7 +101,7 @@ void test_dma_4_queues(void **state)
 	/* CB for second DMA QMAN:
 	 * Fence on SOB0 + transfer data from DRAM to SRAM + signal SOB1.
 	 */
-	dma_cb[1] = hltests_create_cb(fd, page_size, EXTERNAL, 0);
+	dma_cb[1] = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(dma_cb[1]);
 
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
@@ -140,7 +138,7 @@ void test_dma_4_queues(void **state)
 	/* CB for third DMA QMAN:
 	 * Fence on SOB1 + transfer data from SRAM to DRAM + signal SOB2.
 	 */
-	dma_cb[2] = hltests_create_cb(fd, page_size, EXTERNAL, 0);
+	dma_cb[2] = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(dma_cb[2]);
 
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
@@ -177,7 +175,7 @@ void test_dma_4_queues(void **state)
 	/* CB for forth DMA QMAN:
 	 * Fence on SOB2 + transfer data from DRAM to host.
 	 */
-	dma_cb[3] = hltests_create_cb(fd, page_size, EXTERNAL, 0);
+	dma_cb[3] = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(dma_cb[3]);
 
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));

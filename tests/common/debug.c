@@ -25,12 +25,10 @@ void test_tdr_deadlock(void **state)
 	struct hltests_pkt_info pkt_info;
 	void *ptr;
 	uint64_t seq = 0;
-	uint32_t page_size = sysconf(_SC_PAGESIZE), offset = 0;
+	uint32_t offset = 0;
 	int rc, fd = tests_state->fd;
 
-	assert_in_range(page_size, PAGE_SIZE_4KB, PAGE_SIZE_64KB);
-
-	ptr = hltests_create_cb(fd, page_size, EXTERNAL, 0);
+	ptr = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(ptr);
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
@@ -50,18 +48,15 @@ void test_tdr_deadlock(void **state)
 void test_endless_memory_ioctl(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	uint32_t page_size = sysconf(_SC_PAGESIZE);
 	void *src_ptr;
 	int rc, fd = tests_state->fd;
-
-	assert_in_range(page_size, PAGE_SIZE_4KB, PAGE_SIZE_64KB);
 
 	/* Don't check return value because we don't want the test to finish
 	 * when the driver returns error
 	 */
 
 	while (1) {
-		src_ptr = hltests_allocate_host_mem(fd, page_size, NOT_HUGE);
+		src_ptr = hltests_allocate_host_mem(fd, SZ_4K, NOT_HUGE);
 
 		usleep(1000);
 

@@ -119,7 +119,7 @@ void test_dma_all2all(void **state)
 		common_cb_buf_size[NUM_OF_INT_Q] = {0},
 		ext_dma_cb_size[2] = {0}, ext_buf_size[2] = {0},
 		nop_cb_size = 0, restore_cb_size = 0, ext_restore_cb_size = 0,
-		int_dma_size = 1 << 21, ext_dma_size = 1 << 20, page_size,
+		int_dma_size = 1 << 21, ext_dma_size = 1 << 20,
 		queue, dma5_cb_size;
 	struct hltests_pkt_info pkt_info;
 	struct hltests_monitor_and_fence mon_and_fence_info;
@@ -186,13 +186,10 @@ void test_dma_all2all(void **state)
 
 	sram_base = hw_ip.sram_base_address;
 
-	page_size = sysconf(_SC_PAGESIZE);
-	assert_in_range(page_size, PAGE_SIZE_4KB, PAGE_SIZE_64KB);
-
-	int_restore_cb = hltests_create_cb(fd, page_size, EXTERNAL, 0);
+	int_restore_cb = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(int_restore_cb);
 
-	nop_cb = hltests_create_cb(fd, page_size, EXTERNAL, 0);
+	nop_cb = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(nop_cb);
 
 	queue = GAUDI_QUEUE_ID_DMA_2_0;
@@ -261,8 +258,8 @@ void test_dma_all2all(void **state)
 		cp_dma_sram_addr = sram_base + (NUM_OF_INT_Q * 0x1000) +
 					(i * 0x20);
 
-		cp_dma_cb[i] = hltests_create_cb(fd, page_size,
-					INTERNAL, cp_dma_sram_addr);
+		cp_dma_cb[i] = hltests_create_cb(fd, SZ_4K, INTERNAL,
+							cp_dma_sram_addr);
 		assert_non_null(cp_dma_cb[i]);
 		cp_dma_cb_device_va[i] =
 			hltests_get_device_va_for_host_ptr(fd,
@@ -336,7 +333,7 @@ void test_dma_all2all(void **state)
 	thread_params[0].fd = fd;
 	thread_params[0].test_duration = test_duration;
 
-	ext_restore_cb = hltests_create_cb(fd, page_size, EXTERNAL, 0);
+	ext_restore_cb = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(ext_restore_cb);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
@@ -350,7 +347,7 @@ void test_dma_all2all(void **state)
 							&pkt_info);
 
 	for (i = 0 ; i < 2 ; i++) {
-		ext_dma_cb[i] = hltests_create_cb(fd, page_size, EXTERNAL, 0);
+		ext_dma_cb[i] = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 		assert_non_null(ext_dma_cb[i]);
 	}
 

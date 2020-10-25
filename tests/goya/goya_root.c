@@ -28,7 +28,7 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 	struct hltests_monitor_and_fence mon_and_fence_info;
 	void *engine_cb, *restore_cb, *dma_cb;
 	uint64_t cfg_address, engine_cb_sram_addr, engine_cb_device_va, seq;
-	uint32_t page_size, engine_qid, engine_cb_size, restore_cb_size,
+	uint32_t engine_qid, engine_cb_size, restore_cb_size,
 		dma_cb_size, val;
 	int rc, fd = tests_state->fd;
 
@@ -44,8 +44,6 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 	 */
 
 	cfg_address = CFG_BASE + mmDMA_QM_4_PQ_BASE_HI;
-	page_size = sysconf(_SC_PAGESIZE);
-	assert_in_range(page_size, PAGE_SIZE_4KB, PAGE_SIZE_64KB);
 
 	/* Set engine queue ID and SRAM addresses */
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
@@ -70,8 +68,7 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 	engine_cb_sram_addr = hw_ip.sram_base_address + 0x3000;
 
 	/* Internal CB for engine QMAN: MSG_LONG + signal SOB0 */
-	engine_cb = hltests_create_cb(fd, page_size, INTERNAL,
-					engine_cb_sram_addr);
+	engine_cb = hltests_create_cb(fd, SZ_4K, INTERNAL, engine_cb_sram_addr);
 	assert_non_null(engine_cb);
 	engine_cb_device_va = hltests_get_device_va_for_host_ptr(fd, engine_cb);
 	engine_cb_size = 0;
@@ -94,7 +91,7 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 
 	/* Setup CB: Clear SOB0 + DMA the internal CB to SRAM */
 	hltests_clear_sobs(fd, 1);
-	restore_cb =  hltests_create_cb(fd, page_size, EXTERNAL, 0);
+	restore_cb =  hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(restore_cb);
 	restore_cb_size = 0;
 
@@ -110,7 +107,7 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 					&pkt_info);
 
 	/* CB for DMA QMAN: Fence on SOB0 */
-	dma_cb = hltests_create_cb(fd, page_size, EXTERNAL, 0);
+	dma_cb = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(dma_cb);
 	dma_cb_size = 0;
 
@@ -177,17 +174,15 @@ void test_write_to_cfg_space(void **state)
 	struct hltests_cs_chunk execute_arr[1];
 	struct hltests_pkt_info pkt_info;
 	uint64_t cfg_address = CFG_BASE + mmPSOC_GLOBAL_CONF_SCRATCHPAD_10, seq;
-	uint32_t page_size = sysconf(_SC_PAGESIZE), offset = 0, val;
+	uint32_t offset = 0, val;
 	void *ptr;
 	int rc, fd = tests_state->fd;
-
-	assert_in_range(page_size, PAGE_SIZE_4KB, PAGE_SIZE_64KB);
 
 	WREG32(cfg_address, 0x55555555);
 	val = RREG32(cfg_address);
 	assert_int_equal(val, 0x55555555);
 
-	ptr = hltests_create_cb(fd, page_size, EXTERNAL, 0);
+	ptr = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(ptr);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
@@ -222,11 +217,9 @@ void test_write_to_mmTPC_PLL_CLK_RLX_0_from_qman(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hltests_pkt_info pkt_info;
-	uint32_t val_orig, val, page_size = sysconf(_SC_PAGESIZE), offset = 0;
+	uint32_t val_orig, val, offset = 0;
 	void *ptr;
 	int fd = tests_state->fd;
-
-	assert_in_range(page_size, PAGE_SIZE_4KB, PAGE_SIZE_64KB);
 
 	val_orig = RREG32(CFG_BASE + mmTPC_PLL_CLK_RLX_0);
 
@@ -234,7 +227,7 @@ void test_write_to_mmTPC_PLL_CLK_RLX_0_from_qman(void **state)
 	val = RREG32(CFG_BASE + mmTPC_PLL_CLK_RLX_0);
 	assert_int_equal(val, 0x300030);
 
-	ptr = hltests_create_cb(fd, page_size, EXTERNAL, 0);
+	ptr = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(ptr);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));

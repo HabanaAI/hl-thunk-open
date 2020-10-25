@@ -33,7 +33,7 @@ void activate_super_stress_dma_channels(void **state,
 	struct hltests_cs_chunk restore_arr[1], execute_arr[NUM_OF_INT_Q + 1];
 	uint32_t cb_common_size, cp_dma_cb_size[NUM_OF_INT_Q] = {0},
 		common_cb_buf_size[NUM_OF_INT_Q] = {0}, nop_cb_size = 0,
-		restore_cb_size = 0, page_size, queue, dma_size = 1 << 29;
+		restore_cb_size = 0, queue, dma_size = 1 << 29;
 	uint64_t seq, common_cb_device_va[NUM_OF_INT_Q],
 		cp_dma_cb_device_va[NUM_OF_INT_Q],
 		sram_base, cp_dma_sram_addr;
@@ -54,13 +54,10 @@ void activate_super_stress_dma_channels(void **state,
 
 	sram_base = hw_ip->sram_base_address;
 
-	page_size = sysconf(_SC_PAGESIZE);
-	assert_in_range(page_size, PAGE_SIZE_4KB, PAGE_SIZE_64KB);
-
-	restore_cb = hltests_create_cb(fd, page_size, EXTERNAL, 0);
+	restore_cb = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(restore_cb);
 
-	nop_cb = hltests_create_cb(fd, page_size, EXTERNAL, 0);
+	nop_cb = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(nop_cb);
 
 	dma5_cb = hltests_create_cb(fd, HL_MAX_CB_SIZE, EXTERNAL, 0);
@@ -175,7 +172,7 @@ void activate_super_stress_dma_channels(void **state,
 								(i * 0x20);
 
 		if (queue != GAUDI_QUEUE_ID_DMA_5_0) {
-			cp_dma_cb[i] = hltests_create_cb(fd, page_size,
+			cp_dma_cb[i] = hltests_create_cb(fd, SZ_4K,
 					INTERNAL, cp_dma_sram_addr);
 			assert_non_null(cp_dma_cb[i]);
 			cp_dma_cb_device_va[i] =
