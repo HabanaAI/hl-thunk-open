@@ -2092,7 +2092,7 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 							&pkt_info);
 
 	/* Upper CB for engine: CP_DMA */
-	engine_upper_cb = hltests_create_cb(fd, PAGE_SIZE_4KB, INTERNAL,
+	engine_upper_cb = hltests_create_cb(fd, SZ_4K, INTERNAL,
 						engine_upper_cb_sram_addr);
 	assert_non_null(engine_upper_cb);
 	engine_upper_cb_device_va =
@@ -2113,7 +2113,7 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	hltests_clear_sobs(fd, 2);
 
 	/* Setup CB: DMA the internal CBs to SRAM */
-	restore_cb =  hltests_create_cb(fd, PAGE_SIZE_4KB, EXTERNAL, 0);
+	restore_cb =  hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(restore_cb);
 	restore_cb_size = 0;
 
@@ -2142,7 +2142,7 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	/* CB for first DMA QMAN:
 	 * Transfer data from host to SRAM + signal SOB0.
 	 */
-	dmadown_cb = hltests_create_cb(fd, PAGE_SIZE_4KB, EXTERNAL, 0);
+	dmadown_cb = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(dmadown_cb);
 	dmadown_cb_size = 0;
 
@@ -2167,7 +2167,7 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	/* CB for second DMA QMAN:
 	 * Fence on SOB1 + transfer data from SRAM to host.
 	 */
-	dmaup_cb = hltests_create_cb(fd, PAGE_SIZE_4KB, EXTERNAL, 0);
+	dmaup_cb = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(dmaup_cb);
 	dmaup_cb_size = 0;
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));

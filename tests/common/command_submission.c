@@ -913,12 +913,12 @@ static uint32_t load_predicates_and_test_msg_long(int fd,
 {
 	struct hltests_pkt_info pkt_info;
 	enum hl_tests_predicates_map pred_map;
+	uint32_t cb_size, value;
 	void *cb;
-	uint32_t page_size = 0x1000, cb_size, value;
 
 	pred_map = is_consecutive_map ? PMAP_CONSECUTIVE : PMAP_NON_CONSECUTIVE;
 
-	cb = hltests_create_cb(fd, page_size, EXTERNAL, 0);
+	cb = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(cb);
 	cb_size = 0;
 
@@ -1073,12 +1073,12 @@ static void load_scalars_and_exe_4_rfs(int fd, uint64_t scalar_buf_sram_addr,
 					uint64_t host_data_device_va,
 					bool is_separate_exe)
 {
-	struct hltests_pkt_info pkt_info;
 	struct hltests_monitor_and_fence mon_and_fence_info;
+	uint32_t ddma_cb_size, dma_down_cb_size, value;
 	struct hltests_cs_chunk execute_arr[2];
-	void *ddma_cb, *dma_down_cb;
+	struct hltests_pkt_info pkt_info;
 	uint64_t ddma_cb_device_va, seq;
-	uint32_t page_size = 0x1000, ddma_cb_size, dma_down_cb_size, value;
+	void *ddma_cb, *dma_down_cb;
 	uint16_t sob0, mon0;
 	int rc;
 
@@ -1089,7 +1089,7 @@ static void load_scalars_and_exe_4_rfs(int fd, uint64_t scalar_buf_sram_addr,
 	hltests_clear_sobs(fd, 1);
 
 	/* DDMA CB: MSG_LONG + {1,2} x LOAD_AND_EXE + signal SOB0 */
-	ddma_cb = hltests_create_cb(fd, page_size, INTERNAL, cb_sram_addr);
+	ddma_cb = hltests_create_cb(fd, SZ_4K, INTERNAL, cb_sram_addr);
 	assert_non_null(ddma_cb);
 	ddma_cb_device_va = hltests_get_device_va_for_host_ptr(fd, ddma_cb);
 	ddma_cb_size = 0;
@@ -1148,7 +1148,7 @@ static void load_scalars_and_exe_4_rfs(int fd, uint64_t scalar_buf_sram_addr,
 				GOYA_DMA_HOST_TO_SRAM);
 
 	/* DMA DOWN CB: Fence on SOB0 */
-	dma_down_cb = hltests_create_cb(fd, page_size, EXTERNAL, 0);
+	dma_down_cb = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(dma_down_cb);
 	dma_down_cb_size = 0;
 
@@ -1282,13 +1282,13 @@ static void load_scalars_and_exe_2_rfs(int fd, uint64_t scalar_buf_sram_addr,
 					uint16_t mon0, bool is_upper_rfs,
 					bool is_separate_exe)
 {
-	struct hltests_pkt_info pkt_info;
 	struct hltests_monitor_and_fence mon_and_fence_info;
+	uint32_t ddma_cb_size, dma_down_cb_size;
 	struct hltests_cs_chunk execute_arr[2];
+	struct hltests_pkt_info pkt_info;
 	enum hl_tests_exe_type exe_type;
-	void *ddma_cb, *dma_down_cb;
 	uint64_t ddma_cb_device_va, seq;
-	uint32_t page_size = 0x1000, ddma_cb_size, dma_down_cb_size;
+	void *ddma_cb, *dma_down_cb;
 	int rc;
 
 	exe_type = is_upper_rfs ? ETYPE_UPPER_RF : ETYPE_ALL_OR_LOWER_RF;
@@ -1297,7 +1297,7 @@ static void load_scalars_and_exe_2_rfs(int fd, uint64_t scalar_buf_sram_addr,
 	hltests_clear_sobs(fd, 1);
 
 	/* DDMA CB: {1,2} x LOAD_AND_EXE + signal SOB0 */
-	ddma_cb = hltests_create_cb(fd, page_size, INTERNAL, cb_sram_addr);
+	ddma_cb = hltests_create_cb(fd, SZ_4K, INTERNAL, cb_sram_addr);
 	assert_non_null(ddma_cb);
 	ddma_cb_device_va = hltests_get_device_va_for_host_ptr(fd, ddma_cb);
 	ddma_cb_size = 0;
@@ -1337,7 +1337,7 @@ static void load_scalars_and_exe_2_rfs(int fd, uint64_t scalar_buf_sram_addr,
 				GOYA_DMA_HOST_TO_SRAM);
 
 	/* DMA DOWN CB: Fence on SOB0 */
-	dma_down_cb = hltests_create_cb(fd, page_size, EXTERNAL, 0);
+	dma_down_cb = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(dma_down_cb);
 	dma_down_cb_size = 0;
 

@@ -34,16 +34,14 @@ static void *dma_thread_start(void *args)
 	struct hltests_cs_chunk execute_arr[2];
 	struct hltests_pkt_info pkt_info;
 	struct hltests_monitor_and_fence mon_and_fence_info;
-	uint32_t page_size = sysconf(_SC_PAGESIZE), cb_size[2] = {0};
+	uint32_t cb_size[2] = {0};
 	uint64_t seq;
 	uint16_t sob0, sob8, mon0, mon1;
 	void *cb[2];
 	int rc, i, fd = params->fd;
 
-	assert_in_range(page_size, PAGE_SIZE_4KB, PAGE_SIZE_64KB);
-
 	for (i = 0 ; i < 2 ; i++) {
-		cb[i] = hltests_create_cb(fd, page_size, EXTERNAL, 0);
+		cb[i] = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 		if (!cb[i])
 			return NULL;
 	}
@@ -311,7 +309,7 @@ void dma_4_queues(void **state, bool sram_only)
 		*common_cb_buf[2], *cp_dma_cb[2];
 	uint64_t host_src_device_va, host_dst_device_va, sram_addr, seq,
 		common_cb_device_va[2], cp_dma_cb_device_va[2];
-	uint32_t dma_size = 128, page_size, restore_cb_size = 0,
+	uint32_t dma_size = 128, restore_cb_size = 0,
 		dma_cb_size[2] = {0}, common_cb_buf_size[2] = {0},
 		cp_dma_cb_size[2] = {0};
 	uint16_t sob[3], mon[3];
@@ -362,9 +360,6 @@ void dma_4_queues(void **state, bool sram_only)
 
 	sram_addr = hw_ip.sram_base_address;
 
-	page_size = sysconf(_SC_PAGESIZE);
-	assert_in_range(page_size, PAGE_SIZE_4KB, PAGE_SIZE_64KB);
-
 	/* Allocate memory on host and DRAM and set the SRAM address */
 	host_src = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
 	assert_non_null(host_src);
@@ -397,10 +392,10 @@ void dma_4_queues(void **state, bool sram_only)
 	/* clear SOB 0-2  */
 	hltests_clear_sobs(fd, 3);
 	for (i = 0 ; i < 2 ; i++) {
-		common_cb_buf[i] = hltests_allocate_host_mem(fd, page_size,
+		common_cb_buf[i] = hltests_allocate_host_mem(fd, SZ_4K,
 								NOT_HUGE);
 		assert_non_null(common_cb_buf[i]);
-		memset(common_cb_buf[i], 0, page_size);
+		memset(common_cb_buf[i], 0, SZ_4K);
 		common_cb_buf_size[i] = 0;
 		common_cb_device_va[i] = hltests_get_device_va_for_host_ptr(fd,
 							common_cb_buf[i]);
@@ -410,7 +405,7 @@ void dma_4_queues(void **state, bool sram_only)
 	 * device DMA QMANs to SRAM. We will fill this CB throughout this
 	 * function
 	 */
-	restore_cb = hltests_create_cb(fd, page_size, EXTERNAL, 0);
+	restore_cb = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(restore_cb);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
@@ -418,7 +413,7 @@ void dma_4_queues(void **state, bool sram_only)
 	pkt_info.mb = MB_TRUE;
 	pkt_info.dma.src_addr = common_cb_device_va[0];
 	pkt_info.dma.dst_addr = sram_addr;
-	pkt_info.dma.size = page_size;
+	pkt_info.dma.size = SZ_4K;
 	restore_cb_size = hltests_add_dma_pkt(fd, restore_cb, restore_cb_size,
 						&pkt_info);
 
@@ -457,8 +452,8 @@ void dma_4_queues(void **state, bool sram_only)
 					&pkt_info);
 
 	/* Internal CB for CP_DMA */
-	cp_dma_cb[0] = hltests_create_cb(fd, page_size, INTERNAL,
-					sram_addr + 0x2000);
+	cp_dma_cb[0] = hltests_create_cb(fd, SZ_4K, INTERNAL,
+						sram_addr + 0x2000);
 	assert_non_null(cp_dma_cb[0]);
 	cp_dma_cb_device_va[0] = hltests_get_device_va_for_host_ptr(fd,
 							cp_dma_cb[0]);
@@ -485,7 +480,7 @@ void dma_4_queues(void **state, bool sram_only)
 	pkt_info.mb = MB_TRUE;
 	pkt_info.dma.src_addr = common_cb_device_va[1];
 	pkt_info.dma.dst_addr = sram_addr + 0x1000;
-	pkt_info.dma.size = page_size;
+	pkt_info.dma.size = SZ_4K;
 	restore_cb_size = hltests_add_dma_pkt(fd, restore_cb, restore_cb_size,
 								&pkt_info);
 
@@ -522,7 +517,7 @@ void dma_4_queues(void **state, bool sram_only)
 					&pkt_info);
 
 	/* Internal CB for CP_DMA */
-	cp_dma_cb[1] = hltests_create_cb(fd, page_size, INTERNAL,
+	cp_dma_cb[1] = hltests_create_cb(fd, SZ_4K, INTERNAL,
 					sram_addr + 0x2020);
 	assert_non_null(cp_dma_cb[1]);
 	cp_dma_cb_device_va[1] = hltests_get_device_va_for_host_ptr(fd,
@@ -545,7 +540,7 @@ void dma_4_queues(void **state, bool sram_only)
 						&pkt_info);
 
 	/* DMA from host to DRAM + signal SOB0 */
-	dma_cb[0] = hltests_create_cb(fd, page_size, EXTERNAL, 0);
+	dma_cb[0] = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(dma_cb[0]);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
@@ -567,7 +562,7 @@ void dma_4_queues(void **state, bool sram_only)
 					dma_cb_size[0], &pkt_info);
 
 	/* Fence on SOB2 + DMA from DRAM to host */
-	dma_cb[1] = hltests_create_cb(fd, page_size, EXTERNAL, 0);
+	dma_cb[1] = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(dma_cb[1]);
 
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));

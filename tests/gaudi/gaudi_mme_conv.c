@@ -1075,13 +1075,6 @@ static void dma_cb_prepare(int fd, void *dma_cb,
 void test_mme_basic_conv(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	uint64_t sram_base;
-	struct hlthunk_hw_ip_info hw_ip;
-	int rc, i;
-	int fd = tests_state->fd;
-	struct hltests_cs_chunk execute_arr[3];
-	uint64_t seq = 0;
-	void *host_src_inputs, *host_src_weights, *host_dst;
 	uint64_t mme_master0_cb_sram, mme_master2_cb_sram, inputs_sram_addr,
 		weights_sram_addr, mme_master0_config_cb_sram,
 		mme_master2_config_cb_sram, output_sram;
@@ -1089,16 +1082,22 @@ void test_mme_basic_conv(void **state)
 		host_dst_device_va, mme_master0_config_cb_device_va,
 		mme_master2_config_cb_device_va,
 		mme_master0_cb_device_va, mme_master2_cb_device_va;
+	uint32_t in_size, wght_size, output_size, *ifm_buffer_ui,
+		*weights_buffer_ui, *expected_out_buffer_ui;
+	void *host_src_inputs, *host_src_weights, *host_dst;
 	void *mme_master0_cb, *mme_master2_cb, *dma_cb;
 	void *mme_master0_config_cb, *mme_master2_config_cb;
-	uint32_t in_size, wght_size, output_size;
-	uint32_t page_size;
-	uint32_t mme_master0_cb_offset = 0;
-	uint32_t mme_master2_cb_offset = 0;
 	uint32_t mme_master0_config_cb_offset = 0;
 	uint32_t mme_master2_config_cb_offset = 0;
+	struct hltests_cs_chunk execute_arr[3];
+	uint32_t mme_master0_cb_offset = 0;
+	uint32_t mme_master2_cb_offset = 0;
+	struct hlthunk_hw_ip_info hw_ip;
+	int rc, i, fd = tests_state->fd;
 	uint32_t dma_cb_offset = 0;
+	uint64_t sram_base;
 	uint16_t sob, mon;
+	uint64_t seq = 0;
 
 	float ifm_buffer[] = {
 		1, 1, 2, 2, 3, 3,
@@ -1160,9 +1159,14 @@ void test_mme_basic_conv(void **state)
 	wght_size = sizeof(weights_buffer);
 	output_size = sizeof(expected_out_buffer);
 
-	uint32_t *ifm_buffer_ui = (uint32_t *) malloc(in_size);
-	uint32_t *weights_buffer_ui = (uint32_t *) malloc(wght_size);
-	uint32_t *expected_out_buffer_ui = (uint32_t *) malloc(output_size);
+	ifm_buffer_ui = (uint32_t *) malloc(in_size);
+	assert_non_null(ifm_buffer_ui);
+
+	weights_buffer_ui = (uint32_t *) malloc(wght_size);
+	assert_non_null(weights_buffer_ui);
+
+	expected_out_buffer_ui = (uint32_t *) malloc(output_size);
+	assert_non_null(expected_out_buffer_ui);
 
 	/* SRAM MAP:
 	 * - 0x80 - DMA 0.0 - conv  inputs->SRAM
@@ -1206,9 +1210,6 @@ void test_mme_basic_conv(void **state)
 
 	sram_base = hw_ip.sram_base_address;
 
-	page_size = sysconf(_SC_PAGESIZE);
-	assert_in_range(page_size, PAGE_SIZE_4KB, PAGE_SIZE_64KB);
-
 	/* Setup SRAM addresses */
 	inputs_sram_addr = sram_base;
 	weights_sram_addr = sram_base  + 0x200;
@@ -1247,13 +1248,13 @@ void test_mme_basic_conv(void **state)
 	/* Allocate Command buffers */
 	/* 1. MME master0/master2 configs CB: */
 	mme_master0_config_cb =
-			hltests_allocate_host_mem(fd, page_size, NOT_HUGE);
+			hltests_allocate_host_mem(fd, SZ_4K, NOT_HUGE);
 	assert_non_null(mme_master0_config_cb);
 	mme_master0_config_cb_device_va = hltests_get_device_va_for_host_ptr(fd,
 				mme_master0_config_cb);
 
 	mme_master2_config_cb =
-			hltests_allocate_host_mem(fd, page_size, NOT_HUGE);
+			hltests_allocate_host_mem(fd, SZ_4K, NOT_HUGE);
 	assert_non_null(mme_master2_config_cb);
 	mme_master2_config_cb_device_va = hltests_get_device_va_for_host_ptr(fd,
 				mme_master2_config_cb);
@@ -1273,13 +1274,13 @@ void test_mme_basic_conv(void **state)
 			&mme_master2_config_cb_offset);
 
 	/* 2. MME CB with CP_DMA: */
-	mme_master0_cb = hltests_create_cb(fd, page_size, INTERNAL,
+	mme_master0_cb = hltests_create_cb(fd, SZ_4K, INTERNAL,
 			mme_master0_cb_sram);
 	assert_non_null(mme_master0_cb);
 	mme_master0_cb_device_va = hltests_get_device_va_for_host_ptr(fd,
 					mme_master0_cb);
 
-	mme_master2_cb = hltests_create_cb(fd, page_size, INTERNAL,
+	mme_master2_cb = hltests_create_cb(fd, SZ_4K, INTERNAL,
 			mme_master2_cb_sram);
 	assert_non_null(mme_master2_cb);
 	mme_master2_cb_device_va = hltests_get_device_va_for_host_ptr(fd,
@@ -1294,7 +1295,7 @@ void test_mme_basic_conv(void **state)
 			&mme_master2_cb_offset);
 
 	/* 3. DMA CB: */
-	dma_cb = hltests_create_cb(fd, page_size, EXTERNAL, 0);
+	dma_cb = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(dma_cb);
 	dma_cb_prepare(fd, dma_cb, host_dst_device_va, sob, mon,
 			output_sram, output_size, &dma_cb_offset);
