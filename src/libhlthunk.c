@@ -110,7 +110,7 @@ static int hlthunk_open_by_busid(const char *busid, enum hlthunk_node_type type)
 
 	device_index = hlthunk_get_device_index_from_pci_bus_id(busid);
 	if (device_index < 0) {
-		printf("No Device for the given PCI address\n");
+		printf("No device for the given PCI address %s\n", busid);
 		return -EINVAL;
 	}
 
