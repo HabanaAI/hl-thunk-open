@@ -452,7 +452,7 @@ int hltests_cb_munmap(void *addr, size_t length)
 
 static int debugfs_open(struct hltests_state *tests_state)
 {
-	int debugfs_addr_fd, debugfs_data_fd, clk_gate_fd;
+	int debugfs_addr_fd, debugfs_data32_fd, clk_gate_fd, debugfs_data64_fd;
 	const char *pciaddr = hltests_get_parser_pciaddr();
 	char path[PATH_MAX];
 	char clk_gate_str[16] = "0";
@@ -482,11 +482,23 @@ static int debugfs_open(struct hltests_state *tests_state)
 	snprintf(path, PATH_MAX, "//sys/kernel/debug/habanalabs/hl%d/data32",
 			device_idx);
 
-	debugfs_data_fd = open(path, O_RDWR);
+	debugfs_data32_fd = open(path, O_RDWR);
 
-	if (debugfs_data_fd == -1) {
+	if (debugfs_data32_fd == -1) {
 		close(debugfs_addr_fd);
 		printf("Failed to open debugfs_data_fd (forgot sudo ?)\n");
+		return -EPERM;
+	}
+
+	snprintf(path, PATH_MAX, "//sys/kernel/debug/habanalabs/hl%d/data64",
+				device_idx);
+
+	debugfs_data64_fd = open(path, O_RDWR);
+
+	if (debugfs_data64_fd == -1) {
+		close(debugfs_data32_fd);
+		close(debugfs_addr_fd);
+		printf("Failed to open debugfs_data64_fd (forgot sudo ?)\n");
 		return -EPERM;
 	}
 
@@ -497,13 +509,15 @@ static int debugfs_open(struct hltests_state *tests_state)
 
 	if (clk_gate_fd == -1) {
 		close(debugfs_addr_fd);
-		close(debugfs_data_fd);
+		close(debugfs_data64_fd);
+		close(debugfs_data32_fd);
 		printf("Failed to open clk_gate_fd (forgot sudo ?)\n");
 		return -EPERM;
 	}
 
 	tests_state->debugfs.addr_fd = debugfs_addr_fd;
-	tests_state->debugfs.data_fd = debugfs_data_fd;
+	tests_state->debugfs.data32_fd = debugfs_data32_fd;
+	tests_state->debugfs.data64_fd = debugfs_data64_fd;
 	tests_state->debugfs.clk_gate_fd = clk_gate_fd;
 
 	size = pread(tests_state->debugfs.clk_gate_fd,
@@ -525,7 +539,8 @@ static int debugfs_close(struct hltests_state *tests_state)
 	ssize_t size;
 
 	if ((tests_state->debugfs.addr_fd == -1) ||
-		(tests_state->debugfs.data_fd == -1) ||
+		(tests_state->debugfs.data32_fd == -1) ||
+		(tests_state->debugfs.data64_fd == -1) ||
 		(tests_state->debugfs.clk_gate_fd == -1))
 		return -EFAULT;
 
@@ -537,10 +552,12 @@ static int debugfs_close(struct hltests_state *tests_state)
 
 	close(tests_state->debugfs.clk_gate_fd);
 	close(tests_state->debugfs.addr_fd);
-	close(tests_state->debugfs.data_fd);
+	close(tests_state->debugfs.data32_fd);
+	close(tests_state->debugfs.data64_fd);
 	tests_state->debugfs.clk_gate_fd = -1;
 	tests_state->debugfs.addr_fd = -1;
-	tests_state->debugfs.data_fd = -1;
+	tests_state->debugfs.data32_fd = -1;
+	tests_state->debugfs.data64_fd = -1;
 
 	return 0;
 }
@@ -583,6 +600,44 @@ void hltests_debugfs_write(int addr_fd, int data_fd, uint64_t full_address,
 		printf("Failed to write to debugfs data fd [rc %zd]\n", size);
 }
 
+uint64_t hltests_debugfs_read64(int addr_fd, int data_fd, uint64_t full_address)
+{
+	char addr_str[64] = "", value[64] = "";
+	ssize_t size;
+
+	sprintf(addr_str, "0x%lx", full_address);
+
+	size = write(addr_fd, addr_str, strlen(addr_str) + 1);
+	if (size < 0)
+		printf("Failed to write64 to debugfs address fd [rc %zd]\n",
+				size);
+
+	size = pread(data_fd, value, sizeof(value), 0);
+	if (size < 0)
+		printf("Failed to read from debugfs data fd [rc %zd]\n", size);
+
+	return strtoul(value, NULL, 16);
+}
+
+void hltests_debugfs_write64(int addr_fd, int data_fd, uint64_t full_address,
+				uint64_t val)
+{
+	char addr_str[64] = "", val_str[64] = "";
+	ssize_t size;
+
+	sprintf(addr_str, "0x%lx", full_address);
+	sprintf(val_str, "0x%lx", val);
+
+	size = write(addr_fd, addr_str, strlen(addr_str) + 1);
+	if (size < 0)
+		printf("Failed to write to debugfs address fd [rc %zd]\n",
+				size);
+
+	size = write(data_fd, val_str, strlen(val_str) + 1);
+	if (size < 0)
+		printf("Failed to write to debugfs data fd [rc %zd]\n", size);
+}
+
 int hltests_setup(void **state)
 {
 	struct hltests_state *tests_state;
@@ -594,7 +649,8 @@ int hltests_setup(void **state)
 		return -ENOMEM;
 
 	tests_state->debugfs.addr_fd = -1;
-	tests_state->debugfs.data_fd = -1;
+	tests_state->debugfs.data32_fd = -1;
+	tests_state->debugfs.data64_fd = -1;
 
 	fd = tests_state->fd = hltests_open(parser_pciaddr);
 	if (fd < 0) {

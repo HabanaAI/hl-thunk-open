@@ -69,10 +69,16 @@
 
 #define RREG32(full_address) \
 		hltests_debugfs_read(tests_state->debugfs.addr_fd, \
-				tests_state->debugfs.data_fd, full_address)
+			tests_state->debugfs.data32_fd, full_address)
 #define WREG32(full_address, val) \
 		hltests_debugfs_write(tests_state->debugfs.addr_fd, \
-				tests_state->debugfs.data_fd, full_address, val)
+			tests_state->debugfs.data32_fd, full_address, val)
+#define RREG64(full_address) \
+		hltests_debugfs_read64(tests_state->debugfs.addr_fd, \
+			tests_state->debugfs.data64_fd, full_address)
+#define WREG64(full_address, val) \
+		hltests_debugfs_write64(tests_state->debugfs.addr_fd, \
+			tests_state->debugfs.data64_fd, full_address, val)
 
 #define PLDM_MAX_DMA_SIZE_FOR_TESTING SZ_64K
 
@@ -189,7 +195,8 @@ enum hltests_dma_perf_test_results {
 
 struct hltests_debugfs {
 	int addr_fd;
-	int data_fd;
+	int data32_fd;
+	int data64_fd;
 	int clk_gate_fd;
 	char clk_gate_val[16];
 };
@@ -465,6 +472,9 @@ int hltests_debugfs_close(int fd);
 uint32_t hltests_debugfs_read(int addr_fd, int data_fd, uint64_t full_address);
 void hltests_debugfs_write(int addr_fd, int data_fd, uint64_t full_address,
 				uint32_t val);
+uint64_t hltests_debugfs_read64(int addr_fd, int data_fd, uint64_t full_address);
+void hltests_debugfs_write64(int addr_fd, int data_fd, uint64_t full_address,
+				uint64_t val);
 
 void *hltests_allocate_host_mem(int fd, uint64_t size, enum hltests_huge huge);
 void *hltests_allocate_device_mem(int fd, uint64_t size,
