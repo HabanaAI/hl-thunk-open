@@ -201,7 +201,7 @@ hlthunk_public enum hlthunk_device_name hlthunk_get_device_name_from_fd(int fd)
 	case PCI_IDS_GAUDI_SIMULATOR:
 		return HLTHUNK_DEVICE_GAUDI;
 	default:
-		printf("Invalid device type %d\n", device_id);
+		printf("Invalid device type 0x%x\n", device_id);
 		break;
 	}
 
