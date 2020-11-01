@@ -21,6 +21,7 @@ set(COMMON_UNIT_TESTS
     profiling
     control_device
     error_injection
+    root_debug
 )
 
 foreach(_UNIT_TEST ${COMMON_UNIT_TESTS})
