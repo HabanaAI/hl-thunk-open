@@ -740,14 +740,22 @@ int hltests_root_teardown(void **state)
 int hltests_root_debug_setup(void **state)
 {
 	const char *pciaddr = hltests_get_parser_pciaddr();
+	enum hlthunk_device_name actual_asic_type;
 	struct hltests_state *tests_state;
-	int device_idx = 0;
+	int device_idx = 0, control_fd;
 
 	tests_state = hltests_alloc_state();
 	if (!tests_state)
 		return -ENOMEM;
 
 	*state = tests_state;
+
+	if (asic_name_for_testing == HLTHUNK_DEVICE_INVALID) {
+		printf("Expected ASIC name is %s!!!\n",
+			asic_names[asic_name_for_testing]);
+		printf("Something is very wrong, exiting...\n");
+		return -EINVAL;
+	}
 
 	if (pciaddr) {
 		device_idx = hlthunk_get_device_index_from_pci_bus_id(pciaddr);
@@ -756,6 +764,22 @@ int hltests_root_debug_setup(void **state)
 				pciaddr);
 			return -EINVAL;
 		}
+	}
+
+	control_fd = hlthunk_open_control(device_idx, pciaddr);
+	if (control_fd < 0)
+		return control_fd;
+
+	actual_asic_type = hlthunk_get_device_name_from_fd(control_fd);
+	if (asic_name_for_testing != HLTHUNK_DEVICE_DONT_CARE &&
+			asic_name_for_testing != actual_asic_type) {
+
+		printf("Expected to run on device %s but detected device %s\n",
+			asic_names[asic_name_for_testing],
+			asic_names[actual_asic_type]);
+		close(control_fd);
+		hlthunk_free(*state);
+		exit(0);
 	}
 
 	return debugfs_open(tests_state, device_idx);
