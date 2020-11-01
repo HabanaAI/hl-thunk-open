@@ -373,7 +373,7 @@ int hltests_open(const char *busid)
 		gaudi_tests_set_asic_funcs(hdev);
 		break;
 	default:
-		printf("Invalid device type %d\n", hdev->device_id);
+		printf("Invalid device type 0x%x\n", hdev->device_id);
 		rc = -ENXIO;
 		goto remove_device;
 	}
