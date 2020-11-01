@@ -450,24 +450,12 @@ int hltests_cb_munmap(void *addr, size_t length)
 	return munmap(addr, length);
 }
 
-static int debugfs_open(struct hltests_state *tests_state)
+static int debugfs_open(struct hltests_state *tests_state, int device_idx)
 {
 	int debugfs_addr_fd, debugfs_data32_fd, clk_gate_fd, debugfs_data64_fd;
-	const char *pciaddr = hltests_get_parser_pciaddr();
 	char path[PATH_MAX];
 	char clk_gate_str[16] = "0";
 	ssize_t size;
-	int device_idx;
-
-	if (pciaddr) {
-		device_idx = hlthunk_get_device_index_from_pci_bus_id(pciaddr);
-		if (device_idx < 0) {
-			printf("no device for the given PCI address\n");
-			return -EINVAL;
-		}
-	} else {
-		device_idx = 0;
-	}
 
 	snprintf(path, PATH_MAX, "//sys/kernel/debug/habanalabs/hl%d/addr",
 			device_idx);
@@ -638,19 +626,33 @@ void hltests_debugfs_write64(int addr_fd, int data_fd, uint64_t full_address,
 		printf("Failed to write to debugfs data fd [rc %zd]\n", size);
 }
 
+static struct hltests_state *hltests_alloc_state(void)
+{
+	struct hltests_state *tests_state;
+
+	tests_state = hlthunk_malloc(sizeof(*tests_state));
+	if (!tests_state)
+		goto out;
+
+	tests_state->fd = -1;
+	tests_state->debugfs.addr_fd = -1;
+	tests_state->debugfs.data32_fd = -1;
+	tests_state->debugfs.data64_fd = -1;
+	tests_state->debugfs.clk_gate_fd = -1;
+
+out:
+	return tests_state;
+}
+
 int hltests_setup(void **state)
 {
 	struct hltests_state *tests_state;
 	struct hltests_module_params_info module_params;
 	int rc, fd;
 
-	tests_state = hlthunk_malloc(sizeof(struct hltests_state));
+	tests_state = hltests_alloc_state();
 	if (!tests_state)
 		return -ENOMEM;
-
-	tests_state->debugfs.addr_fd = -1;
-	tests_state->debugfs.data32_fd = -1;
-	tests_state->debugfs.data64_fd = -1;
 
 	fd = tests_state->fd = hltests_open(parser_pciaddr);
 	if (fd < 0) {
@@ -702,7 +704,8 @@ int hltests_teardown(void **state)
 int hltests_root_setup(void **state)
 {
 	struct hltests_state *tests_state;
-	int rc;
+	char pci_bus_id[13];
+	int rc, device_idx;
 
 	rc = hltests_setup(state);
 	if (rc)
@@ -710,7 +713,16 @@ int hltests_root_setup(void **state)
 
 	tests_state = (struct hltests_state *) *state;
 
-	return debugfs_open(tests_state);
+	rc = hlthunk_get_pci_bus_id_from_fd(tests_state->fd, pci_bus_id,
+						sizeof(pci_bus_id));
+	if (rc)
+		return rc;
+
+	device_idx = hlthunk_get_device_index_from_pci_bus_id(pci_bus_id);
+	if (device_idx < 0)
+		return -ENODEV;
+
+	return debugfs_open(tests_state, device_idx);
 }
 
 int hltests_root_teardown(void **state)
@@ -727,15 +739,26 @@ int hltests_root_teardown(void **state)
 
 int hltests_root_debug_setup(void **state)
 {
+	const char *pciaddr = hltests_get_parser_pciaddr();
 	struct hltests_state *tests_state;
+	int device_idx = 0;
 
-	tests_state = hlthunk_malloc(sizeof(struct hltests_state));
+	tests_state = hltests_alloc_state();
 	if (!tests_state)
 		return -ENOMEM;
 
 	*state = tests_state;
 
-	return debugfs_open(tests_state);
+	if (pciaddr) {
+		device_idx = hlthunk_get_device_index_from_pci_bus_id(pciaddr);
+		if (device_idx < 0) {
+			printf("No device for the given PCI address %s\n",
+				pciaddr);
+			return -EINVAL;
+		}
+	}
+
+	return debugfs_open(tests_state, device_idx);
 }
 
 int hltests_root_debug_teardown(void **state)
