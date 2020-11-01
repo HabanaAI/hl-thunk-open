@@ -198,7 +198,7 @@ struct hltests_debugfs {
 	int data32_fd;
 	int data64_fd;
 	int clk_gate_fd;
-	char clk_gate_val[16];
+	char clk_gate_val[32];
 };
 
 struct hltests_device {
