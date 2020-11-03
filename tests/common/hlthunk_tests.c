@@ -771,13 +771,13 @@ int hltests_root_debug_setup(void **state)
 		return control_fd;
 
 	actual_asic_type = hlthunk_get_device_name_from_fd(control_fd);
+	hlthunk_close(control_fd);
+
 	if (asic_name_for_testing != HLTHUNK_DEVICE_DONT_CARE &&
 			asic_name_for_testing != actual_asic_type) {
-
 		printf("Expected to run on device %s but detected device %s\n",
 			asic_names[asic_name_for_testing],
 			asic_names[actual_asic_type]);
-		close(control_fd);
 		hlthunk_free(*state);
 		exit(0);
 	}
