@@ -228,6 +228,7 @@ struct hltests_state {
 	bool mme;
 	bool mmu;
 	bool security;
+	enum hlthunk_device_name asic_type;
 };
 
 struct hltests_pkt_info {

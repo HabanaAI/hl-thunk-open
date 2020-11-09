@@ -127,11 +127,15 @@ static void ieee1500_inst(struct hltests_state *tests_state, int device,
 static void test_hbm_read_temperature(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	int temp;
-	uint64_t base;
+	int device, temp, fd = tests_state->fd;
 	uint32_t rdata, ignore = 0;
+	uint64_t base;
 	bool invalid;
-	int device;
+
+	if (tests_state->asic_type != HLTHUNK_DEVICE_GAUDI) {
+		printf("Test is skipped because device is not GAUDI\n");
+		skip();
+	}
 
 	for (device = 0; device < GAUDI_HBM_DEVICES; device++) {
 		base = GAUDI_HBM_CFG_BASE + device * GAUDI_HBM_CFG_OFFSET;
@@ -162,9 +166,14 @@ static void test_hbm_read_temperature(void **state)
 static void test_hbm_read_interrupts(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	uint64_t base;
+	int device, ch, fd = tests_state->fd;
 	uint32_t val, val2;
-	int device, ch;
+	uint64_t base;
+
+	if (tests_state->asic_type != HLTHUNK_DEVICE_GAUDI) {
+		printf("Test is skipped because device is not GAUDI\n");
+		skip();
+	}
 
 	for (device = 0; device < GAUDI_HBM_DEVICES; device++) {
 		base = GAUDI_HBM_CFG_BASE + device * GAUDI_HBM_CFG_OFFSET;
@@ -241,6 +250,11 @@ static void test_read_every_4KB_registers_block(void **state)
 	uint64_t addr, end;
 	uint32_t val;
 
+	if (tests_state->asic_type != HLTHUNK_DEVICE_GAUDI) {
+		printf("Test is skipped because device is not GAUDI\n");
+		skip();
+	}
+
 	addr = CFG_BASE;
 	end = CFG_BASE + 0x2000000;
 	while (addr < end) {
@@ -289,6 +303,11 @@ void test_read_through_pci(void **state)
 	uint64_t addr, end;
 	uint32_t val, prot;
 	int fd = tests_state->fd;
+
+	if (tests_state->asic_type != HLTHUNK_DEVICE_GAUDI) {
+		printf("Test is skipped because device is not GAUDI\n");
+		skip();
+	}
 
 	memset(&cfg, 0, sizeof(struct read_through_pci_cfg));
 

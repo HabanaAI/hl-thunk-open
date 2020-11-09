@@ -635,6 +635,7 @@ static struct hltests_state *hltests_alloc_state(void)
 		goto out;
 
 	tests_state->fd = -1;
+	tests_state->asic_type = HLTHUNK_DEVICE_MAX;
 	tests_state->debugfs.addr_fd = -1;
 	tests_state->debugfs.data32_fd = -1;
 	tests_state->debugfs.data64_fd = -1;
@@ -740,7 +741,6 @@ int hltests_root_teardown(void **state)
 int hltests_root_debug_setup(void **state)
 {
 	const char *pciaddr = hltests_get_parser_pciaddr();
-	enum hlthunk_device_name actual_asic_type;
 	struct hltests_state *tests_state;
 	int device_idx = 0, control_fd;
 
@@ -770,14 +770,14 @@ int hltests_root_debug_setup(void **state)
 	if (control_fd < 0)
 		return control_fd;
 
-	actual_asic_type = hlthunk_get_device_name_from_fd(control_fd);
+	tests_state->asic_type = hlthunk_get_device_name_from_fd(control_fd);
 	hlthunk_close(control_fd);
 
 	if (asic_name_for_testing != HLTHUNK_DEVICE_DONT_CARE &&
-			asic_name_for_testing != actual_asic_type) {
+			asic_name_for_testing != tests_state->asic_type) {
 		printf("Expected to run on device %s but detected device %s\n",
 			asic_names[asic_name_for_testing],
-			asic_names[actual_asic_type]);
+			asic_names[tests_state->asic_type]);
 		hlthunk_free(*state);
 		exit(0);
 	}
