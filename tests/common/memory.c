@@ -46,6 +46,11 @@ void test_map_bigger_than_4GB(void **state)
 		skip();
 	}
 
+	if (!tests_state->mmu) {
+		printf("MMU is disabled so skipping test\n");
+		skip();
+	}
+
 	assert_in_range(dma_size, 1, hw_ip.dram_size);
 
 	device_addr = hltests_allocate_device_mem(fd, dma_size, NOT_CONTIGUOUS);
