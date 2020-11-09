@@ -71,6 +71,7 @@ specs/gaudi/asic_reg/mme?_acc_regs.h
 specs/gaudi/asic_reg/dma_if_?_?_down_regs.h
 specs/gaudi/asic_reg/nic0_stat_regs.h
 specs/gaudi/asic_reg/psoc_timestamp_regs.h
+specs/gaudi/asic_reg/cpu_ca53_cfg_regs.h
 specs/gaudi/asic_reg/cpu_ca53_cfg_masks.h
 specs/gaudi/asic_reg/dma*_masks.h
 specs/gaudi/asic_reg/mme*_masks.h
