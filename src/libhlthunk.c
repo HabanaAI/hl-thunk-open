@@ -1150,6 +1150,32 @@ hlthunk_public int hlthunk_wait_for_cs(int fd, uint64_t seq,
 	return rc;
 }
 
+hlthunk_public int hlthunk_wait_for_cs_with_timestamp(int fd, uint64_t seq,
+					uint64_t timeout_us, uint32_t *status,
+					uint64_t *timestamp)
+{
+	union hl_wait_cs_args args;
+	struct hl_wait_cs_in *hl_in;
+	struct hl_wait_cs_out *hl_out;
+	int rc;
+
+	memset(&args, 0, sizeof(args));
+
+	hl_in = &args.in;
+	hl_in->seq = seq;
+	hl_in->timeout_us = timeout_us;
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_WAIT_CS, &args);
+
+	hl_out = &args.out;
+	*status = hl_out->status;
+
+	if (hl_out->flags & HL_WAIT_CS_STATUS_FLAG_TIMESTAMP_VLD)
+		*timestamp = hl_out->timestamp_nsec;
+
+	return rc;
+}
+
 hlthunk_public uint32_t hlthunk_get_device_id_from_fd(int fd)
 {
 	struct hlthunk_hw_ip_info hw_ip;

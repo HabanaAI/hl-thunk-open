@@ -484,6 +484,22 @@ hlthunk_public int hlthunk_wait_for_cs(int fd, uint64_t seq,
 					uint64_t timeout_us, uint32_t *status);
 
 /**
+ * This function waits until a command submission of a specific device has
+ * finished executing
+ * @param fd file descriptor handle of habanalabs main device
+ * @param seq sequence number of command submission
+ * @param timeout_us absolute timeout to wait in microseconds. If the timeout
+ * value is 0, the driver won't sleep at all. It will check the status of the
+ * CS and return immediately
+ * @param status pointer to uint32_t to store the wait status
+ * @timestamp: nanoseconds timestamp recorded once cs is completed
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_wait_for_cs_with_timestamp(int fd, uint64_t seq,
+					uint64_t timeout_us, uint32_t *status,
+					uint64_t *timestamp);
+
+/**
  * This function submits a job of a signal CS to a specific device
  * @param fd file descriptor handle of habanalabs main device
  * @param in pointer to a signal command submission input structure
