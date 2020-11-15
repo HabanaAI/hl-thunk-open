@@ -24,9 +24,9 @@ void test_dma_4_queues(void **state)
 	struct hltests_cs_chunk execute_arr[4];
 	struct hltests_pkt_info pkt_info;
 	struct hltests_monitor_and_fence mon_and_fence_info;
-	void *host_src, *host_dst, *dram_addr[2], *restore_cb, *dma_cb[4];
+	void *host_src, *host_dst, *dram_addr[2], *dma_cb[4];
 	uint64_t host_src_device_va, host_dst_device_va, sram_addr, seq;
-	uint32_t dma_size, restore_cb_size = 0, dma_cb_size[4];
+	uint32_t dma_size, dma_cb_size[4];
 	int rc, fd = tests_state->fd, i;
 
 	/* SRAM MAP (base + ):

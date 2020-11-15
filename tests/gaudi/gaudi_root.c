@@ -357,9 +357,8 @@ void test_dma_all2all_super_stress(void **state)
 	const char *config_filename = hltests_get_config_filename();
 	struct hlthunk_hw_ip_info hw_ip;
 	struct dma_super_stress_cfg cfg = {0};
-	char *run_disabled_tests;
 	void *data_buf;
-	uint64_t seq, dram_addr, data_buf_va;
+	uint64_t seq, data_buf_va;
 	uint32_t host_size = 1 << 28, dma_size = 1 << 29;
 	int rc, fd = tests_state->fd, i, j, k;
 	char mode[30];

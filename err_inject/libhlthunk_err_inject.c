@@ -34,7 +34,6 @@ hlthunk_public int hlthunk_err_inject_endless_command(int fd)
 	struct hlthunk_asic_funcs *asic_funcs = hlthunk_get_asic_funcs(fd);
 	struct hlthunk_pkt_info pkt_info;
 	struct hlthunk_cb_obj *cb_obj;
-	uint64_t seq = 0;
 	uint32_t cb_size = 4096, offset = 0;
 	int rc, i;
 

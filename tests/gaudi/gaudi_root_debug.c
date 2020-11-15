@@ -127,7 +127,7 @@ static void ieee1500_inst(struct hltests_state *tests_state, int device,
 static void test_hbm_read_temperature(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	int device, temp, fd = tests_state->fd;
+	int device, temp;
 	uint32_t rdata, ignore = 0;
 	uint64_t base;
 	bool invalid;
@@ -166,7 +166,7 @@ static void test_hbm_read_temperature(void **state)
 static void test_hbm_read_interrupts(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	int device, ch, fd = tests_state->fd;
+	int device, ch;
 	uint32_t val, val2;
 	uint64_t base;
 
@@ -277,7 +277,6 @@ static int read_through_pci_parsing_handler(void *user, const char *section,
 {
 	struct read_through_pci_cfg *cfg =
 					(struct read_through_pci_cfg *) user;
-	char *tmp;
 
 	if (MATCH("read_through_pci_test", "start_addr"))
 		cfg->start_address = strtoul(value, NULL, 0);
@@ -297,12 +296,9 @@ void test_read_through_pci(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	const char *config_filename = hltests_get_config_filename();
-	struct hlthunk_hw_ip_info hw_ip;
 	struct read_through_pci_cfg cfg;
-	struct hltests_pkt_info pkt_info;
 	uint64_t addr, end;
 	uint32_t val, prot;
-	int fd = tests_state->fd;
 
 	if (tests_state->asic_type != HLTHUNK_DEVICE_GAUDI) {
 		printf("Test is skipped because device is not GAUDI\n");

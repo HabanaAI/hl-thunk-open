@@ -337,7 +337,7 @@ static void hltests_cs_two_streams_arb_point(int fd,
 	void *cb_stream[3], *cb_arbiter;
 	int i, rc;
 	uint32_t cb_stream_size[3], qid[3], cb_arbiter_size = 0;
-	uint64_t seq, src_addr, dst_addr, num_dma_pkts, dma_pkt_bytes;
+	uint64_t seq, src_addr, dst_addr, dma_pkt_bytes;
 
 	qid[0] = ds_direction ? hltests_get_dma_down_qid(fd, STREAM0) :
 			hltests_get_dma_up_qid(fd, STREAM0);
@@ -1379,7 +1379,7 @@ static void test_cs_load_scalars_exe_2_rfs(void **state, bool is_upper_rfs)
 	struct hlthunk_hw_ip_info hw_ip;
 	struct hltests_pkt_info pkt_info;
 	uint64_t scalar_buf_sram_addr, scalar_buf_device_va, cb_sram_addr;
-	uint32_t *host_data, scalar_buf_offset;
+	uint32_t scalar_buf_offset;
 	uint16_t sob0, mon0;
 	uint8_t *scalar_buf;
 	int rc, fd = tests_state->fd;

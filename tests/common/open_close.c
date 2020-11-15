@@ -77,7 +77,6 @@ void test_close_without_releasing_debug(void **state)
 {
 	const char *pciaddr = hltests_get_parser_pciaddr();
 	struct hl_debug_args debug;
-	uint32_t status;
 	int fd, rc;
 
 	fd = hlthunk_open(HLTHUNK_DEVICE_DONT_CARE, pciaddr);

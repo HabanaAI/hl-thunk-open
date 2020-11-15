@@ -845,7 +845,6 @@ static void *test_signal_wait_dma_th(void *args)
 	struct signal_wait_thread_params *params =
 				(struct signal_wait_thread_params *) args;
 	struct hltests_cs_chunk execute_arr[2], restore_arr[1];
-	struct hltests_monitor_and_fence mon_and_fence_info;
 	struct hltests_pkt_info pkt_info;
 	struct hlthunk_hw_ip_info hw_ip;
 	struct hlthunk_signal_in sig_in;
@@ -862,7 +861,6 @@ static void *test_signal_wait_dma_th(void *args)
 		cp_dma_cb_size, restore_cb_size;
 	uint16_t sob0, mon0, execute_arr_len, restore_arr_len;
 	int i, j = 100, rc, fd = params->fd, queue_id = params->queue_id;
-	bool sync_stream_enable = true; /* for debug */
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
@@ -1190,8 +1188,6 @@ static void test_signal_wait(void **state)
 
 static void test_signal_wait_parallel(void **state)
 {
-	int fd = ((struct hltests_state *)*state)->fd;
-
 	_test_signal_wait(state, false, test_signal_wait_parallel_th);
 }
 
@@ -1209,8 +1205,6 @@ static void test_signal_collective_wait_parallel(void **state)
 
 static void test_signal_wait_dma(void **state)
 {
-	int fd = ((struct hltests_state *)*state)->fd;
-
 	_test_signal_wait(state, false, test_signal_wait_dma_th);
 }
 

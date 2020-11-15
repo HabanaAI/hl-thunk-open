@@ -1010,7 +1010,6 @@ static void mme_cb_prepare(int fd, void *mme_cb,
 		uint32_t *out_offset)
 {
 	struct hltests_pkt_info pkt_info;
-	struct hltests_monitor_and_fence mon_and_fence_info;
 	uint32_t mme_cb_offset = 0;
 
 	/* Add CP_DMA packet */
