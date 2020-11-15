@@ -602,7 +602,7 @@ hlthunk_public int hlthunk_get_device_utilization(int fd, uint32_t period_ms,
 {
 	struct hl_info_args args;
 	struct hl_info_device_utilization hl_info;
-	int rc, i;
+	int rc;
 
 	if (!rate)
 		return -EINVAL;
@@ -655,7 +655,7 @@ hlthunk_public int hlthunk_get_clk_rate(int fd, uint32_t *cur_clk_mhz,
 {
 	struct hl_info_args args;
 	struct hl_info_clk_rate hl_clk_rate;
-	int rc, i;
+	int rc;
 
 	if ((!cur_clk_mhz) || (!max_clk_mhz))
 		return -EINVAL;
@@ -683,7 +683,7 @@ hlthunk_public int hlthunk_get_reset_count_info(int fd,
 {
 	struct hl_info_args args;
 	struct hl_info_reset_count hl_reset_count;
-	int rc, i;
+	int rc;
 
 	if (!info)
 		return -EINVAL;

@@ -37,7 +37,6 @@ static int dma_dram_parser(void *user, const char *section, const char *name,
 {
 	struct dma_entire_dram_cfg *dma_cfg =
 			(struct dma_entire_dram_cfg *) user;
-	char *tmp;
 
 	if (MATCH("dma_entire_dram_test", "dma_size"))
 		dma_cfg->dma_size = strtoul(value, NULL, 0);

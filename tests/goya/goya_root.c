@@ -173,10 +173,10 @@ void test_write_to_cfg_space(void **state)
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hltests_cs_chunk execute_arr[1];
 	struct hltests_pkt_info pkt_info;
-	uint64_t cfg_address = CFG_BASE + mmPSOC_GLOBAL_CONF_SCRATCHPAD_10, seq;
+	uint64_t cfg_address = CFG_BASE + mmPSOC_GLOBAL_CONF_SCRATCHPAD_10;
 	uint32_t offset = 0, val;
 	void *ptr;
-	int rc, fd = tests_state->fd;
+	int fd = tests_state->fd;
 
 	WREG32(cfg_address, 0x55555555);
 	val = RREG32(cfg_address);

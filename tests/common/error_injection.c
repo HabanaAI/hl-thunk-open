@@ -290,7 +290,7 @@ void test_error_injection_thermal_event(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	long temp_pre, temp_post;
-	int rc, rc1, rc2, temp_fd, fd = tests_state->fd;
+	int rc, rc1, fd = tests_state->fd;
 
 	rc = get_device_temperature(fd, "temp7_input", &temp_pre);
 	assert_int_equal(rc, 0);

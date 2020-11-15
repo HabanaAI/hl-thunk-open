@@ -287,7 +287,6 @@ static int dma_perf_parser(void *user, const char *section, const char *name,
 				const char *value)
 {
 	struct dma_perf_cfg *dma_cfg = (struct dma_perf_cfg *) user;
-	char *tmp;
 
 	if (MATCH("dma_perf", "host_dma_size"))
 		dma_cfg->dma_size = strtoul(value, NULL, 0);
@@ -767,7 +766,7 @@ void test_dram_sram_single_ch_perf(void **state)
 	double *dram_sram_perf_outcome;
 	void *dram_addr;
 	uint64_t sram_addr;
-	uint32_t size, queue_index;
+	uint32_t size;
 	int rc, fd = tests_state->fd;
 
 	/* This test can't run if mmu disabled */
@@ -1437,7 +1436,6 @@ static int hltests_perf_teardown(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	double *perf_outcomes = tests_state->perf_outcomes;
-	int i;
 
 	if (!tests_state)
 		return -EINVAL;
@@ -1519,7 +1517,7 @@ static const char *const usage[] = {
 
 int main(int argc, const char **argv)
 {
-	int rc, num_tests = sizeof(dma_perf_tests) /
+	int num_tests = sizeof(dma_perf_tests) /
 				sizeof((dma_perf_tests)[0]);
 
 	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_DONT_CARE,

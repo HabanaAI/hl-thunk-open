@@ -21,12 +21,10 @@
 void test_tdr_deadlock(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	struct hltests_cs_chunk execute_arr[1];
 	struct hltests_pkt_info pkt_info;
 	void *ptr;
-	uint64_t seq = 0;
 	uint32_t offset = 0;
-	int rc, fd = tests_state->fd;
+	int fd = tests_state->fd;
 
 	ptr = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(ptr);
@@ -424,13 +422,12 @@ static void test_transfer_bigger_than_alloc(void **state)
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	void *device_ptr, *src_ptr, *ptr;
 	struct hltests_pkt_info pkt_info;
-	uint64_t device_addr, host_src_addr, seq = 0;
+	uint64_t device_addr, host_src_addr;
 	uint64_t device_alloc_size = 2 * 1024 * 1024; /* 2MB */
 	uint64_t host_alloc_size = 8;
 	uint64_t transfer_size = 5000;
 	uint32_t offset = 0;
-	struct hltests_cs_chunk execute_arr[1];
-	int rc, fd = tests_state->fd;
+	int fd = tests_state->fd;
 
 	device_ptr = hltests_allocate_device_mem(fd,
 				device_alloc_size, CONTIGUOUS);
@@ -609,7 +606,6 @@ void test_loop_map_work_unmap(void **state)
 static int file_descriptor_sanity_check(int fd)
 {
 	struct hlthunk_hw_ip_info hw_ip;
-	int rc;
 
 	/* INFO IOCTL is an arbitrary IOCTL for a sanity check of the fd */
 	memset(&hw_ip, 0, sizeof(hw_ip));
@@ -619,7 +615,6 @@ static int file_descriptor_sanity_check(int fd)
 void test_duplicate_file_descriptor(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	struct hlthunk_hw_ip_info hw_ip;
 	enum hlthunk_device_name device_name;
 	int rc, fd = tests_state->fd, fd_dup, fd_new;
 

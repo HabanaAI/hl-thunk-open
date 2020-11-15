@@ -106,10 +106,9 @@ void test_dma_all2all(void **state)
 		int_execute_arr[NUM_OF_INT_Q + 1], ext_execute_arr[2];
 	struct dma_thread_params *thread_params;
 	pthread_t *thread_id;
-	char *run_disabled_tests;
 	void *int_restore_cb, *nop_cb, *ext_restore_cb, *ext_dma_cb[2],
 		*common_cb_buf[NUM_OF_INT_Q], *cp_dma_cb[NUM_OF_INT_Q],
-		*ext_buf[2], *retval, *dma5_cb = NULL;
+		*ext_buf[2], *retval;
 	uint64_t common_cb_device_va[NUM_OF_INT_Q], int_dram_addr[NUM_OF_INT_Q],
 		cp_dma_cb_device_va[NUM_OF_INT_Q], ext_buf_va[NUM_OF_INT_Q],
 		sram_base, sram_addr, ext_dram_addr, src_addr, dst_addr,
@@ -120,7 +119,7 @@ void test_dma_all2all(void **state)
 		ext_dma_cb_size[2] = {0}, ext_buf_size[2] = {0},
 		nop_cb_size = 0, restore_cb_size = 0, ext_restore_cb_size = 0,
 		int_dma_size = 1 << 21, ext_dma_size = 1 << 20,
-		queue, dma5_cb_size;
+		queue;
 	struct hltests_pkt_info pkt_info;
 	struct hltests_monitor_and_fence mon_and_fence_info;
 	enum hltests_goya_dma_direction dma_dir;
