@@ -597,6 +597,33 @@ hlthunk_public int hlthunk_get_busy_engines_mask(int fd, uint64_t *mask)
 	return rc;
 }
 
+hlthunk_public int hlthunk_get_pll_frequency(int fd, uint32_t index,
+				struct hlthunk_pll_frequency_info *frequency)
+{
+	struct hl_info_args args;
+	struct hl_pll_frequency_info hl_info;
+	int rc;
+
+	if (!frequency)
+		return -EINVAL;
+
+	memset(&args, 0, sizeof(args));
+	memset(&hl_info, 0, sizeof(hl_info));
+
+	args.op = HL_INFO_PLL_FREQUENCY;
+	args.return_pointer = (__u64) (uintptr_t) &hl_info;
+	args.return_size = sizeof(hl_info);
+	args.pll_index = index;
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	if (rc)
+		return rc;
+
+	memcpy(frequency, &hl_info, sizeof(struct hlthunk_pll_frequency_info));
+
+	return 0;
+}
+
 hlthunk_public int hlthunk_get_device_utilization(int fd, uint32_t period_ms,
 						uint32_t *rate)
 {
