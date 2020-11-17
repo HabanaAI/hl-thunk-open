@@ -62,6 +62,10 @@ struct hlthunk_dram_usage_info {
 	uint64_t ctx_dram_mem;
 };
 
+struct hlthunk_pll_frequency_info {
+	uint16_t output[HL_PLL_NUM_OUTPUTS];
+};
+
 struct hlthunk_reset_count_info {
 	uint32_t hard_reset_count;
 	uint32_t soft_reset_count;
@@ -322,6 +326,18 @@ hlthunk_public bool hlthunk_is_device_idle(int fd);
  * @return 0 for success, negative value for failure
  */
 hlthunk_public int hlthunk_get_busy_engines_mask(int fd, uint64_t *mask);
+
+/**
+ * This function retrieves the PLL frequency of a specific device.
+ * @param fd file descriptor handle of habanalabs device
+ * @param index the index of the specified PLL
+ * @param frequency pointer to frequency structure to store the frequency in MHz
+ * in each of the available outputs. if a certain output is not available a 0
+ * value will be set
+ * @return 0 upon success or negative value in case of error
+ */
+hlthunk_public int hlthunk_get_pll_frequency(int fd, uint32_t index,
+				struct hlthunk_pll_frequency_info *frequency);
 
 /**
  * This function retrieves the device utilization as percentage in the last
