@@ -18,6 +18,7 @@
 #include "dma5_qm_regs.h"
 #include "dma6_qm_regs.h"
 #include "dma7_qm_regs.h"
+#include "dma0_core_regs.h"
 #include "mme0_qm_regs.h"
 #include "mme0_ctrl_regs.h"
 #include "mme2_qm_regs.h"

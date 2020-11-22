@@ -7,6 +7,8 @@
 
 #include "common/hlthunk_tests.h"
 #include "gaudi/gaudi.h"
+#include "gaudi/gaudi_packets.h"
+#include "gaudi/asic_reg/gaudi_regs.h"
 
 #include <stdarg.h>
 #include <setjmp.h>
@@ -478,8 +480,367 @@ void test_dma_all2all(void **state)
 	hlthunk_free(thread_id);
 }
 
+void test_strided_dma(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct hltests_monitor_and_fence mon_and_fence_info;
+	struct hltests_pkt_info pkt_info;
+	void *restore_cb, *cb[2];
+	char *src_buf, *dst_buf, *dst_ptr;
+	struct hltests_cs_chunk restore_arr[1], execute_arr[1];
+	uint64_t src_buf_va, dst_buf_va, seq[2],
+		sob_addr = CFG_BASE + mmSYNC_MNGR_E_N_SYNC_MNGR_OBJS_SOB_OBJ_0;
+	uint32_t cb_size[2] = {0}, restore_cb_size = 0, data_size = (1 << 20),
+		num_of_strides = 10, stride_size = data_size * 2,
+		total_dma_size = num_of_strides * stride_size;
+	int rc, fd = tests_state->fd, i, j;
+	struct timespec begin, end;
+	double time_diff;
+
+	if (!hltests_is_gaudi(fd)) {
+		printf("Test is skipped because device is not GAUDI\n");
+		skip();
+	}
+
+	/*
+	 * The multi-stride DMA will copy data from src_buf to dst_buf in a
+	 * number of strides according to the requested stride size.
+	 * So if the data to copy is 2 bytes of 0xAB 0xCD and the number of
+	 * strides is 2 and the stride size is 4 bytes, dst_buf should contain:
+	 * 0xAB 0xCD 0xFF 0xFF 0xAB 0xCD 0xFF 0xFF (given that dst_buf was
+	 * initialized to 0xFF...F before the DMA)
+	 */
+
+	restore_cb = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
+	assert_non_null(restore_cb);
+
+	cb[1] = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
+	assert_non_null(cb[1]);
+
+	cb[0] = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
+	assert_non_null(cb[0]);
+
+	src_buf = hltests_allocate_host_mem(fd, data_size, NOT_HUGE);
+	assert_non_null(src_buf);
+
+	src_buf_va = hltests_get_device_va_for_host_ptr(fd, src_buf);
+
+	hltests_fill_rand_values(src_buf, data_size);
+
+	dst_buf = hltests_allocate_host_mem(fd, total_dma_size, NOT_HUGE);
+	assert_non_null(dst_buf);
+
+	dst_buf_va = hltests_get_device_va_for_host_ptr(fd, dst_buf);
+
+	memset(dst_buf, 0xFF, total_dma_size);
+
+	/* zero the sob */
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.write_to_sob.sob_id = 0;
+	pkt_info.write_to_sob.value = 0;
+	pkt_info.write_to_sob.mode = SOB_SET;
+	restore_cb_size = hltests_add_write_to_sob_pkt(fd,
+			restore_cb, restore_cb_size, &pkt_info);
+
+	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
+	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd, STREAM0);
+	mon_and_fence_info.cmdq_fence = false;
+	mon_and_fence_info.sob_id = 0;
+	mon_and_fence_info.mon_id = 0;
+	mon_and_fence_info.mon_address = 0;
+	mon_and_fence_info.sob_val = 1;
+	mon_and_fence_info.dec_fence = true;
+	mon_and_fence_info.mon_payload = 1;
+	cb_size[0] = hltests_add_monitor_and_fence(fd, cb[0],
+				cb_size[0], &mon_and_fence_info);
+
+	restore_arr[0].cb_ptr = restore_cb;
+	restore_arr[0].cb_size = restore_cb_size;
+	restore_arr[0].queue_index = hltests_get_dma_up_qid(fd, STREAM0);
+	execute_arr[0].cb_ptr = cb[0];
+	execute_arr[0].cb_size = cb_size[0];
+	execute_arr[0].queue_index = hltests_get_dma_up_qid(fd, STREAM0);
+
+	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, 0, &seq[0]);
+	assert_int_equal(rc, 0);
+
+	/* src addr */
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.wreg32.reg_addr =
+			(uint16_t) (mmDMA0_CORE_SRC_BASE_LO - mmDMA0_CORE_BASE);
+	pkt_info.wreg32.value =
+		(uint32_t)(((uint64_t) (uintptr_t) src_buf_va) & 0xFFFFFFFF);
+	cb_size[1] = hltests_add_wreg32_pkt(fd, cb[1], cb_size[1], &pkt_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.wreg32.reg_addr =
+			(uint16_t) (mmDMA0_CORE_SRC_BASE_HI - mmDMA0_CORE_BASE);
+	pkt_info.wreg32.value =
+			(uint32_t)(((uint64_t) (uintptr_t) src_buf_va) >> 32);
+	cb_size[1] = hltests_add_wreg32_pkt(fd, cb[1], cb_size[1], &pkt_info);
+
+	/* dst addr */
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.wreg32.reg_addr =
+			(uint16_t) (mmDMA0_CORE_DST_BASE_LO - mmDMA0_CORE_BASE);
+	pkt_info.wreg32.value =
+		(uint32_t)(((uint64_t) (uintptr_t) dst_buf_va) & 0xFFFFFFFF);
+	cb_size[1] = hltests_add_wreg32_pkt(fd, cb[1], cb_size[1], &pkt_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.wreg32.reg_addr =
+			(uint16_t) (mmDMA0_CORE_DST_BASE_HI - mmDMA0_CORE_BASE);
+	pkt_info.wreg32.value =
+			(uint32_t)(((uint64_t) (uintptr_t) dst_buf_va) >> 32);
+	cb_size[1] = hltests_add_wreg32_pkt(fd, cb[1], cb_size[1], &pkt_info);
+
+	/* src dma */
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.wreg32.reg_addr =
+			(uint16_t) (mmDMA0_CORE_SRC_TSIZE_1 - mmDMA0_CORE_BASE);
+	pkt_info.wreg32.value = num_of_strides;
+	cb_size[1] = hltests_add_wreg32_pkt(fd, cb[1], cb_size[1], &pkt_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.wreg32.reg_addr =
+		(uint16_t) (mmDMA0_CORE_SRC_STRIDE_1 - mmDMA0_CORE_BASE);
+	pkt_info.wreg32.value = 0;
+	cb_size[1] = hltests_add_wreg32_pkt(fd, cb[1], cb_size[1], &pkt_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.wreg32.reg_addr =
+			(uint16_t) (mmDMA0_CORE_SRC_TSIZE_2 - mmDMA0_CORE_BASE);
+	pkt_info.wreg32.value = 1;
+	cb_size[1] = hltests_add_wreg32_pkt(fd, cb[1], cb_size[1], &pkt_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.wreg32.reg_addr =
+		(uint16_t) (mmDMA0_CORE_SRC_STRIDE_2 - mmDMA0_CORE_BASE);
+	pkt_info.wreg32.value = data_size;
+	cb_size[1] = hltests_add_wreg32_pkt(fd, cb[1], cb_size[1], &pkt_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.wreg32.reg_addr =
+			(uint16_t) (mmDMA0_CORE_SRC_TSIZE_3 - mmDMA0_CORE_BASE);
+	pkt_info.wreg32.value = 1;
+	cb_size[1] = hltests_add_wreg32_pkt(fd, cb[1], cb_size[1], &pkt_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.wreg32.reg_addr =
+		(uint16_t) (mmDMA0_CORE_SRC_STRIDE_3 - mmDMA0_CORE_BASE);
+	pkt_info.wreg32.value = data_size;
+	cb_size[1] = hltests_add_wreg32_pkt(fd, cb[1], cb_size[1], &pkt_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.wreg32.reg_addr =
+			(uint16_t) (mmDMA0_CORE_SRC_TSIZE_4 - mmDMA0_CORE_BASE);
+	pkt_info.wreg32.value = 1;
+	cb_size[1] = hltests_add_wreg32_pkt(fd, cb[1], cb_size[1], &pkt_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.wreg32.reg_addr =
+		(uint16_t) (mmDMA0_CORE_SRC_STRIDE_4 - mmDMA0_CORE_BASE);
+	pkt_info.wreg32.value = data_size;
+	cb_size[1] = hltests_add_wreg32_pkt(fd, cb[1], cb_size[1], &pkt_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.wreg32.reg_addr =
+			(uint16_t) (mmDMA0_CORE_SRC_TSIZE_0 - mmDMA0_CORE_BASE);
+	pkt_info.wreg32.value = data_size;
+	cb_size[1] = hltests_add_wreg32_pkt(fd, cb[1], cb_size[1], &pkt_info);
+
+	/* dst dma */
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.wreg32.reg_addr =
+			(uint16_t) (mmDMA0_CORE_DST_TSIZE_1 - mmDMA0_CORE_BASE);
+	pkt_info.wreg32.value = num_of_strides;
+	cb_size[1] = hltests_add_wreg32_pkt(fd, cb[1], cb_size[1], &pkt_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.wreg32.reg_addr =
+		(uint16_t) (mmDMA0_CORE_DST_STRIDE_1 - mmDMA0_CORE_BASE);
+	pkt_info.wreg32.value = stride_size;
+	cb_size[1] = hltests_add_wreg32_pkt(fd, cb[1], cb_size[1], &pkt_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.wreg32.reg_addr =
+			(uint16_t) (mmDMA0_CORE_DST_TSIZE_2 - mmDMA0_CORE_BASE);
+	pkt_info.wreg32.value = 1;
+	cb_size[1] = hltests_add_wreg32_pkt(fd, cb[1], cb_size[1], &pkt_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.wreg32.reg_addr =
+		(uint16_t) (mmDMA0_CORE_DST_STRIDE_2 - mmDMA0_CORE_BASE);
+	pkt_info.wreg32.value = data_size;
+	cb_size[1] = hltests_add_wreg32_pkt(fd, cb[1], cb_size[1], &pkt_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.wreg32.reg_addr =
+			(uint16_t) (mmDMA0_CORE_DST_TSIZE_3 - mmDMA0_CORE_BASE);
+	pkt_info.wreg32.value = 1;
+	cb_size[1] = hltests_add_wreg32_pkt(fd, cb[1], cb_size[1], &pkt_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.wreg32.reg_addr =
+		(uint16_t) (mmDMA0_CORE_DST_STRIDE_3 - mmDMA0_CORE_BASE);
+	pkt_info.wreg32.value = data_size;
+	cb_size[1] = hltests_add_wreg32_pkt(fd, cb[1], cb_size[1], &pkt_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.wreg32.reg_addr =
+			(uint16_t) (mmDMA0_CORE_DST_TSIZE_4 - mmDMA0_CORE_BASE);
+	pkt_info.wreg32.value = 1;
+	cb_size[1] = hltests_add_wreg32_pkt(fd, cb[1], cb_size[1], &pkt_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.wreg32.reg_addr =
+		(uint16_t) (mmDMA0_CORE_DST_STRIDE_4 - mmDMA0_CORE_BASE);
+	pkt_info.wreg32.value = data_size;
+	cb_size[1] = hltests_add_wreg32_pkt(fd, cb[1], cb_size[1], &pkt_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.wreg32.reg_addr =
+			(uint16_t) (mmDMA0_CORE_DST_TSIZE_0 - mmDMA0_CORE_BASE);
+	pkt_info.wreg32.value = data_size;
+	cb_size[1] = hltests_add_wreg32_pkt(fd, cb[1], cb_size[1], &pkt_info);
+
+	/* sob */
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.wreg32.reg_addr =
+		(uint16_t) (mmDMA0_CORE_WR_COMP_ADDR_LO - mmDMA0_CORE_BASE);
+	pkt_info.wreg32.value = sob_addr & 0xFFFFFFFF;
+	cb_size[1] = hltests_add_wreg32_pkt(fd, cb[1], cb_size[1], &pkt_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.wreg32.reg_addr =
+		(uint16_t) (mmDMA0_CORE_WR_COMP_ADDR_HI - mmDMA0_CORE_BASE);
+	pkt_info.wreg32.value = sob_addr >> 32;
+	cb_size[1] = hltests_add_wreg32_pkt(fd, cb[1], cb_size[1], &pkt_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.wreg32.reg_addr =
+		(uint16_t) (mmDMA0_CORE_WR_COMP_WDATA - mmDMA0_CORE_BASE);
+	pkt_info.wreg32.value = (1 << 31) | 1;
+	cb_size[1] = hltests_add_wreg32_pkt(fd, cb[1], cb_size[1], &pkt_info);
+
+	/* commit */
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.wreg32.reg_addr =
+			(uint16_t) (mmDMA0_CORE_COMMIT - mmDMA0_CORE_BASE);
+	pkt_info.wreg32.value = 1;
+	cb_size[1] = hltests_add_wreg32_pkt(fd, cb[1], cb_size[1], &pkt_info);
+
+	execute_arr[0].cb_ptr = cb[1];
+	execute_arr[0].cb_size = cb_size[1];
+	execute_arr[0].queue_index = hltests_get_dma_down_qid(fd, STREAM0);
+
+	clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
+
+	/* send the dma job */
+	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1,
+				CS_FLAGS_FORCE_RESTORE, &seq[1]);
+	assert_int_equal(rc, 0);
+
+	rc = hltests_wait_for_cs_until_not_busy(fd, seq[1]);
+	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
+
+	/* wait for the dma to finish */
+	rc = hltests_wait_for_cs_until_not_busy(fd, seq[0]);
+	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
+
+	clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+
+	for (i = 0 ; i < num_of_strides ; i++) {
+		dst_ptr = dst_buf + i * stride_size;
+		rc = hltests_mem_compare(src_buf, dst_ptr, data_size);
+		assert_int_equal(rc, 0);
+
+		dst_ptr += data_size;
+
+		for (j = 0 ; j < (stride_size - data_size) ; j++)
+			assert_true((*(dst_ptr + j) & 0xFF) == 0xFF);
+	}
+
+	time_diff = (end.tv_nsec - begin.tv_nsec) / 1000000000.0 +
+						(end.tv_sec - begin.tv_sec);
+
+	printf("BW: %7.2lf GB/Sec\n", ((double)(data_size) *
+			num_of_strides / time_diff) / 1000 / 1000 / 1000);
+
+	rc = hltests_free_host_mem(fd, src_buf);
+	assert_int_equal(rc, 0);
+
+	rc = hltests_free_host_mem(fd, dst_buf);
+	assert_int_equal(rc, 0);
+
+	rc = hltests_destroy_cb(fd, cb[1]);
+	assert_int_equal(rc, 0);
+
+	rc = hltests_destroy_cb(fd, cb[0]);
+	assert_int_equal(rc, 0);
+
+	rc = hltests_destroy_cb(fd, restore_cb);
+	assert_int_equal(rc, 0);
+}
+
 const struct CMUnitTest gaudi_dma_tests[] = {
 	cmocka_unit_test_setup(test_dma_all2all,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_strided_dma,
 				hltests_ensure_device_operational)
 };
 
