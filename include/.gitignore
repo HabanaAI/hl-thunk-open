@@ -54,7 +54,6 @@ specs/gaudi/asic_reg/tpc?_cfg_masks.h
 specs/gaudi/asic_reg/tpc?_qm_masks.h
 specs/gaudi/asic_reg/?if_rtr_?_regs.h
 specs/gaudi/asic_reg/tpc?_cfg_regs.h
-specs/gaudi/asic_reg/dma?_core_regs.h
 specs/gaudi/asic_reg/*_pll_regs.h
 specs/gaudi/asic_reg/dma_if_?_?_regs.h
 specs/gaudi/asic_reg/cpu_if_regs.h
