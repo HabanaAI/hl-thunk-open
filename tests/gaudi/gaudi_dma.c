@@ -110,7 +110,7 @@ void test_dma_all2all(void **state)
 		*common_cb_buf[NUM_OF_INT_Q], *cp_dma_cb[NUM_OF_INT_Q],
 		*ext_buf[2], *retval;
 	uint64_t common_cb_device_va[NUM_OF_INT_Q], int_dram_addr[NUM_OF_INT_Q],
-		cp_dma_cb_device_va[NUM_OF_INT_Q], ext_buf_va[NUM_OF_INT_Q],
+		cp_dma_cb_device_va[NUM_OF_INT_Q], ext_buf_va[2],
 		sram_base, sram_addr, ext_dram_addr, src_addr, dst_addr,
 		cp_dma_sram_addr;
 	double test_duration = 60.0; /* seconds */
