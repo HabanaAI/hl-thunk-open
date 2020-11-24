@@ -42,6 +42,7 @@
 
 #define MMU_HOP0_PA43_12_SHIFT		12
 #define MMU_HOP0_PA49_44_SHIFT		(12 + 32)
+#define MMU_HOP0_PA63_44_SHIFT		(12 + 32)
 
 #define MMU_CONFIG_TIMEOUT_USEC		2000 /* 2 ms */
 
