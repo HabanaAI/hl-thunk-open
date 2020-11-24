@@ -295,6 +295,7 @@ enum hl_device_status {
 #define HL_INFO_CLK_THROTTLE_REASON	13
 #define HL_INFO_SYNC_MANAGER		14
 #define HL_INFO_TOTAL_ENERGY		15
+#define HL_INFO_PLL_FREQUENCY		16
 
 #define HL_INFO_VERSION_MAX_LEN	128
 #define HL_INFO_CARD_NAME_MAX_LEN	16
@@ -406,6 +407,12 @@ struct hl_info_energy {
 	__u64 total_energy_consumption;
 };
 
+#define HL_PLL_NUM_OUTPUTS 4
+
+struct hl_pll_frequency_info {
+	__u16 output[HL_PLL_NUM_OUTPUTS];
+};
+
 /**
  * struct hl_info_cs_counters - command submission counters
  * @total_out_of_mem_drop_cnt: total dropped due to memory allocation issue
@@ -463,6 +470,8 @@ struct hl_info_args {
 		 * resolution.
 		 */
 		__u32 period_ms;
+		/* PLL frequency retrieval */
+		__u32 pll_index;
 	};
 
 	__u32 pad;
