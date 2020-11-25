@@ -295,6 +295,15 @@ void test_dma_64_threads(void **state)
 
 void test_dma_512_threads(void **state)
 {
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	int fd = tests_state->fd;
+
+	/* This test can't run on func-sim due to SW-10059 */
+	if ((hltests_is_simulator(fd)) || (hltests_is_pldm(fd))) {
+		printf("Test is disabled on func-sim or PLDM\n");
+		skip();
+	}
+
 	test_dma_threads(state, 512);
 }
 
