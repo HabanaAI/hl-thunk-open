@@ -744,7 +744,7 @@ static void *test_signal_wait_parallel_th(void *args)
 	struct hlthunk_wait_out wait_out;
 	struct hlthunk_wait_for_signal wait_for_signal;
 	int i, j, rc, fd = params->fd, queue_id = params->queue_id;
-	int iters = 1000;
+	int iters = 1100;
 
 	for (j = 0 ; j < iters ; j++) {
 		if (queue_id & 1) {
