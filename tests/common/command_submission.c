@@ -1573,6 +1573,57 @@ static void test_cs_drop(void **state)
 	assert_int_equal(rc, 0);
 }
 
+#define NANO_ONE_SEC 1000000000ull
+#define NANO_TWO_SEC 2000000000ull
+
+static void test_wait_for_cs_with_timestamp(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct hltests_cs_chunk execute_arr[2];
+	uint32_t cb_size = 0;
+	uint32_t status = 0;
+	uint64_t seq = 0;
+	uint64_t timestamp[2];
+	void *cb[2];
+	int rc, i, fd = tests_state->fd;
+
+	for (i = 0; i < 2; i++) {
+		cb[i] = hltests_create_cb(fd, 0x1000, EXTERNAL, 0);
+		assert_non_null(cb[i]);
+
+		cb_size = hltests_add_nop_pkt(fd, cb[i], 0, EB_FALSE, MB_FALSE);
+
+		execute_arr[i].cb_ptr = cb[i];
+		execute_arr[i].cb_size = cb_size;
+		execute_arr[i].queue_index =
+				hltests_get_dma_down_qid(fd, STREAM0);
+	}
+
+	for (i = 0; i < 2; i++) {
+		rc = hltests_submit_cs(fd, NULL, 0, &(execute_arr[i]), 1,
+					HL_CS_FLAGS_TIMESTAMP, &seq);
+		assert_int_equal(rc, 0);
+
+		do {
+			rc = hlthunk_wait_for_cs_with_timestamp(fd, seq,
+					WAIT_FOR_CS_DEFAULT_TIMEOUT, &status,
+					&(timestamp[i]));
+			assert_int_equal(rc, 0);
+		} while (status == HL_WAIT_CS_STATUS_BUSY);
+
+		if (i == 0)
+			sleep(1);
+	}
+
+	assert_in_range((timestamp[1] - timestamp[0]), NANO_ONE_SEC,
+			NANO_TWO_SEC);
+
+	for (i = 0 ; i < 2 ; i++) {
+		rc = hltests_destroy_cb(fd, cb[i]);
+		assert_int_equal(rc, 0);
+	}
+}
+
 const struct CMUnitTest cs_tests[] = {
 	cmocka_unit_test_setup(test_cs_nop, hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_cs_nop_16PQE,
@@ -1614,6 +1665,8 @@ const struct CMUnitTest cs_tests[] = {
 	cmocka_unit_test_setup(test_cs_load_scalars_exe_upper_2_rfs,
 					hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_cs_drop,
+					hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_wait_for_cs_with_timestamp,
 					hltests_ensure_device_operational)
 };
 

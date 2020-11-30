@@ -1323,6 +1323,8 @@ int hltests_submit_cs(int fd,
 	cs_in.num_chunks_execute = execute_arr_size;
 	if (flags & CS_FLAGS_FORCE_RESTORE)
 		cs_in.flags |= HL_CS_FLAGS_FORCE_RESTORE;
+	if (flags & HL_CS_FLAGS_TIMESTAMP)
+		cs_in.flags |= HL_CS_FLAGS_TIMESTAMP;
 
 	memset(&cs_out, 0, sizeof(cs_out));
 	rc = hlthunk_command_submission(fd, &cs_in, &cs_out);
