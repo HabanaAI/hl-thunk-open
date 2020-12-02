@@ -1356,16 +1356,18 @@ hlthunk_public int hlthunk_profiler_stop(int fd)
 	return (*functions_pointers_table.fp_hlthunk_profiler_stop)(fd);
 }
 
-int hlthunk_profiler_get_trace_original(int fd, void *buffer, uint64_t *size)
+int hlthunk_profiler_get_trace_original(int fd, void *buffer, uint64_t *size,
+					uint64_t *num_entries)
 {
 	return -1;
 }
 
 hlthunk_public int hlthunk_profiler_get_trace(int fd, void *buffer,
-					      uint64_t *size)
+					uint64_t *size,
+					uint64_t *num_entries)
 {
 	return (*functions_pointers_table.fp_hlthunk_profiler_get_trace)(
-				fd, buffer, size);
+				fd, buffer, size, num_entries);
 }
 
 void hlthunk_profiler_destroy_original(void)

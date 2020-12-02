@@ -157,8 +157,8 @@ struct hlthunk_functions_pointers {
 	int (*fp_hlthunk_profiler_start)(int fd);
 	int (*fp_hlthunk_profiler_stop)(int fd);
 	int (*fp_hlthunk_profiler_get_trace)(int fd, void *buffer,
-						uint64_t *size);
-
+						uint64_t *size,
+						uint64_t *num_entries);
 	/* Function for the profiler to use */
 	uint64_t (*fp_hlthunk_device_memory_alloc)(int fd, uint64_t size,
 						bool contiguous, bool shared);
@@ -664,13 +664,20 @@ hlthunk_public int hlthunk_profiler_stop(int fd);
  * and call again with the buffer allocated
  * @param fd file descriptor of the device to get the trace from
  * @param buffer a buffer to copy to trace to, if buffer = null then only
- * retrieves the trace size
+ * retrieves the trace size and amount of entries.
+ * The ruturned buffer is built in the following format:
+ * [synTraceEvent enries][chars][size_t num][size_t version]
+ * num: Amount of synTraceEvent entries
+ * version: Synprof parser version
  * @param size out param for the amount of bytes copied to buffer (or the trace
  * size if buffer = null)
+ * @param num_entries pointer to the returned number of entries in the trace
+ * buffer
  * @return 0 on success or negative value in case of error
  */
 hlthunk_public int hlthunk_profiler_get_trace(int fd, void *buffer,
-					      uint64_t *size);
+					uint64_t *size,
+					uint64_t *num_entries);
 
 /**
  * This function destroys profiler instance if it existed

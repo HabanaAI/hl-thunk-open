@@ -103,7 +103,8 @@ int hlthunk_open_original(enum hlthunk_device_name device_name,
 int hlthunk_close_original(int fd);
 int hlthunk_profiler_start_original(int fd);
 int hlthunk_profiler_stop_original(int fd);
-int hlthunk_profiler_get_trace_original(int fd, void *buffer, uint64_t *size);
+int hlthunk_profiler_get_trace_original(int fd, void *buffer, uint64_t *size,
+					uint64_t *num_entries);
 void hlthunk_profiler_destroy_original(void);
 uint64_t hlthunk_host_memory_map_original(int fd, void *host_virt_addr,
 					  uint64_t hint_addr,
