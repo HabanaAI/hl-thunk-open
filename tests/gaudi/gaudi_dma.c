@@ -44,7 +44,7 @@ static void *dma_thread_func_int(void *args)
 		rc = hltests_submit_cs(fd, params->restore_arr, 1,
 					params->execute_arr,
 					params->execute_arr_len,
-					CS_FLAGS_FORCE_RESTORE, &seq);
+					HL_CS_FLAGS_FORCE_RESTORE, &seq);
 		if (rc)
 			return NULL;
 
@@ -79,7 +79,7 @@ static void *dma_thread_func_ext(void *args)
 		rc = hltests_submit_cs(fd, params->restore_arr, 1,
 					params->execute_arr,
 					params->execute_arr_len,
-					CS_FLAGS_FORCE_RESTORE, &seq);
+					HL_CS_FLAGS_FORCE_RESTORE, &seq);
 		if (rc)
 			return NULL;
 
@@ -792,7 +792,7 @@ void test_strided_dma(void **state)
 
 	/* send the dma job */
 	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1,
-				CS_FLAGS_FORCE_RESTORE, &seq[1]);
+				HL_CS_FLAGS_FORCE_RESTORE, &seq[1]);
 	assert_int_equal(rc, 0);
 
 	rc = hltests_wait_for_cs_until_not_busy(fd, seq[1]);

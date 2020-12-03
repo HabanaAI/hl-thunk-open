@@ -379,7 +379,7 @@ static void test_sm_pingpong_upper_cp(void **state, bool is_tpc,
 
 	if (engine_cb_sram_addr)
 		rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 3,
-						CS_FLAGS_FORCE_RESTORE, &seq);
+					HL_CS_FLAGS_FORCE_RESTORE, &seq);
 	else
 		rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 3, 0, &seq);
 

@@ -1317,14 +1317,12 @@ int hltests_submit_cs(int fd,
 	}
 
 	memset(&cs_in, 0, sizeof(cs_in));
+	cs_in.seq = *seq;
 	cs_in.chunks_restore = chunks_restore;
 	cs_in.chunks_execute = chunks_execute;
 	cs_in.num_chunks_restore = restore_arr_size;
 	cs_in.num_chunks_execute = execute_arr_size;
-	if (flags & CS_FLAGS_FORCE_RESTORE)
-		cs_in.flags |= HL_CS_FLAGS_FORCE_RESTORE;
-	if (flags & HL_CS_FLAGS_TIMESTAMP)
-		cs_in.flags |= HL_CS_FLAGS_TIMESTAMP;
+	cs_in.flags = flags;
 
 	memset(&cs_out, 0, sizeof(cs_out));
 	rc = hlthunk_command_submission(fd, &cs_in, &cs_out);
@@ -2315,7 +2313,7 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	execute_arr[2].queue_index = hltests_get_dma_up_qid(fd, STREAM0);
 
 	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 3,
-						CS_FLAGS_FORCE_RESTORE, &seq);
+					HL_CS_FLAGS_FORCE_RESTORE, &seq);
 	assert_int_equal(rc, 0);
 
 	rc = hltests_wait_for_cs_until_not_busy(fd, seq);

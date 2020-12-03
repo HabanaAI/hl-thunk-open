@@ -26,8 +26,6 @@
 
 #define WAIT_FOR_CS_DEFAULT_TIMEOUT	5000000 /* 5 sec */
 
-#define CS_FLAGS_FORCE_RESTORE		0x1
-
 #define SZ_1K				0x00000400
 #define SZ_2K				0x00000800
 #define SZ_4K				0x00001000
