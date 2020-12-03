@@ -891,12 +891,10 @@ void test_sram_dram_multi_ch_perf(void **state)
 	struct dma_perf_transfer transfer[MAX_DMA_CH];
 	struct hlthunk_hw_ip_info hw_ip;
 	double *sram_dram_perf_outcome;
-	uint64_t dram_addr;
-	uint64_t sram_addr;
-	uint32_t size;
-	int num_of_lindma_pkts, rc, ch, fd = tests_state->fd;
-	int num_of_ddma_ch = hltests_get_ddma_cnt(fd);
-	uint8_t factor = hltests_is_simulator(fd) ? 0xf : 0xff;
+	uint64_t dram_addr, sram_addr, tested_dram_size;
+	uint32_t total_dma_size;
+	int num_of_lindma_pkts, rc, ch, fd = tests_state->fd, num_of_ddma_ch;
+	uint8_t factor;
 
 	/* This test can't run on Goya */
 	if (hltests_is_goya(fd)) {
@@ -910,13 +908,6 @@ void test_sram_dram_multi_ch_perf(void **state)
 		skip();
 	}
 
-	if (hltests_is_pldm(fd))
-		num_of_lindma_pkts = 1;
-	else if (hltests_is_simulator(fd))
-		num_of_lindma_pkts = 10;
-	else
-		num_of_lindma_pkts = 60000;
-
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
@@ -925,22 +916,30 @@ void test_sram_dram_multi_ch_perf(void **state)
 		skip();
 	}
 
-	assert_in_range(num_of_ddma_ch, 1, MAX_DMA_CH);
-
 	sram_addr = hw_ip.sram_base_address;
+	tested_dram_size = hw_ip.dram_size;
+	total_dma_size = hw_ip.sram_size;
+	num_of_ddma_ch = hltests_get_ddma_cnt(fd);
+	num_of_lindma_pkts = 60000;
+	factor = 0xff;
 
 	if (hltests_is_pldm(fd)) {
-		size = 0x1000;
+		total_dma_size = 0x1000;
 		num_of_ddma_ch = 1;
-	} else
-		size = hw_ip.sram_size;
+		num_of_lindma_pkts = 1;
+	} else if (hltests_is_simulator(fd)) {
+		num_of_lindma_pkts = 10;
+		factor = 0xf;
+	}
+
+	assert_in_range(total_dma_size, 1, tested_dram_size);
+	assert_in_range(num_of_ddma_ch, 1, MAX_DMA_CH);
 
 	sram_dram_perf_outcome =
 		&tests_state->perf_outcomes[DMA_PERF_SRAM2DRAM_MULTI_CH];
 
-	assert_in_range(size, 1, hw_ip.dram_size);
 	dram_addr = (uint64_t) (uintptr_t)
-			hltests_allocate_device_mem(fd, hw_ip.dram_size,
+			hltests_allocate_device_mem(fd, tested_dram_size,
 						NOT_CONTIGUOUS);
 	assert_non_null(dram_addr);
 
@@ -948,15 +947,17 @@ void test_sram_dram_multi_ch_perf(void **state)
 		struct dma_perf_transfer *t = &transfer[ch];
 
 		t->queue_index = hltests_get_ddma_qid(fd, ch, STREAM0);
-		t->src_addr = sram_addr + ch * (size / num_of_ddma_ch);
-		t->dst_addr =
-			dram_addr + ch * (hltests_rand_u32() & factor) * size;
-		t->size = size / num_of_ddma_ch;
+		t->src_addr = sram_addr +
+				ch * (total_dma_size / num_of_ddma_ch);
+		t->dst_addr = dram_addr +
+				ch * (hltests_rand_u32() & factor) *
+				total_dma_size;
+		t->size = total_dma_size / num_of_ddma_ch;
 
 		assert_in_range(t->dst_addr, dram_addr,
-				dram_addr + hw_ip.dram_size);
+				dram_addr + tested_dram_size);
 		assert_in_range(t->dst_addr + t->size,
-				dram_addr, dram_addr + hw_ip.dram_size);
+				dram_addr, dram_addr + tested_dram_size);
 	}
 
 	*sram_dram_perf_outcome = indirect_perf_test(fd, num_of_ddma_ch,
@@ -971,12 +972,10 @@ void test_dram_sram_multi_ch_perf(void **state)
 	struct dma_perf_transfer transfer[MAX_DMA_CH];
 	struct hlthunk_hw_ip_info hw_ip;
 	double *dram_sram_perf_outcome;
-	uint64_t dram_addr;
-	uint64_t sram_addr;
-	uint32_t size;
-	int num_of_lindma_pkts, rc, ch, fd = tests_state->fd;
-	int num_of_ddma_ch = hltests_get_ddma_cnt(fd);
-	uint8_t factor = hltests_is_simulator(fd) ? 0xf : 0xff;
+	uint64_t dram_addr, sram_addr, tested_dram_size;
+	uint32_t total_dma_size;
+	int num_of_lindma_pkts, rc, ch, fd = tests_state->fd, num_of_ddma_ch;
+	uint8_t factor;
 
 	/* This test can't run on Goya */
 	if (hltests_is_goya(fd)) {
@@ -990,13 +989,6 @@ void test_dram_sram_multi_ch_perf(void **state)
 		skip();
 	}
 
-	if (hltests_is_pldm(fd))
-		num_of_lindma_pkts = 1;
-	else if (hltests_is_simulator(fd))
-		num_of_lindma_pkts = 10;
-	else
-		num_of_lindma_pkts = 60000;
-
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
@@ -1005,21 +997,29 @@ void test_dram_sram_multi_ch_perf(void **state)
 		skip();
 	}
 
-	assert_in_range(num_of_ddma_ch, 1, MAX_DMA_CH);
-
 	sram_addr = hw_ip.sram_base_address;
+	tested_dram_size = hw_ip.dram_size;
+	total_dma_size = hw_ip.sram_size;
+	num_of_ddma_ch = hltests_get_ddma_cnt(fd);
+	num_of_lindma_pkts = 60000;
+	factor = 0xff;
 
-	if (hltests_is_pldm(fd))
-		size = 0x1000;
-	else
-		size = hw_ip.sram_size;
+	if (hltests_is_pldm(fd)) {
+		total_dma_size = 0x1000;
+		num_of_lindma_pkts = 1;
+	} else if (hltests_is_simulator(fd)) {
+		num_of_lindma_pkts = 10;
+		factor = 0xf;
+	}
+
+	assert_in_range(total_dma_size, 1, tested_dram_size);
+	assert_in_range(num_of_ddma_ch, 1, MAX_DMA_CH);
 
 	dram_sram_perf_outcome =
 		&tests_state->perf_outcomes[DMA_PERF_DRAM2SRAM_MULTI_CH];
 
-	assert_in_range(size, 1, hw_ip.dram_size);
 	dram_addr = (uint64_t) (uintptr_t)
-			hltests_allocate_device_mem(fd, hw_ip.dram_size,
+			hltests_allocate_device_mem(fd, tested_dram_size,
 						NOT_CONTIGUOUS);
 	assert_non_null(dram_addr);
 
@@ -1027,15 +1027,17 @@ void test_dram_sram_multi_ch_perf(void **state)
 		struct dma_perf_transfer *t = &transfer[ch];
 
 		t->queue_index = hltests_get_ddma_qid(fd, ch, STREAM0);
-		t->src_addr =
-			dram_addr + ch * (hltests_rand_u32() & factor) * size;
-		t->dst_addr = sram_addr + ch * (size / num_of_ddma_ch);
-		t->size = size / num_of_ddma_ch;
+		t->src_addr = dram_addr +
+				ch * (hltests_rand_u32() & factor) *
+				total_dma_size;
+		t->dst_addr = sram_addr +
+				ch * (total_dma_size / num_of_ddma_ch);
+		t->size = total_dma_size / num_of_ddma_ch;
 
 		assert_in_range(t->src_addr, dram_addr,
-				dram_addr + hw_ip.dram_size);
+				dram_addr + tested_dram_size);
 		assert_in_range(t->src_addr + t->size,
-				dram_addr, dram_addr + hw_ip.dram_size);
+				dram_addr, dram_addr + tested_dram_size);
 	}
 
 	*dram_sram_perf_outcome = indirect_perf_test(fd, num_of_ddma_ch,
@@ -1050,10 +1052,10 @@ void test_dram_dram_multi_ch_perf(void **state)
 	struct dma_perf_transfer transfer[MAX_DMA_CH];
 	struct hlthunk_hw_ip_info hw_ip;
 	double *dram_dram_perf_outcome;
-	uint64_t dram_addr;
-	uint32_t size;
-	int num_of_lindma_pkts, rc, ch, fd = tests_state->fd;
-	int num_of_ddma_ch = hltests_get_ddma_cnt(fd);
+	uint64_t dram_addr, tested_dram_size;
+	uint32_t total_dma_size;
+	int num_of_lindma_pkts, rc, ch, fd = tests_state->fd, num_of_ddma_ch;
+	uint8_t factor;
 
 	/* This test can't run on Goya */
 	if (hltests_is_goya(fd)) {
@@ -1073,11 +1075,6 @@ void test_dram_dram_multi_ch_perf(void **state)
 		skip();
 	}
 
-	if (hltests_is_pldm(fd))
-		num_of_lindma_pkts = 1;
-	else
-		num_of_lindma_pkts = 40000;
-
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
@@ -1086,19 +1083,25 @@ void test_dram_dram_multi_ch_perf(void **state)
 		skip();
 	}
 
-	assert_in_range(num_of_ddma_ch, 1, MAX_DMA_CH);
+	total_dma_size = hw_ip.sram_size;
+	tested_dram_size = hw_ip.dram_size;
+	num_of_lindma_pkts = 40000;
+	num_of_ddma_ch = hltests_get_ddma_cnt(fd);
+	factor = 0xff;
 
-	if (hltests_is_pldm(fd))
-		size = 0x1000;
-	else
-		size = hw_ip.sram_size;
+	if (hltests_is_pldm(fd)) {
+		total_dma_size = 0x1000;
+		num_of_lindma_pkts = 1;
+	}
+
+	assert_in_range(total_dma_size, 1, tested_dram_size);
+	assert_in_range(num_of_ddma_ch, 1, MAX_DMA_CH);
 
 	dram_dram_perf_outcome =
 		&tests_state->perf_outcomes[DMA_PERF_DRAM2DRAM_MULTI_CH];
 
-	assert_in_range(size, 1, hw_ip.dram_size);
 	dram_addr = (uint64_t) (uintptr_t)
-			hltests_allocate_device_mem(fd, hw_ip.dram_size,
+			hltests_allocate_device_mem(fd, tested_dram_size,
 						NOT_CONTIGUOUS);
 	assert_non_null(dram_addr);
 
@@ -1106,20 +1109,22 @@ void test_dram_dram_multi_ch_perf(void **state)
 		struct dma_perf_transfer *t = &transfer[ch];
 
 		t->queue_index = hltests_get_ddma_qid(fd, ch, STREAM0);
-		t->src_addr =
-			dram_addr + ch * (hltests_rand_u32() & 0xff) * size;
-		t->dst_addr =
-			dram_addr + ch * (hltests_rand_u32() & 0xff) * size;
-		t->size = size / num_of_ddma_ch;
+		t->src_addr = dram_addr +
+				ch * (hltests_rand_u32() & factor) *
+				total_dma_size;
+		t->dst_addr = dram_addr +
+				ch * (hltests_rand_u32() & factor) *
+				total_dma_size;
+		t->size = total_dma_size / num_of_ddma_ch;
 
 		assert_in_range(t->src_addr, dram_addr,
-				dram_addr + hw_ip.dram_size);
+				dram_addr + tested_dram_size);
 		assert_in_range(t->src_addr + t->size,
-				dram_addr, dram_addr + hw_ip.dram_size);
+				dram_addr, dram_addr + tested_dram_size);
 		assert_in_range(t->dst_addr, dram_addr,
-				dram_addr + hw_ip.dram_size);
+				dram_addr + tested_dram_size);
 		assert_in_range(t->dst_addr + t->size,
-				dram_addr, dram_addr + hw_ip.dram_size);
+				dram_addr, dram_addr + tested_dram_size);
 	}
 
 	*dram_dram_perf_outcome = indirect_perf_test(fd, num_of_ddma_ch,
@@ -1134,12 +1139,10 @@ void test_sram_dram_bidirectional_full_multi_ch_perf(void **state)
 	struct dma_perf_transfer transfer[MAX_DMA_CH];
 	struct hlthunk_hw_ip_info hw_ip;
 	double *sram_dram_perf_outcome;
-	uint64_t dram_addr;
-	uint64_t sram_addr;
-	uint32_t size;
-	int num_of_lindma_pkts, rc, ch, fd = tests_state->fd;
-	int num_of_ddma_ch = hltests_get_ddma_cnt(fd);
-	uint8_t factor = hltests_is_simulator(fd) ? 0xf : 0xff;
+	uint64_t dram_addr, sram_addr, tested_dram_size;
+	uint32_t total_dma_size;
+	int num_of_lindma_pkts, rc, ch, fd = tests_state->fd, num_of_ddma_ch;
+	uint8_t factor;
 
 	if (hltests_is_pldm(fd))
 		skip();
@@ -1156,11 +1159,6 @@ void test_sram_dram_bidirectional_full_multi_ch_perf(void **state)
 		skip();
 	}
 
-	if (hltests_is_simulator(fd))
-		num_of_lindma_pkts = 10;
-	else
-		num_of_lindma_pkts = 60000;
-
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
@@ -1169,18 +1167,26 @@ void test_sram_dram_bidirectional_full_multi_ch_perf(void **state)
 		skip();
 	}
 
-	assert_in_range(num_of_ddma_ch, 1, MAX_DMA_CH);
-
 	sram_addr = hw_ip.sram_base_address;
+	tested_dram_size = hw_ip.dram_size;
+	total_dma_size = hw_ip.sram_size;
+	num_of_ddma_ch = hltests_get_ddma_cnt(fd);
+	num_of_lindma_pkts = 60000;
+	factor = 0xff;
 
-	size = hw_ip.sram_size;
+	if (hltests_is_simulator(fd)) {
+		num_of_lindma_pkts = 10;
+		factor = 0xf;
+	}
+
+	assert_in_range(total_dma_size, 1, tested_dram_size);
+	assert_in_range(num_of_ddma_ch, 1, MAX_DMA_CH);
 
 	sram_dram_perf_outcome =
 		&tests_state->perf_outcomes[DMA_PERF_SRAM_DRAM_BIDIR_FULL_CH];
 
-	assert_in_range(size, 1, hw_ip.dram_size);
 	dram_addr = (uint64_t) (uintptr_t)
-			hltests_allocate_device_mem(fd, hw_ip.dram_size,
+			hltests_allocate_device_mem(fd, tested_dram_size,
 						NOT_CONTIGUOUS);
 	assert_non_null(dram_addr);
 
@@ -1188,28 +1194,32 @@ void test_sram_dram_bidirectional_full_multi_ch_perf(void **state)
 		struct dma_perf_transfer *t = &transfer[ch];
 
 		t->queue_index = hltests_get_ddma_qid(fd, ch, STREAM0);
-		t->size = size / num_of_ddma_ch;
+		t->size = total_dma_size / num_of_ddma_ch;
 
 		if ((ch == 1) || (ch == 2) || (ch == 5)) {
-			t->src_addr = sram_addr + ch * (size / num_of_ddma_ch);
-			t->dst_addr =
-				dram_addr + ch *
-					(hltests_rand_u32() & factor) * size;
+			t->src_addr = sram_addr +
+					ch * (total_dma_size / num_of_ddma_ch);
+			t->dst_addr = dram_addr +
+					ch * (hltests_rand_u32() & factor) *
+					total_dma_size;
 
 			assert_in_range(t->dst_addr, dram_addr,
-					dram_addr + hw_ip.dram_size);
+					dram_addr + tested_dram_size);
 			assert_in_range(t->dst_addr + t->size,
-					dram_addr, dram_addr + hw_ip.dram_size);
+					dram_addr,
+					dram_addr + tested_dram_size);
 		} else {
-			t->dst_addr = sram_addr + ch * (size / num_of_ddma_ch);
-			t->src_addr =
-				dram_addr + ch *
-					(hltests_rand_u32() & factor) * size;
+			t->dst_addr = sram_addr +
+					ch * (total_dma_size / num_of_ddma_ch);
+			t->src_addr = dram_addr +
+					ch * (hltests_rand_u32() & factor) *
+					total_dma_size;
 
 			assert_in_range(t->src_addr, dram_addr,
-					dram_addr + hw_ip.dram_size);
+					dram_addr + tested_dram_size);
 			assert_in_range(t->src_addr + t->size,
-					dram_addr, dram_addr + hw_ip.dram_size);
+					dram_addr,
+					dram_addr + tested_dram_size);
 		}
 	}
 
