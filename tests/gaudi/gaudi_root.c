@@ -253,7 +253,8 @@ void activate_super_stress_dma_channels(void **state,
 
 	/* execute internal DMAs */
 	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr,
-				NUM_OF_INT_Q + 1, CS_FLAGS_FORCE_RESTORE, &seq);
+				NUM_OF_INT_Q + 1, HL_CS_FLAGS_FORCE_RESTORE,
+				&seq);
 	assert_int_equal(rc, 0);
 
 	rc = hltests_wait_for_cs_until_not_busy(fd, seq);

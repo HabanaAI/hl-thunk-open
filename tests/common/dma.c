@@ -616,7 +616,7 @@ void dma_4_queues(void **state, bool sram_only)
 	execute_arr[3].queue_index = hltests_get_dma_up_qid(fd, STREAM0);
 
 	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 4,
-						CS_FLAGS_FORCE_RESTORE, &seq);
+					HL_CS_FLAGS_FORCE_RESTORE, &seq);
 	assert_int_equal(rc, 0);
 
 	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
