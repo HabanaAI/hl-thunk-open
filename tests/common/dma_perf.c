@@ -899,7 +899,7 @@ void test_sram_dram_multi_ch_perf(void **state)
 	uint8_t factor = hltests_is_simulator(fd) ? 0xf : 0xff;
 
 	/* This test can't run on Goya */
-	if (hlthunk_get_device_name_from_fd(fd) == HLTHUNK_DEVICE_GOYA) {
+	if (hltests_is_goya(fd)) {
 		printf("Test is skipped for GOYA\n");
 		skip();
 	}
@@ -979,7 +979,7 @@ void test_dram_sram_multi_ch_perf(void **state)
 	uint8_t factor = hltests_is_simulator(fd) ? 0xf : 0xff;
 
 	/* This test can't run on Goya */
-	if (hlthunk_get_device_name_from_fd(fd) == HLTHUNK_DEVICE_GOYA) {
+	if (hltests_is_goya(fd)) {
 		printf("Test is skipped for GOYA\n");
 		skip();
 	}
@@ -1056,7 +1056,7 @@ void test_dram_dram_multi_ch_perf(void **state)
 	int num_of_ddma_ch = hltests_get_ddma_cnt(fd);
 
 	/* This test can't run on Goya */
-	if (hlthunk_get_device_name_from_fd(fd) == HLTHUNK_DEVICE_GOYA) {
+	if (hltests_is_goya(fd)) {
 		printf("Test is skipped for GOYA\n");
 		skip();
 	}
@@ -1145,7 +1145,7 @@ void test_sram_dram_bidirectional_full_multi_ch_perf(void **state)
 		skip();
 
 	/* This test can't run on Goya */
-	if (hlthunk_get_device_name_from_fd(fd) == HLTHUNK_DEVICE_GOYA) {
+	if (hltests_is_goya(fd)) {
 		printf("Test is skipped for GOYA\n");
 		skip();
 	}
