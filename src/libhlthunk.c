@@ -958,6 +958,7 @@ int hlthunk_command_submission_original(int fd, struct hlthunk_cs_in *in,
 	memset(&args, 0, sizeof(args));
 
 	hl_in = &args.in;
+	hl_in->seq = in->seq;
 	hl_in->chunks_restore = (__u64) (uintptr_t) in->chunks_restore;
 	hl_in->chunks_execute = (__u64) (uintptr_t) in->chunks_execute;
 	hl_in->num_chunks_restore = in->num_chunks_restore;
