@@ -104,6 +104,7 @@ struct hlthunk_cs_in {
 	uint32_t num_chunks_restore;
 	uint32_t num_chunks_execute;
 	uint32_t flags;
+	uint64_t seq;
 };
 
 struct hlthunk_cs_out {
