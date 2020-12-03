@@ -279,6 +279,7 @@ enum hl_device_status {
  * HL_INFO_CLK_THROTTLE_REASON - Retrieve clock throttling reason
  * HL_INFO_SYNC_MANAGER  - Retrieve sync manager info per dcore
  * HL_INFO_TOTAL_ENERGY  - Retrieve total energy consumption
+ * HL_INFO_PLL_FREQUENCY - Retrieve PLL frequency
  */
 #define HL_INFO_HW_IP_INFO		0
 #define HL_INFO_HW_EVENTS		1
@@ -481,6 +482,8 @@ struct hl_info_args {
 #define HL_CB_OP_CREATE		0
 /* Opcode to destroy previously created command buffer */
 #define HL_CB_OP_DESTROY	1
+/* Opcode to retrieve information about a command buffer */
+#define HL_CB_OP_INFO		2
 
 /* 2MB minus 32 bytes for 2xMSG_PROT */
 #define HL_MAX_CB_SIZE		(0x200000 - 32)
@@ -500,8 +503,17 @@ struct hl_cb_in {
 };
 
 struct hl_cb_out {
-	/* Handle of CB */
-	__u64 cb_handle;
+	union {
+		/* Handle of CB */
+		__u64 cb_handle;
+
+		/* Information about CB */
+		struct {
+			/* Usage count of CB */
+			__u32 usage_cnt;
+			__u32 pad;
+		};
+	};
 };
 
 union hl_cb_args {
