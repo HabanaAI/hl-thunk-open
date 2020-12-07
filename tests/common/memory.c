@@ -124,8 +124,6 @@ static void allocate_device_mem_until_full(void **state,
 	bool error = false;
 	int rc, fd = tests_state->fd;
 
-	chunk_size = hltests_is_simulator(fd) ? SZ_32M : SZ_512M;
-
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
@@ -135,7 +133,10 @@ static void allocate_device_mem_until_full(void **state,
 	}
 
 	total_size = hw_ip.dram_size;
-	assert_int_equal(total_size % chunk_size, 0);
+	if (hw_ip.dram_page_size)
+		chunk_size = hw_ip.dram_page_size;
+	else
+		chunk_size = hltests_is_simulator(fd) ? SZ_32M : SZ_512M;
 
 	num_of_chunks = total_size / chunk_size;
 	assert_int_not_equal(num_of_chunks, 0);
