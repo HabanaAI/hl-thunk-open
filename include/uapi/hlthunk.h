@@ -55,6 +55,7 @@ struct hlthunk_hw_ip_info {
 	uint8_t cpucp_version[HL_INFO_VERSION_MAX_LEN];
 	uint32_t module_id;
 	uint8_t card_name[HL_INFO_CARD_NAME_MAX_LEN];
+	uint64_t dram_page_size;
 };
 
 struct hlthunk_dram_usage_info {
