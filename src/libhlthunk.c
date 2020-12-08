@@ -820,6 +820,8 @@ hlthunk_public int hlthunk_get_cs_counters_info(int fd,
 		hl_cs_counters.total_queue_full_drop_cnt;
 	info->total_max_cs_in_flight_drop_cnt =
 		hl_cs_counters.total_max_cs_in_flight_drop_cnt;
+	info->total_validation_drop_cnt =
+		hl_cs_counters.total_validation_drop_cnt;
 
 	info->ctx_device_in_reset_drop_cnt =
 		hl_cs_counters.ctx_device_in_reset_drop_cnt;
@@ -831,6 +833,8 @@ hlthunk_public int hlthunk_get_cs_counters_info(int fd,
 		hl_cs_counters.ctx_queue_full_drop_cnt;
 	info->ctx_max_cs_in_flight_drop_cnt =
 		hl_cs_counters.ctx_max_cs_in_flight_drop_cnt;
+	info->ctx_validation_drop_cnt =
+		hl_cs_counters.ctx_validation_drop_cnt;
 
 	return 0;
 }
