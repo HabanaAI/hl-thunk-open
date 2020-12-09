@@ -271,6 +271,9 @@ void test_print_cs_drop_statistics(void **state)
 	printf("device_in_reset_drop_cnt       : %llu\n",
 					info.total_device_in_reset_drop_cnt);
 
+	printf("validation_drop_cnt            : %llu\n",
+						info.total_validation_drop_cnt);
+
 	printf("ctx_out_of_mem_drop_cnt        : %llu\n",
 						info.ctx_out_of_mem_drop_cnt);
 
@@ -283,8 +286,11 @@ void test_print_cs_drop_statistics(void **state)
 	printf("ctx max CS in-flight drop_cnt  : %llu\n",
 					info.ctx_max_cs_in_flight_drop_cnt);
 
-	printf("ctx_device_in_reset_drop_cnt   : %llu\n\n",
+	printf("ctx_device_in_reset_drop_cnt   : %llu\n",
 					info.ctx_device_in_reset_drop_cnt);
+
+	printf("ctx_validation_drop_cnt        : %llu\n\n",
+						info.ctx_validation_drop_cnt);
 
 	hlthunk_close(fd);
 }
