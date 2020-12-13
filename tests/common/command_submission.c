@@ -1624,6 +1624,297 @@ static void test_wait_for_cs_with_timestamp(void **state)
 	}
 }
 
+struct staged_cs_thread_params {
+	uint64_t sram_addr;
+	uint32_t sob_id;
+	uint32_t mon_id;
+	uint32_t dma_size;
+	uint32_t dma_channel;
+	int fd;
+};
+
+static void *test_staged_submission(void *args)
+{
+	struct staged_cs_thread_params *params =
+			(struct staged_cs_thread_params *) args;
+	struct hltests_monitor_and_fence mon_and_fence_info;
+	struct hltests_cs_chunk execute_chunk, restore_chunk;
+	struct hltests_pkt_info pkt_info;
+	uint32_t flags, size = params->dma_size, cb_size[2],
+		common_cb_buf_size = 0, cp_dma_cb_size = 0, restore_cb_size = 0;
+	uint64_t seq, staged_seq, host_src_va, host_dst_va, common_cb_address,
+		cp_dma_cb_address, common_cb_device_va, cp_dma_cb_device_va,
+		sram_addr[2];
+	uint16_t sob0, sob1, mon0, mon1;
+	void *host_src, *host_dst, *cb[2], *common_cb_buf,
+		*cp_dma_cb, *restore_cb;
+	int rc, i, fd = params->fd;
+
+	for (i = 0 ; i < 2 ; i++) {
+		cb[i] = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
+		assert_non_null(cb[i]);
+		cb_size[i] = 0;
+	}
+
+	sram_addr[0] = params->sram_addr;
+	sram_addr[1] = params->sram_addr + size;
+
+	sob0 = params->sob_id;
+	sob1 = params->sob_id + 1;
+	mon0 = params->mon_id;
+	mon1 = params->mon_id + 1;
+
+	host_src = hltests_allocate_host_mem(fd, size, false);
+	assert_non_null(host_src);
+	hltests_fill_rand_values(host_src, size);
+	host_src_va = hltests_get_device_va_for_host_ptr(fd, host_src);
+
+	host_dst = hltests_allocate_host_mem(fd, size, false);
+	assert_non_null(host_dst);
+	memset(host_dst, 0, size);
+	host_dst_va = hltests_get_device_va_for_host_ptr(fd, host_dst);
+
+	common_cb_address = params->sram_addr + (size * 2);
+	cp_dma_cb_address = params->sram_addr + (size * 3);
+
+	/* Allocate a common cb buffer to hold dma packets for cp_dma */
+	common_cb_buf = hltests_allocate_host_mem(fd, 0x1000, NOT_HUGE);
+	assert_non_null(common_cb_buf);
+	memset(common_cb_buf, 0, 0x1000);
+	common_cb_buf_size = 0;
+	common_cb_device_va =
+		hltests_get_device_va_for_host_ptr(fd, common_cb_buf);
+
+	restore_cb = hltests_create_cb(fd, 0x1000, EXTERNAL, 0);
+	assert_non_null(restore_cb);
+
+	/* Internal CB for CP_DMA */
+	cp_dma_cb = hltests_create_cb(fd, 0x1000, INTERNAL, cp_dma_cb_address);
+	assert_non_null(cp_dma_cb);
+	cp_dma_cb_device_va = hltests_get_device_va_for_host_ptr(fd, cp_dma_cb);
+
+	/* First CS - DMA to SRAM, signal SOB0 */
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.dma.src_addr = host_src_va;
+	pkt_info.dma.dst_addr = sram_addr[0];
+	pkt_info.dma.size = size;
+	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_SRAM;
+	cb_size[0] = hltests_add_dma_pkt(fd, cb[0], cb_size[0], &pkt_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.write_to_sob.sob_id = sob0;
+	pkt_info.write_to_sob.value = 1;
+	pkt_info.write_to_sob.mode = SOB_ADD;
+	cb_size[0] = hltests_add_write_to_sob_pkt(fd, cb[0],
+					cb_size[0], &pkt_info);
+
+	execute_chunk.cb_ptr = cb[0];
+	execute_chunk.cb_size = cb_size[0];
+	execute_chunk.queue_index = hltests_get_dma_down_qid(fd, STREAM0);
+
+	flags = HL_CS_FLAGS_STAGED_SUBMISSION |
+			HL_CS_FLAGS_STAGED_SUBMISSION_FIRST;
+	rc = hltests_submit_staged_cs(fd, NULL, 0, &execute_chunk, 1, flags, 0,
+									&seq);
+	assert_int_equal(rc, 0);
+
+	staged_seq = seq;
+
+	/* Second CS: Fence on SOB0, SRAM to SRAM, signal SOB1 */
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.dma.src_addr = sram_addr[0];
+	pkt_info.dma.dst_addr = sram_addr[1];
+	pkt_info.dma.size = size;
+	common_cb_buf_size = hltests_add_dma_pkt(fd,
+		common_cb_buf, common_cb_buf_size, &pkt_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.write_to_sob.sob_id = sob1;
+	pkt_info.write_to_sob.value = 1;
+	pkt_info.write_to_sob.mode = SOB_ADD;
+	common_cb_buf_size = hltests_add_write_to_sob_pkt(fd, common_cb_buf,
+			common_cb_buf_size, &pkt_info);
+
+	/* cp_dma will execute packets located in common cb */
+	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
+	mon_and_fence_info.queue_id =
+			hltests_get_ddma_qid(fd, params->dma_channel, STREAM0);
+	mon_and_fence_info.cmdq_fence = false;
+	mon_and_fence_info.sob_id = sob0;
+	mon_and_fence_info.mon_id = mon0;
+	mon_and_fence_info.mon_address = 0;
+	mon_and_fence_info.sob_val = 1;
+	mon_and_fence_info.dec_fence = true;
+	mon_and_fence_info.mon_payload = 1;
+	cp_dma_cb_size = hltests_add_monitor_and_fence(fd, cp_dma_cb,
+			cp_dma_cb_size, &mon_and_fence_info);
+
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.cp_dma.src_addr = common_cb_address;
+	pkt_info.cp_dma.size = common_cb_buf_size;
+	cp_dma_cb_size = hltests_add_cp_dma_pkt(fd, cp_dma_cb,
+			cp_dma_cb_size, &pkt_info);
+
+	/* Restore cb copies common cb and cp_dma cb to sram */
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.dma.src_addr = common_cb_device_va;
+	pkt_info.dma.dst_addr = common_cb_address;
+	pkt_info.dma.size = common_cb_buf_size;
+	restore_cb_size = hltests_add_dma_pkt(fd, restore_cb,
+			restore_cb_size, &pkt_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.dma.src_addr = cp_dma_cb_device_va;
+	pkt_info.dma.dst_addr = cp_dma_cb_address;
+	pkt_info.dma.size = cp_dma_cb_size;
+	restore_cb_size = hltests_add_dma_pkt(fd, restore_cb,
+			restore_cb_size, &pkt_info);
+
+	restore_chunk.cb_ptr = restore_cb;
+	restore_chunk.cb_size = restore_cb_size;
+	restore_chunk.queue_index = hltests_get_dma_down_qid(fd, STREAM0);
+
+	execute_chunk.cb_ptr = cp_dma_cb;
+	execute_chunk.cb_size = cp_dma_cb_size;
+	execute_chunk.queue_index =
+			hltests_get_ddma_qid(fd, params->dma_channel, STREAM0);
+
+	flags = HL_CS_FLAGS_STAGED_SUBMISSION | HL_CS_FLAGS_FORCE_RESTORE;
+	rc = hltests_submit_staged_cs(fd, &restore_chunk, 1, &execute_chunk,
+					1, flags, staged_seq, &seq);
+	assert_int_equal(rc, 0);
+
+	/* Third CS - Fence on SOB1, DMA SRAM to HOST */
+	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
+	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd, STREAM0);
+	mon_and_fence_info.cmdq_fence = false;
+	mon_and_fence_info.sob_id = sob1;
+	mon_and_fence_info.mon_id = mon1;
+	mon_and_fence_info.mon_address = 0;
+	mon_and_fence_info.sob_val = 1;
+	mon_and_fence_info.dec_fence = true;
+	mon_and_fence_info.mon_payload = 1;
+	cb_size[1] = hltests_add_monitor_and_fence(fd, cb[1], cb_size[1],
+			&mon_and_fence_info);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.dma.src_addr = sram_addr[1];
+	pkt_info.dma.dst_addr = host_dst_va;
+	pkt_info.dma.size = size;
+	pkt_info.dma.dma_dir = GOYA_DMA_SRAM_TO_HOST;
+	cb_size[1] = hltests_add_dma_pkt(fd, cb[1], cb_size[1], &pkt_info);
+
+	execute_chunk.cb_ptr = cb[1];
+	execute_chunk.cb_size = cb_size[1];
+	execute_chunk.queue_index = hltests_get_dma_up_qid(fd, STREAM0);
+
+	flags = HL_CS_FLAGS_STAGED_SUBMISSION |
+			HL_CS_FLAGS_STAGED_SUBMISSION_LAST;
+	rc = hltests_submit_staged_cs(fd, NULL, 0, &execute_chunk, 1, flags,
+							staged_seq, &seq);
+	assert_int_equal(rc, 0);
+
+	rc = hltests_wait_for_cs_until_not_busy(fd, staged_seq);
+	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
+
+	/* Compare host memories */
+	rc = hltests_mem_compare(host_src, host_dst, size);
+	assert_int_equal(rc, 0);
+
+	for (i = 0 ; i < 2 ; i++) {
+		rc = hltests_destroy_cb(fd, cb[i]);
+		assert_int_equal(rc, 0);
+	}
+
+	hltests_free_host_mem(fd, host_src);
+	hltests_free_host_mem(fd, host_dst);
+	hltests_free_host_mem(fd, common_cb_buf);
+
+	rc = hltests_destroy_cb(fd, cp_dma_cb);
+	assert_int_equal(rc, 0);
+
+	rc = hltests_destroy_cb(fd, restore_cb);
+	assert_int_equal(rc, 0);
+
+	return args;
+}
+
+#define NUM_THREADS	256
+
+static void test_staged_submission_256_threads(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct staged_cs_thread_params *thread_params;
+	struct hlthunk_hw_ip_info hw_ip;
+	int rc, i, fd = tests_state->fd;
+	uint32_t dma_queues_count, sob, mon, dma_size = 0x2000;
+	uint64_t sram_base;
+	pthread_t *thread_id;
+	void *retval;
+
+	if (!hltests_is_gaudi(fd)) {
+		printf("Test is only relevant for Gaudi, skipping\n");
+		skip();
+	}
+
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+	assert_not_in_range(hw_ip.sram_size, 0, dma_size * 4 * NUM_THREADS);
+
+	thread_params = hlthunk_malloc(NUM_THREADS * sizeof(*thread_params));
+	assert_non_null(thread_params);
+
+	/* Allocate arrays for threads management */
+	thread_id = hlthunk_malloc(NUM_THREADS * sizeof(*thread_id));
+	assert_non_null(thread_id);
+
+	sob = hltests_get_first_avail_sob(fd);
+	mon = hltests_get_first_avail_mon(fd);
+	dma_queues_count = hltests_get_ddma_cnt(fd);
+
+	/* Clear SOBs */
+	hltests_clear_sobs(fd, NUM_THREADS * 2);
+	sram_base = hw_ip.sram_base_address;
+
+	/* Create and execute threads */
+	for (i = 0 ; i < NUM_THREADS ; i++) {
+		thread_params[i].fd = fd;
+		thread_params[i].dma_size = dma_size;
+		thread_params[i].sob_id = sob + (i * 2);
+		thread_params[i].mon_id = mon + (i * 2);
+		thread_params[i].sram_addr = sram_base + (dma_size * 4 * i);
+		thread_params[i].dma_channel = i % dma_queues_count;
+		rc = pthread_create(&thread_id[i], NULL, test_staged_submission,
+					&thread_params[i]);
+		assert_int_equal(rc, 0);
+	}
+
+	/* Wait for the termination of the threads */
+	for (i = 0 ; i < NUM_THREADS ; i++) {
+		rc = pthread_join(thread_id[i], &retval);
+		assert_int_equal(rc, 0);
+		assert_non_null(retval);
+	}
+
+	hlthunk_free(thread_params);
+	hlthunk_free(thread_id);
+}
+
 const struct CMUnitTest cs_tests[] = {
 	cmocka_unit_test_setup(test_cs_nop, hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_cs_nop_16PQE,
@@ -1667,6 +1958,8 @@ const struct CMUnitTest cs_tests[] = {
 	cmocka_unit_test_setup(test_cs_drop,
 					hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_wait_for_cs_with_timestamp,
+					hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_staged_submission_256_threads,
 					hltests_ensure_device_operational)
 };
 
