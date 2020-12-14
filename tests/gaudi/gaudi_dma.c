@@ -772,7 +772,7 @@ void test_strided_dma(void **state)
 	pkt_info.mb = MB_TRUE;
 	pkt_info.wreg32.reg_addr =
 		(uint16_t) (mmDMA0_CORE_WR_COMP_WDATA - mmDMA0_CORE_BASE);
-	pkt_info.wreg32.value = (1 << 31) | 1;
+	pkt_info.wreg32.value = (1u << 31) | 1;
 	cb_size[1] = hltests_add_wreg32_pkt(fd, cb[1], cb_size[1], &pkt_info);
 
 	/* commit */
