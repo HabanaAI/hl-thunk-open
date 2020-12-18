@@ -161,6 +161,7 @@ struct hlthunk_functions_pointers {
 	int (*fp_hlthunk_profiler_get_trace)(int fd, void *buffer,
 						uint64_t *size,
 						uint64_t *num_entries);
+
 	/* Function for the profiler to use */
 	uint64_t (*fp_hlthunk_device_memory_alloc)(int fd, uint64_t size,
 						bool contiguous, bool shared);
@@ -690,8 +691,7 @@ hlthunk_public int hlthunk_profiler_stop(int fd);
  * @return 0 on success or negative value in case of error
  */
 hlthunk_public int hlthunk_profiler_get_trace(int fd, void *buffer,
-					uint64_t *size,
-					uint64_t *num_entries);
+					uint64_t *size, uint64_t *num_entries);
 
 /**
  * This function destroys profiler instance if it existed
