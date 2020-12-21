@@ -17,6 +17,13 @@
 #include <errno.h>
 #include <unistd.h>
 
+#define is_power_of_2(x) (				\
+{							\
+	typeof(x) __x = (x);				\
+	((__x > 0) && ((__x & (__x  - 1)) == 0));	\
+}							\
+)
+
 /**
  * This test checks that a mapping of more than 4GB is successful. This big size
  * enforces the driver to store it in a u64 variable rather than u32 variable.
@@ -108,10 +115,16 @@ void test_map_bigger_than_4GB(void **state)
 
 /**
  * This test allocates device memory until all the memory was allocated.
- * The allocated chunks are 0.5GB (because the driver reserves the first 0.5GB
- * and we have multiples of 1GB of memory).
+ * When the device dram_page_size is a power of 2 the allocated chunks are 0.5GB
+ * (because the driver reserves the first 0.5GB and we have multiples of 1GB of
+ * memory).
+ * When the device dram_page_size is not  a power of 2, the allocated memory
+ * chunks will have the same size as the dram_page_size. This may leave some
+ * memory residues which will not be used by the test.
  * The test pass if we can allocate the entire memory and fails otherwise
  * @param state contains the open file descriptor.
+ * @param contiguous indicates if the allocated device memory should be
+ *        contiguous or not.
  */
 static void allocate_device_mem_until_full(void **state,
 					enum hltests_contiguous contigouos)
@@ -133,10 +146,15 @@ static void allocate_device_mem_until_full(void **state,
 	}
 
 	total_size = hw_ip.dram_size;
-	if (hw_ip.dram_page_size)
-		chunk_size = hw_ip.dram_page_size;
-	else
+	if ((hw_ip.dram_page_size == 0) ||
+				is_power_of_2(hw_ip.dram_page_size)) {
 		chunk_size = hltests_is_simulator(fd) ? SZ_32M : SZ_512M;
+		/* handle devices with dram_page_size > 32M */
+		chunk_size = chunk_size > hw_ip.dram_page_size ?
+					chunk_size : hw_ip.dram_page_size;
+	} else {
+		chunk_size = hw_ip.dram_page_size;
+	}
 
 	num_of_chunks = total_size / chunk_size;
 	assert_int_not_equal(num_of_chunks, 0);
