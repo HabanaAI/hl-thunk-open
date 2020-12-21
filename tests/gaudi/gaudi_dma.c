@@ -100,7 +100,7 @@ static void *dma_thread_func_ext(void *args)
 	return args;
 }
 
-void test_dma_all2all(void **state)
+void test_gaudi_dma_all2all(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -838,7 +838,7 @@ void test_strided_dma(void **state)
 }
 
 const struct CMUnitTest gaudi_dma_tests[] = {
-	cmocka_unit_test_setup(test_dma_all2all,
+	cmocka_unit_test_setup(test_gaudi_dma_all2all,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_strided_dma,
 				hltests_ensure_device_operational)
