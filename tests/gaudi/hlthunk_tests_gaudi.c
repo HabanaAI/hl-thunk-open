@@ -698,7 +698,7 @@ static uint32_t gaudi_get_dma_up_qid(
 static uint8_t gaudi_get_ddma_cnt(
 			enum hltests_dcore_separation_mode dcore_sep_mode)
 {
-	return DMA_NUMBER_OF_CHANNELS - 3;
+	return DMA_NUMBER_OF_CHANNELS - 2;
 }
 
 static uint32_t gaudi_get_ddma_qid(
@@ -708,9 +708,6 @@ static uint32_t gaudi_get_ddma_qid(
 {
 	assert_in_range(dma_ch, 0, gaudi_get_ddma_cnt(dcore_sep_mode) - 1);
 
-	/* DMA5 is external, need to skip it */
-	if (dma_ch >= 3)
-		dma_ch++;
 	return GAUDI_QUEUE_ID_DMA_2_0 + dma_ch * NUM_OF_STREAMS + stream;
 }
 
