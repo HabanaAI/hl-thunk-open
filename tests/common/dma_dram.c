@@ -101,14 +101,31 @@ void test_dma_entire_dram_random(void **state)
 
 	assert_true(2 * cfg.dma_size <= cfg.zone_size);
 
-	/* align to zone_size */
-	dram_size = hw_ip.dram_size & ~(cfg.zone_size - 1);
+	/* if dram page size is not power of 2 align dram_size to dram_page_size
+	 * else align it to zone_size
+	 */
+	if (hw_ip.dram_page_size &&
+			(hw_ip.dram_page_size & ~(hw_ip.dram_page_size - 1)))
+		dram_size = hw_ip.dram_size -
+				(hw_ip.dram_size % hw_ip.dram_page_size);
+	else
+		dram_size = hw_ip.dram_size & ~(cfg.zone_size - 1);
+
 	assert_true(cfg.zone_size < dram_size);
 
 	dram_ptr = hltests_allocate_device_mem(fd, dram_size, CONTIGUOUS);
 	assert_non_null(dram_ptr);
 	dram_addr = (uint64_t) (uintptr_t) dram_ptr;
 	dram_addr_end = dram_addr + dram_size - 1;
+
+	/* round addresses to zone size */
+	if (dram_addr & ~(cfg.zone_size - 1))
+		dram_addr = ((dram_addr + cfg.zone_size - 1) / cfg.zone_size) *
+								cfg.zone_size;
+	if (dram_addr_end & ~(cfg.zone_size - 1))
+		dram_addr_end = dram_addr_end - (dram_addr_end % cfg.zone_size);
+
+	assert_true(dram_addr_end >= (dram_addr + cfg.zone_size));
 
 	while (dram_addr < (dram_addr_end - cfg.dma_size)) {
 		buf[0] = hltests_allocate_host_mem(fd, cfg.dma_size, NOT_HUGE);
