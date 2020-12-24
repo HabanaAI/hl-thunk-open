@@ -88,10 +88,15 @@ do { \
 	.fp_hlthunk_free = hlthunk_free,\
 	.fp_hlthunk_get_time_sync_info = hlthunk_get_time_sync_info,\
 	.fp_hlthunk_wait_for_collective_sig = \
-		hlthunk_wait_for_collective_signal_original\
+		hlthunk_wait_for_collective_signal_original,\
+	.fp_hlthunk_staged_command_submission = \
+		hlthunk_staged_command_submission_original\
 }
 
 int hlthunk_command_submission_original(int fd, struct hlthunk_cs_in *in,
+					struct hlthunk_cs_out *out);
+int hlthunk_staged_command_submission_original(int fd, uint64_t sequence,
+					struct hlthunk_cs_in *in,
 					struct hlthunk_cs_out *out);
 int hlthunk_signal_submission_original(int fd, struct hlthunk_signal_in *in,
 					struct hlthunk_signal_out *out);

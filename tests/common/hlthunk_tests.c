@@ -1317,7 +1317,6 @@ int hltests_submit_cs(int fd,
 	}
 
 	memset(&cs_in, 0, sizeof(cs_in));
-	cs_in.seq = *seq;
 	cs_in.chunks_restore = chunks_restore;
 	cs_in.chunks_execute = chunks_execute;
 	cs_in.num_chunks_restore = restore_arr_size;

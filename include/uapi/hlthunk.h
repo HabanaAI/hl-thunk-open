@@ -105,7 +105,6 @@ struct hlthunk_cs_in {
 	uint32_t num_chunks_restore;
 	uint32_t num_chunks_execute;
 	uint32_t flags;
-	uint64_t seq;
 };
 
 struct hlthunk_cs_out {
@@ -202,6 +201,10 @@ struct hlthunk_functions_pointers {
 					struct hlthunk_wait_out *out);
 	int (*fp_hlthunk_get_cb_usage_count)(int fd, uint64_t cb_handle,
 						uint32_t *usage_cnt);
+	int (*fp_hlthunk_staged_command_submission)(int fd,
+						uint64_t sequence,
+						struct hlthunk_cs_in *in,
+						struct hlthunk_cs_out *out);
 };
 
 struct hlthunk_debugfs {
@@ -498,6 +501,21 @@ hlthunk_public int hlthunk_get_cb_usage_count(int fd, uint64_t cb_handle,
  * @return 0 for success, negative value for failure
  */
 hlthunk_public int hlthunk_command_submission(int fd, struct hlthunk_cs_in *in,
+						struct hlthunk_cs_out *out);
+
+/**
+ * This function submits a set of jobs to a specific device as part of a
+ * staged submission
+ * @param fd file descriptor handle of habanalabs main device
+ * @sequence sequence number of this staged submission obtained from the
+ *           first CS submitted
+ * @param in pointer to command submission input structure
+ * @param out pointer to command submission output structure
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_staged_command_submission(int fd,
+						uint64_t sequence,
+						struct hlthunk_cs_in *in,
 						struct hlthunk_cs_out *out);
 
 /**
