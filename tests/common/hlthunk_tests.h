@@ -495,6 +495,13 @@ int hltests_submit_cs(int fd, struct hltests_cs_chunk *restore_arr,
 				uint32_t execute_arr_size,
 				uint32_t flags,
 				uint64_t *seq);
+int hltests_submit_staged_cs(int fd, struct hltests_cs_chunk *restore_arr,
+				uint32_t restore_arr_size,
+				struct hltests_cs_chunk *execute_arr,
+				uint32_t execute_arr_size,
+				uint32_t flags,
+				uint64_t staged_cs_seq,
+				uint64_t *seq);
 
 int hltests_setup(void **state);
 int hltests_teardown(void **state);

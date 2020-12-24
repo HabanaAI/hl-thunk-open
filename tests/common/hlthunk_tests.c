@@ -1256,6 +1256,25 @@ out:
 	return 0;
 }
 
+static int fill_cs_chunks(struct hltests_device *hdev,
+			struct hl_cs_chunk *submit_arr,
+			struct hltests_cs_chunk *chunks_arr,
+			uint32_t num_chunks)
+{
+	int i, rc;
+
+	for (i = 0 ; i < num_chunks ; i++) {
+		rc = fill_cs_chunk(hdev, &submit_arr[i],
+				chunks_arr[i].cb_ptr,
+				chunks_arr[i].cb_size,
+				chunks_arr[i].queue_index);
+		if (rc)
+			return rc;
+	}
+
+	return 0;
+}
+
 int hltests_submit_cs(int fd,
 		struct hltests_cs_chunk *restore_arr,
 		uint32_t restore_arr_size,
@@ -1268,7 +1287,7 @@ int hltests_submit_cs(int fd,
 	struct hl_cs_chunk *chunks_restore = NULL, *chunks_execute = NULL;
 	struct hlthunk_cs_in cs_in;
 	struct hlthunk_cs_out cs_out;
-	uint32_t size, i;
+	uint32_t size;
 	int rc = 0;
 
 	hdev = get_hdev_from_fd(fd);
@@ -1286,15 +1305,10 @@ int hltests_submit_cs(int fd,
 			goto out;
 		}
 
-		for (i = 0 ; i < restore_arr_size ; i++) {
-			rc = fill_cs_chunk(hdev, &chunks_restore[i],
-					restore_arr[i].cb_ptr,
-					restore_arr[i].cb_size,
-					restore_arr[i].queue_index);
-			if (rc)
-				goto free_chunks_restore;
-		}
-
+		rc = fill_cs_chunks(hdev, chunks_restore, restore_arr,
+				restore_arr_size);
+		if (rc)
+			goto free_chunks_restore;
 	}
 
 	if (execute_arr_size && execute_arr) {
@@ -1305,15 +1319,10 @@ int hltests_submit_cs(int fd,
 			goto free_chunks_restore;
 		}
 
-		for (i = 0 ; i < execute_arr_size ; i++) {
-			rc = fill_cs_chunk(hdev, &chunks_execute[i],
-					execute_arr[i].cb_ptr,
-					execute_arr[i].cb_size,
-					execute_arr[i].queue_index);
-			if (rc)
-				goto free_chunks_execute;
-		}
-
+		rc = fill_cs_chunks(hdev, chunks_execute, execute_arr,
+				execute_arr_size);
+		if (rc)
+			goto free_chunks_execute;
 	}
 
 	memset(&cs_in, 0, sizeof(cs_in));
@@ -1325,6 +1334,90 @@ int hltests_submit_cs(int fd,
 
 	memset(&cs_out, 0, sizeof(cs_out));
 	rc = hlthunk_command_submission(fd, &cs_in, &cs_out);
+	if (rc)
+		goto free_chunks_execute;
+
+	if (cs_out.status != HL_CS_STATUS_SUCCESS) {
+		rc = -EINVAL;
+		goto free_chunks_execute;
+	}
+
+	*seq = cs_out.seq;
+
+free_chunks_execute:
+	hlthunk_free(chunks_execute);
+free_chunks_restore:
+	hlthunk_free(chunks_restore);
+out:
+	return rc;
+}
+
+int hltests_submit_staged_cs(int fd,
+		struct hltests_cs_chunk *restore_arr,
+		uint32_t restore_arr_size,
+		struct hltests_cs_chunk *execute_arr,
+		uint32_t execute_arr_size,
+		uint32_t flags,
+		uint64_t staged_cs_seq,
+		uint64_t *seq)
+{
+	struct hltests_device *hdev;
+	struct hl_cs_chunk *chunks_restore = NULL, *chunks_execute = NULL;
+	struct hlthunk_cs_in cs_in;
+	struct hlthunk_cs_out cs_out;
+	uint32_t size;
+	int rc = 0;
+
+	if (!(flags & HL_CS_FLAGS_STAGED_SUBMISSION)) {
+		printf("Staged submission flags are not set");
+		return -EINVAL;
+	}
+
+	hdev = get_hdev_from_fd(fd);
+	if (!hdev)
+		return -ENODEV;
+
+	if (!restore_arr_size && !execute_arr_size)
+		return 0;
+
+	if (restore_arr_size && restore_arr) {
+		size = restore_arr_size * sizeof(*chunks_restore);
+		chunks_restore = hlthunk_malloc(size);
+		if (!chunks_restore) {
+			rc = -ENOMEM;
+			goto out;
+		}
+
+		rc = fill_cs_chunks(hdev, chunks_restore, restore_arr,
+				restore_arr_size);
+		if (rc)
+			goto free_chunks_restore;
+	}
+
+	if (execute_arr_size && execute_arr) {
+		size = execute_arr_size * sizeof(*chunks_execute);
+		chunks_execute = hlthunk_malloc(size);
+		if (!chunks_execute) {
+			rc = -ENOMEM;
+			goto free_chunks_restore;
+		}
+
+		rc = fill_cs_chunks(hdev, chunks_execute, execute_arr,
+				execute_arr_size);
+		if (rc)
+			goto free_chunks_execute;
+	}
+
+	memset(&cs_in, 0, sizeof(cs_in));
+	cs_in.chunks_restore = chunks_restore;
+	cs_in.chunks_execute = chunks_execute;
+	cs_in.num_chunks_restore = restore_arr_size;
+	cs_in.num_chunks_execute = execute_arr_size;
+	cs_in.flags = flags;
+
+	memset(&cs_out, 0, sizeof(cs_out));
+	rc = hlthunk_staged_command_submission(fd, staged_cs_seq,
+						&cs_in, &cs_out);
 	if (rc)
 		goto free_chunks_execute;
 
