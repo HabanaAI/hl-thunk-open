@@ -982,7 +982,6 @@ int hlthunk_command_submission_original(int fd, struct hlthunk_cs_in *in,
 	memset(&args, 0, sizeof(args));
 
 	hl_in = &args.in;
-	hl_in->seq = in->seq;
 	hl_in->chunks_restore = (__u64) (uintptr_t) in->chunks_restore;
 	hl_in->chunks_execute = (__u64) (uintptr_t) in->chunks_execute;
 	hl_in->num_chunks_restore = in->num_chunks_restore;
@@ -1005,6 +1004,49 @@ hlthunk_public int hlthunk_command_submission(int fd, struct hlthunk_cs_in *in,
 {
 	return (*functions_pointers_table.fp_hlthunk_command_submission)(
 				fd, in, out);
+}
+
+int hlthunk_staged_command_submission_original(int fd,
+						uint64_t sequence,
+						struct hlthunk_cs_in *in,
+						struct hlthunk_cs_out *out)
+{
+	union hl_cs_args args;
+	struct hl_cs_in *hl_in;
+	struct hl_cs_out *hl_out;
+	int rc;
+
+	if (!(in->flags & HL_CS_FLAGS_STAGED_SUBMISSION))
+		return -EINVAL;
+
+	memset(&args, 0, sizeof(args));
+
+	hl_in = &args.in;
+	hl_in->seq = sequence;
+	hl_in->chunks_restore = (__u64) (uintptr_t) in->chunks_restore;
+	hl_in->chunks_execute = (__u64) (uintptr_t) in->chunks_execute;
+	hl_in->num_chunks_restore = in->num_chunks_restore;
+	hl_in->num_chunks_execute = in->num_chunks_execute;
+	hl_in->cs_flags = in->flags;
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_CS, &args);
+	if (rc)
+		return rc;
+
+	hl_out = &args.out;
+	out->seq = hl_out->seq;
+	out->status = hl_out->status;
+
+	return 0;
+}
+
+hlthunk_public int hlthunk_staged_command_submission(int fd,
+						uint64_t sequence,
+						struct hlthunk_cs_in *in,
+						struct hlthunk_cs_out *out)
+{
+	return (*functions_pointers_table.fp_hlthunk_staged_command_submission)(
+				fd, sequence, in, out);
 }
 
 int hlthunk_signal_submission_original(int fd,
