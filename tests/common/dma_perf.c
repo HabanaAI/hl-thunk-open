@@ -16,7 +16,7 @@
 #include <unistd.h>
 #include <time.h>
 
-#define MAX_DMA_CH 6
+#define MAX_DMA_CH 8
 #define LIN_DMA_PKT_SIZE 24
 #define MAX_NUM_LIN_DMA_PKTS_IN_EXTERNAL_CB (HL_MAX_CB_SIZE / LIN_DMA_PKT_SIZE)
 
