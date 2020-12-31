@@ -30,6 +30,14 @@ struct dma_perf_transfer {
 	enum hltests_goya_dma_direction dma_dir;
 };
 
+uint32_t calc_factor(uint32_t num_ch, uint32_t dram_size, uint32_t dma_size)
+{
+	if (num_ch > 1)
+		return dram_size / ((num_ch - 1) * dma_size);
+	else
+		return dram_size / dma_size;
+}
+
 static double execute_host_bidirectional_transfer(int fd,
 				struct dma_perf_transfer *host_to_device,
 				struct dma_perf_transfer *device_to_host)
@@ -892,9 +900,8 @@ void test_sram_dram_multi_ch_perf(void **state)
 	struct hlthunk_hw_ip_info hw_ip;
 	double *sram_dram_perf_outcome;
 	uint64_t dram_addr, sram_addr, tested_dram_size;
-	uint32_t total_dma_size;
+	uint32_t total_dma_size, factor;
 	int num_of_lindma_pkts, rc, ch, fd = tests_state->fd, num_of_ddma_ch;
-	uint8_t factor;
 
 	/* This test can't run on Goya */
 	if (hltests_is_goya(fd)) {
@@ -930,7 +937,7 @@ void test_sram_dram_multi_ch_perf(void **state)
 		num_of_lindma_pkts = 10;
 	}
 
-	factor = tested_dram_size / ((num_of_ddma_ch - 1) * total_dma_size);
+	factor = calc_factor(num_of_ddma_ch, tested_dram_size, total_dma_size);
 
 	assert_in_range(total_dma_size, 1, tested_dram_size);
 	assert_in_range(num_of_ddma_ch, 1, MAX_DMA_CH);
@@ -973,9 +980,8 @@ void test_dram_sram_multi_ch_perf(void **state)
 	struct hlthunk_hw_ip_info hw_ip;
 	double *dram_sram_perf_outcome;
 	uint64_t dram_addr, sram_addr, tested_dram_size;
-	uint32_t total_dma_size;
+	uint32_t total_dma_size, factor;
 	int num_of_lindma_pkts, rc, ch, fd = tests_state->fd, num_of_ddma_ch;
-	uint8_t factor;
 
 	/* This test can't run on Goya */
 	if (hltests_is_goya(fd)) {
@@ -1010,7 +1016,7 @@ void test_dram_sram_multi_ch_perf(void **state)
 		num_of_lindma_pkts = 10;
 	}
 
-	factor = tested_dram_size / ((num_of_ddma_ch - 1) * total_dma_size);
+	factor = calc_factor(num_of_ddma_ch, tested_dram_size, total_dma_size);
 
 	assert_in_range(total_dma_size, 1, tested_dram_size);
 	assert_in_range(num_of_ddma_ch, 1, MAX_DMA_CH);
@@ -1053,9 +1059,8 @@ void test_dram_dram_multi_ch_perf(void **state)
 	struct hlthunk_hw_ip_info hw_ip;
 	double *dram_dram_perf_outcome;
 	uint64_t dram_addr, tested_dram_size;
-	uint32_t total_dma_size;
+	uint32_t total_dma_size, factor;
 	int num_of_lindma_pkts, rc, ch, fd = tests_state->fd, num_of_ddma_ch;
-	uint8_t factor;
 
 	/* This test can't run on Goya */
 	if (hltests_is_goya(fd)) {
@@ -1093,7 +1098,7 @@ void test_dram_dram_multi_ch_perf(void **state)
 		num_of_lindma_pkts = 1;
 	}
 
-	factor = tested_dram_size / ((num_of_ddma_ch - 1) * total_dma_size);
+	factor = calc_factor(num_of_ddma_ch, tested_dram_size, total_dma_size);
 
 	assert_in_range(total_dma_size, 1, tested_dram_size);
 	assert_in_range(num_of_ddma_ch, 1, MAX_DMA_CH);
@@ -1141,9 +1146,8 @@ void test_sram_dram_bidirectional_full_multi_ch_perf(void **state)
 	struct hlthunk_hw_ip_info hw_ip;
 	double *sram_dram_perf_outcome;
 	uint64_t dram_addr, sram_addr, tested_dram_size;
-	uint32_t total_dma_size;
+	uint32_t total_dma_size, factor;
 	int num_of_lindma_pkts, rc, ch, fd = tests_state->fd, num_of_ddma_ch;
-	uint8_t factor;
 
 	if (hltests_is_pldm(fd))
 		skip();
@@ -1177,7 +1181,7 @@ void test_sram_dram_bidirectional_full_multi_ch_perf(void **state)
 	if (hltests_is_simulator(fd))
 		num_of_lindma_pkts = 10;
 
-	factor = tested_dram_size / ((num_of_ddma_ch - 1) * total_dma_size);
+	factor = calc_factor(num_of_ddma_ch, tested_dram_size, total_dma_size);
 
 	assert_in_range(total_dma_size, 1, tested_dram_size);
 	assert_in_range(num_of_ddma_ch, 1, MAX_DMA_CH);
