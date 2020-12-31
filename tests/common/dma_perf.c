@@ -328,6 +328,7 @@ void test_host_sram_perf(void **state)
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
+	assert_in_range(cfg.dma_size, 1, hw_ip.sram_size);
 
 	sram_addr = hw_ip.sram_base_address;
 
@@ -374,6 +375,7 @@ void test_sram_host_perf(void **state)
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
+	assert_in_range(cfg.dma_size, 1, hw_ip.sram_size);
 
 	sram_addr = hw_ip.sram_base_address;
 
@@ -1324,9 +1326,6 @@ void test_host_sram_bidirectional_perf(void **state)
 	void *src_ptr, *dst_ptr;
 	int rc, fd = tests_state->fd;
 
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
 	cfg.dma_size = LIN_DMA_SIZE_FOR_HOST;
 
 	if (config_filename) {
@@ -1336,6 +1335,10 @@ void test_host_sram_bidirectional_perf(void **state)
 		printf("Configuration loaded from %s:\n", config_filename);
 		printf("dma_size = 0x%x\n", cfg.dma_size);
 	}
+
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+	assert_in_range(cfg.dma_size, 1, hw_ip.sram_size / 2);
 
 	sram_addr1 = hw_ip.sram_base_address;
 	sram_addr2 = sram_addr1 + cfg.dma_size;
