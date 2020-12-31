@@ -921,7 +921,6 @@ void test_sram_dram_multi_ch_perf(void **state)
 	total_dma_size = hw_ip.sram_size;
 	num_of_ddma_ch = hltests_get_ddma_cnt(fd);
 	num_of_lindma_pkts = 60000;
-	factor = 0xff;
 
 	if (hltests_is_pldm(fd)) {
 		total_dma_size = 0x1000;
@@ -929,8 +928,9 @@ void test_sram_dram_multi_ch_perf(void **state)
 		num_of_lindma_pkts = 1;
 	} else if (hltests_is_simulator(fd)) {
 		num_of_lindma_pkts = 10;
-		factor = 0xf;
 	}
+
+	factor = tested_dram_size / ((num_of_ddma_ch - 1) * total_dma_size);
 
 	assert_in_range(total_dma_size, 1, tested_dram_size);
 	assert_in_range(num_of_ddma_ch, 1, MAX_DMA_CH);
@@ -950,7 +950,7 @@ void test_sram_dram_multi_ch_perf(void **state)
 		t->src_addr = sram_addr +
 				ch * (total_dma_size / num_of_ddma_ch);
 		t->dst_addr = dram_addr +
-				ch * (hltests_rand_u32() & factor) *
+				ch * (hltests_rand_u32() % factor) *
 				total_dma_size;
 		t->size = total_dma_size / num_of_ddma_ch;
 
@@ -1002,15 +1002,15 @@ void test_dram_sram_multi_ch_perf(void **state)
 	total_dma_size = hw_ip.sram_size;
 	num_of_ddma_ch = hltests_get_ddma_cnt(fd);
 	num_of_lindma_pkts = 60000;
-	factor = 0xff;
 
 	if (hltests_is_pldm(fd)) {
 		total_dma_size = 0x1000;
 		num_of_lindma_pkts = 1;
 	} else if (hltests_is_simulator(fd)) {
 		num_of_lindma_pkts = 10;
-		factor = 0xf;
 	}
+
+	factor = tested_dram_size / ((num_of_ddma_ch - 1) * total_dma_size);
 
 	assert_in_range(total_dma_size, 1, tested_dram_size);
 	assert_in_range(num_of_ddma_ch, 1, MAX_DMA_CH);
@@ -1028,7 +1028,7 @@ void test_dram_sram_multi_ch_perf(void **state)
 
 		t->queue_index = hltests_get_ddma_qid(fd, ch, STREAM0);
 		t->src_addr = dram_addr +
-				ch * (hltests_rand_u32() & factor) *
+				ch * (hltests_rand_u32() % factor) *
 				total_dma_size;
 		t->dst_addr = sram_addr +
 				ch * (total_dma_size / num_of_ddma_ch);
@@ -1087,12 +1087,13 @@ void test_dram_dram_multi_ch_perf(void **state)
 	tested_dram_size = hw_ip.dram_size;
 	num_of_lindma_pkts = 40000;
 	num_of_ddma_ch = hltests_get_ddma_cnt(fd);
-	factor = 0xff;
 
 	if (hltests_is_pldm(fd)) {
 		total_dma_size = 0x1000;
 		num_of_lindma_pkts = 1;
 	}
+
+	factor = tested_dram_size / ((num_of_ddma_ch - 1) * total_dma_size);
 
 	assert_in_range(total_dma_size, 1, tested_dram_size);
 	assert_in_range(num_of_ddma_ch, 1, MAX_DMA_CH);
@@ -1110,10 +1111,10 @@ void test_dram_dram_multi_ch_perf(void **state)
 
 		t->queue_index = hltests_get_ddma_qid(fd, ch, STREAM0);
 		t->src_addr = dram_addr +
-				ch * (hltests_rand_u32() & factor) *
+				ch * (hltests_rand_u32() % factor) *
 				total_dma_size;
 		t->dst_addr = dram_addr +
-				ch * (hltests_rand_u32() & factor) *
+				ch * (hltests_rand_u32() % factor) *
 				total_dma_size;
 		t->size = total_dma_size / num_of_ddma_ch;
 
@@ -1172,12 +1173,11 @@ void test_sram_dram_bidirectional_full_multi_ch_perf(void **state)
 	total_dma_size = hw_ip.sram_size;
 	num_of_ddma_ch = hltests_get_ddma_cnt(fd);
 	num_of_lindma_pkts = 60000;
-	factor = 0xff;
 
-	if (hltests_is_simulator(fd)) {
+	if (hltests_is_simulator(fd))
 		num_of_lindma_pkts = 10;
-		factor = 0xf;
-	}
+
+	factor = tested_dram_size / ((num_of_ddma_ch - 1) * total_dma_size);
 
 	assert_in_range(total_dma_size, 1, tested_dram_size);
 	assert_in_range(num_of_ddma_ch, 1, MAX_DMA_CH);
@@ -1200,7 +1200,7 @@ void test_sram_dram_bidirectional_full_multi_ch_perf(void **state)
 			t->src_addr = sram_addr +
 					ch * (total_dma_size / num_of_ddma_ch);
 			t->dst_addr = dram_addr +
-					ch * (hltests_rand_u32() & factor) *
+					ch * (hltests_rand_u32() % factor) *
 					total_dma_size;
 
 			assert_in_range(t->dst_addr, dram_addr,
@@ -1212,7 +1212,7 @@ void test_sram_dram_bidirectional_full_multi_ch_perf(void **state)
 			t->dst_addr = sram_addr +
 					ch * (total_dma_size / num_of_ddma_ch);
 			t->src_addr = dram_addr +
-					ch * (hltests_rand_u32() & factor) *
+					ch * (hltests_rand_u32() % factor) *
 					total_dma_size;
 
 			assert_in_range(t->src_addr, dram_addr,
