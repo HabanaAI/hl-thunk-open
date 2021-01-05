@@ -206,6 +206,9 @@ struct hlthunk_functions_pointers {
 						uint64_t sequence,
 						struct hlthunk_cs_in *in,
 						struct hlthunk_cs_out *out);
+	int (*fp_hlthunk_get_hw_block)(int fd, uint64_t block_address,
+						uint32_t block_size,
+						uint64_t *handle);
 };
 
 struct hlthunk_debugfs {
@@ -645,6 +648,18 @@ hlthunk_public uint64_t hlthunk_host_memory_map(int fd, void *host_virt_addr,
  * @return 0 for success, negative value for failure
  */
 hlthunk_public int hlthunk_memory_unmap(int fd, uint64_t device_virt_addr);
+
+/**
+ * This function retrieves a HW block handle according to a given address
+ * @param fd file descriptor of the device on which to allocate the memory
+ * @param block_address HW block address (configuration space only)
+ * @param block_size HW block size (not used at this moment)
+ * @param handle pointer to handle that needs to be passed to mmap in order to
+ * map the HW block to a VA in the process VA range
+ * @return 0 on success or negative value in case of error
+ */
+hlthunk_public int hlthunk_get_hw_block(int fd, uint64_t block_address,
+				uint32_t block_size, uint64_t *handle);
 
 /**
  * This function enables and retrieves debug traces of a specific device

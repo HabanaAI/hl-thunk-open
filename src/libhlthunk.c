@@ -1051,6 +1051,32 @@ hlthunk_public int hlthunk_staged_command_submission(int fd,
 				fd, sequence, in, out);
 }
 
+int hlthunk_get_hw_block_original(int fd, uint64_t block_address,
+					uint32_t block_size, uint64_t *handle)
+{
+	union hl_mem_args ioctl_args;
+	int rc;
+
+	memset(&ioctl_args, 0, sizeof(ioctl_args));
+	ioctl_args.in.map_block.block_addr = block_address;
+	ioctl_args.in.op = HL_MEM_OP_MAP_BLOCK;
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_MEMORY, &ioctl_args);
+	if (rc)
+		return rc;
+
+	*handle = ioctl_args.out.handle;
+
+	return 0;
+}
+
+hlthunk_public int hlthunk_get_hw_block(int fd, uint64_t block_address,
+					uint32_t block_size, uint64_t *handle)
+{
+	return (*functions_pointers_table.fp_hlthunk_get_hw_block)(
+				fd, block_address, block_size, handle);
+}
+
 int hlthunk_signal_submission_original(int fd,
 					struct hlthunk_signal_in *in,
 					struct hlthunk_signal_out *out)
