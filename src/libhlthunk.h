@@ -90,7 +90,8 @@ do { \
 	.fp_hlthunk_wait_for_collective_sig = \
 		hlthunk_wait_for_collective_signal_original,\
 	.fp_hlthunk_staged_command_submission = \
-		hlthunk_staged_command_submission_original\
+		hlthunk_staged_command_submission_original,\
+	.fp_hlthunk_get_hw_block = hlthunk_get_hw_block_original\
 }
 
 int hlthunk_command_submission_original(int fd, struct hlthunk_cs_in *in,
@@ -116,6 +117,8 @@ uint64_t hlthunk_host_memory_map_original(int fd, void *host_virt_addr,
 					  uint64_t hint_addr,
 					  uint64_t host_size);
 int hlthunk_memory_unmap_original(int fd, uint64_t device_virt_addr);
+int hlthunk_get_hw_block_original(int fd, uint64_t block_address,
+					uint32_t block_size, uint64_t *handle);
 
 #undef hlthunk_public
 #define hlthunk_public
