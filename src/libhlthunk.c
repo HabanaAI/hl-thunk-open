@@ -499,6 +499,8 @@ hlthunk_public int hlthunk_get_hw_ip_info(int fd,
 		HL_INFO_CARD_NAME_MAX_LEN);
 	hw_ip->module_id = hl_hw_ip.module_id;
 	hw_ip->dram_page_size = hl_hw_ip.dram_page_size;
+	hw_ip->first_available_interrupt_id =
+		hl_hw_ip.first_available_interrupt_id;
 
 	return 0;
 }
