@@ -7,6 +7,7 @@
 
 #include "libhlthunk.h"
 #include "specs/common/pci_ids.h"
+#include "specs/common/shim_types.h"
 
 #define _GNU_SOURCE
 
@@ -36,8 +37,11 @@ int hlthunk_debug_level = HLTHUNK_DEBUG_LEVEL_NA;
  * get this 'default' table, and this table's pointers will point to the
  * profiler functions so it will wrap all this functions with profiling
  */
-struct hlthunk_functions_pointers functions_pointers_table =
+struct hlthunk_functions_pointers default_functions_pointers_table =
 	INIT_FUNCS_POINTERS_TABLE;
+
+struct hlthunk_functions_pointers *functions_pointers_table =
+	&default_functions_pointers_table;
 
 struct global_hlthunk_members {
 	bool is_profiler_checked;
@@ -301,10 +305,39 @@ void hlthunk_set_profiler(void)
 		      "hlthunk_set_profiler");
 
 	if (set_profiler_function)
-		(*set_profiler_function)(&functions_pointers_table);
+		(*set_profiler_function)(functions_pointers_table);
 #else
 	printf(
 		"HABANA_PROFILE is set to 1, but profiler is not supported in this build\n");
+#endif
+}
+
+void hlthunk_enable_shim(void)
+{
+#ifndef DISABLE_PROFILER
+	void* (*shim_get_functions)(
+		enum shim_api_type api_type, void *orig_functions);
+
+	global_members.shared_object_handle =
+		dlopen("libhl_shim.so", RTLD_LAZY);
+	if (global_members.shared_object_handle == NULL)
+		return;
+
+	*(void **) (&shim_get_functions) =
+		dlsym(global_members.shared_object_handle,
+		      SHIM_GET_FUNCTIONS);
+
+	/*
+	 * TODO: start/stop profiling is not supported at the moment.
+	 * Currently, we call ShimGetFunctions only once in the initialization
+	 * To support profiling during execution,
+	 * we will have to call it before every (or specific) API call
+	 */
+	functions_pointers_table = shim_get_functions(SHIM_API_HLTHUNK,
+		functions_pointers_table);
+#else
+	printf(
+		"HABANA_SHIM is set to 1, but profiler is not supported in this build\n");
 #endif
 }
 
@@ -329,6 +362,11 @@ hlthunk_public int hlthunk_open(enum hlthunk_device_name device_name,
 			env_var = getenv("HABANA_PROFILE");
 			if (env_var && strcmp(env_var, "1") == 0)
 				hlthunk_set_profiler();
+			else {
+				env_var = getenv("HABANA_SHIM");
+				if (env_var && strcmp(env_var, "1") == 0)
+					hlthunk_enable_shim();
+			}
 
 			global_members.is_profiler_checked = true;
 		}
@@ -336,7 +374,7 @@ hlthunk_public int hlthunk_open(enum hlthunk_device_name device_name,
 		pthread_mutex_unlock(&global_members.profiler_init_lock);
 	}
 
-	return (*functions_pointers_table.fp_hlthunk_open)(device_name, busid);
+	return (*functions_pointers_table->fp_hlthunk_open)(device_name, busid);
 }
 
 hlthunk_public int hlthunk_open_by_module_id(uint32_t module_id)
@@ -419,7 +457,7 @@ int hlthunk_close_original(int fd)
 
 hlthunk_public int hlthunk_close(int fd)
 {
-	return (*functions_pointers_table.fp_hlthunk_close)(fd);
+	return (*functions_pointers_table->fp_hlthunk_close)(fd);
 }
 
 hlthunk_public int hlthunk_get_hw_ip_info(int fd,
@@ -967,7 +1005,7 @@ int hlthunk_command_submission_original(int fd, struct hlthunk_cs_in *in,
 hlthunk_public int hlthunk_command_submission(int fd, struct hlthunk_cs_in *in,
 					      struct hlthunk_cs_out *out)
 {
-	return (*functions_pointers_table.fp_hlthunk_command_submission)(
+	return (*functions_pointers_table->fp_hlthunk_command_submission)(
 				fd, in, out);
 }
 
@@ -1010,8 +1048,8 @@ hlthunk_public int hlthunk_staged_command_submission(int fd,
 						struct hlthunk_cs_in *in,
 						struct hlthunk_cs_out *out)
 {
-	return (*functions_pointers_table.fp_hlthunk_staged_command_submission)(
-				fd, sequence, in, out);
+	return (*functions_pointers_table->fp_hlthunk_staged_command_submission)
+				(fd, sequence, in, out);
 }
 
 int hlthunk_get_hw_block_original(int fd, uint64_t block_address,
@@ -1036,7 +1074,7 @@ int hlthunk_get_hw_block_original(int fd, uint64_t block_address,
 hlthunk_public int hlthunk_get_hw_block(int fd, uint64_t block_address,
 					uint32_t block_size, uint64_t *handle)
 {
-	return (*functions_pointers_table.fp_hlthunk_get_hw_block)(
+	return (*functions_pointers_table->fp_hlthunk_get_hw_block)(
 				fd, block_address, block_size, handle);
 }
 
@@ -1081,7 +1119,7 @@ hlthunk_public int hlthunk_signal_submission(int fd,
 					struct hlthunk_signal_in *in,
 					struct hlthunk_signal_out *out)
 {
-	return (*functions_pointers_table.fp_hlthunk_signal_submission)(
+	return (*functions_pointers_table->fp_hlthunk_signal_submission)(
 				fd, in, out);
 }
 
@@ -1201,7 +1239,7 @@ hlthunk_public int hlthunk_wait_for_signal(int fd,
 					struct hlthunk_wait_in *in,
 					struct hlthunk_wait_out *out)
 {
-	return (*functions_pointers_table.fp_hlthunk_wait_for_signal)(
+	return (*functions_pointers_table->fp_hlthunk_wait_for_signal)(
 				fd, in, out);
 }
 
@@ -1209,7 +1247,7 @@ hlthunk_public int hlthunk_wait_for_collective_signal(int fd,
 					struct hlthunk_wait_in *in,
 					struct hlthunk_wait_out *out)
 {
-	return (*functions_pointers_table.fp_hlthunk_wait_for_collective_sig)(
+	return (*functions_pointers_table->fp_hlthunk_wait_for_collective_sig)(
 				fd, in, out);
 }
 
@@ -1353,7 +1391,7 @@ hlthunk_public uint64_t hlthunk_host_memory_map(int fd, void *host_virt_addr,
 						uint64_t hint_addr,
 						uint64_t host_size)
 {
-	return (*functions_pointers_table.fp_hlthunk_host_memory_map)(
+	return (*functions_pointers_table->fp_hlthunk_host_memory_map)(
 			fd, host_virt_addr, hint_addr, host_size);
 }
 
@@ -1371,7 +1409,7 @@ hlthunk_public int hlthunk_memory_unmap_original(int fd,
 
 hlthunk_public int hlthunk_memory_unmap(int fd, uint64_t device_virt_addr)
 {
-	return (*functions_pointers_table.fp_hlthunk_memory_unmap)(
+	return (*functions_pointers_table->fp_hlthunk_memory_unmap)(
 			fd, device_virt_addr);
 }
 
@@ -1401,7 +1439,7 @@ int hlthunk_profiler_start_original(int fd)
 
 hlthunk_public int hlthunk_profiler_start(int fd)
 {
-	return (*functions_pointers_table.fp_hlthunk_profiler_start)(fd);
+	return (*functions_pointers_table->fp_hlthunk_profiler_start)(fd);
 }
 
 int hlthunk_profiler_stop_original(int fd)
@@ -1411,7 +1449,7 @@ int hlthunk_profiler_stop_original(int fd)
 
 hlthunk_public int hlthunk_profiler_stop(int fd)
 {
-	return (*functions_pointers_table.fp_hlthunk_profiler_stop)(fd);
+	return (*functions_pointers_table->fp_hlthunk_profiler_stop)(fd);
 }
 
 int hlthunk_profiler_get_trace_original(int fd, void *buffer, uint64_t *size,
@@ -1424,7 +1462,7 @@ hlthunk_public int hlthunk_profiler_get_trace(int fd, void *buffer,
 					uint64_t *size,
 					uint64_t *num_entries)
 {
-	return (*functions_pointers_table.fp_hlthunk_profiler_get_trace)(
+	return (*functions_pointers_table->fp_hlthunk_profiler_get_trace)(
 				fd, buffer, size, num_entries);
 }
 
@@ -1433,9 +1471,7 @@ void hlthunk_profiler_destroy_original(void)
 	pthread_mutex_lock(&global_members.profiler_init_lock);
 
 	global_members.is_profiler_checked = false;
-	struct hlthunk_functions_pointers reset_functions_pointers_table =
-		INIT_FUNCS_POINTERS_TABLE;
-	functions_pointers_table = reset_functions_pointers_table;
+	functions_pointers_table = &default_functions_pointers_table;
 
 	if (global_members.shared_object_handle) {
 		dlclose(global_members.shared_object_handle);
@@ -1447,7 +1483,7 @@ void hlthunk_profiler_destroy_original(void)
 
 hlthunk_public void hlthunk_profiler_destroy(void)
 {
-	(*functions_pointers_table.fp_hlthunk_profiler_destroy)();
+	(*functions_pointers_table->fp_hlthunk_profiler_destroy)();
 }
 
 hlthunk_public int hlthunk_debugfs_open(int fd,
