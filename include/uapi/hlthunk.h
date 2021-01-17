@@ -64,6 +64,12 @@ struct hlthunk_dram_usage_info {
 	uint64_t ctx_dram_mem;
 };
 
+struct hlthunk_engines_idle_info {
+	uint32_t is_idle;
+	uint32_t pad;
+	uint64_t mask[HL_BUSY_ENGINES_MASK_EXT_SIZE];
+};
+
 struct hlthunk_pll_frequency_info {
 	uint16_t output[HL_PLL_NUM_OUTPUTS];
 };
@@ -334,10 +340,11 @@ hlthunk_public bool hlthunk_is_device_idle(int fd);
 /**
  * This function retrieves a busy engines bitmask of a specific device
  * @param fd file descriptor handle of habanalabs main device
- * @param mask pointer to uint32_t to store the bitmask
+ * @param info pointer to engines idle information structure
  * @return 0 for success, negative value for failure
  */
-hlthunk_public int hlthunk_get_busy_engines_mask(int fd, uint64_t *mask);
+hlthunk_public int hlthunk_get_busy_engines_mask(int fd,
+					struct hlthunk_engines_idle_info *info);
 
 /**
  * This function retrieves the PLL frequency of a specific device.

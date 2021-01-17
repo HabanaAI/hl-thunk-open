@@ -553,12 +553,12 @@ hlthunk_public enum hl_device_status hlthunk_get_device_status_info(int fd)
 	return hl_dev_status.status;
 }
 
-static int hlthunk_get_hw_idle_info(int fd, uint32_t *is_idle,
-					uint64_t *busy_engines_mask)
+static int hlthunk_get_hw_idle_info(int fd,
+					struct hlthunk_engines_idle_info *info)
 {
 	struct hl_info_args args;
 	struct hl_info_hw_idle hl_hw_idle;
-	int rc;
+	int rc, i;
 
 	memset(&args, 0, sizeof(args));
 	memset(&hl_hw_idle, 0, sizeof(hl_hw_idle));
@@ -571,32 +571,32 @@ static int hlthunk_get_hw_idle_info(int fd, uint32_t *is_idle,
 	if (rc)
 		return rc;
 
-	*is_idle = hl_hw_idle.is_idle;
-	*busy_engines_mask = hl_hw_idle.busy_engines_mask_ext;
+	info->is_idle = hl_hw_idle.is_idle;
+	for (i = 0 ; i < HL_BUSY_ENGINES_MASK_EXT_SIZE ; i++)
+		info->mask[i] = hl_hw_idle.busy_engines_mask_ext[i];
 
 	return 0;
 }
 
 hlthunk_public bool hlthunk_is_device_idle(int fd)
 {
-	uint32_t is_idle;
-	uint64_t mask;
+	struct hlthunk_engines_idle_info info;
 
 	int rc;
 
-	rc = hlthunk_get_hw_idle_info(fd, &is_idle, &mask);
+	rc = hlthunk_get_hw_idle_info(fd, &info);
 	if (rc)
 		return false;
 
-	return !!is_idle;
+	return !!info.is_idle;
 }
 
-hlthunk_public int hlthunk_get_busy_engines_mask(int fd, uint64_t *mask)
+hlthunk_public int hlthunk_get_busy_engines_mask(int fd,
+					struct hlthunk_engines_idle_info *info)
 {
-	uint32_t is_idle;
 	int rc;
 
-	rc = hlthunk_get_hw_idle_info(fd, &is_idle, mask);
+	rc = hlthunk_get_hw_idle_info(fd, info);
 
 	return rc;
 }
