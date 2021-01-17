@@ -132,9 +132,10 @@ static void print_engine_name(enum hlthunk_device_name device_id,
 
 void test_print_hw_idle_info(void **state)
 {
+	struct hlthunk_engines_idle_info idle_info;
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	enum hlthunk_device_name device_id;
-	uint64_t busy_engines_mask, i;
+	uint64_t i;
 	bool is_idle;
 	int rc, fd = tests_state->fd;
 
@@ -148,14 +149,14 @@ void test_print_hw_idle_info(void **state)
 		goto out;
 	}
 
-	rc = hlthunk_get_busy_engines_mask(fd, &busy_engines_mask);
+	rc = hlthunk_get_busy_engines_mask(fd, &idle_info);
 	assert_int_equal(rc, 0);
 
 	device_id = hlthunk_get_device_name_from_fd(fd);
 
 	printf("Busy engine(s):\n");
-	for (i = 0 ; i < sizeof(busy_engines_mask) * CHAR_BIT ; i++)
-		if (busy_engines_mask & (1ull << i))
+	for (i = 0 ; i < sizeof(idle_info.mask) * CHAR_BIT ; i++)
+		if (idle_info.mask[i >> 6] & (1ull << i))
 			print_engine_name(device_id, i);
 out:
 	printf("\n");
