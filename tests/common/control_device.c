@@ -408,6 +408,23 @@ void test_print_events_counters_aggregate(void **state)
 	print_events_counters(true);
 }
 
+void test_print_pci_bdf(void **state)
+{
+	const char *pciaddr = hltests_get_parser_pciaddr();
+	char pci_bus_id[16];
+	int rc, fd;
+
+	fd = hlthunk_open_control(0, pciaddr);
+	assert_in_range(fd, 0, INT_MAX);
+
+	rc = hlthunk_get_pci_bus_id_from_fd(fd, pci_bus_id, 16);
+	assert_int_equal(rc, 0);
+
+	printf("PCI BDF: %s\n", pci_bus_id);
+
+	hlthunk_close(fd);
+}
+
 const struct CMUnitTest control_tests[] = {
 	cmocka_unit_test(test_print_hw_ip_info),
 	cmocka_unit_test(test_print_hw_idle_info),
@@ -422,7 +439,8 @@ const struct CMUnitTest control_tests[] = {
 	cmocka_unit_test(test_print_clk_throttling_reason),
 	cmocka_unit_test(test_print_total_energy_consumption),
 	cmocka_unit_test(test_print_events_counters),
-	cmocka_unit_test(test_print_events_counters_aggregate)
+	cmocka_unit_test(test_print_events_counters_aggregate),
+	cmocka_unit_test(test_print_pci_bdf)
 };
 
 static const char *const usage[] = {
