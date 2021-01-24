@@ -16,6 +16,9 @@
 #include <stdio.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/sysmacros.h>
+#include <unistd.h>
 
 void test_open_by_busid(void **state)
 {
@@ -106,12 +109,30 @@ void test_close_without_releasing_debug(void **state)
 	assert_int_equal(rc, 0);
 }
 
+void test_open_and_print_pci_bdf(void **state)
+{
+	const char *pciaddr = hltests_get_parser_pciaddr();
+	char pci_bus_id[16];
+	int rc, fd;
+
+	fd = hlthunk_open(HLTHUNK_DEVICE_DONT_CARE, pciaddr);
+	assert_in_range(fd, 0, INT_MAX);
+
+	rc = hlthunk_get_pci_bus_id_from_fd(fd, pci_bus_id, 16);
+	assert_int_equal(rc, 0);
+
+	printf("PCI BDF: %s\n", pci_bus_id);
+
+	hlthunk_close(fd);
+}
+
 const struct CMUnitTest open_close_tests[] = {
 	cmocka_unit_test(test_open_by_busid),
 	cmocka_unit_test(test_open_by_module_id),
 	cmocka_unit_test(test_open_twice),
 	cmocka_unit_test(test_open_close_without_ioctl),
-	cmocka_unit_test(test_close_without_releasing_debug)
+	cmocka_unit_test(test_close_without_releasing_debug),
+	cmocka_unit_test(test_open_and_print_pci_bdf)
 };
 
 static const char *const usage[] = {
