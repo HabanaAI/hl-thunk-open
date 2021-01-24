@@ -21,6 +21,8 @@
 #include <linux/limits.h>
 #include <pthread.h>
 #include <dlfcn.h>
+#include <sys/stat.h>
+#include <sys/sysmacros.h>
 
 extern const char *HLTHUNK_SHA1_VERSION;
 
@@ -211,82 +213,43 @@ hlthunk_public enum hlthunk_device_name hlthunk_get_device_name_from_fd(int fd)
 hlthunk_public int hlthunk_get_pci_bus_id_from_fd(int fd, char *pci_bus_id,
 							int len)
 {
-	const char *base_path = "/sys/class/habanalabs/";
+	char pci_bus_file_name[128], read_busid[16];
+	const char *base_path = "/sys/dev/char";
 	const char *pci_bus_prefix = "pci_addr";
-	const char *device_prefix = "hl";
-	char tmp_name[32], str[128], dev_name[16], read_busid[16],
-				pci_bus_file_name[128], *p;
-	FILE *output;
-	pid_t pid;
-	int lsof_fd, pci_fd, rc = 0;
+	int rc, major_num, minor_num, pci_fd;
+	struct stat fd_stat;
 
-	snprintf(tmp_name, 31, "%s/hltXXXXXX", get_temp_dir());
-	lsof_fd = mkstemp(tmp_name);
-	if (lsof_fd < 0)
-		return -1;
+	rc = fstat(fd, &fd_stat);
+	if (rc < 0)
+		return rc;
 
-	output = fdopen(lsof_fd, "r");
-	if (!output) {
-		rc = -1;
-		goto out;
-	}
+	major_num = major(fd_stat.st_rdev);
+	minor_num = minor(fd_stat.st_rdev);
 
-	pid = getpid();
-	snprintf(str, 127, "lsof -F n /proc/%d/fd/%d > %s 2> /dev/null",
-			pid, fd, tmp_name);
-	if (system(str) == -1) {
-		rc = -1;
-		goto close_output;
-	}
+	/* If the FD represents a control device, use the real device to get
+	 * the PCI BDF
+	 */
+	if (minor_num & 1)
+		minor_num--;
 
-	p = fgets(str, sizeof(str), output);
-	while (p) {
-		if (*p == 'n') {
-			p = strstr(p, device_prefix);
-			if (p)
-				break;
-		}
-		p = fgets(str, sizeof(str), output);
-	};
-
-	if (!p) {
-		rc = -1;
-		goto close_output;
-	}
-
-	sscanf(p, "%[^\n]", dev_name);
-
-	snprintf(pci_bus_file_name, 127, "%s%s/%s", base_path, dev_name,
-		pci_bus_prefix);
+	snprintf(pci_bus_file_name, 127, "%s/%d:%d/%s", base_path, major_num,
+						minor_num, pci_bus_prefix);
 
 	pci_fd = open(pci_bus_file_name, O_RDONLY);
-	if (pci_fd < 0) {
-		rc = -1;
-		goto close_output;
-	}
+	if (pci_fd < 0)
+		return rc;
 
 	rc = read(pci_fd, read_busid, BUSID_WITH_DOMAIN_LEN);
-	if (rc < 0) {
-		rc = -1;
-		goto close_pci_fd;
-	}
+	close(pci_fd);
 
-	rc = 0;
+	if (rc < 0)
+		return rc;
 
 	read_busid[BUSID_WITH_DOMAIN_LEN] = '\0';
 
 	strncpy(pci_bus_id, read_busid, len);
 
-close_pci_fd:
-	close(pci_fd);
-close_output:
-	fclose(output);
-out:
-	close(lsof_fd);
-	snprintf(str, 63, "rm -f %s", tmp_name);
-	system(str);
-
-	return rc;
+	return 0;
 }
 
 static int hlthunk_open_device_by_name(enum hlthunk_device_name device_name,
