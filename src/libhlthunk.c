@@ -25,6 +25,7 @@
 #include <dlfcn.h>
 #include <sys/stat.h>
 #include <sys/sysmacros.h>
+#include <limits.h>
 
 extern const char *HLTHUNK_SHA1_VERSION;
 
@@ -1297,6 +1298,39 @@ hlthunk_public int hlthunk_wait_for_cs_with_timestamp(int fd, uint64_t seq,
 
 	if (hl_out->flags & HL_WAIT_CS_STATUS_FLAG_TIMESTAMP_VLD)
 		*timestamp = hl_out->timestamp_nsec;
+
+	return rc;
+}
+
+hlthunk_public int hlthunk_wait_for_interrupt(int fd, void *addr,
+					uint32_t target_value,
+					uint32_t interrupt_id,
+					uint32_t timeout_us,
+					uint32_t *status)
+{
+	union hl_wait_cs_args args;
+	struct hl_wait_cs_in *hl_in;
+	struct hl_wait_cs_out *hl_out;
+	int rc;
+
+	memset(&args, 0, sizeof(args));
+
+	hl_in = &args.in;
+	hl_in->addr = (uint64_t) addr;
+	hl_in->target = target_value;
+	hl_in->interrupt_timeout_us = timeout_us;
+	hl_in->flags = HL_WAIT_CS_FLAGS_INTERRUPT;
+
+	if (interrupt_id == UINT_MAX)
+		hl_in->flags |= HL_WAIT_CS_FLAGS_INTERRUPT_MASK;
+	else
+		hl_in->flags |= interrupt_id <<
+				__builtin_ctz(HL_WAIT_CS_FLAGS_INTERRUPT_MASK);
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_WAIT_CS, &args);
+
+	hl_out = &args.out;
+	*status = hl_out->status;
 
 	return rc;
 }

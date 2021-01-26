@@ -91,7 +91,8 @@ do { \
 		hlthunk_wait_for_collective_signal_original,\
 	.fp_hlthunk_staged_command_submission = \
 		hlthunk_staged_command_submission_original,\
-	.fp_hlthunk_get_hw_block = hlthunk_get_hw_block_original\
+	.fp_hlthunk_get_hw_block = hlthunk_get_hw_block_original,\
+	.fp_hlthunk_wait_for_interrupt = hlthunk_wait_for_interrupt\
 }
 
 int hlthunk_command_submission_original(int fd, struct hlthunk_cs_in *in,

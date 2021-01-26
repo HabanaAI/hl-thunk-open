@@ -212,6 +212,11 @@ struct hlthunk_functions_pointers {
 						uint64_t sequence,
 						struct hlthunk_cs_in *in,
 						struct hlthunk_cs_out *out);
+	int (*fp_hlthunk_wait_for_interrupt)(int fd, void *addr,
+					uint32_t target_value,
+					uint32_t interrupt_id,
+					uint32_t timeout_us,
+					uint32_t *status);
 	int (*fp_hlthunk_get_hw_block)(int fd, uint64_t block_address,
 						uint32_t *block_size,
 						uint64_t *handle);
@@ -558,6 +563,26 @@ hlthunk_public int hlthunk_wait_for_cs(int fd, uint64_t seq,
 hlthunk_public int hlthunk_wait_for_cs_with_timestamp(int fd, uint64_t seq,
 					uint64_t timeout_us, uint32_t *status,
 					uint64_t *timestamp);
+
+/**
+ * This function waits until an interrupt occurs and target value is greater or
+ * equal than the content of a given user address
+ * @param fd file descriptor handle of habanalabs main device
+ * @param addr user address for target value comparison
+ * @param target_value target value for comparison
+ * @param interrupt_id interrupt id to wait for, set to all 1s in order to
+ * register to all user interrupts
+ * @param timeout_us absolute timeout to wait in microseconds. If the timeout
+ * value is 0, the driver won't sleep at all. It will perform the comparison
+ * without waiting for the interrupt to expire and will return immediately
+ * @param status pointer to uint32_t to store the wait status
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_wait_for_interrupt(int fd, void *addr,
+					uint32_t target_value,
+					uint32_t interrupt_id,
+					uint32_t timeout_us,
+					uint32_t *status);
 
 /**
  * This function submits a job of a signal CS to a specific device
