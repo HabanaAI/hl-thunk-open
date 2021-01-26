@@ -61,6 +61,7 @@ HLTNK_1.0 {
 	hlthunk_wait_for_collective_signal;
 	hlthunk_wait_for_cs;
 	hlthunk_wait_for_cs_with_timestamp;
+	hlthunk_wait_for_interrupt;
 	hlthunk_wait_for_signal;
 
 	local: *;
