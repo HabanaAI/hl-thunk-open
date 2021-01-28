@@ -156,7 +156,7 @@ void test_print_hw_idle_info(void **state)
 
 	printf("Busy engine(s):\n");
 	for (i = 0 ; i < sizeof(idle_info.mask) * CHAR_BIT ; i++)
-		if (idle_info.mask[i >> 6] & (1ull << i))
+		if (idle_info.mask[i >> 6] & (1ull << (i & 0x3f)))
 			print_engine_name(device_id, i);
 out:
 	printf("\n");
