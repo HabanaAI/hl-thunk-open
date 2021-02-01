@@ -25,6 +25,8 @@
 	#define MAP_HUGE_2MB    (21 << MAP_HUGE_SHIFT)
 #endif
 
+#define FRAG_MEM_MULT 3
+
 struct hltests_thread_params {
 	const char *group_name;
 	const struct CMUnitTest *tests;
@@ -1785,6 +1787,60 @@ void hltests_dma_transfer(int fd, uint32_t queue_index, enum hltests_eb eb,
 				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
 }
 
+void hltests_dma_dram_frag_mem_test(void **state, uint64_t size)
+{
+	void **frag_arr;
+	struct hlthunk_hw_ip_info hw_ip;
+	uint32_t i, frag_arr_size, page_num, rand;
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	int rc, fd = tests_state->fd;
+
+	/* Create fragmented device physical memory.
+	 * Allocate FRAG_MEM_MULT times more memory in advance and free randomly
+	 * the amount of memory required for the test inside this area to create
+	 * fragmentation.
+	 */
+
+	if (hltests_is_pldm(fd) && size > PLDM_MAX_DMA_SIZE_FOR_TESTING)
+		skip();
+
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+	page_num = size / hw_ip.dram_page_size;
+	assert_int_not_equal(page_num, 0);
+	frag_arr_size = page_num * FRAG_MEM_MULT;
+	frag_arr = hlthunk_malloc(frag_arr_size * sizeof(*frag_arr));
+	assert_non_null(frag_arr);
+
+	for (i = 0; i < frag_arr_size; i++) {
+		frag_arr[i] = hltests_allocate_device_mem(fd,
+					hw_ip.dram_page_size,
+					NOT_CONTIGUOUS);
+		assert_non_null(frag_arr[i]);
+	}
+
+	i = 0;
+	while (i < page_num) {
+		rand = hltests_rand_u32() % frag_arr_size;
+		while (!frag_arr[rand])
+			rand = (rand + 1) % frag_arr_size;
+		rc = hltests_free_device_mem(fd, frag_arr[rand]);
+		assert_int_equal(rc, 0);
+		frag_arr[rand] = NULL;
+		i++;
+	}
+
+	hltests_dma_test(state, true, size);
+
+	for (i = 0; i < frag_arr_size; i++) {
+		if (!frag_arr[i])
+			continue;
+		rc = hltests_free_device_mem(fd, frag_arr[i]);
+		assert_int_equal(rc, 0);
+	}
+	hlthunk_free(frag_arr);
+}
+
 int hltests_dma_test(void **state, bool is_ddr, uint64_t size)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
@@ -1792,7 +1848,7 @@ int hltests_dma_test(void **state, bool is_ddr, uint64_t size)
 	void *device_addr, *src_ptr, *dst_ptr;
 	uint64_t host_src_addr, host_dst_addr;
 	uint32_t dma_dir_down, dma_dir_up;
-	bool is_huge = size > 32 * 1024;
+	bool is_huge = !!((size > SZ_32K) && (size < SZ_1G));
 	int rc, fd = tests_state->fd;
 
 	if (hltests_is_pldm(fd) && size > PLDM_MAX_DMA_SIZE_FOR_TESTING)

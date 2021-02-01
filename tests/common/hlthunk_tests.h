@@ -64,7 +64,9 @@
 	void func_name(void **state) { hltests_dma_test(state, false, size); }
 #define DMA_TEST_INC_DRAM(func_name, state, size) \
 	void func_name(void **state) { hltests_dma_test(state, true, size); }
-
+#define DMA_TEST_INC_DRAM_FRAG(func_name, state, size) \
+	void func_name(void **state) \
+	{ hltests_dma_dram_frag_mem_test(state, size); }
 #define RREG32(full_address) \
 		hltests_debugfs_read(tests_state->debugfs.addr_fd, \
 			tests_state->debugfs.data32_fd, full_address)
@@ -536,6 +538,8 @@ void hltests_submit_and_wait_cs(int fd, void *cb_ptr, uint32_t cb_size,
 				uint32_t queue_index,
 				enum hltests_destroy_cb destroy_cb,
 				int expected_val);
+
+void hltests_dma_dram_frag_mem_test(void **state, uint64_t size);
 
 int hltests_ensure_device_operational(void **state);
 
