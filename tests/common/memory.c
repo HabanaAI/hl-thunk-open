@@ -6,6 +6,7 @@
  */
 
 #include "hlthunk_tests.h"
+#include "ini.h"
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -23,6 +24,25 @@
 	((__x > 0) && ((__x & (__x  - 1)) == 0));	\
 }							\
 )
+
+#define PAGE_OFFSET_MASK	0xFFF
+#define BLOCKS_NUM		2
+
+enum range_type {HOST_ADDR, DRAM_ADDR};
+
+struct hints_param {
+	uint64_t *hints;
+	uint32_t num_of_hints;
+	uint32_t hint_idx;
+	enum range_type type;
+	uint32_t size;
+} hints_param;
+
+struct hints_addr_cfg {
+	struct hints_param hints_block[BLOCKS_NUM]; /* [HOST], [DRAM] */
+	uint32_t block_idx;
+	uint32_t blocks_count;
+};
 
 /**
  * This test checks that a mapping of more than 4GB is successful. This big size
@@ -300,6 +320,165 @@ void test_submit_and_close(void **state)
 	assert_int_equal(rc, 0);
 }
 
+static int test_hint_addresses_parsing_handler(void *user, const char *section,
+					const char *name, const char *value)
+{
+	struct hints_addr_cfg *cfg = (struct hints_addr_cfg *) user;
+	uint32_t *hints_idx;
+
+	if (MATCH("hint_addresses_test", "range_type")) {
+		if (cfg->blocks_count)
+			cfg->block_idx++;
+
+		if (strcmp(value, "host") == 0) {
+			cfg->hints_block[cfg->block_idx].type = HOST_ADDR;
+		} else if (strcmp(value, "dram") == 0) {
+			cfg->hints_block[cfg->block_idx].type = DRAM_ADDR;
+		} else {
+			printf("Invalid hints block config, fix config file\n");
+			return 0;
+		}
+		cfg->blocks_count++;
+		if (cfg->blocks_count > BLOCKS_NUM) {
+			printf("bad config file, range blocks must be %u\n",
+					BLOCKS_NUM);
+			return 0;
+		}
+	} else if (MATCH("hint_addresses_test", "hints_num")) {
+		cfg->hints_block[cfg->block_idx].num_of_hints =
+						strtoul(value, NULL, 0);
+		cfg->hints_block[cfg->block_idx].hints = malloc(
+				cfg->hints_block[cfg->block_idx].num_of_hints *
+					sizeof(uint64_t));
+		if (!cfg->hints_block[cfg->block_idx].hints) {
+			printf("Failed to allocate memory\n");
+			return 0;
+		}
+		memset(cfg->hints_block[cfg->block_idx].hints, 0,
+				cfg->hints_block[cfg->block_idx].num_of_hints *
+							sizeof(uint64_t));
+	}  else if (MATCH("hint_addresses_test", "va_hint")) {
+		hints_idx = &cfg->hints_block[cfg->block_idx].hint_idx;
+		cfg->hints_block[cfg->block_idx].hints[*hints_idx] =
+						strtoul(value, NULL, 0);
+		*hints_idx = *hints_idx + 1;
+	} else if (MATCH("hint_addresses_test", "size")) {
+		cfg->hints_block[cfg->block_idx].size =	strtoul(value, NULL, 0);
+	}
+
+	return 1;
+}
+
+void hint_addresses_test(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct hints_addr_cfg cfg = {0};
+	struct hints_param *param;
+	uint64_t device_map_addr, device_handle, page_offset;
+	const char *config_filename = hltests_get_config_filename();
+	void *ptr;
+	int i, idx, fd = tests_state->fd, ret;
+	bool test_failed = false;
+
+	if (!hltests_get_parser_run_disabled_tests()) {
+		printf("hints memory test need to be run with -d flag\n");
+		return;
+	}
+
+	if (!config_filename)
+		fail_msg("User didn't supply a configuration file name!\n");
+
+	cfg.block_idx = 0;
+	cfg.blocks_count = 0;
+
+	if (ini_parse(config_filename, test_hint_addresses_parsing_handler,
+						&cfg))
+		fail_msg("Can't load %s\n", config_filename);
+
+	printf("Configuration loaded from %s:\n", config_filename);
+
+	/* validity checks for config file */
+	if (cfg.blocks_count != BLOCKS_NUM)
+		fail_msg("Bad config file, see example in hlthunk_tests.ini\n");
+
+	for (i = 0 ; i < BLOCKS_NUM ; i++) {
+		param = &cfg.hints_block[i];
+		if (param->num_of_hints != param->hint_idx)
+			fail_msg
+			("Bad config file, see example in hlthunk_tests.ini\n");
+	}
+
+	for (i = 0 ; i < BLOCKS_NUM ; i++) {
+		param = &cfg.hints_block[i];
+		printf("block(%d):\nnum_of_hints: %u, hint_idx: %u, type: %s,"
+				" size: 0x%x\n",
+				i, param->num_of_hints, param->hint_idx,
+				param->type ? "DRAM" : "HOST", param->size);
+		for (idx = 0 ; idx < param->num_of_hints ; idx++)
+			printf("hint(%u): 0x%lx\n", idx, param->hints[idx]);
+	}
+
+	for (i = 0 ; i < BLOCKS_NUM ; i++) {
+		param = &cfg.hints_block[i];
+		if (param->type == HOST_ADDR) {
+			for (idx = 0 ; idx < param->num_of_hints ; idx++) {
+				ptr = malloc(param->size);
+				assert_non_null(ptr);
+
+				page_offset = (uintptr_t)ptr & PAGE_OFFSET_MASK;
+
+				device_map_addr = hlthunk_host_memory_map(fd,
+						ptr, param->hints[idx],
+						param->size);
+				if (device_map_addr !=
+					((param->hints[idx] & ~PAGE_OFFSET_MASK)
+							+ page_offset)) {
+					printf("host hint %lx was ignored, "
+							"mapped addr 0x%lx\n",
+							param->hints[idx],
+							device_map_addr);
+					test_failed = true;
+				}
+
+				ret = hlthunk_memory_unmap(fd, device_map_addr);
+				assert_int_equal(ret, 0);
+
+				free(ptr);
+			}
+		} else {
+			for (idx = 0 ; idx < param->num_of_hints ; idx++) {
+				device_handle = hlthunk_device_memory_alloc(fd,
+					param->size, NOT_CONTIGUOUS, false);
+				assert_non_null(device_handle);
+
+				device_map_addr = hlthunk_device_memory_map(fd,
+						device_handle,
+						param->hints[idx]);
+				if (device_map_addr != param->hints[idx]) {
+					printf("device hint %lx was ignored, "
+							"mapped addr 0x%lx\n",
+							param->hints[idx],
+							device_map_addr);
+					test_failed = true;
+				}
+
+				ret = hlthunk_memory_unmap(fd, device_map_addr);
+				assert_int_equal(ret, 0);
+
+				ret = hlthunk_device_memory_free(fd,
+						device_handle);
+				assert_int_equal(ret, 0);
+			}
+		}
+	}
+
+	for (i = 0 ; i < BLOCKS_NUM ; i++)
+		free(cfg.hints_block[i].hints);
+
+	if (test_failed)
+		fail_msg("hints test failed\n");
+}
+
 const struct CMUnitTest memory_tests[] = {
 	cmocka_unit_test_setup(test_map_bigger_than_4GB,
 				hltests_ensure_device_operational),
@@ -310,7 +489,9 @@ const struct CMUnitTest memory_tests[] = {
 	cmocka_unit_test_setup(test_submit_after_unmap,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_submit_and_close,
-				hltests_ensure_device_operational)
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(hint_addresses_test,
+					hltests_ensure_device_operational)
 };
 
 static const char *const usage[] = {
