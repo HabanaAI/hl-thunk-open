@@ -17,6 +17,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <time.h>
+#include <pthread.h>
 
 #define ARB_MST_QUIET_PER_DEFAULT 0x10
 #define ARB_MST_QUIET_PER_SIMULATOR 0x186A0
