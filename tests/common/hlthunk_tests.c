@@ -1841,6 +1841,34 @@ void hltests_dma_dram_frag_mem_test(void **state, uint64_t size)
 	hlthunk_free(frag_arr);
 }
 
+void hltests_dma_dram_high_mem_test(void **state, uint64_t size)
+{
+	struct hlthunk_hw_ip_info hw_ip;
+	void *device_addr;
+	uint64_t alloc_size;
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	int rc, fd = tests_state->fd;
+
+	/* Allocate half size of device memory so that test allocation
+	 * will begin from high memory address
+	 */
+
+	if (hltests_is_pldm(fd) && size > PLDM_MAX_DMA_SIZE_FOR_TESTING)
+		skip();
+
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+	alloc_size = hw_ip.dram_size / 2;
+	device_addr = hltests_allocate_device_mem(fd, alloc_size,
+								NOT_CONTIGUOUS);
+	assert_non_null(device_addr);
+
+	hltests_dma_test(state, true, size);
+
+	rc = hltests_free_device_mem(fd, device_addr);
+	assert_int_equal(rc, 0);
+}
+
 int hltests_dma_test(void **state, bool is_ddr, uint64_t size)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
