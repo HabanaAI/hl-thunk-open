@@ -402,6 +402,12 @@ DMA_TEST_INC_DRAM_FRAG(test_dma_dram_frag_size_192MB, state, 192 * 1024 * 1024)
 DMA_TEST_INC_DRAM_FRAG(test_dma_dram_frag_size_256MB, state, 256 * 1024 * 1024)
 DMA_TEST_INC_DRAM_FRAG(test_dma_dram_frag_size_512MB, state, 512 * 1024 * 1024)
 DMA_TEST_INC_DRAM_FRAG(test_dma_dram_frag_size_1GB, state, 1024 * 1024 * 1024)
+DMA_TEST_INC_DRAM_HIGH(test_dma_dram_high_size_64MB, state, 64 * 1024 * 1024)
+DMA_TEST_INC_DRAM_HIGH(test_dma_dram_high_size_128MB, state, 128 * 1024 * 1024)
+DMA_TEST_INC_DRAM_HIGH(test_dma_dram_high_size_192MB, state, 192 * 1024 * 1024)
+DMA_TEST_INC_DRAM_HIGH(test_dma_dram_high_size_256MB, state, 256 * 1024 * 1024)
+DMA_TEST_INC_DRAM_HIGH(test_dma_dram_high_size_512MB, state, 512 * 1024 * 1024)
+DMA_TEST_INC_DRAM_HIGH(test_dma_dram_high_size_1GB, state, 1024 * 1024 * 1024)
 
 const struct CMUnitTest dma_dram_tests[] = {
 	cmocka_unit_test_setup(test_dma_entire_dram_random,
@@ -577,6 +583,18 @@ const struct CMUnitTest dma_dram_tests[] = {
 	cmocka_unit_test_setup(test_dma_dram_frag_size_512MB,
 			hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_dma_dram_frag_size_1GB,
+			hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_dma_dram_high_size_64MB,
+			hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_dma_dram_high_size_128MB,
+			hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_dma_dram_high_size_192MB,
+			hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_dma_dram_high_size_256MB,
+			hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_dma_dram_high_size_512MB,
+			hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_dma_dram_high_size_1GB,
 			hltests_ensure_device_operational),
 };
 
