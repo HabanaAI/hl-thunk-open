@@ -1054,7 +1054,7 @@ hlthunk_public int hlthunk_staged_command_submission(int fd,
 }
 
 int hlthunk_get_hw_block_original(int fd, uint64_t block_address,
-					uint32_t block_size, uint64_t *handle)
+					uint32_t *block_size, uint64_t *handle)
 {
 	union hl_mem_args ioctl_args;
 	int rc;
@@ -1067,13 +1067,14 @@ int hlthunk_get_hw_block_original(int fd, uint64_t block_address,
 	if (rc)
 		return rc;
 
-	*handle = ioctl_args.out.handle;
+	*handle = ioctl_args.out.block_handle;
+	*block_size = ioctl_args.out.block_size;
 
 	return 0;
 }
 
 hlthunk_public int hlthunk_get_hw_block(int fd, uint64_t block_address,
-					uint32_t block_size, uint64_t *handle)
+					uint32_t *block_size, uint64_t *handle)
 {
 	return (*functions_pointers_table->fp_hlthunk_get_hw_block)(
 				fd, block_address, block_size, handle);

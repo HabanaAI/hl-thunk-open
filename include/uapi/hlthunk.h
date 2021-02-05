@@ -213,7 +213,7 @@ struct hlthunk_functions_pointers {
 						struct hlthunk_cs_in *in,
 						struct hlthunk_cs_out *out);
 	int (*fp_hlthunk_get_hw_block)(int fd, uint64_t block_address,
-						uint32_t block_size,
+						uint32_t *block_size,
 						uint64_t *handle);
 };
 
@@ -660,13 +660,14 @@ hlthunk_public int hlthunk_memory_unmap(int fd, uint64_t device_virt_addr);
  * This function retrieves a HW block handle according to a given address
  * @param fd file descriptor of the device on which to allocate the memory
  * @param block_address HW block address (configuration space only)
- * @param block_size HW block size (not used at this moment)
+ * @param block_size pointer to HW block size. The driver fills this value and
+ * the user needs to pass it when calling mmap
  * @param handle pointer to handle that needs to be passed to mmap in order to
  * map the HW block to a VA in the process VA range
  * @return 0 on success or negative value in case of error
  */
 hlthunk_public int hlthunk_get_hw_block(int fd, uint64_t block_address,
-				uint32_t block_size, uint64_t *handle);
+				uint32_t *block_size, uint64_t *handle);
 
 /**
  * This function enables and retrieves debug traces of a specific device

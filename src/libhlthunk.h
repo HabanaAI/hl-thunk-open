@@ -118,7 +118,7 @@ uint64_t hlthunk_host_memory_map_original(int fd, void *host_virt_addr,
 					  uint64_t host_size);
 int hlthunk_memory_unmap_original(int fd, uint64_t device_virt_addr);
 int hlthunk_get_hw_block_original(int fd, uint64_t block_address,
-					uint32_t block_size, uint64_t *handle);
+					uint32_t *block_size, uint64_t *handle);
 
 #undef hlthunk_public
 #define hlthunk_public
