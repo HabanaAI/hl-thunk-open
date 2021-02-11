@@ -48,7 +48,8 @@ static int dma_dram_parser(void *user, const char *section, const char *name,
 	return 1;
 }
 
-void test_dma_entire_dram_random(void **state)
+static void dma_entire_dram_random(void **state, uint64_t zone_size,
+			uint64_t dma_size)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	const char *config_filename = hltests_get_config_filename();
@@ -64,9 +65,6 @@ void test_dma_entire_dram_random(void **state)
 	kvec_t(struct dma_chunk) array;
 	bool split_cs = false;
 
-	if (hltests_is_pldm(fd))
-		skip();
-
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
@@ -79,8 +77,8 @@ void test_dma_entire_dram_random(void **state)
 	if (!tests_state->mmu)
 		split_cs = true;
 
-	cfg.dma_size = 1 << 21; /* 2MB */
-	cfg.zone_size = 1 << 24; /* 16MB */
+	cfg.dma_size = dma_size;
+	cfg.zone_size = zone_size;
 	cb[0] = NULL;
 	cb[1] = NULL;
 
@@ -316,6 +314,49 @@ void test_dma_entire_dram_random(void **state)
 	kv_destroy(array);
 }
 
+void dma_entire_dram_random_256KB(void **state)
+{
+	if (!hltests_get_parser_run_disabled_tests()) {
+		printf("This test needs to be run with -d flag\n");
+		skip();
+	}
+
+	dma_entire_dram_random(state, 16 * 1024 * 1024, 256 * 1024);
+}
+
+void dma_entire_dram_random_512KB(void **state)
+{
+	if (!hltests_get_parser_run_disabled_tests()) {
+		printf("This test needs to be run with -d flag\n");
+		skip();
+	}
+
+	dma_entire_dram_random(state, 16 * 1024 * 1024, 512 * 1024);
+}
+
+void dma_entire_dram_random_1MB(void **state)
+{
+	if (!hltests_get_parser_run_disabled_tests()) {
+		printf("This test needs to be run with -d flag\n");
+		skip();
+	}
+
+	dma_entire_dram_random(state, 16 * 1024 * 1024, 1 * 1024 * 1024);
+}
+
+void dma_entire_dram_random_2MB(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	int fd = tests_state->fd;
+
+	if (hltests_is_pldm(fd) && !hltests_get_parser_run_disabled_tests()) {
+		printf("This test needs to be run with -d flag on pldm\n");
+		skip();
+	}
+
+	dma_entire_dram_random(state, 16 * 1024 * 1024, 2 * 1024 * 1024);
+}
+
 DMA_TEST_INC_DRAM(test_dma_dram_size_1KB, state, 1 * 1024)
 DMA_TEST_INC_DRAM(test_dma_dram_size_2KB, state, 2 * 1024)
 DMA_TEST_INC_DRAM(test_dma_dram_size_3KB, state, 3 * 1024)
@@ -410,7 +451,13 @@ DMA_TEST_INC_DRAM_HIGH(test_dma_dram_high_size_512MB, state, 512 * 1024 * 1024)
 DMA_TEST_INC_DRAM_HIGH(test_dma_dram_high_size_1GB, state, 1024 * 1024 * 1024)
 
 const struct CMUnitTest dma_dram_tests[] = {
-	cmocka_unit_test_setup(test_dma_entire_dram_random,
+	cmocka_unit_test_setup(dma_entire_dram_random_256KB,
+			hltests_ensure_device_operational),
+	cmocka_unit_test_setup(dma_entire_dram_random_512KB,
+			hltests_ensure_device_operational),
+	cmocka_unit_test_setup(dma_entire_dram_random_1MB,
+			hltests_ensure_device_operational),
+	cmocka_unit_test_setup(dma_entire_dram_random_2MB,
 			hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_dma_dram_size_1KB,
 			hltests_ensure_device_operational),
