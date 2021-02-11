@@ -322,6 +322,12 @@ struct hltests_arb_info {
 	uint32_t arb_mst_quiet_val;
 };
 
+struct hltests_cs_chunk {
+	void *cb_ptr;
+	uint32_t cb_size;
+	uint32_t queue_index;
+};
+
 struct hltests_asic_funcs {
 	uint32_t (*add_arb_en_pkt)(void *buffer, uint32_t buf_off,
 			struct hltests_pkt_info *pkt_info,
@@ -385,6 +391,12 @@ struct hltests_asic_funcs {
 				uint64_t *return_addr);
 	void (*dram_pool_free)(struct hltests_device *hdev, uint64_t addr,
 				uint64_t size);
+	int (*submit_cs)(int fd, struct hltests_cs_chunk *restore_arr,
+				uint32_t restore_arr_size,
+				struct hltests_cs_chunk *execute_arr,
+				uint32_t execute_arr_size,
+				uint32_t flags, uint64_t *seq);
+	int (*wait_for_cs)(int fd, uint64_t seq, uint64_t timeout_us);
 };
 
 struct hltests_memory {
@@ -404,12 +416,6 @@ struct hltests_cb {
 	uint64_t cb_handle;
 	uint32_t cb_size;
 	bool external;
-};
-
-struct hltests_cs_chunk {
-	void *cb_ptr;
-	uint32_t cb_size;
-	uint32_t queue_index;
 };
 
 struct mem_pool {
@@ -453,6 +459,7 @@ void hltests_parser(int argc, const char **argv, const char * const* usage,
 const char *hltests_get_parser_pciaddr(void);
 const char *hltests_get_config_filename(void);
 int hltests_get_parser_run_disabled_tests(void);
+int hltests_is_legacy_mode_enabled(void);
 bool hltests_is_simulator(int fd);
 bool hltests_is_goya(int fd);
 bool hltests_is_gaudi(int fd);
@@ -500,6 +507,12 @@ int hltests_submit_cs(int fd, struct hltests_cs_chunk *restore_arr,
 				uint32_t execute_arr_size,
 				uint32_t flags,
 				uint64_t *seq);
+int hltests_submit_legacy_cs(int fd, struct hltests_cs_chunk *restore_arr,
+				uint32_t restore_arr_size,
+				struct hltests_cs_chunk *execute_arr,
+				uint32_t execute_arr_size,
+				uint32_t flags,
+				uint64_t *seq);
 int hltests_submit_staged_cs(int fd, struct hltests_cs_chunk *restore_arr,
 				uint32_t restore_arr_size,
 				struct hltests_cs_chunk *execute_arr,
@@ -507,6 +520,7 @@ int hltests_submit_staged_cs(int fd, struct hltests_cs_chunk *restore_arr,
 				uint32_t flags,
 				uint64_t staged_cs_seq,
 				uint64_t *seq);
+int hltests_wait_for_legacy_cs(int fd, uint64_t seq, uint64_t timeout_us);
 
 int hltests_setup(void **state);
 int hltests_teardown(void **state);

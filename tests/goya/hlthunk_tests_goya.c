@@ -482,6 +482,19 @@ static void goya_dram_pool_free(struct hltests_device *hdev, uint64_t addr,
 
 }
 
+int goya_submit_cs(int fd, struct hltests_cs_chunk *restore_arr,
+		uint32_t restore_arr_size, struct hltests_cs_chunk *execute_arr,
+		uint32_t execute_arr_size, uint32_t flags, uint64_t *seq)
+{
+	return hltests_submit_legacy_cs(fd, restore_arr, restore_arr_size,
+				execute_arr, execute_arr_size, flags, seq);
+}
+
+int goya_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us)
+{
+	return hltests_wait_for_legacy_cs(fd, seq, timeout_us);
+}
+
 static const struct hltests_asic_funcs goya_funcs = {
 	.add_arb_en_pkt = goya_add_arb_en_pkt,
 	.add_monitor_and_fence = goya_add_monitor_and_fence,
@@ -509,7 +522,9 @@ static const struct hltests_asic_funcs goya_funcs = {
 	.dram_pool_init = goya_dram_pool_init,
 	.dram_pool_fini = goya_dram_pool_fini,
 	.dram_pool_alloc = goya_dram_pool_alloc,
-	.dram_pool_free = goya_dram_pool_free
+	.dram_pool_free = goya_dram_pool_free,
+	.submit_cs = goya_submit_cs,
+	.wait_for_cs = goya_wait_for_cs
 };
 
 void goya_tests_set_asic_funcs(struct hltests_device *hdev)

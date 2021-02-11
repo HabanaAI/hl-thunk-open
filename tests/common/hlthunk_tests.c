@@ -48,6 +48,7 @@ static int run_disabled_tests;
 static const char *parser_pciaddr;
 static const char *config_filename;
 static int num_devices = 1;
+static int legacy_mode_enabled = 1;
 
 static char asic_names[HLTHUNK_DEVICE_MAX][20] = {
 	"Goya",
@@ -1277,7 +1278,7 @@ static int fill_cs_chunks(struct hltests_device *hdev,
 	return 0;
 }
 
-int hltests_submit_cs(int fd,
+int hltests_submit_legacy_cs(int fd,
 		struct hltests_cs_chunk *restore_arr,
 		uint32_t restore_arr_size,
 		struct hltests_cs_chunk *execute_arr,
@@ -1352,6 +1353,21 @@ free_chunks_restore:
 	hlthunk_free(chunks_restore);
 out:
 	return rc;
+}
+
+int hltests_submit_cs(int fd,
+		struct hltests_cs_chunk *restore_arr,
+		uint32_t restore_arr_size,
+		struct hltests_cs_chunk *execute_arr,
+		uint32_t execute_arr_size,
+		uint32_t flags,
+		uint64_t *seq)
+{
+	const struct hltests_asic_funcs *asic =
+				get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->submit_cs(fd, restore_arr, restore_arr_size, execute_arr,
+						execute_arr_size, flags, seq);
 }
 
 int hltests_submit_staged_cs(int fd,
@@ -1438,7 +1454,7 @@ out:
 	return rc;
 }
 
-int hltests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us)
+int hltests_wait_for_legacy_cs(int fd, uint64_t seq, uint64_t timeout_us)
 {
 	uint32_t status;
 	int rc;
@@ -1448,6 +1464,14 @@ int hltests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us)
 		return rc;
 
 	return status;
+}
+
+int hltests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us)
+{
+	const struct hltests_asic_funcs *asic =
+				get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->wait_for_cs(fd, seq, timeout_us);
 }
 
 int hltests_wait_for_cs_until_not_busy(int fd, uint64_t seq)
@@ -2162,6 +2186,8 @@ void hltests_parser(int argc, const char **argv, const char * const* usage,
 		OPT_STRING('c', "config", &config_filename,
 			"config filename for test(s)"),
 		OPT_INTEGER('n', "ndevices", &num_devices, "number of devices"),
+		OPT_BOOLEAN('m', "mode", &legacy_mode_enabled,
+							"Legacy mode enabled"),
 		OPT_END(),
 	};
 
@@ -2207,6 +2233,11 @@ const char *hltests_get_config_filename(void)
 int hltests_get_parser_run_disabled_tests(void)
 {
 	return run_disabled_tests;
+}
+
+int hltests_is_legacy_mode_enabled(void)
+{
+	return legacy_mode_enabled;
 }
 
 bool hltests_is_simulator(int fd)
