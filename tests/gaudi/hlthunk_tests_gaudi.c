@@ -770,6 +770,19 @@ static void gaudi_dram_pool_free(struct hltests_device *hdev, uint64_t addr,
 	hltests_mem_pool_free(hdev->priv, addr, size);
 }
 
+int gaudi_submit_cs(int fd, struct hltests_cs_chunk *restore_arr,
+		uint32_t restore_arr_size, struct hltests_cs_chunk *execute_arr,
+		uint32_t execute_arr_size, uint32_t flags, uint64_t *seq)
+{
+	return hltests_submit_legacy_cs(fd, restore_arr, restore_arr_size,
+				execute_arr, execute_arr_size, flags, seq);
+}
+
+int gaudi_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us)
+{
+	return hltests_wait_for_legacy_cs(fd, seq, timeout_us);
+}
+
 static void gaudi_dram_pool_init(struct hltests_device *hdev)
 {
 	struct hlthunk_hw_ip_info hw_ip;
@@ -821,7 +834,9 @@ static const struct hltests_asic_funcs gaudi_funcs = {
 	.dram_pool_init = gaudi_dram_pool_init,
 	.dram_pool_fini = gaudi_dram_pool_fini,
 	.dram_pool_alloc = gaudi_dram_pool_alloc,
-	.dram_pool_free = gaudi_dram_pool_free
+	.dram_pool_free = gaudi_dram_pool_free,
+	.submit_cs = gaudi_submit_cs,
+	.wait_for_cs = gaudi_wait_for_cs
 };
 
 void gaudi_tests_set_asic_funcs(struct hltests_device *hdev)
