@@ -62,8 +62,14 @@ do { \
  */
 #define INIT_FUNCS_POINTERS_TABLE {\
 	.fp_hlthunk_command_submission = hlthunk_command_submission_original,\
+	.fp_hlthunk_command_submission_timeout =\
+		hlthunk_command_submission_timeout_original,\
 	.fp_hlthunk_signal_submission = hlthunk_signal_submission_original,\
+	.fp_hlthunk_signal_submission_timeout =\
+		hlthunk_signal_submission_timeout_original,\
 	.fp_hlthunk_wait_for_signal = hlthunk_wait_for_signal_original,\
+	.fp_hlthunk_wait_for_signal_timeout =\
+		hlthunk_wait_for_signal_timeout_original,\
 	.fp_hlthunk_open = hlthunk_open_original,\
 	.fp_hlthunk_close = hlthunk_close_original,\
 	.fp_hlthunk_profiler_start = hlthunk_profiler_start_original,\
@@ -89,23 +95,48 @@ do { \
 	.fp_hlthunk_get_time_sync_info = hlthunk_get_time_sync_info,\
 	.fp_hlthunk_wait_for_collective_sig = \
 		hlthunk_wait_for_collective_signal_original,\
+	.fp_hlthunk_wait_for_collective_sig_timeout = \
+		hlthunk_wait_for_collective_signal_timeout_original,\
 	.fp_hlthunk_staged_command_submission = \
 		hlthunk_staged_command_submission_original,\
+	.fp_hlthunk_staged_cs_timeout = \
+		hlthunk_staged_command_submission_timeout_original,\
 	.fp_hlthunk_get_hw_block = hlthunk_get_hw_block_original,\
 	.fp_hlthunk_wait_for_interrupt = hlthunk_wait_for_interrupt\
 }
 
 int hlthunk_command_submission_original(int fd, struct hlthunk_cs_in *in,
 					struct hlthunk_cs_out *out);
+int hlthunk_command_submission_timeout_original(int fd,
+					struct hlthunk_cs_in *in,
+					struct hlthunk_cs_out *out,
+					uint32_t timeout);
 int hlthunk_staged_command_submission_original(int fd, uint64_t sequence,
 					struct hlthunk_cs_in *in,
 					struct hlthunk_cs_out *out);
+int hlthunk_staged_command_submission_timeout_original(int fd,
+					uint64_t sequence,
+					struct hlthunk_cs_in *in,
+					struct hlthunk_cs_out *out,
+					uint32_t timeout);
 int hlthunk_signal_submission_original(int fd, struct hlthunk_signal_in *in,
 					struct hlthunk_signal_out *out);
+int hlthunk_signal_submission_timeout_original(int fd,
+					struct hlthunk_signal_in *in,
+					struct hlthunk_signal_out *out,
+					uint32_t timeout);
 int hlthunk_wait_for_signal_original(int fd, struct hlthunk_wait_in *in,
 					struct hlthunk_wait_out *out);
+int hlthunk_wait_for_signal_timeout_original(int fd, struct hlthunk_wait_in *in,
+					struct hlthunk_wait_out *out,
+					uint32_t timeout);
 int hlthunk_wait_for_collective_signal_original(int fd,
-		struct hlthunk_wait_in *in, struct hlthunk_wait_out *out);
+					struct hlthunk_wait_in *in,
+					struct hlthunk_wait_out *out);
+int hlthunk_wait_for_collective_signal_timeout_original(int fd,
+					struct hlthunk_wait_in *in,
+					struct hlthunk_wait_out *out,
+					uint32_t timeout);
 int hlthunk_open_original(enum hlthunk_device_name device_name,
 			  const char *busid);
 int hlthunk_close_original(int fd);
