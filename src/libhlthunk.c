@@ -1029,8 +1029,10 @@ hlthunk_public int hlthunk_get_cb_usage_count(int fd, uint64_t cb_handle,
 	return 0;
 }
 
-int hlthunk_command_submission_original(int fd, struct hlthunk_cs_in *in,
-					struct hlthunk_cs_out *out)
+static int _hlthunk_command_submission(int fd,
+					struct hlthunk_cs_in *in,
+					struct hlthunk_cs_out *out,
+					uint32_t timeout)
 {
 	union hl_cs_args args;
 	struct hl_cs_in *hl_in;
@@ -1045,6 +1047,10 @@ int hlthunk_command_submission_original(int fd, struct hlthunk_cs_in *in,
 	hl_in->num_chunks_restore = in->num_chunks_restore;
 	hl_in->num_chunks_execute = in->num_chunks_execute;
 	hl_in->cs_flags = in->flags;
+	if (timeout) {
+		hl_in->cs_flags |= HL_CS_FLAGS_CUSTOM_TIMEOUT;
+		hl_in->timeout = timeout;
+	}
 
 	rc = hlthunk_ioctl(fd, HL_IOCTL_CS, &args);
 	if (rc)
@@ -1057,6 +1063,20 @@ int hlthunk_command_submission_original(int fd, struct hlthunk_cs_in *in,
 	return 0;
 }
 
+int hlthunk_command_submission_original(int fd, struct hlthunk_cs_in *in,
+					struct hlthunk_cs_out *out)
+{
+	return _hlthunk_command_submission(fd, in, out, 0);
+}
+
+int hlthunk_command_submission_timeout_original(int fd,
+					struct hlthunk_cs_in *in,
+					struct hlthunk_cs_out *out,
+					uint32_t timeout)
+{
+	return _hlthunk_command_submission(fd, in, out, timeout);
+}
+
 hlthunk_public int hlthunk_command_submission(int fd, struct hlthunk_cs_in *in,
 					      struct hlthunk_cs_out *out)
 {
@@ -1064,10 +1084,21 @@ hlthunk_public int hlthunk_command_submission(int fd, struct hlthunk_cs_in *in,
 				fd, in, out);
 }
 
-int hlthunk_staged_command_submission_original(int fd,
-						uint64_t sequence,
-						struct hlthunk_cs_in *in,
-						struct hlthunk_cs_out *out)
+hlthunk_public int hlthunk_command_submission_timeout(int fd,
+					      struct hlthunk_cs_in *in,
+					      struct hlthunk_cs_out *out,
+					      uint32_t timeout)
+{
+	return
+	(*functions_pointers_table->fp_hlthunk_command_submission_timeout)
+		(fd, in, out, timeout);
+}
+
+static int _hlthunk_staged_command_submission(int fd,
+					uint64_t sequence,
+					struct hlthunk_cs_in *in,
+					struct hlthunk_cs_out *out,
+					uint32_t timeout)
 {
 	union hl_cs_args args;
 	struct hl_cs_in *hl_in;
@@ -1086,6 +1117,10 @@ int hlthunk_staged_command_submission_original(int fd,
 	hl_in->num_chunks_restore = in->num_chunks_restore;
 	hl_in->num_chunks_execute = in->num_chunks_execute;
 	hl_in->cs_flags = in->flags;
+	if (timeout) {
+		hl_in->cs_flags |= HL_CS_FLAGS_CUSTOM_TIMEOUT;
+		hl_in->timeout = timeout;
+	}
 
 	rc = hlthunk_ioctl(fd, HL_IOCTL_CS, &args);
 	if (rc)
@@ -1098,6 +1133,24 @@ int hlthunk_staged_command_submission_original(int fd,
 	return 0;
 }
 
+int hlthunk_staged_command_submission_original(int fd,
+						uint64_t sequence,
+						struct hlthunk_cs_in *in,
+						struct hlthunk_cs_out *out)
+{
+	return _hlthunk_staged_command_submission(fd, sequence, in, out, 0);
+}
+
+int hlthunk_staged_command_submission_timeout_original(int fd,
+						uint64_t sequence,
+						struct hlthunk_cs_in *in,
+						struct hlthunk_cs_out *out,
+						uint32_t timeout)
+{
+	return _hlthunk_staged_command_submission(fd, sequence, in, out,
+							timeout);
+}
+
 hlthunk_public int hlthunk_staged_command_submission(int fd,
 						uint64_t sequence,
 						struct hlthunk_cs_in *in,
@@ -1105,6 +1158,16 @@ hlthunk_public int hlthunk_staged_command_submission(int fd,
 {
 	return (*functions_pointers_table->fp_hlthunk_staged_command_submission)
 				(fd, sequence, in, out);
+}
+
+hlthunk_public int hlthunk_staged_command_submission_timeout(int fd,
+						uint64_t sequence,
+						struct hlthunk_cs_in *in,
+						struct hlthunk_cs_out *out,
+						uint32_t timeout)
+{
+	return (*functions_pointers_table->fp_hlthunk_staged_cs_timeout)
+		(fd, sequence, in, out, timeout);
 }
 
 int hlthunk_get_hw_block_original(int fd, uint64_t block_address,
@@ -1134,9 +1197,10 @@ hlthunk_public int hlthunk_get_hw_block(int fd, uint64_t block_address,
 				fd, block_address, block_size, handle);
 }
 
-int hlthunk_signal_submission_original(int fd,
-					struct hlthunk_signal_in *in,
-					struct hlthunk_signal_out *out)
+static int _hlthunk_signal_submission(int fd,
+			struct hlthunk_signal_in *in,
+			struct hlthunk_signal_out *out,
+			uint32_t timeout)
 {
 	union hl_cs_args args;
 	struct hl_cs_chunk chunk_execute;
@@ -1154,6 +1218,10 @@ int hlthunk_signal_submission_original(int fd,
 	hl_in->chunks_execute = (__u64) (uintptr_t) &chunk_execute;
 	hl_in->num_chunks_execute = 1;
 	hl_in->cs_flags = in->flags | HL_CS_FLAGS_SIGNAL;
+	if (timeout) {
+		hl_in->cs_flags |= HL_CS_FLAGS_CUSTOM_TIMEOUT;
+		hl_in->timeout = timeout;
+	}
 
 	rc = hlthunk_ioctl(fd, HL_IOCTL_CS, &args);
 	if (rc)
@@ -1171,6 +1239,20 @@ int hlthunk_signal_submission_original(int fd,
 	return 0;
 }
 
+int hlthunk_signal_submission_original(int fd, struct hlthunk_signal_in *in,
+					struct hlthunk_signal_out *out)
+{
+	return _hlthunk_signal_submission(fd, in, out, 0);
+}
+
+int hlthunk_signal_submission_timeout_original(int fd,
+					struct hlthunk_signal_in *in,
+					struct hlthunk_signal_out *out,
+					uint32_t timeout)
+{
+	return _hlthunk_signal_submission(fd, in, out, timeout);
+}
+
 hlthunk_public int hlthunk_signal_submission(int fd,
 					struct hlthunk_signal_in *in,
 					struct hlthunk_signal_out *out)
@@ -1179,8 +1261,19 @@ hlthunk_public int hlthunk_signal_submission(int fd,
 				fd, in, out);
 }
 
-int hlthunk_wait_for_signal_original(int fd, struct hlthunk_wait_in *in,
-					struct hlthunk_wait_out *out)
+hlthunk_public int hlthunk_signal_submission_timeout(int fd,
+					struct hlthunk_signal_in *in,
+					struct hlthunk_signal_out *out,
+					uint32_t timeout)
+{
+	return (*functions_pointers_table->fp_hlthunk_signal_submission_timeout)
+			(fd, in, out, timeout);
+}
+
+static int _hlthunk_wait_for_signal(int fd,
+				struct hlthunk_wait_in *in,
+				struct hlthunk_wait_out *out,
+				uint32_t timeout)
 {
 	union hl_cs_args args;
 	struct hl_cs_chunk chunk_execute;
@@ -1217,6 +1310,10 @@ int hlthunk_wait_for_signal_original(int fd, struct hlthunk_wait_in *in,
 	hl_in->chunks_execute = (__u64) (uintptr_t) &chunk_execute;
 	hl_in->num_chunks_execute = 1;
 	hl_in->cs_flags = in->flags | HL_CS_FLAGS_WAIT;
+	if (timeout) {
+		hl_in->cs_flags |= HL_CS_FLAGS_CUSTOM_TIMEOUT;
+		hl_in->timeout = timeout;
+	}
 
 	rc = hlthunk_ioctl(fd, HL_IOCTL_CS, &args);
 	if (rc)
@@ -1234,8 +1331,40 @@ int hlthunk_wait_for_signal_original(int fd, struct hlthunk_wait_in *in,
 	return 0;
 }
 
-int hlthunk_wait_for_collective_signal_original(int fd,
-		struct hlthunk_wait_in *in, struct hlthunk_wait_out *out)
+int hlthunk_wait_for_signal_original(int fd, struct hlthunk_wait_in *in,
+					struct hlthunk_wait_out *out)
+{
+	return _hlthunk_wait_for_signal(fd, in, out, 0);
+}
+
+int hlthunk_wait_for_signal_timeout_original(int fd, struct hlthunk_wait_in *in,
+					struct hlthunk_wait_out *out,
+					uint32_t timeout)
+{
+	return _hlthunk_wait_for_signal(fd, in, out, timeout);
+}
+
+hlthunk_public int hlthunk_wait_for_signal(int fd,
+					struct hlthunk_wait_in *in,
+					struct hlthunk_wait_out *out)
+{
+	return (*functions_pointers_table->fp_hlthunk_wait_for_signal)(
+				fd, in, out);
+}
+
+hlthunk_public int hlthunk_wait_for_signal_timeout(int fd,
+					struct hlthunk_wait_in *in,
+					struct hlthunk_wait_out *out,
+					uint32_t timeout)
+{
+	return (*functions_pointers_table->fp_hlthunk_wait_for_signal_timeout)(
+				fd, in, out, timeout);
+}
+
+static int _hlthunk_wait_for_collective_signal(int fd,
+					struct hlthunk_wait_in *in,
+					struct hlthunk_wait_out *out,
+					uint32_t timeout)
 {
 	union hl_cs_args args;
 	struct hl_cs_chunk chunk_execute;
@@ -1274,6 +1403,10 @@ int hlthunk_wait_for_collective_signal_original(int fd,
 	hl_in->chunks_execute = (__u64) (uintptr_t) &chunk_execute;
 	hl_in->num_chunks_execute = 1;
 	hl_in->cs_flags = in->flags | HL_CS_FLAGS_COLLECTIVE_WAIT;
+	if (timeout) {
+		hl_in->cs_flags |= HL_CS_FLAGS_CUSTOM_TIMEOUT;
+		hl_in->timeout = timeout;
+	}
 
 	rc = hlthunk_ioctl(fd, HL_IOCTL_CS, &args);
 	if (rc)
@@ -1291,12 +1424,17 @@ int hlthunk_wait_for_collective_signal_original(int fd,
 	return 0;
 }
 
-hlthunk_public int hlthunk_wait_for_signal(int fd,
-					struct hlthunk_wait_in *in,
-					struct hlthunk_wait_out *out)
+int hlthunk_wait_for_collective_signal_original(int fd,
+		struct hlthunk_wait_in *in, struct hlthunk_wait_out *out)
 {
-	return (*functions_pointers_table->fp_hlthunk_wait_for_signal)(
-				fd, in, out);
+	return _hlthunk_wait_for_collective_signal(fd, in, out, 0);
+}
+
+int hlthunk_wait_for_collective_signal_timeout_original(int fd,
+		struct hlthunk_wait_in *in, struct hlthunk_wait_out *out,
+		uint32_t timeout)
+{
+	return _hlthunk_wait_for_collective_signal(fd, in, out, timeout);
 }
 
 hlthunk_public int hlthunk_wait_for_collective_signal(int fd,
@@ -1305,6 +1443,16 @@ hlthunk_public int hlthunk_wait_for_collective_signal(int fd,
 {
 	return (*functions_pointers_table->fp_hlthunk_wait_for_collective_sig)(
 				fd, in, out);
+}
+
+hlthunk_public int hlthunk_wait_for_collective_signal_timeout(int fd,
+					struct hlthunk_wait_in *in,
+					struct hlthunk_wait_out *out,
+					uint32_t timeout)
+{
+	return
+	(*functions_pointers_table->fp_hlthunk_wait_for_collective_sig_timeout)
+		(fd, in, out, timeout);
 }
 
 hlthunk_public int hlthunk_wait_for_cs(int fd, uint64_t seq,

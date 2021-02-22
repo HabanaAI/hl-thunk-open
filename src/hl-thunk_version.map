@@ -67,3 +67,13 @@ HLTNK_1.0 {
 
 	local: *;
 };
+
+HLTNK_1.1 {
+	global:
+
+	hlthunk_command_submission_timeout;
+	hlthunk_signal_submission_timeout;
+	hlthunk_staged_command_submission_timeout;
+	hlthunk_wait_for_collective_signal_timeout;
+	hlthunk_wait_for_signal_timeout;
+} HLTNK_1.0;

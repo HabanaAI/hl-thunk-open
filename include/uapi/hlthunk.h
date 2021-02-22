@@ -197,8 +197,7 @@ struct hlthunk_functions_pointers {
 	int (*fp_hlthunk_signal_submission)(int fd,
 					struct hlthunk_signal_in *in,
 					struct hlthunk_signal_out *out);
-	int (*fp_hlthunk_wait_for_signal)(int fd,
-					struct hlthunk_wait_in *in,
+	int (*fp_hlthunk_wait_for_signal)(int fd, struct hlthunk_wait_in *in,
 					struct hlthunk_wait_out *out);
 	int (*fp_hlthunk_get_time_sync_info)(int fd,
 					struct hlthunk_time_sync_info *info);
@@ -212,8 +211,7 @@ struct hlthunk_functions_pointers {
 					struct hlthunk_wait_out *out);
 	int (*fp_hlthunk_get_cb_usage_count)(int fd, uint64_t cb_handle,
 						uint32_t *usage_cnt);
-	int (*fp_hlthunk_staged_command_submission)(int fd,
-						uint64_t sequence,
+	int (*fp_hlthunk_staged_command_submission)(int fd, uint64_t sequence,
 						struct hlthunk_cs_in *in,
 						struct hlthunk_cs_out *out);
 	int (*fp_hlthunk_get_hw_block)(int fd, uint64_t block_address,
@@ -227,6 +225,27 @@ struct hlthunk_functions_pointers {
 	int (*fp_hlthunk_device_memory_export_dmabuf_fd)(int fd,
 							uint64_t handle,
 							uint64_t size);
+	int (*fp_hlthunk_command_submission_timeout)(int fd,
+						struct hlthunk_cs_in *in,
+						struct hlthunk_cs_out *out,
+						uint32_t timeout);
+	int (*fp_hlthunk_signal_submission_timeout)(int fd,
+					struct hlthunk_signal_in *in,
+					struct hlthunk_signal_out *out,
+					uint32_t timeout);
+	int (*fp_hlthunk_wait_for_signal_timeout)(int fd,
+					struct hlthunk_wait_in *in,
+					struct hlthunk_wait_out *out,
+					uint32_t timeout);
+	int (*fp_hlthunk_wait_for_collective_sig_timeout)(int fd,
+					struct hlthunk_wait_in *in,
+					struct hlthunk_wait_out *out,
+					uint32_t timeout);
+	int (*fp_hlthunk_staged_cs_timeout)(int fd,
+					uint64_t sequence,
+					struct hlthunk_cs_in *in,
+					struct hlthunk_cs_out *out,
+					uint32_t timeout);
 };
 
 struct hlthunk_debugfs {
@@ -536,6 +555,19 @@ hlthunk_public int hlthunk_command_submission(int fd, struct hlthunk_cs_in *in,
 						struct hlthunk_cs_out *out);
 
 /**
+ * This function submits a set of jobs to a specific device with a timeout
+ * @param fd file descriptor handle of habanalabs main device
+ * @param in pointer to command submission input structure
+ * @param out pointer to command submission output structure
+ * @param timeout duration in seconds
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_command_submission_timeout(int fd,
+						struct hlthunk_cs_in *in,
+						struct hlthunk_cs_out *out,
+						uint32_t timeout);
+
+/**
  * This function submits a set of jobs to a specific device as part of a
  * staged submission
  * @param fd file descriptor handle of habanalabs main device
@@ -549,6 +581,23 @@ hlthunk_public int hlthunk_staged_command_submission(int fd,
 						uint64_t sequence,
 						struct hlthunk_cs_in *in,
 						struct hlthunk_cs_out *out);
+
+/**
+ * This function submits a set of jobs to a specific device as part of a
+ * staged submission with a timeout
+ * @param fd file descriptor handle of habanalabs main device
+ * @sequence number of this staged submission obtained from the
+ *           first CS submitted
+ * @param in pointer to command submission input structure
+ * @param out pointer to command submission output structure
+ * @param timeout duration in seconds
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_staged_command_submission_timeout(int fd,
+						uint64_t sequence,
+						struct hlthunk_cs_in *in,
+						struct hlthunk_cs_out *out,
+						uint32_t timeout);
 
 /**
  * This function waits until a command submission of a specific device has
@@ -612,6 +661,19 @@ hlthunk_public int hlthunk_signal_submission(int fd,
 					struct hlthunk_signal_out *out);
 
 /**
+ * This function submits a job of a signal CS to a specific device with timeout
+ * @param fd file descriptor handle of habanalabs main device
+ * @param in pointer to a signal command submission input structure
+ * @param out pointer to a  signal command submission output structure
+ * @param timeout duration in seconds
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_signal_submission_timeout(int fd,
+					struct hlthunk_signal_in *in,
+					struct hlthunk_signal_out *out,
+					uint32_t timeout);
+
+/**
  * This function submits a job of a  wait CS to a specific device
  * @param fd file descriptor handle of habanalabs main device
  * @param in pointer to a wait command submission input structure
@@ -625,6 +687,21 @@ hlthunk_public int hlthunk_wait_for_signal(int fd,
 					struct hlthunk_wait_out *out);
 
 /**
+ * This function submits a job of a  wait CS to a specific device with a timeout
+ * @param fd file descriptor handle of habanalabs main device
+ * @param in pointer to a wait command submission input structure
+ * @param out pointer to a wait command submission output structure
+ * @param timeout duration in seconds
+ * @return 0 for success, negative value for failure. ULLONG_MAX is returned if
+ * the given signal CS was already completed. Undefined behavior if the given
+ * seq is not of a  signal CS
+ */
+hlthunk_public int hlthunk_wait_for_signal_timeout(int fd,
+					struct hlthunk_wait_in *in,
+					struct hlthunk_wait_out *out,
+					uint32_t timeout);
+
+/**
  * This function submits a job of a  wait CS to a specific device
  * @param fd file descriptor handle of habanalabs main device
  * @param in pointer to a wait command submission input structure
@@ -636,6 +713,21 @@ hlthunk_public int hlthunk_wait_for_signal(int fd,
 hlthunk_public int hlthunk_wait_for_collective_signal(int fd,
 					struct hlthunk_wait_in *in,
 					struct hlthunk_wait_out *out);
+
+/**
+ * This function submits a job of a  wait CS to a specific device with a timeout
+ * @param fd file descriptor handle of habanalabs main device
+ * @param in pointer to a wait command submission input structure
+ * @param out pointer to a wait command submission output structure
+ * @param timeout duration in seconds
+ * @return 0 for success, negative value for failure. ULLONG_MAX is returned if
+ * the given signal CS was already completed. Undefined behavior if the given
+ * seq is not of a  signal CS
+ */
+hlthunk_public int hlthunk_wait_for_collective_signal_timeout(int fd,
+					struct hlthunk_wait_in *in,
+					struct hlthunk_wait_out *out,
+					uint32_t timeout);
 
 /**
  * This function allocates DRAM memory on the device
