@@ -45,7 +45,6 @@ static double execute_host_bidirectional_transfer(int fd,
 	struct hltests_cs_chunk *execute_arr;
 	struct hltests_pkt_info pkt_info;
 	struct timespec begin, end;
-	double time_diff;
 	void **h2d_cb, **d2h_cb;
 	int rc, h2d_num_of_cb = 1, d2h_num_of_cb = 1;
 	uint64_t h2d_lindma_pkts, h2d_lindma_pkts_per_cb, i, j,
@@ -169,8 +168,6 @@ static double execute_host_bidirectional_transfer(int fd,
 	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
 
 	clock_gettime(CLOCK_MONOTONIC_RAW, &end);
-	time_diff = (end.tv_nsec - begin.tv_nsec) / 1000000000.0 +
-						(end.tv_sec  - begin.tv_sec);
 
 	for (i = 0 ; i < h2d_num_of_cb ; i++) {
 		rc = hltests_destroy_cb(fd, h2d_cb[i]);
@@ -187,9 +184,8 @@ static double execute_host_bidirectional_transfer(int fd,
 	hlthunk_free(execute_arr);
 
 	/* return value in GB/Sec */
-	return ((double)(host_to_device->size * h2d_lindma_pkts +
-			device_to_host->size * d2h_lindma_pkts) / time_diff) /
-			1000 / 1000 / 1000;
+	return get_bw_gigabyte_per_sec(host_to_device->size * h2d_lindma_pkts +
+			device_to_host->size * d2h_lindma_pkts, &begin, &end);
 }
 
 static double execute_host_transfer(int fd,
@@ -199,7 +195,6 @@ static double execute_host_transfer(int fd,
 	struct hltests_pkt_info pkt_info;
 	uint64_t num_of_lindma_pkts, num_of_lindma_pkts_per_cb, i, j;
 	struct timespec begin, end;
-	double time_diff;
 	void **cb1;
 	int rc, num_of_cb = 1;
 	uint64_t seq = 0;
@@ -271,8 +266,6 @@ static double execute_host_transfer(int fd,
 	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
 
 	clock_gettime(CLOCK_MONOTONIC_RAW, &end);
-	time_diff = (end.tv_nsec - begin.tv_nsec) / 1000000000.0 +
-						(end.tv_sec  - begin.tv_sec);
 
 	for (i = 0 ; i < num_of_cb_per_transfer ; i++) {
 		rc = hltests_destroy_cb(fd, cb1[i]);
@@ -283,8 +276,8 @@ static double execute_host_transfer(int fd,
 	hlthunk_free(execute_arr);
 
 	/* return value in GB/Sec */
-	return ((double)(transfer->size) *
-			num_of_lindma_pkts / time_diff) / 1000 / 1000 / 1000;
+	return get_bw_gigabyte_per_sec(transfer->size * num_of_lindma_pkts,
+								&begin, &end);
 }
 
 struct dma_perf_cfg {
@@ -525,7 +518,6 @@ static double indirect_perf_test(int fd, uint32_t num_of_dma_ch,
 	struct timespec begin, end;
 	struct hltests_cs_chunk execute_arr[MAX_DMA_CH + 1];
 	uint64_t seq = 0;
-	double time_diff;
 
 	for (ch = 0 ; ch < num_of_dma_ch ; ch++) {
 		transfer[ch].size = (transfer[ch].size - 0x80) & ~0x7F;
@@ -690,8 +682,6 @@ static double indirect_perf_test(int fd, uint32_t num_of_dma_ch,
 	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
 
 	clock_gettime(CLOCK_MONOTONIC_RAW, &end);
-	time_diff = (end.tv_nsec - begin.tv_nsec) / 1000000000.0 +
-						(end.tv_sec  - begin.tv_sec);
 	hltests_destroy_cb(fd, cb);
 	for (ch = 0 ; ch < num_of_dma_ch ; ch++) {
 		hltests_free_host_mem(fd, cp_dma_cb[ch]);
@@ -699,8 +689,8 @@ static double indirect_perf_test(int fd, uint32_t num_of_dma_ch,
 	}
 
 	/* return value in GB/Sec */
-	return (((double)(total_dma_size) * num_of_lindma_pkts) / time_diff) /
-							1000 / 1000 / 1000;
+	return get_bw_gigabyte_per_sec(total_dma_size * num_of_lindma_pkts,
+								&begin, &end);
 }
 
 void test_sram_dram_single_ch_perf(void **state)

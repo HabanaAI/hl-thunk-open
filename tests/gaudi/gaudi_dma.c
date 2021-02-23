@@ -56,8 +56,7 @@ static void *dma_thread_func_int(void *args)
 			return NULL;
 
 		clock_gettime(CLOCK_MONOTONIC_RAW, &curr);
-		time_diff = (curr.tv_nsec - begin.tv_nsec) / 1000000000.0 +
-						(curr.tv_sec  - begin.tv_sec);
+		time_diff = get_timediff_sec(&begin, &curr);
 	}
 
 	return args;
@@ -93,8 +92,7 @@ static void *dma_thread_func_ext(void *args)
 			return NULL;
 
 		clock_gettime(CLOCK_MONOTONIC_RAW, &end);
-		time_diff = (end.tv_nsec - begin.tv_nsec) / 1000000000.0 +
-						(end.tv_sec  - begin.tv_sec);
+		time_diff = get_timediff_sec(&begin, &end);
 	}
 
 	return args;
@@ -495,7 +493,6 @@ void test_strided_dma(void **state)
 		total_dma_size = num_of_strides * stride_size;
 	int rc, fd = tests_state->fd, i, j;
 	struct timespec begin, end;
-	double time_diff;
 
 	if (!hltests_is_gaudi(fd)) {
 		printf("Test is skipped because device is not GAUDI\n");
@@ -815,11 +812,8 @@ void test_strided_dma(void **state)
 			assert_true((*(dst_ptr + j) & 0xFF) == 0xFF);
 	}
 
-	time_diff = (end.tv_nsec - begin.tv_nsec) / 1000000000.0 +
-						(end.tv_sec - begin.tv_sec);
-
-	printf("BW: %7.2lf GB/Sec\n", ((double)(data_size) *
-			num_of_strides / time_diff) / 1000 / 1000 / 1000);
+	printf("BW: %7.2lf GB/Sec\n", get_bw_gigabyte_per_sec(
+				data_size * num_of_strides, &begin, &end));
 
 	rc = hltests_free_host_mem(fd, src_buf);
 	assert_int_equal(rc, 0);
