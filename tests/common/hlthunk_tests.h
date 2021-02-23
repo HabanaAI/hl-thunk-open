@@ -616,4 +616,8 @@ uint16_t hltests_get_first_avail_mon(int fd);
 void goya_tests_set_asic_funcs(struct hltests_device *hdev);
 void gaudi_tests_set_asic_funcs(struct hltests_device *hdev);
 
+
+double get_timediff_sec(struct timespec *begin, struct timespec *end);
+double get_bw_gigabyte_per_sec(uint64_t bytes, struct timespec *begin,
+							struct timespec *end);
 #endif /* HLTHUNK_TESTS_H */

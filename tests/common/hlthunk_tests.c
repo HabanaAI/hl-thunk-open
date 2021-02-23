@@ -2547,3 +2547,20 @@ void hltests_clear_sobs(int fd, uint16_t num_of_sobs)
 		DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
 
 }
+
+double get_timediff_sec(struct timespec *begin, struct timespec *end)
+{
+	return (end->tv_nsec - begin->tv_nsec) / 1000000000.0 +
+						(end->tv_sec  - begin->tv_sec);
+}
+
+double get_bw_gigabyte_per_sec(uint64_t bytes, struct timespec *begin,
+							struct timespec *end)
+{
+	/*
+	 * calculation conforms to GB definition:
+	 * 1 GB = 1000000000 bytes (= 1000^3 B = 10^9 B)
+	 */
+	return ((double)(bytes) / get_timediff_sec(begin, end)) /
+						(1000 * 1000 * 1000);
+}

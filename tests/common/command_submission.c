@@ -50,8 +50,7 @@ void measure_cs_nop(struct hltests_state *tests_state,
 	}
 
 	clock_gettime(CLOCK_MONOTONIC_RAW, &end);
-	time_diff = (end.tv_nsec - begin.tv_nsec) / 1000000000.0 +
-						(end.tv_sec  - begin.tv_sec);
+	time_diff = get_timediff_sec(&begin, &end);
 
 	printf("time = %.3fus\n", (time_diff / loop_cnt) * 1000000);
 }
