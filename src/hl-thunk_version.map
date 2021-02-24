@@ -38,6 +38,7 @@ HLTNK_1.0 {
 	hlthunk_get_sync_manager_info;
 	hlthunk_get_time_sync_info;
 	hlthunk_get_total_energy_consumption_info;
+	hlthunk_get_power_info;
 	hlthunk_get_version;
 	hlthunk_host_memory_map;
 	hlthunk_host_memory_map_original;
