@@ -106,6 +106,10 @@ struct hlthunk_energy_info {
 	uint64_t total_energy_consumption;
 };
 
+struct hlthunk_power_info {
+	uint64_t power;
+};
+
 struct hlthunk_cs_in {
 	void *chunks_restore;
 	void *chunks_execute;
@@ -472,6 +476,15 @@ hlthunk_public int hlthunk_get_clk_throttle_info(int fd,
  */
 hlthunk_public int hlthunk_get_total_energy_consumption_info(int fd,
 				struct hlthunk_energy_info *info);
+
+/**
+ * This function retrieves the current device's power in milliwatts (mW)
+ * @param fd file descriptor handle of habanalabs main device
+ * @param info pointer to memory, where to fill the power info
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_get_power_info(int fd,
+				struct hlthunk_power_info *info);
 
 /**
  * This function retrieves miscellaneous information of a specific device
