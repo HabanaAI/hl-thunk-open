@@ -64,7 +64,10 @@ static int hlthunk_ioctl(int fd, unsigned long request, void *arg)
 		ret = ioctl(fd, request, arg);
 	} while (ret == -1 && (errno == EINTR || errno == EAGAIN));
 
-	return ret;
+	if (ret)
+		return -errno;
+
+	return 0;
 }
 
 static const char *get_temp_dir(void)
@@ -1325,7 +1328,10 @@ hlthunk_public int hlthunk_wait_for_cs_with_timestamp(int fd, uint64_t seq,
 	if (hl_out->flags & HL_WAIT_CS_STATUS_FLAG_TIMESTAMP_VLD)
 		*timestamp = hl_out->timestamp_nsec;
 
-	return rc;
+	if (rc)
+		return -1;
+
+	return 0;
 }
 
 hlthunk_public int hlthunk_wait_for_interrupt(int fd, void *addr,
