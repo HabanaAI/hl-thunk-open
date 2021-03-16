@@ -313,7 +313,7 @@ void hlthunk_set_profiler(void)
 		(*set_profiler_function)(functions_pointers_table);
 #else
 	printf(
-		"HABANA_PROFILE is set to 1, but profiler is not supported in this build\n");
+		"HABANA_PROFILE_LEGACY is set to 1, but profiler is not supported in this build\n");
 #endif
 }
 
@@ -364,7 +364,7 @@ hlthunk_public int hlthunk_open(enum hlthunk_device_name device_name,
 		pthread_mutex_lock(&global_members.profiler_init_lock);
 
 		if (!global_members.is_profiler_checked) {
-			env_var = getenv("HABANA_PROFILE");
+			env_var = getenv("HABANA_PROFILE_LEGACY");
 			if (env_var && strcmp(env_var, "1") == 0)
 				hlthunk_set_profiler();
 			else {
