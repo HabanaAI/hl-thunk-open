@@ -368,8 +368,8 @@ hlthunk_public int hlthunk_open(enum hlthunk_device_name device_name,
 			if (env_var && strcmp(env_var, "1") == 0)
 				hlthunk_set_profiler();
 			else {
-				env_var = getenv("HABANA_SHIM");
-				if (env_var && strcmp(env_var, "1") == 0)
+				env_var = getenv("HABANA_SHIM_DISABLE");
+				if (env_var == NULL || strcmp(env_var, "1") != 0)
 					hlthunk_enable_shim();
 			}
 
