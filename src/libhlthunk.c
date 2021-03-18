@@ -1328,10 +1328,7 @@ hlthunk_public int hlthunk_wait_for_cs_with_timestamp(int fd, uint64_t seq,
 	if (hl_out->flags & HL_WAIT_CS_STATUS_FLAG_TIMESTAMP_VLD)
 		*timestamp = hl_out->timestamp_nsec;
 
-	if (rc)
-		return -1;
-
-	return 0;
+	return rc;
 }
 
 hlthunk_public int hlthunk_wait_for_interrupt(int fd, void *addr,
