@@ -9,6 +9,7 @@
 #define SHIM_TYPES_H
 
 #define SHIM_GET_FUNCTIONS "ShimGetFunctions"
+#define SHIM_LIB_NAME "libhl_shim.so"
 
 enum shim_api_type {
 	SHIM_API_SYNAPSE,
