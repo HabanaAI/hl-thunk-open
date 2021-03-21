@@ -216,14 +216,14 @@ struct hlthunk_functions_pointers {
 						uint64_t sequence,
 						struct hlthunk_cs_in *in,
 						struct hlthunk_cs_out *out);
+	int (*fp_hlthunk_get_hw_block)(int fd, uint64_t block_address,
+						uint32_t *block_size,
+						uint64_t *handle);
 	int (*fp_hlthunk_wait_for_interrupt)(int fd, void *addr,
 					uint32_t target_value,
 					uint32_t interrupt_id,
 					uint32_t timeout_us,
 					uint32_t *status);
-	int (*fp_hlthunk_get_hw_block)(int fd, uint64_t block_address,
-						uint32_t *block_size,
-						uint64_t *handle);
 };
 
 struct hlthunk_debugfs {
