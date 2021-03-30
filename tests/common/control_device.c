@@ -24,12 +24,9 @@
 
 void test_print_hw_ip_info(void **state)
 {
-	const char *pciaddr = hltests_get_parser_pciaddr();
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	int rc, fd = tests_state->fd;
 	struct hlthunk_hw_ip_info hw_ip;
-	int rc, fd;
-
-	fd = hlthunk_open_control(0, pciaddr);
-	assert_in_range(fd, 0, INT_MAX);
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
@@ -55,7 +52,6 @@ void test_print_hw_ip_info(void **state)
 
 	printf("\n\n");
 
-	hlthunk_close(fd);
 }
 
 static void print_engine_name(enum hlthunk_device_name device_id,
@@ -99,14 +95,11 @@ static void print_engine_name(enum hlthunk_device_name device_id,
 
 void test_print_hw_idle_info(void **state)
 {
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	int rc, fd = tests_state->fd;
 	struct hlthunk_engines_idle_info idle_info;
-	const char *pciaddr = hltests_get_parser_pciaddr();
 	uint64_t i;
 	bool is_idle;
-	int rc, fd;
-
-	fd = hlthunk_open_control(0, pciaddr);
-	assert_in_range(fd, 0, INT_MAX);
 
 	printf("\n");
 	printf("Idle status\n");
@@ -127,17 +120,13 @@ void test_print_hw_idle_info(void **state)
 			print_engine_name(fd, i);
 out:
 	printf("\n");
-	hlthunk_close(fd);
 }
 
 void test_print_dram_usage_info_no_stop(void **state)
 {
-	const char *pciaddr = hltests_get_parser_pciaddr();
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	int rc, fd = tests_state->fd;
 	struct hlthunk_dram_usage_info dram_usage;
-	int rc, fd;
-
-	fd = hlthunk_open_control(0, pciaddr);
-	assert_in_range(fd, 0, INT_MAX);
 
 	printf("\n");
 
@@ -156,12 +145,9 @@ void test_print_dram_usage_info_no_stop(void **state)
 
 void test_print_device_utilization_no_stop(void **state)
 {
-	const char *pciaddr = hltests_get_parser_pciaddr();
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	int rc, fd = tests_state->fd;
 	uint32_t rate;
-	int rc, fd;
-
-	fd = hlthunk_open_control(0, pciaddr);
-	assert_in_range(fd, 0, INT_MAX);
 
 	printf("\n");
 
@@ -177,12 +163,9 @@ void test_print_device_utilization_no_stop(void **state)
 
 void test_print_clk_rate(void **state)
 {
-	const char *pciaddr = hltests_get_parser_pciaddr();
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	int rc, fd = tests_state->fd;
 	uint32_t cur_clk, max_clk;
-	int rc, fd;
-
-	fd = hlthunk_open_control(0, pciaddr);
-	assert_in_range(fd, 0, INT_MAX);
 
 	rc = hlthunk_get_clk_rate(fd, &cur_clk, &max_clk);
 	assert_int_equal(rc, 0);
@@ -190,18 +173,13 @@ void test_print_clk_rate(void **state)
 	printf("\n");
 	printf("Current clock rate  : %dMHz\n", cur_clk);
 	printf("Maximum clock rate  : %dMHz\n\n", max_clk);
-
-	hlthunk_close(fd);
 }
 
 void test_print_reset_count(void **state)
 {
-	const char *pciaddr = hltests_get_parser_pciaddr();
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	int rc, fd = tests_state->fd;
 	struct hlthunk_reset_count_info info;
-	int rc, fd;
-
-	fd = hlthunk_open_control(0, pciaddr);
-	assert_in_range(fd, 0, INT_MAX);
 
 	rc = hlthunk_get_reset_count_info(fd, &info);
 	assert_int_equal(rc, 0);
@@ -209,18 +187,13 @@ void test_print_reset_count(void **state)
 	printf("\n");
 	printf("Hard reset count  : %d\n", info.hard_reset_count);
 	printf("Soft reset count  : %d\n\n", info.soft_reset_count);
-
-	hlthunk_close(fd);
 }
 
 void test_print_time_sync_info(void **state)
 {
-	const char *pciaddr = hltests_get_parser_pciaddr();
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	int rc, fd = tests_state->fd;
 	struct hlthunk_time_sync_info info;
-	int rc, fd;
-
-	fd = hlthunk_open_control(0, pciaddr);
-	assert_in_range(fd, 0, INT_MAX);
 
 	rc = hlthunk_get_time_sync_info(fd, &info);
 	assert_int_equal(rc, 0);
@@ -229,7 +202,6 @@ void test_print_time_sync_info(void **state)
 	printf("Device time  : 0x%"PRIx64"\n", info.device_time);
 	printf("Host time    : 0x%"PRIx64"\n\n", info.host_time);
 
-	hlthunk_close(fd);
 }
 
 void test_print_hlthunk_version(void **state)
@@ -246,12 +218,9 @@ void test_print_hlthunk_version(void **state)
 
 void test_print_cs_drop_statistics(void **state)
 {
-	const char *pciaddr = hltests_get_parser_pciaddr();
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	int rc, fd = tests_state->fd;
 	struct hl_info_cs_counters info;
-	int rc, fd;
-
-	fd = hlthunk_open_control(0, pciaddr);
-	assert_in_range(fd, 0, INT_MAX);
 
 	rc = hlthunk_get_cs_counters_info(fd, &info);
 	assert_int_equal(rc, 0);
@@ -298,12 +267,9 @@ void test_print_cs_drop_statistics(void **state)
 
 void test_print_pci_counters(void **state)
 {
-	const char *pciaddr = hltests_get_parser_pciaddr();
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	int rc, fd = tests_state->fd;
 	struct hlthunk_pci_counters_info info;
-	int rc, fd;
-
-	fd = hlthunk_open_control(0, pciaddr);
-	assert_in_range(fd, 0, INT_MAX);
 
 	rc = hlthunk_get_pci_counters_info(fd, &info);
 	assert_int_equal(rc, 0);
@@ -312,55 +278,40 @@ void test_print_pci_counters(void **state)
 	printf("rx_throughput   : %lu\n", info.rx_throughput);
 	printf("tx_throughput   : %lu\n", info.tx_throughput);
 	printf("replay counter  : %u\n\n", info.replay_cnt);
-
-	hlthunk_close(fd);
 }
 
 void test_print_clk_throttling_reason(void **state)
 {
-	const char *pciaddr = hltests_get_parser_pciaddr();
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	int rc, fd = tests_state->fd;
 	struct hlthunk_clk_throttle_info info;
-	int rc, fd;
-
-	fd = hlthunk_open_control(0, pciaddr);
-	assert_in_range(fd, 0, INT_MAX);
 
 	rc = hlthunk_get_clk_throttle_info(fd, &info);
 	assert_int_equal(rc, 0);
 
 	printf("\nclk throttling bitmask: %u\n\n",
 			info.clk_throttle_reason_bitmask);
-
-	hlthunk_close(fd);
 }
 
 void test_print_total_energy_consumption(void **state)
 {
-	const char *pciaddr = hltests_get_parser_pciaddr();
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	int rc, fd = tests_state->fd;
 	struct hlthunk_energy_info energy_info = {0};
-	int rc, fd;
-
-	fd = hlthunk_open_control(0, pciaddr);
-	assert_in_range(fd, 0, INT_MAX);
 
 	rc = hlthunk_get_total_energy_consumption_info(fd, &energy_info);
 	assert_int_equal(rc, 0);
 
 	printf("\nTotal energy consumption: %lu(mj)\n\n",
 			energy_info.total_energy_consumption);
-
-	hlthunk_close(fd);
 }
 
-void print_events_counters(bool aggregate)
+void print_events_counters(void **state, bool aggregate)
 {
-	const char *pciaddr = hltests_get_parser_pciaddr();
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	int i, rc, fd = tests_state->fd;
 	uint32_t hw_events_arr_size;
 	uint32_t *hw_events_arr;
-	int i, rc, fd;
-
-	fd = hlthunk_open_control(0, pciaddr);
-	assert_in_range(fd, 0, INT_MAX);
 
 	rc = hlthunk_get_device_name_from_fd(fd);
 	switch (rc) {
@@ -391,36 +342,68 @@ void print_events_counters(bool aggregate)
 
 	printf("\n");
 
-	hlthunk_close(fd);
-
 	hlthunk_free((void *) hw_events_arr);
 }
 
 void test_print_events_counters(void **state)
 {
-	print_events_counters(false);
+	print_events_counters(state, false);
 }
 
 void test_print_events_counters_aggregate(void **state)
 {
-	print_events_counters(true);
+	print_events_counters(state, true);
 }
 
 void test_print_pci_bdf(void **state)
 {
-	const char *pciaddr = hltests_get_parser_pciaddr();
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	int rc, fd = tests_state->fd;
 	char pci_bus_id[16];
-	int rc, fd;
-
-	fd = hlthunk_open_control(0, pciaddr);
-	assert_in_range(fd, 0, INT_MAX);
 
 	rc = hlthunk_get_pci_bus_id_from_fd(fd, pci_bus_id, 16);
 	assert_int_equal(rc, 0);
 
 	printf("PCI BDF: %s\n", pci_bus_id);
 
-	hlthunk_close(fd);
+}
+
+void test_print_pll_info(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	int rc, fd = tests_state->fd;
+	struct hlthunk_hw_ip_info hw_ip;
+	uint32_t pll_idx, max_pll_idx;
+	struct hlthunk_pll_frequency_info freq_info;
+
+	if (hltests_is_simulator(fd)) {
+		printf("Test is not required on simulator\n");
+		skip();
+	}
+
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+	printf("\nCPUCP: %s\n", hw_ip.cpucp_version);
+
+	max_pll_idx = hltests_get_max_pll_idx(fd);
+
+	for (pll_idx = 0; pll_idx < max_pll_idx; pll_idx++) {
+		rc = hlthunk_get_pll_frequency(fd, pll_idx, &freq_info);
+		assert_int_equal(rc, 0);
+
+		printf("\nFrequency for %s[%u]:\n",
+			hltests_stringify_pll_idx(fd, pll_idx),
+			pll_idx);
+		printf("\t%s: %u Mhz\n\t%s: %u Mhz\n\t%s: %u Mhz\n\t%s: %u Mhz\n",
+			hltests_stringify_pll_type(fd, pll_idx, 0),
+			freq_info.output[0],
+			hltests_stringify_pll_type(fd, pll_idx, 1),
+			freq_info.output[1],
+			hltests_stringify_pll_type(fd, pll_idx, 2),
+			freq_info.output[2],
+			hltests_stringify_pll_type(fd, pll_idx, 3),
+			freq_info.output[3]);
+	}
 }
 
 const struct CMUnitTest control_tests[] = {
@@ -438,7 +421,8 @@ const struct CMUnitTest control_tests[] = {
 	cmocka_unit_test(test_print_total_energy_consumption),
 	cmocka_unit_test(test_print_events_counters),
 	cmocka_unit_test(test_print_events_counters_aggregate),
-	cmocka_unit_test(test_print_pci_bdf)
+	cmocka_unit_test(test_print_pci_bdf),
+	cmocka_unit_test(test_print_pll_info)
 };
 
 static const char *const usage[] = {
@@ -459,5 +443,7 @@ int main(int argc, const char **argv)
 	}
 
 	return hltests_run_group_tests("control_device", control_tests,
-					num_tests, NULL, NULL);
+					num_tests,
+					hltests_control_dev_setup,
+					hltests_control_dev_teardown);
 }

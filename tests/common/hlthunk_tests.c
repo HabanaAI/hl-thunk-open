@@ -312,6 +312,118 @@ out:
 	return rc;
 }
 
+int hltests_control_dev_open(const char *busid)
+{
+	enum hlthunk_device_name actual_asic_type;
+	struct hltests_device *hdev;
+	int fd, rc;
+	khint_t k;
+
+	if (asic_name_for_testing == HLTHUNK_DEVICE_INVALID) {
+		printf("Expected ASIC name is %s!!!\n",
+			asic_names[asic_name_for_testing]);
+		printf("Something is very wrong, exiting...\n");
+		rc = -EINVAL;
+		goto out;
+	}
+
+	pthread_mutex_lock(&table_lock);
+
+	rc = fd = hlthunk_open_control(0, busid);
+	if (fd < 0)
+		goto out;
+
+	actual_asic_type = hlthunk_get_device_name_from_fd(fd);
+	if ((asic_name_for_testing != HLTHUNK_DEVICE_DONT_CARE) &&
+			(asic_name_for_testing != actual_asic_type)) {
+
+		printf("Expected to run on device %s but detected device %s\n",
+				asic_names[asic_name_for_testing],
+				asic_names[actual_asic_type]);
+		rc = -EINVAL;
+		hlthunk_close(fd);
+		pthread_mutex_unlock(&table_lock);
+		exit(0);
+	}
+
+	k = kh_get(ptr, dev_table, fd);
+	if (k != kh_end(dev_table)) {
+		/* found, just incr refcnt */
+		hdev = kh_val(dev_table, k);
+		hdev->refcnt++;
+		goto out;
+	}
+
+	/* not found, create new device */
+	hdev = hlthunk_malloc(sizeof(struct hltests_device));
+	if (!hdev) {
+		rc = -ENOMEM;
+		goto close_device;
+	}
+	hdev->fd = fd;
+	hdev->refcnt = 1;
+
+	k = kh_put(ptr, dev_table, fd, &rc);
+	kh_val(dev_table, k) = hdev;
+
+	hdev->device_id = hlthunk_get_device_id_from_fd(fd);
+
+	switch (actual_asic_type) {
+	case HLTHUNK_DEVICE_GOYA:
+		goya_tests_set_asic_funcs(hdev);
+		break;
+	case HLTHUNK_DEVICE_GAUDI:
+		gaudi_tests_set_asic_funcs(hdev);
+		break;
+	default:
+		printf("Invalid device type 0x%x\n", hdev->device_id);
+		rc = -ENXIO;
+		goto remove_device;
+	}
+
+	pthread_mutex_unlock(&table_lock);
+	return fd;
+
+remove_device:
+	kh_del(ptr, dev_table, k);
+	hlthunk_free(hdev);
+close_device:
+	hlthunk_close(fd);
+out:
+	pthread_mutex_unlock(&table_lock);
+	return rc;
+}
+
+int hltests_control_dev_close(int fd)
+{
+	struct hltests_device *hdev;
+	khint_t k;
+
+	pthread_mutex_lock(&table_lock);
+
+	k = kh_get(ptr, dev_table, fd);
+	if (k == kh_end(dev_table)) {
+		pthread_mutex_unlock(&table_lock);
+		return -ENODEV;
+	}
+
+	hdev = kh_val(dev_table, k);
+
+	if (--hdev->refcnt) {
+		pthread_mutex_unlock(&table_lock);
+		return 0;
+	}
+
+	hlthunk_close(hdev->fd);
+
+	kh_del(ptr, dev_table, k);
+	pthread_mutex_unlock(&table_lock);
+
+	hlthunk_free(hdev);
+
+	return 0;
+}
+
 int hltests_open(const char *busid)
 {
 	enum hlthunk_device_name actual_asic_type;
@@ -654,6 +766,58 @@ static struct hltests_state *hltests_alloc_state(void)
 
 out:
 	return tests_state;
+}
+
+int hltests_control_dev_setup(void **state)
+{
+	struct hltests_state *tests_state;
+	struct hltests_device *hdev;
+	int rc, fd;
+
+	tests_state = hltests_alloc_state();
+	if (!tests_state)
+		return -ENOMEM;
+
+	fd = tests_state->fd = hltests_control_dev_open(parser_pciaddr);
+	if (fd < 0) {
+		printf("Failed to open device %d\n", fd);
+		rc = fd;
+		goto free_state;
+	}
+
+	hdev = get_hdev_from_fd(fd);
+	if (!hdev) {
+		printf("Failed to get hdev from file descriptor %d\n", fd);
+		rc = -ENODEV;
+		goto close_fd;
+	}
+
+	*state = tests_state;
+
+	return 0;
+
+close_fd:
+	if (hltests_close(fd))
+		printf("Problem in closing FD, ignoring...\n");
+free_state:
+	hlthunk_free(tests_state);
+
+	return rc;
+}
+
+int hltests_control_dev_teardown(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+
+	if (!tests_state)
+		return -EINVAL;
+
+	if (hltests_control_dev_close(tests_state->fd))
+		printf("Problem in closing FD, ignoring...\n");
+
+	hlthunk_free(*state);
+
+	return 0;
 }
 
 int hltests_setup(void **state)
@@ -2618,4 +2782,29 @@ double get_bw_gigabyte_per_sec(uint64_t bytes, struct timespec *begin,
 	 */
 	return ((double)(bytes) / get_timediff_sec(begin, end)) /
 						(1000 * 1000 * 1000);
+}
+
+int hltests_get_max_pll_idx(int fd)
+{
+	const struct hltests_asic_funcs *asic =
+			get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->get_max_pll_idx();
+}
+
+const char *hltests_stringify_pll_idx(int fd, uint32_t pll_idx)
+{
+	const struct hltests_asic_funcs *asic =
+			get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->stringify_pll_idx(pll_idx);
+}
+
+const char *hltests_stringify_pll_type(int fd, uint32_t pll_idx,
+				uint8_t type_idx)
+{
+	const struct hltests_asic_funcs *asic =
+			get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->stringify_pll_type(pll_idx, type_idx);
 }

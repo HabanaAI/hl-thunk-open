@@ -807,6 +807,97 @@ static void gaudi_dram_pool_fini(struct hltests_device *hdev)
 	hdev->priv = NULL;
 }
 
+static int gaudi_get_max_pll_idx(void)
+{
+	return HL_GAUDI_PLL_MAX;
+}
+
+static const char *gaudi_stringify_pll_idx(uint32_t pll_idx)
+{
+	switch (pll_idx) {
+	case HL_GAUDI_CPU_PLL: return "HL_GAUDI_CPU_PLL";
+	case HL_GAUDI_PCI_PLL: return "HL_GAUDI_PCI_PLL";
+	case HL_GAUDI_SRAM_PLL: return "HL_GAUDI_SRAM_PLL";
+	case HL_GAUDI_HBM_PLL: return "HL_GAUDI_HBM_PLL";
+	case HL_GAUDI_NIC_PLL: return "HL_GAUDI_NIC_PLL";
+	case HL_GAUDI_DMA_PLL: return "HL_GAUDI_DMA_PLL";
+	case HL_GAUDI_MESH_PLL: return "HL_GAUDI_MESH_PLL";
+	case HL_GAUDI_MME_PLL: return "HL_GAUDI_MME_PLL";
+	case HL_GAUDI_TPC_PLL: return "HL_GAUDI_TPC_PLL";
+	case HL_GAUDI_IF_PLL: return "HL_GAUDI_IF_PLL";
+	default: return "INVALID_PLL_INDEX";
+	}
+}
+
+static const char *gaudi_stringify_pll_type(uint32_t pll_idx, uint8_t type_idx)
+{
+	switch (pll_idx) {
+	case HL_GAUDI_CPU_PLL:
+		switch (type_idx) {
+		case 0: return "HBW_CLK";
+		case 1: return "LBW_CLK";
+		case 2: return "TS_CLK";
+		case 3: return "NA";
+		default: return "INVALID_REQ";
+		}
+	case HL_GAUDI_PCI_PLL:
+		switch (type_idx) {
+		case 0: return "PCI_LBW_CLK|PSOC_LBW_CLK";
+		case 1: return "PCI_TRACE_CLK|PSOC_TRACE";
+		case 2: return "PCI_DBG_CLK|PCI_AUX_CLK|PSOC_CFG_CLK|PSOC_DBG_CLK";
+		case 3: return "PCI_PHY_CLK";
+		default: return "INVALID_REQ";
+		}
+	case HL_GAUDI_SRAM_PLL:
+		switch (type_idx) {
+		case 0: return "HBW_CLK";
+		case 1 ... 3: return "NA";
+		default: return "INVALID_REQ";
+		}
+	case HL_GAUDI_HBM_PLL:
+		switch (type_idx) {
+		case 0: return "HBM_CLK";
+		case 1: return "NIC_CLK";
+		case 2 ... 3: return "NA";
+		default: return "INVALID_REQ";
+		}
+	case HL_GAUDI_NIC_PLL:
+		switch (type_idx) {
+		case 0: return "PRT_CLK";
+		case 1: return "PRT_ANIT_CLK";
+		case 2: return "PRT_CFG_CLK|HBM_CFG_CLK";
+		case 3: return "NA";
+		default: return "INVALID_REQ";
+		}
+	case HL_GAUDI_DMA_PLL:
+		switch (type_idx) {
+		case 0: return "HBW_CLK";
+		case 1: return "LBW_CLK";
+		case 2 ... 3: return "NA";
+		default: return "INVALID_REQ";
+		}
+	case HL_GAUDI_MESH_PLL:
+		switch (type_idx) {
+		case 0: return "MESH_HBW_CLK|DMA_IF_HBW_CLK";
+		case 1: return "MESH_LBW_CLK|DMA_IF_LBW_CLK";
+		case 2: return "MESH_TRACE_CLK|DMA_IF_TRACE_CLK";
+		case 3: return "MESH_DBG_CLK|DMA_IF_DBG_CLK";
+		default: return "INVALID_REQ";
+		}
+	case HL_GAUDI_MME_PLL:
+	case HL_GAUDI_TPC_PLL:
+	case HL_GAUDI_IF_PLL:
+		switch (type_idx) {
+		case 0: return "HBW_CLK";
+		case 1: return "LBW_CLK";
+		case 2: return "TRACE_CLK";
+		case 3: return "DBG_CLK";
+		default: return "INVALID_REQ";
+		}
+	default: return "INVALID_PLL_INDEX";
+	}
+}
+
 static const struct hltests_asic_funcs gaudi_funcs = {
 	.add_arb_en_pkt = gaudi_add_arb_en_pkt,
 	.add_monitor_and_fence = gaudi_add_monitor_and_fence,
@@ -836,7 +927,10 @@ static const struct hltests_asic_funcs gaudi_funcs = {
 	.dram_pool_alloc = gaudi_dram_pool_alloc,
 	.dram_pool_free = gaudi_dram_pool_free,
 	.submit_cs = gaudi_submit_cs,
-	.wait_for_cs = gaudi_wait_for_cs
+	.wait_for_cs = gaudi_wait_for_cs,
+	.get_max_pll_idx = gaudi_get_max_pll_idx,
+	.stringify_pll_idx = gaudi_stringify_pll_idx,
+	.stringify_pll_type = gaudi_stringify_pll_type
 };
 
 void gaudi_tests_set_asic_funcs(struct hltests_device *hdev)
