@@ -8,6 +8,7 @@
 #ifndef HLTHUNK_TESTS_H
 #define HLTHUNK_TESTS_H
 
+#include "misc/habanalabs.h"
 #include "uapi/hlthunk.h"
 #include "khash.h"
 #include "specs/common/pci_ids.h"
@@ -398,6 +399,9 @@ struct hltests_asic_funcs {
 				uint32_t execute_arr_size,
 				uint32_t flags, uint64_t *seq);
 	int (*wait_for_cs)(int fd, uint64_t seq, uint64_t timeout_us);
+	int (*get_max_pll_idx)(void);
+	const char *(*stringify_pll_idx)(uint32_t pll_idx);
+	const char *(*stringify_pll_type)(uint32_t pll_idx, uint8_t type_idx);
 };
 
 struct hltests_memory {
@@ -472,6 +476,9 @@ int hltests_run_group_tests(const char *group_name,
 				CMFixtureFunction group_setup,
 				CMFixtureFunction group_teardown);
 
+
+int hltests_control_dev_open(const char *busid);
+int hltests_control_dev_close(int fd);
 int hltests_open(const char *busid);
 int hltests_close(int fd);
 
@@ -523,6 +530,8 @@ int hltests_submit_staged_cs(int fd, struct hltests_cs_chunk *restore_arr,
 				uint64_t *seq);
 int hltests_wait_for_legacy_cs(int fd, uint64_t seq, uint64_t timeout_us);
 
+int hltests_control_dev_setup(void **state);
+int hltests_control_dev_teardown(void **state);
 int hltests_setup(void **state);
 int hltests_teardown(void **state);
 int hltests_root_setup(void **state);
@@ -635,4 +644,8 @@ void gaudi_tests_set_asic_funcs(struct hltests_device *hdev);
 double get_timediff_sec(struct timespec *begin, struct timespec *end);
 double get_bw_gigabyte_per_sec(uint64_t bytes, struct timespec *begin,
 							struct timespec *end);
+int hltests_get_max_pll_idx(int fd);
+const char *hltests_stringify_pll_idx(int fd, uint32_t pll_idx);
+const char *hltests_stringify_pll_type(int fd, uint32_t pll_idx,
+				uint8_t type_idx);
 #endif /* HLTHUNK_TESTS_H */

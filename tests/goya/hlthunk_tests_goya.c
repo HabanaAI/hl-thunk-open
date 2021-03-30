@@ -495,6 +495,78 @@ int goya_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us)
 	return hltests_wait_for_legacy_cs(fd, seq, timeout_us);
 }
 
+static int goya_get_max_pll_idx(void)
+{
+	return HL_GOYA_PLL_MAX;
+}
+
+static const char *goya_stringify_pll_idx(uint32_t pll_idx)
+{
+	switch (pll_idx) {
+	case HL_GOYA_CPU_PLL: return "HL_GOYA_CPU_PLL";
+	case HL_GOYA_IC_PLL: return "HL_GOYA_IC_PLL";
+	case HL_GOYA_MC_PLL: return "HL_GOYA_MC_PLL";
+	case HL_GOYA_MME_PLL: return "HL_GOYA_MME_PLL";
+	case HL_GOYA_PCI_PLL: return "HL_GOYA_PCI_PLL";
+	case HL_GOYA_EMMC_PLL: return "HL_GOYA_EMMC_PLL";
+	case HL_GOYA_TPC_PLL: return "HL_GOYA_TPC_PLL";
+	default: return "INVALID_PLL_INDEX";
+	}
+}
+
+static const char *goya_stringify_pll_type(uint32_t pll_idx, uint8_t type_idx)
+{
+	switch (pll_idx) {
+	case HL_GOYA_CPU_PLL:
+		switch (type_idx) {
+		case 0: return "CPU_CLK";
+		case 1: return "CPU_CFG_CLK";
+		case 2: return "DMA_LBW_CLK";
+		case 3: return "NA";
+		default: return "INVALID_REQ";
+		}
+	case HL_GOYA_IC_PLL:
+	case HL_GOYA_MME_PLL:
+		switch (type_idx) {
+		case 0: return "HBW_CLK";
+		case 1: return "LBW_CLK";
+		case 2: return "TRACE_CLK";
+		case 3: return "DBG_CLK";
+		default: return "INVALID_REQ";
+		}
+	case HL_GOYA_MC_PLL:
+		switch (type_idx) {
+		case 0: return "MC_CLK";
+		case 1 ... 3: return "NA";
+		default: return "INVALID_REQ";
+		}
+	case HL_GOYA_PCI_PLL:
+		switch (type_idx) {
+		case 0: return "PCI_LBW__CLK|PSOC_LBW_CLK";
+		case 1: return "PCI_DBG_CLK|PCI_AUX_CLK|EMMC_200_TX_CLK|PSOC_CFG_CLK|PSOC_DBG_CLK";
+		case 2: return "PCI_PHY_CLK";
+		case 3: return "EMMC_TM_CLK";
+		default: return "INVALID_REQ";
+		}
+	case HL_GOYA_EMMC_PLL:
+		switch (type_idx) {
+		case 0: return "EMMC_52_TX_CLK";
+		case 1: return "EMMC_26_TX_CLK";
+		case 2 ... 3: return "NA";
+		default: return "INVALID_REQ";
+		}
+	case HL_GOYA_TPC_PLL:
+		switch (type_idx) {
+		case 0: return "HBW_CLK";
+		case 1: return "LBW_CLK";
+		case 2: return "TRACE_CLK";
+		case 3: return "DBG_CLK";
+		default: return "INVALID_REQ";
+		}
+	default: return "INVALID_PLL_INDEX";
+	}
+}
+
 static const struct hltests_asic_funcs goya_funcs = {
 	.add_arb_en_pkt = goya_add_arb_en_pkt,
 	.add_monitor_and_fence = goya_add_monitor_and_fence,
@@ -524,7 +596,10 @@ static const struct hltests_asic_funcs goya_funcs = {
 	.dram_pool_alloc = goya_dram_pool_alloc,
 	.dram_pool_free = goya_dram_pool_free,
 	.submit_cs = goya_submit_cs,
-	.wait_for_cs = goya_wait_for_cs
+	.wait_for_cs = goya_wait_for_cs,
+	.get_max_pll_idx = goya_get_max_pll_idx,
+	.stringify_pll_idx = goya_stringify_pll_idx,
+	.stringify_pll_type = goya_stringify_pll_type
 };
 
 void goya_tests_set_asic_funcs(struct hltests_device *hdev)
