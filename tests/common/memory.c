@@ -369,7 +369,7 @@ static int test_hint_addresses_parsing_handler(void *user, const char *section,
 	return 1;
 }
 
-void hint_addresses_test(void **state)
+void test_hint_addresses(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hints_addr_cfg cfg = {0};
@@ -490,7 +490,7 @@ const struct CMUnitTest memory_tests[] = {
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_submit_and_close,
 				hltests_ensure_device_operational),
-	cmocka_unit_test_setup(hint_addresses_test,
+	cmocka_unit_test_setup(test_hint_addresses,
 					hltests_ensure_device_operational)
 };
 

@@ -314,7 +314,7 @@ static void dma_entire_dram_random(void **state, uint64_t zone_size,
 	kv_destroy(array);
 }
 
-void dma_entire_dram_random_256KB(void **state)
+void test_dma_entire_dram_random_256KB(void **state)
 {
 	if (!hltests_get_parser_run_disabled_tests()) {
 		printf("This test needs to be run with -d flag\n");
@@ -324,7 +324,7 @@ void dma_entire_dram_random_256KB(void **state)
 	dma_entire_dram_random(state, 16 * 1024 * 1024, 256 * 1024);
 }
 
-void dma_entire_dram_random_512KB(void **state)
+void test_dma_entire_dram_random_512KB(void **state)
 {
 	if (!hltests_get_parser_run_disabled_tests()) {
 		printf("This test needs to be run with -d flag\n");
@@ -334,7 +334,7 @@ void dma_entire_dram_random_512KB(void **state)
 	dma_entire_dram_random(state, 16 * 1024 * 1024, 512 * 1024);
 }
 
-void dma_entire_dram_random_1MB(void **state)
+void test_dma_entire_dram_random_1MB(void **state)
 {
 	if (!hltests_get_parser_run_disabled_tests()) {
 		printf("This test needs to be run with -d flag\n");
@@ -344,7 +344,7 @@ void dma_entire_dram_random_1MB(void **state)
 	dma_entire_dram_random(state, 16 * 1024 * 1024, 1 * 1024 * 1024);
 }
 
-void dma_entire_dram_random_2MB(void **state)
+void test_dma_entire_dram_random_2MB(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int fd = tests_state->fd;
@@ -451,13 +451,13 @@ DMA_TEST_INC_DRAM_HIGH(test_dma_dram_high_size_512MB, state, 512 * 1024 * 1024)
 DMA_TEST_INC_DRAM_HIGH(test_dma_dram_high_size_1GB, state, 1024 * 1024 * 1024)
 
 const struct CMUnitTest dma_dram_tests[] = {
-	cmocka_unit_test_setup(dma_entire_dram_random_256KB,
+	cmocka_unit_test_setup(test_dma_entire_dram_random_256KB,
 			hltests_ensure_device_operational),
-	cmocka_unit_test_setup(dma_entire_dram_random_512KB,
+	cmocka_unit_test_setup(test_dma_entire_dram_random_512KB,
 			hltests_ensure_device_operational),
-	cmocka_unit_test_setup(dma_entire_dram_random_1MB,
+	cmocka_unit_test_setup(test_dma_entire_dram_random_1MB,
 			hltests_ensure_device_operational),
-	cmocka_unit_test_setup(dma_entire_dram_random_2MB,
+	cmocka_unit_test_setup(test_dma_entire_dram_random_2MB,
 			hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_dma_dram_size_1KB,
 			hltests_ensure_device_operational),
