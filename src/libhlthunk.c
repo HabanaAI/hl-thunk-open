@@ -340,9 +340,32 @@ void hlthunk_enable_shim(void)
 	 */
 	functions_pointers_table = shim_get_functions(SHIM_API_HLTHUNK,
 		functions_pointers_table);
-#else
-	printf(
-		"HABANA_SHIM is set to 1, but profiler is not supported in this build\n");
+#else /* shim layer won't be loaded, if HABANA_PROFILE=1 need to notify */
+
+	char file_name[64];
+	char *env_var, *line = NULL;
+	int flag = 0;
+	FILE *file;
+
+	env_var = getenv("HABANA_PROFILE");
+	if (!env_var || strcmp(env_var, "1"))
+		return;
+
+	sprintf(file_name, "/proc/%d/maps", getpid());
+	file = fopen(file_name, "r");
+
+	if (file) {
+		while (getline(&line, NULL, file) != -1) {
+			if (strstr(line, "libhl_shim.so") != NULL) {
+				flag = 1;
+				break;
+			}
+		}
+		fclose(file);
+	}
+	if (!flag)
+		printf("HABANA_PROFILE=1 but profiler is not supported in this build\n"
+			);
 #endif
 }
 
