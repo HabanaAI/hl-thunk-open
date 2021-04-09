@@ -228,6 +228,7 @@ struct hltests_state {
 	double perf_outcomes[DMA_PERF_RESULTS_MAX];
 	struct hltests_debugfs debugfs;
 	int fd;
+	int imp_fd;
 	bool mme;
 	bool mmu;
 	bool security;
