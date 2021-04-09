@@ -629,6 +629,13 @@ void hltests_debugfs_write64(int addr_fd, int data_fd, uint64_t full_address,
 		printf("Failed to write to debugfs data fd [rc %zd]\n", size);
 }
 
+static bool hltests_is_importer_exists(void)
+{
+	if (!access("/dev/hli", F_OK))
+		return true;
+	return false;
+}
+
 static struct hltests_state *hltests_alloc_state(void)
 {
 	struct hltests_state *tests_state;
@@ -638,6 +645,7 @@ static struct hltests_state *hltests_alloc_state(void)
 		goto out;
 
 	tests_state->fd = -1;
+	tests_state->imp_fd = -1;
 	tests_state->asic_type = HLTHUNK_DEVICE_MAX;
 	tests_state->debugfs.addr_fd = -1;
 	tests_state->debugfs.data32_fd = -1;
@@ -665,11 +673,21 @@ int hltests_setup(void **state)
 		goto free_state;
 	}
 
+	if (hltests_is_importer_exists()) {
+		tests_state->imp_fd = open("/dev/hli", O_RDWR | O_CLOEXEC, 0);
+		if (tests_state->imp_fd < 0) {
+			printf("Failed to open importer %d\n",
+							tests_state->imp_fd);
+			rc = tests_state->imp_fd;
+			goto close_fd;
+		}
+	}
+
 	memset(&module_params, 0, sizeof(module_params));
 	rc = hltests_get_module_params_info(fd, &module_params);
 	if (rc) {
 		printf("Failed to retrieve values of module parameters\n");
-		goto close_fd;
+		goto close_imp_fd;
 	}
 
 	tests_state->mme = !!module_params.mme_enable;
@@ -680,6 +698,9 @@ int hltests_setup(void **state)
 
 	return 0;
 
+close_imp_fd:
+	if (tests_state->imp_fd >= 0)
+		close(tests_state->imp_fd);
 close_fd:
 	if (hltests_close(fd))
 		printf("Problem in closing FD, ignoring...\n");
@@ -696,6 +717,9 @@ int hltests_teardown(void **state)
 
 	if (!tests_state)
 		return -EINVAL;
+
+	if (tests_state->imp_fd >= 0)
+		close(tests_state->imp_fd);
 
 	if (hltests_close(tests_state->fd))
 		printf("Problem in closing FD, ignoring...\n");

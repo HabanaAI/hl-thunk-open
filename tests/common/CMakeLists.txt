@@ -17,6 +17,7 @@ set(COMMON_UNIT_TESTS
     dma_sram
     dma_dram
     dma_perf
+    dma_buf
     debug
     profiling
     control_device
