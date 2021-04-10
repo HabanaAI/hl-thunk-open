@@ -209,6 +209,7 @@ hlthunk_public enum hlthunk_device_name hlthunk_get_device_name_from_fd(int fd)
 	case PCI_IDS_GOYA_SIMULATOR:
 		return HLTHUNK_DEVICE_GOYA;
 	case PCI_IDS_GAUDI:
+	case PCI_IDS_GAUDI_SEC:
 	case PCI_IDS_GAUDI_SIMULATOR:
 		return HLTHUNK_DEVICE_GAUDI;
 	default:
