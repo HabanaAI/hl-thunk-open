@@ -21,7 +21,6 @@ struct hl_importer_reg_dmabuf_mr_in {
 };
 
 struct hl_importer_reg_dmabuf_mr_out {
-	/* Handle of MR */
 	__u64 mr_handle;
 	__u64 res[7];
 };
@@ -32,9 +31,24 @@ union hl_importer_reg_dmabuf_mr_args {
 };
 
 struct hl_importer_dereg_mr_args {
-	/* Handle of MR */
 	__u64 mr_handle;
 	__u64 res[3];
+};
+
+struct hl_importer_write_to_mr_args {
+	__u64 mr_handle;
+	__u64 userptr;
+	__u32 size;
+	__u32 pad;
+	__u64 res;
+};
+
+struct hl_importer_read_from_mr_args {
+	__u64 mr_handle;
+	__u64 userptr;
+	__u32 size;
+	__u32 pad;
+	__u64 res;
 };
 
 /* Register the DMABUF and return an "MR" that is associated with it */
@@ -44,7 +58,13 @@ struct hl_importer_dereg_mr_args {
 #define HL_IMPORTER_IOCTL_DEREG_MR \
 			_IOWR('I', 0x02, struct hl_importer_dereg_mr_args)
 
+#define HL_IMPORTER_IOCTL_WRITE_TO_MR \
+			_IOWR('I', 0x03, struct hl_importer_write_to_mr_args)
+
+#define HL_IMPORTER_IOCTL_READ_FROM_MR \
+			_IOWR('I', 0x04, struct hl_importer_read_from_mr_args)
+
 #define HL_IMPORTER_COMMAND_START	0x01
-#define HL_IMPORTER_COMMAND_END		0x03
+#define HL_IMPORTER_COMMAND_END		0x05
 
 #endif /* IMPORTER_DRV_H */
