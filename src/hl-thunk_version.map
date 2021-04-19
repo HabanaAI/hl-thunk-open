@@ -76,4 +76,5 @@ HLTNK_1.1 {
 	hlthunk_staged_command_submission_timeout;
 	hlthunk_wait_for_collective_signal_timeout;
 	hlthunk_wait_for_signal_timeout;
+	hlthunk_device_memory_export_dmabuf_fd;
 } HLTNK_1.0;

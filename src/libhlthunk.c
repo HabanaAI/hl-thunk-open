@@ -1650,6 +1650,27 @@ hlthunk_public int hlthunk_memory_unmap(int fd, uint64_t device_virt_addr)
 			fd, device_virt_addr);
 }
 
+hlthunk_public int hlthunk_device_memory_export_dmabuf_fd(int fd,
+							uint64_t handle,
+							uint64_t size,
+							uint32_t flags)
+{
+	union hl_mem_args ioctl_args;
+	int rc;
+
+	memset(&ioctl_args, 0, sizeof(ioctl_args));
+	ioctl_args.in.export_dmabuf_fd.handle = handle;
+	ioctl_args.in.export_dmabuf_fd.mem_size = size;
+	ioctl_args.in.flags = O_RDWR | O_CLOEXEC;
+	ioctl_args.in.op = HL_MEM_OP_EXPORT_DMABUF_FD;
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_MEMORY, &ioctl_args);
+	if (rc)
+		return rc;
+
+	return ioctl_args.out.fd;
+}
+
 hlthunk_public int hlthunk_debug(int fd, struct hl_debug_args *debug)
 {
 	return hlthunk_ioctl(fd, HL_IOCTL_DEBUG, debug);

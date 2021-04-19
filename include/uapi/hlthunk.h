@@ -224,7 +224,8 @@ struct hlthunk_functions_pointers {
 					uint32_t *status);
 	int (*fp_hlthunk_device_memory_export_dmabuf_fd)(int fd,
 							uint64_t handle,
-							uint64_t size);
+							uint64_t size,
+							uint32_t flags);
 	int (*fp_hlthunk_command_submission_timeout)(int fd,
 						struct hlthunk_cs_in *in,
 						struct hlthunk_cs_out *out,
@@ -800,11 +801,13 @@ hlthunk_public int hlthunk_memory_unmap(int fd, uint64_t device_virt_addr);
  * space.
  * @param size Relevant only for GAUDI. Holds the size of the memory that the
  * user wants to create a dma-buf that will describe it.
+ * @param flags DMA-BUF file/FD flags. For now this parameter is not used.
  * @return file descriptor (positive value). negative value for failure
  */
 hlthunk_public int hlthunk_device_memory_export_dmabuf_fd(int fd,
 							uint64_t handle,
-							uint64_t size);
+							uint64_t size,
+							uint32_t flags);
 
 /**
  * This function retrieves a HW block handle according to a given address
