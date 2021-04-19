@@ -1304,6 +1304,39 @@ uint64_t hltests_get_device_va_for_host_ptr(int fd, void *vaddr)
 }
 
 /**
+ * This function retrieves the device memory handle by virtual address in the
+ * device address space
+ * @param fd file descriptor of the device that the host memory is mapped to
+ * @param device_va virtual address in the device VA space
+ * @return opaque handle representing the device memory allocation. 0 for
+ * failure
+ */
+uint64_t hltests_get_device_handle_for_device_va(int fd, void *device_va)
+{
+	struct hltests_device *hdev;
+	struct hltests_memory *mem;
+	khint_t k;
+
+	hdev = get_hdev_from_fd(fd);
+	if (!hdev)
+		return 0;
+
+	pthread_mutex_lock(&hdev->mem_table_device_lock);
+
+	k = kh_get(ptr64, hdev->mem_table_device, (uintptr_t) device_va);
+	if (k == kh_end(hdev->mem_table_device)) {
+		pthread_mutex_unlock(&hdev->mem_table_device_lock);
+		return 0;
+	}
+
+	mem = kh_val(hdev->mem_table_device, k);
+
+	pthread_mutex_unlock(&hdev->mem_table_device_lock);
+
+	return mem->device_handle;
+}
+
+/**
  * This function creates a command buffer for a specific device. It also
  * supports creating internal command buffer, which is basically a block of
  * memory on the host which is DMA'd into the device memory
@@ -2807,4 +2840,22 @@ const char *hltests_stringify_pll_type(int fd, uint32_t pll_idx,
 			get_hdev_from_fd(fd)->asic_funcs;
 
 	return asic->stringify_pll_type(pll_idx, type_idx);
+}
+
+int hltests_device_memory_export_dmabuf_fd(int fd, void *device_addr,
+						uint64_t size)
+{
+	uint64_t device_handle;
+
+	if (!hltests_is_gaudi(fd)) {
+		device_handle =
+			hltests_get_device_handle_for_device_va(fd,
+								device_addr);
+		assert_int_not_equal(device_handle, 0);
+	} else {
+		device_handle = (uint64_t) (uintptr_t) device_addr;
+	}
+
+	return hlthunk_device_memory_export_dmabuf_fd(fd, device_handle, size,
+							O_RDWR | O_CLOEXEC);
 }

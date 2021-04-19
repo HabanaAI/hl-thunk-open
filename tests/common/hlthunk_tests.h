@@ -501,6 +501,7 @@ void *hltests_allocate_device_mem(int fd, uint64_t size,
 int hltests_free_host_mem(int fd, void *vaddr);
 int hltests_free_device_mem(int fd, void *vaddr);
 uint64_t hltests_get_device_va_for_host_ptr(int fd, void *vaddr);
+uint64_t hltests_get_device_handle_for_device_va(int fd, void *device_va);
 
 void *hltests_create_cb(int fd, uint32_t cb_size,
 				enum hltests_is_external is_external,
@@ -648,4 +649,8 @@ int hltests_get_max_pll_idx(int fd);
 const char *hltests_stringify_pll_idx(int fd, uint32_t pll_idx);
 const char *hltests_stringify_pll_type(int fd, uint32_t pll_idx,
 				uint8_t type_idx);
+
+int hltests_device_memory_export_dmabuf_fd(int fd, void *device_addr,
+						uint64_t size);
+
 #endif /* HLTHUNK_TESTS_H */
