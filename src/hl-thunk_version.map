@@ -94,6 +94,7 @@ HLTNK_1.3 {
 HLTNK_1.4 {
 	global:
 
+	hlthunk_device_memory_export_dmabuf_fd;
 	hlthunk_get_hw_ip_info;
 
 	local:

@@ -57,7 +57,7 @@ do { \
 
 
 /**
- * Declerations of the original hlthunk functions implementations
+ * Declarations of the original hlthunk functions implementations
  * to be set as default functions in the functions pointers table
  */
 #define INIT_FUNCS_POINTERS_TABLE {\
@@ -113,7 +113,9 @@ do { \
 	.fp_hlthunk_wait_for_collective_reserved_encap_sig =\
 		hlthunk_wait_for_reserved_encaps_collective_signals_original,\
 	.fp_hlthunk_staged_cs_encaps_signals =\
-		hlthunk_staged_command_submission_encaps_signals_original\
+		hlthunk_staged_command_submission_encaps_signals_original,\
+	.fp_hlthunk_device_memory_export_dmabuf_fd =\
+		hlthunk_device_memory_export_dmabuf_fd\
 }
 
 int hlthunk_command_submission_original(int fd, struct hlthunk_cs_in *in,

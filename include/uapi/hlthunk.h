@@ -342,6 +342,10 @@ struct hlthunk_functions_pointers {
 						uint64_t hint_addr,
 						uint64_t host_size,
 						uint32_t flags);
+	int (*fp_hlthunk_device_memory_export_dmabuf_fd)(int fd,
+                                                        uint64_t handle,
+                                                        uint64_t size,
+                                                        uint32_t flags);
 };
 
 struct hlthunk_debugfs {
@@ -948,6 +952,25 @@ hlthunk_public uint64_t hlthunk_host_memory_map_flags(int fd, void *host_virt_ad
  * @return 0 for success, negative value for failure
  */
 hlthunk_public int hlthunk_memory_unmap(int fd, uint64_t device_virt_addr);
+
+/**
+ * This function asks the driver to create a DMA-BUF object that will represent
+ * an existing memory allocation inside the device memory. The function will
+ * return a FD that will represent that DMA-BUF object. The application should
+ * pass that FD to the importer driver.
+ * @param fd file descriptor of the device that this memory belongs to
+ * @param handle the opaque handle that represents this memory allocation. In
+ * GAUDI, this is expected to hold a physical address inside the device memory
+ * space.
+ * @param size Relevant only for GAUDI. Holds the size of the memory that the
+ * user wants to create a dma-buf that will describe it.
+ * @param flags DMA-BUF file/FD flags. For now this parameter is not used.
+ * @return file descriptor (positive value). negative value for failure
+ */
+hlthunk_public int hlthunk_device_memory_export_dmabuf_fd(int fd,
+							uint64_t handle,
+							uint64_t size,
+							uint32_t flags);
 
 /**
  * This function retrieves a HW block handle according to a given address
