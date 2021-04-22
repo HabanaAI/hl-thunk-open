@@ -57,7 +57,7 @@ static int ibv_dereg_mr(int imp_fd, uint64_t mr_handle)
 }
 
 static int ibv_write_to_mr(int imp_fd, uint64_t mr_handle, void *userptr,
-				uint32_t size)
+				uint32_t offset, uint32_t size)
 {
 	struct hl_importer_write_to_mr_args args;
 
@@ -65,12 +65,13 @@ static int ibv_write_to_mr(int imp_fd, uint64_t mr_handle, void *userptr,
 	args.mr_handle = mr_handle;
 	args.userptr = (uint64_t) (uintptr_t) userptr;
 	args.size = size;
+	args.offset = offset;
 
 	return ioctl(imp_fd, HL_IMPORTER_IOCTL_WRITE_TO_MR, &args);
 }
 
 static int ibv_read_from_mr(int imp_fd, uint64_t mr_handle, void *userptr,
-				uint32_t size)
+				uint32_t offset, uint32_t size)
 {
 	struct hl_importer_read_from_mr_args args;
 
@@ -78,6 +79,7 @@ static int ibv_read_from_mr(int imp_fd, uint64_t mr_handle, void *userptr,
 	args.mr_handle = mr_handle;
 	args.userptr = (uint64_t) (uintptr_t) userptr;
 	args.size = size;
+	args.offset = offset;
 
 	return ioctl(imp_fd, HL_IMPORTER_IOCTL_READ_FROM_MR, &args);
 }
@@ -109,6 +111,7 @@ struct test_dmabuf_params {
 	int fd;
 	int imp_fd;
 	bool verify_memory;
+	bool random_offset;
 };
 
 static void *dmabuf_thread_start(void *args)
@@ -118,6 +121,7 @@ static void *dmabuf_thread_start(void *args)
 			access_size = params->access_size,
 			alloc_size = params->alloc_size;
 	void *device_addr, *host_src, *host_dst;
+	uint32_t offset = 0;
 	int rc, fd = params->fd, imp_fd = params->imp_fd, dmabuf_fd, i;
 
 	/* Allocate host/device memories */
@@ -157,6 +161,10 @@ static void *dmabuf_thread_start(void *args)
 		return NULL;
 
 	for (i = 0 ; i < params->iterations ; i++) {
+		if (params->random_offset)
+			offset = hltests_rand_u32() %
+					(alloc_size - access_size);
+
 		/* Write to MR */
 
 		if (params->verify_memory) {
@@ -164,7 +172,8 @@ static void *dmabuf_thread_start(void *args)
 			memset(host_dst, 0, access_size);
 		}
 
-		rc = ibv_write_to_mr(imp_fd, mr_handle, host_src, access_size);
+		rc = ibv_write_to_mr(imp_fd, mr_handle, host_src, offset,
+					access_size);
 		assert_int_equal(rc, 0);
 
 		if (params->verify_memory) {
@@ -193,7 +202,8 @@ static void *dmabuf_thread_start(void *args)
 					access_size, GOYA_DMA_HOST_TO_DRAM);
 		}
 
-		rc = ibv_read_from_mr(imp_fd, mr_handle, host_dst, access_size);
+		rc = ibv_read_from_mr(imp_fd, mr_handle, host_dst, offset,
+					access_size);
 		assert_int_equal(rc, 0);
 
 		if (params->verify_memory) {
@@ -264,6 +274,7 @@ void _test_dmabuf_multiple_threads(int fd, int imp_fd, uint32_t num_of_threads,
 		thread_params[i].fd = fd;
 		thread_params[i].imp_fd = imp_fd;
 		thread_params[i].verify_memory = !shared_device_memory;
+		thread_params[i].random_offset = shared_device_memory;
 
 		rc = pthread_create(&thread_id[i], NULL, dmabuf_thread_start,
 					&thread_params[i]);
