@@ -39,7 +39,7 @@ struct hl_importer_write_to_mr_args {
 	__u64 mr_handle;
 	__u64 userptr;
 	__u32 size;
-	__u32 pad;
+	__u32 offset;
 	__u64 res;
 };
 
@@ -47,7 +47,7 @@ struct hl_importer_read_from_mr_args {
 	__u64 mr_handle;
 	__u64 userptr;
 	__u32 size;
-	__u32 pad;
+	__u32 offset;
 	__u64 res;
 };
 
