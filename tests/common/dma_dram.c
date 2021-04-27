@@ -49,6 +49,8 @@ static int dma_dram_parser(void *user, const char *section, const char *name,
 	return 1;
 }
 
+#define DMA_ENTIRE_DRAM_PLDM_TIMEOUT_SEC_PER_MB 4
+
 static void dma_entire_dram_random(void **state, uint64_t zone_size,
 			uint64_t dma_size)
 {
@@ -249,8 +251,19 @@ static void dma_entire_dram_random(void **state, uint64_t zone_size,
 		clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
 	}
 
-	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, split_cs ? 2 : 1, 0,
-									&seq);
+	if (hltests_is_pldm(fd)) {
+		uint32_t copy_size_mb, timeout;
+
+		copy_size_mb = (kv_size(array) * cfg.dma_size) / 1024 / 1024;
+		timeout = copy_size_mb *
+				DMA_ENTIRE_DRAM_PLDM_TIMEOUT_SEC_PER_MB;
+		rc = hltests_submit_cs_timeout(fd, NULL, 0, execute_arr,
+					split_cs ? 2 : 1, 0, timeout, &seq);
+	} else {
+		rc = hltests_submit_cs(fd, NULL, 0, execute_arr,
+					split_cs ? 2 : 1, 0, &seq);
+	}
+
 	assert_int_equal(rc, 0);
 
 	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
@@ -323,8 +336,19 @@ static void dma_entire_dram_random(void **state, uint64_t zone_size,
 		clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
 	}
 
-	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, split_cs ? 2 : 1, 0,
-									&seq);
+	if (hltests_is_pldm(fd)) {
+		uint32_t copy_size_mb, timeout;
+
+		copy_size_mb = (kv_size(array) * cfg.dma_size) / 1024 / 1024;
+		timeout = copy_size_mb *
+				DMA_ENTIRE_DRAM_PLDM_TIMEOUT_SEC_PER_MB;
+		rc = hltests_submit_cs_timeout(fd, NULL, 0, execute_arr,
+					split_cs ? 2 : 1, 0, timeout, &seq);
+	} else {
+		rc = hltests_submit_cs(fd, NULL, 0, execute_arr,
+					split_cs ? 2 : 1, 0, &seq);
+	}
+
 	assert_int_equal(rc, 0);
 
 	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
@@ -403,7 +427,11 @@ static void dma_entire_dram_random(void **state, uint64_t zone_size,
 
 void test_dma_entire_dram_random_256KB(void **state)
 {
-	if (!hltests_get_parser_run_disabled_tests()) {
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	int fd = tests_state->fd;
+
+	if (!hltests_get_parser_run_disabled_tests() &&
+			!hltests_is_pldm(fd)) {
 		printf("This test needs to be run with -d flag\n");
 		skip();
 	}
