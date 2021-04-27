@@ -397,7 +397,8 @@ struct hltests_asic_funcs {
 				uint32_t restore_arr_size,
 				struct hltests_cs_chunk *execute_arr,
 				uint32_t execute_arr_size,
-				uint32_t flags, uint64_t *seq);
+				uint32_t flags, uint32_t timeout,
+				uint64_t *seq);
 	int (*wait_for_cs)(int fd, uint64_t seq, uint64_t timeout_us);
 	int (*get_max_pll_idx)(void);
 	const char *(*stringify_pll_idx)(uint32_t pll_idx);
@@ -518,11 +519,18 @@ int hltests_submit_cs(int fd, struct hltests_cs_chunk *restore_arr,
 				uint32_t execute_arr_size,
 				uint32_t flags,
 				uint64_t *seq);
-int hltests_submit_legacy_cs(int fd, struct hltests_cs_chunk *restore_arr,
+int hltests_submit_cs_timeout(int fd, struct hltests_cs_chunk *restore_arr,
 				uint32_t restore_arr_size,
 				struct hltests_cs_chunk *execute_arr,
 				uint32_t execute_arr_size,
 				uint32_t flags,
+				uint32_t timeout,
+				uint64_t *seq);
+int hltests_submit_legacy_cs(int fd, struct hltests_cs_chunk *restore_arr,
+				uint32_t restore_arr_size,
+				struct hltests_cs_chunk *execute_arr,
+				uint32_t execute_arr_size,
+				uint32_t flags, uint32_t timeout,
 				uint64_t *seq);
 int hltests_submit_staged_cs(int fd, struct hltests_cs_chunk *restore_arr,
 				uint32_t restore_arr_size,

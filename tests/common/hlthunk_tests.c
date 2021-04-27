@@ -1508,6 +1508,7 @@ int hltests_submit_legacy_cs(int fd,
 		struct hltests_cs_chunk *execute_arr,
 		uint32_t execute_arr_size,
 		uint32_t flags,
+		uint32_t timeout,
 		uint64_t *seq)
 {
 	struct hltests_device *hdev;
@@ -1560,7 +1561,11 @@ int hltests_submit_legacy_cs(int fd,
 	cs_in.flags = flags;
 
 	memset(&cs_out, 0, sizeof(cs_out));
-	rc = hlthunk_command_submission(fd, &cs_in, &cs_out);
+	if (timeout)
+		rc = hlthunk_command_submission_timeout(fd, &cs_in, &cs_out,
+								timeout);
+	else
+		rc = hlthunk_command_submission(fd, &cs_in, &cs_out);
 	if (rc)
 		goto free_chunks_execute;
 
@@ -1591,7 +1596,23 @@ int hltests_submit_cs(int fd,
 				get_hdev_from_fd(fd)->asic_funcs;
 
 	return asic->submit_cs(fd, restore_arr, restore_arr_size, execute_arr,
-						execute_arr_size, flags, seq);
+					execute_arr_size, flags, 0, seq);
+}
+
+int hltests_submit_cs_timeout(int fd,
+		struct hltests_cs_chunk *restore_arr,
+		uint32_t restore_arr_size,
+		struct hltests_cs_chunk *execute_arr,
+		uint32_t execute_arr_size,
+		uint32_t flags,
+		uint32_t timeout,
+		uint64_t *seq)
+{
+	const struct hltests_asic_funcs *asic =
+				get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->submit_cs(fd, restore_arr, restore_arr_size, execute_arr,
+					execute_arr_size, flags, timeout, seq);
 }
 
 int hltests_submit_staged_cs(int fd,

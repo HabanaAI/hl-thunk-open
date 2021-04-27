@@ -772,10 +772,12 @@ static void gaudi_dram_pool_free(struct hltests_device *hdev, uint64_t addr,
 
 int gaudi_submit_cs(int fd, struct hltests_cs_chunk *restore_arr,
 		uint32_t restore_arr_size, struct hltests_cs_chunk *execute_arr,
-		uint32_t execute_arr_size, uint32_t flags, uint64_t *seq)
+		uint32_t execute_arr_size, uint32_t flags, uint32_t timeout,
+		uint64_t *seq)
 {
 	return hltests_submit_legacy_cs(fd, restore_arr, restore_arr_size,
-				execute_arr, execute_arr_size, flags, seq);
+				execute_arr, execute_arr_size, flags, timeout,
+				seq);
 }
 
 int gaudi_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us)
