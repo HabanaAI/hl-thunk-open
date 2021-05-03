@@ -45,6 +45,7 @@ static enum hlthunk_device_name asic_name_for_testing =
 static pthread_barrier_t barrier;
 
 static int run_disabled_tests;
+static int verbose_enabled;
 static const char *parser_pciaddr;
 static const char *config_filename;
 static int num_devices = 1;
@@ -2402,6 +2403,7 @@ void hltests_parser(int argc, const char **argv, const char * const* usage,
 		OPT_BOOLEAN('d', "disabled", &run_disabled_tests,
 			"run disabled tests"),
 		OPT_STRING('s', "test", &test, "name of specific test to run"),
+		OPT_BOOLEAN('v', "verbose", &verbose_enabled, "enable verbose"),
 		OPT_STRING('p', "pciaddr", &parser_pciaddr,
 			"pci address of device"),
 		OPT_STRING('c', "config", &config_filename,
@@ -2454,6 +2456,11 @@ const char *hltests_get_config_filename(void)
 int hltests_get_parser_run_disabled_tests(void)
 {
 	return run_disabled_tests;
+}
+
+int hltests_get_verbose_enabled(void)
+{
+	return verbose_enabled;
 }
 
 int hltests_is_legacy_mode_enabled(void)
