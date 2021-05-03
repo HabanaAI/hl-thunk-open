@@ -237,7 +237,7 @@ void test_dma_custom(void **state)
 	const char *config_filename = hltests_get_config_filename();
 	struct hlthunk_hw_ip_info hw_ip;
 	struct dma_custom_cfg cfg;
-	void *device_ptr = NULL, *src_ptr, *dst_ptr, *zero_ptr;
+	void *device_ptr = NULL, *src_ptr, *dst_ptr, *zero_ptr = NULL;
 	uint64_t device_addr, host_src_addr, host_dst_addr, host_zero_addr = 0;
 	uint32_t dma_dir_down, dma_dir_up, read_cnt, write_cnt;
 	uint64_t offset = 0;
@@ -398,6 +398,11 @@ void test_dma_custom(void **state)
 	assert_int_equal(rc, 0);
 	rc = hltests_free_host_mem(fd, src_ptr);
 	assert_int_equal(rc, 0);
+
+	if (cfg.zero_before_write) {
+		rc = hltests_free_host_mem(fd, zero_ptr);
+		assert_int_equal(rc, 0);
+	}
 
 	if (device_ptr) {
 		rc = hltests_free_device_mem(fd, device_ptr);
