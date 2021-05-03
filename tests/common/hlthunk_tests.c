@@ -50,6 +50,7 @@ static const char *parser_pciaddr;
 static const char *config_filename;
 static int num_devices = 1;
 static int legacy_mode_enabled = 1;
+static uint32_t cur_seed;
 
 static char asic_names[HLTHUNK_DEVICE_MAX][20] = {
 	"Goya",
@@ -183,7 +184,8 @@ static int hltests_init(void)
 		return rc;
 	}
 
-	seed(time(NULL));
+	cur_seed = time(NULL);
+	seed(cur_seed);
 
 	dev_table = kh_init(ptr);
 	if (!dev_table) {
@@ -2461,6 +2463,11 @@ int hltests_get_parser_run_disabled_tests(void)
 int hltests_get_verbose_enabled(void)
 {
 	return verbose_enabled;
+}
+
+uint32_t hltests_get_cur_seed(void)
+{
+	return cur_seed;
 }
 
 int hltests_is_legacy_mode_enabled(void)

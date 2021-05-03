@@ -18,6 +18,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <inttypes.h>
 
 struct dma_chunk {
 	void *input;
@@ -64,6 +65,7 @@ static void dma_entire_dram_random(void **state, uint64_t zone_size,
 	int i, rc, fd = tests_state->fd;
 	kvec_t(struct dma_chunk) array;
 	bool split_cs = false;
+	int verbose = hltests_get_verbose_enabled();
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
@@ -125,6 +127,14 @@ static void dma_entire_dram_random(void **state, uint64_t zone_size,
 
 	assert_true(dram_addr_end >= (dram_addr + cfg.zone_size));
 
+	if (verbose)
+		printf("dma_size: %" PRIu64 "KB\nzone_size: %" PRIu64 "MB\n"
+			"dram_size: %" PRIu64 "MB\ndram_addr: 0x%" PRIX64 "\n"
+			"seed: 0x%X\n", cfg.dma_size / SZ_1K,
+			cfg.zone_size / SZ_1M, dram_size / SZ_1M, dram_addr,
+			hltests_get_cur_seed());
+
+	i = 0;
 	while (dram_addr < (dram_addr_end - cfg.dma_size)) {
 		buf[0] = hltests_allocate_host_mem(fd, cfg.dma_size, NOT_HUGE);
 		assert_non_null(buf[0]);
@@ -149,10 +159,26 @@ static void dma_entire_dram_random(void **state, uint64_t zone_size,
 		chunk.output_device_va = device_va[1];
 		chunk.dram_addr = dram_addr + offset;
 
+		if (verbose)
+			printf("chunk[%d].dram_addr: 0x%" PRIX64 "\n"
+				"chunk[%d].input_device_va: 0x%" PRIX64 "\n"
+				"chunk[%d].output_device_va: 0x%" PRIX64 "\n"
+				"chunk[%d].input: %p\nchunk[%d].output: %p\n",
+				i, chunk.dram_addr, i, chunk.input_device_va,
+				i, chunk.output_device_va, i, chunk.input,
+				i, chunk.output);
+		i++;
+
 		kv_push(struct dma_chunk, array, chunk);
 
 		dram_addr += cfg.zone_size;
 	}
+	if (verbose)
+		printf("dma_size: %" PRIu64 "KB\nzone_size: %" PRIu64 "MB\n"
+			"dram_size: %" PRIu64 "MB\ndram_addr: 0x%" PRIX64 "\n"
+			"seed: 0x%X\n", cfg.dma_size / SZ_1K,
+			cfg.zone_size / SZ_1M, dram_size / SZ_1M, dram_addr,
+			hltests_get_cur_seed());
 
 	vec_len = kv_size(array);
 
@@ -208,6 +234,9 @@ static void dma_entire_dram_random(void **state, uint64_t zone_size,
 		execute_arr[1].queue_index =
 			hltests_get_dma_down_qid(fd, STREAM0);
 	}
+
+	if (verbose)
+		printf("DMA down...\n");
 
 	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, split_cs ? 2 : 1, 0,
 									&seq);
@@ -272,6 +301,9 @@ static void dma_entire_dram_random(void **state, uint64_t zone_size,
 			hltests_get_dma_up_qid(fd, STREAM0);
 	}
 
+	if (verbose)
+		printf("DMA up...\n");
+
 	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, split_cs ? 2 : 1, 0,
 									&seq);
 	assert_int_equal(rc, 0);
@@ -291,15 +323,33 @@ static void dma_entire_dram_random(void **state, uint64_t zone_size,
 		vec_len = vec_len * 2;
 
 	/* compare host memories */
+	if (verbose)
+		printf("comparing...\n");
+
 	for (i = 0 ; i < vec_len ; i++) {
 		chunk = kv_A(array, i);
 		rc = hltests_mem_compare(chunk.input, chunk.output,
 						cfg.dma_size);
+		if (rc && verbose)
+			printf("compare failed in chunk %d/%u.\n"
+			"chunk.dram_addr: 0x%" PRIX64 "\n"
+			"chunk.input_device_va: 0x%" PRIX64 "\n"
+			"chunk.output_device_va: 0x%" PRIX64 "\n"
+			"chunk.input: %p\nchunk.output: %p\n", i, vec_len-1,
+			chunk.dram_addr, chunk.input_device_va,
+			chunk.output_device_va, chunk.input, chunk.output);
+
 		assert_int_equal(rc, 0);
 	}
 
 	/* cleanup */
+	if (verbose)
+		printf("cleanup...\n");
+
 	for (i = 0 ; i < vec_len ; i++) {
+		if (verbose)
+			printf("cleaning chunk %d...\n", i);
+
 		chunk = kv_A(array, i);
 		rc = hltests_free_host_mem(fd, chunk.input);
 		assert_int_equal(rc, 0);
