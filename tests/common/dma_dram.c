@@ -66,6 +66,7 @@ static void dma_entire_dram_random(void **state, uint64_t zone_size,
 	kvec_t(struct dma_chunk) array;
 	bool split_cs = false;
 	int verbose = hltests_get_verbose_enabled();
+	struct timespec begin, end;
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
@@ -127,12 +128,14 @@ static void dma_entire_dram_random(void **state, uint64_t zone_size,
 
 	assert_true(dram_addr_end >= (dram_addr + cfg.zone_size));
 
-	if (verbose)
+	if (verbose) {
 		printf("dma_size: %" PRIu64 "KB\nzone_size: %" PRIu64 "MB\n"
 			"dram_size: %" PRIu64 "MB\ndram_addr: 0x%" PRIX64 "\n"
 			"seed: 0x%X\n", cfg.dma_size / SZ_1K,
 			cfg.zone_size / SZ_1M, dram_size / SZ_1M, dram_addr,
 			hltests_get_cur_seed());
+		clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
+	}
 
 	i = 0;
 	while (dram_addr < (dram_addr_end - cfg.dma_size)) {
@@ -173,12 +176,18 @@ static void dma_entire_dram_random(void **state, uint64_t zone_size,
 
 		dram_addr += cfg.zone_size;
 	}
-	if (verbose)
-		printf("dma_size: %" PRIu64 "KB\nzone_size: %" PRIu64 "MB\n"
+
+	if (verbose) {
+		clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+		printf("mem allocations took %u seconds.\n"
+			"dma_size: %" PRIu64 "KB\nzone_size: %" PRIu64 "MB\n"
 			"dram_size: %" PRIu64 "MB\ndram_addr: 0x%" PRIX64 "\n"
-			"seed: 0x%X\n", cfg.dma_size / SZ_1K,
+			"seed: 0x%X\n",
+			(unsigned int) get_timediff_sec(&begin, &end),
+			cfg.dma_size / SZ_1K,
 			cfg.zone_size / SZ_1M, dram_size / SZ_1M, dram_addr,
 			hltests_get_cur_seed());
+	}
 
 	vec_len = kv_size(array);
 
@@ -235,8 +244,10 @@ static void dma_entire_dram_random(void **state, uint64_t zone_size,
 			hltests_get_dma_down_qid(fd, STREAM0);
 	}
 
-	if (verbose)
+	if (verbose) {
 		printf("DMA down...\n");
+		clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
+	}
 
 	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, split_cs ? 2 : 1, 0,
 									&seq);
@@ -244,6 +255,12 @@ static void dma_entire_dram_random(void **state, uint64_t zone_size,
 
 	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
 	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
+
+	if (verbose) {
+		clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+		printf("DMA down took %u seconds.\n",
+			(unsigned int) get_timediff_sec(&begin, &end));
+	}
 
 	rc = hltests_destroy_cb(fd, cb[0]);
 	assert_int_equal(rc, 0);
@@ -301,8 +318,10 @@ static void dma_entire_dram_random(void **state, uint64_t zone_size,
 			hltests_get_dma_up_qid(fd, STREAM0);
 	}
 
-	if (verbose)
+	if (verbose) {
 		printf("DMA up...\n");
+		clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
+	}
 
 	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, split_cs ? 2 : 1, 0,
 									&seq);
@@ -310,6 +329,12 @@ static void dma_entire_dram_random(void **state, uint64_t zone_size,
 
 	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
 	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
+
+	if (verbose) {
+		clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+		printf("DMA up took %u seconds.\n",
+			(unsigned int) get_timediff_sec(&begin, &end));
+	}
 
 	rc = hltests_destroy_cb(fd, cb[0]);
 	assert_int_equal(rc, 0);
@@ -323,8 +348,10 @@ static void dma_entire_dram_random(void **state, uint64_t zone_size,
 		vec_len = vec_len * 2;
 
 	/* compare host memories */
-	if (verbose)
+	if (verbose) {
 		printf("comparing...\n");
+		clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
+	}
 
 	for (i = 0 ; i < vec_len ; i++) {
 		chunk = kv_A(array, i);
@@ -343,8 +370,12 @@ static void dma_entire_dram_random(void **state, uint64_t zone_size,
 	}
 
 	/* cleanup */
-	if (verbose)
-		printf("cleanup...\n");
+	if (verbose) {
+		clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+		printf("comparison took %u seconds.\ncleanup...",
+			(unsigned int) get_timediff_sec(&begin, &end));
+		clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
+	}
 
 	for (i = 0 ; i < vec_len ; i++) {
 		if (verbose)
@@ -356,6 +387,12 @@ static void dma_entire_dram_random(void **state, uint64_t zone_size,
 
 		rc = hltests_free_host_mem(fd, chunk.output);
 		assert_int_equal(rc, 0);
+	}
+
+	if (verbose) {
+		clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+		printf("cleanup took %u seconds.\n",
+			(unsigned int) get_timediff_sec(&begin, &end));
 	}
 
 	rc = hltests_free_device_mem(fd, dram_ptr);
