@@ -427,11 +427,7 @@ static void dma_entire_dram_random(void **state, uint64_t zone_size,
 
 void test_dma_entire_dram_random_256KB(void **state)
 {
-	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	int fd = tests_state->fd;
-
-	if (!hltests_get_parser_run_disabled_tests() &&
-			!hltests_is_pldm(fd)) {
+	if (!hltests_get_parser_run_disabled_tests()) {
 		printf("This test needs to be run with -d flag\n");
 		skip();
 	}
