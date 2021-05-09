@@ -184,8 +184,7 @@ static int hltests_init(void)
 		return rc;
 	}
 
-	cur_seed = time(NULL);
-	seed(cur_seed);
+	hltests_set_rand_seed(time(NULL));
 
 	dev_table = kh_init(ptr);
 	if (!dev_table) {
@@ -1933,6 +1932,12 @@ uint16_t hltests_get_first_avail_mon(int fd)
 				get_hdev_from_fd(fd)->asic_funcs;
 
 	return asic->get_first_avail_mon(DCORE_MODE_FULL_CHIP);
+}
+
+void hltests_set_rand_seed(uint32_t val)
+{
+	cur_seed = val;
+	seed(val);
 }
 
 uint32_t hltests_rand_u32(void)

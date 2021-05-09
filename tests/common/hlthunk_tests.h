@@ -662,5 +662,6 @@ const char *hltests_stringify_pll_type(int fd, uint32_t pll_idx,
 
 int hltests_device_memory_export_dmabuf_fd(int fd, void *device_addr,
 						uint64_t size);
+void hltests_set_rand_seed(uint32_t val);
 
 #endif /* HLTHUNK_TESTS_H */
