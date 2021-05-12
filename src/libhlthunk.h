@@ -104,7 +104,16 @@ do { \
 	.fp_hlthunk_get_hw_block = hlthunk_get_hw_block_original,\
 	.fp_hlthunk_wait_for_interrupt = hlthunk_wait_for_interrupt,\
 	.fp_hlthunk_host_memory_map_flags = \
-		hlthunk_host_memory_map_flags_original\
+		hlthunk_host_memory_map_flags_original,\
+	.fp_hlthunk_reserve_signals = hlthunk_reserve_encaps_signals_original,\
+	.fp_hlthunk_unreserve_signals =\
+			hlthunk_unreserve_encaps_signals_original,\
+	.fp_hlthunk_wait_for_reserved_encaps_signals =\
+		hlthunk_wait_for_reserved_encaps_signals_original,\
+	.fp_hlthunk_wait_for_collective_reserved_encap_sig =\
+		hlthunk_wait_for_reserved_encaps_collective_signals_original,\
+	.fp_hlthunk_staged_cs_encaps_signals =\
+		hlthunk_staged_command_submission_encaps_signals_original\
 }
 
 int hlthunk_command_submission_original(int fd, struct hlthunk_cs_in *in,
@@ -157,6 +166,22 @@ uint64_t hlthunk_host_memory_map_flags_original(int fd, void *host_virt_addr,
 int hlthunk_memory_unmap_original(int fd, uint64_t device_virt_addr);
 int hlthunk_get_hw_block_original(int fd, uint64_t block_address,
 					uint32_t *block_size, uint64_t *handle);
+int hlthunk_reserve_encaps_signals_original(int fd,
+				struct hlthunk_sig_res_in *in,
+				struct hlthunk_sig_res_out *out);
+int hlthunk_unreserve_encaps_signals_original(int fd,
+					struct reserve_sig_handle *handle,
+					uint32_t *status);
+int hlthunk_staged_command_submission_encaps_signals_original(int fd,
+					uint64_t handle_id,
+					struct hlthunk_cs_in *in,
+					struct hlthunk_cs_out *out);
+int hlthunk_wait_for_reserved_encaps_signals_original(int fd,
+					struct hlthunk_wait_in *in,
+					struct hlthunk_wait_out *out);
+int hlthunk_wait_for_reserved_encaps_collective_signals_original(int fd,
+					struct hlthunk_wait_in *in,
+					struct hlthunk_wait_out *out);
 
 #undef hlthunk_public
 #define hlthunk_public

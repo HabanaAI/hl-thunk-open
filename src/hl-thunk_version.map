@@ -81,3 +81,13 @@ HLTNK_1.1 {
 	hlthunk_wait_for_multi_cs;
 	hlthunk_wait_for_multi_cs_with_timestamp;
 } HLTNK_1.0;
+
+HLTNK_1.3 {
+	global:
+
+	hlthunk_reserve_encaps_signals;
+	hlthunk_unreserve_encaps_signals;
+	hlthunk_staged_command_submission_encaps_signals;
+	hlthunk_wait_for_reserved_encaps_signals;
+	hlthunk_wait_for_reserved_encaps_collective_signals;
+} HLTNK_1.1;
