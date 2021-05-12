@@ -157,7 +157,7 @@ static uint32_t gaudi_add_write_to_sob_pkt(void *buffer, uint32_t buf_off,
 	packet.msg_barrier = pkt_info->mb;
 	packet.opcode = PACKET_MSG_SHORT;
 	packet.op = 0; /* Write the value */
-	packet.base = 1; /* Sync object base */
+	packet.base = pkt_info->write_to_sob.base ? 3 : 1;
 	packet.so_upd.mode = pkt_info->write_to_sob.mode;
 	packet.msg_addr_offset = pkt_info->write_to_sob.sob_id * 4;
 	packet.so_upd.sync_value = pkt_info->write_to_sob.value;
@@ -902,6 +902,11 @@ static const char *gaudi_stringify_pll_type(uint32_t pll_idx, uint8_t type_idx)
 	}
 }
 
+static uint32_t gaudi_get_sob_id(uint32_t base_addr_off)
+{
+       return (base_addr_off - (mmSYNC_MNGR_W_S_SYNC_MNGR_OBJS_SOB_OBJ_0)) / 4;
+}
+
 static const struct hltests_asic_funcs gaudi_funcs = {
 	.add_arb_en_pkt = gaudi_add_arb_en_pkt,
 	.add_monitor_and_fence = gaudi_add_monitor_and_fence,
@@ -934,7 +939,9 @@ static const struct hltests_asic_funcs gaudi_funcs = {
 	.wait_for_cs = gaudi_wait_for_cs,
 	.get_max_pll_idx = gaudi_get_max_pll_idx,
 	.stringify_pll_idx = gaudi_stringify_pll_idx,
-	.stringify_pll_type = gaudi_stringify_pll_type
+	.stringify_pll_type = gaudi_stringify_pll_type,
+	.get_sob_id = gaudi_get_sob_id
+
 };
 
 void gaudi_tests_set_asic_funcs(struct hltests_device *hdev)

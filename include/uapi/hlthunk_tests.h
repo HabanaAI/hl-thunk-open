@@ -323,6 +323,11 @@ struct hltests_state {
 	enum hlthunk_device_name asic_type;
 };
 
+enum sync_mng_base {
+	SYNC_MNG_BASE_ES,
+	SYNC_MNG_BASE_WS,
+};
+
 struct hltests_pkt_info {
 
 	enum hltests_eb eb;
@@ -356,6 +361,7 @@ struct hltests_pkt_info {
 			uint16_t sob_id;
 			uint16_t value;
 			enum hl_tests_write_to_sob_mod mode;
+			enum sync_mng_base base;
 		} write_to_sob;
 		struct {
 			uint8_t dec_val;
@@ -490,6 +496,7 @@ struct hltests_asic_funcs {
 	int (*get_max_pll_idx)(void);
 	const char *(*stringify_pll_idx)(uint32_t pll_idx);
 	const char *(*stringify_pll_type)(uint32_t pll_idx, uint8_t type_idx);
+	uint32_t (*get_sob_id)(uint32_t base_addr_off);
 };
 
 struct hltests_memory {
@@ -733,6 +740,7 @@ uint8_t hltests_get_tpc_cnt(int fd);
 uint8_t hltests_get_mme_cnt(int fd);
 uint16_t hltests_get_first_avail_sob(int fd);
 uint16_t hltests_get_first_avail_mon(int fd);
+uint32_t hltests_get_sob_id(int fd, uint32_t base_addr_off);
 
 void goya_tests_set_asic_funcs(struct hltests_device *hdev);
 void gaudi_tests_set_asic_funcs(struct hltests_device *hdev);

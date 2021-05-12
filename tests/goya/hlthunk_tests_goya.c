@@ -570,6 +570,11 @@ static const char *goya_stringify_pll_type(uint32_t pll_idx, uint8_t type_idx)
 	}
 }
 
+static uint32_t goya_get_sob_id(uint32_t base_addr_off)
+{
+	return 0;
+}
+
 static const struct hltests_asic_funcs goya_funcs = {
 	.add_arb_en_pkt = goya_add_arb_en_pkt,
 	.add_monitor_and_fence = goya_add_monitor_and_fence,
@@ -602,7 +607,8 @@ static const struct hltests_asic_funcs goya_funcs = {
 	.wait_for_cs = goya_wait_for_cs,
 	.get_max_pll_idx = goya_get_max_pll_idx,
 	.stringify_pll_idx = goya_stringify_pll_idx,
-	.stringify_pll_type = goya_stringify_pll_type
+	.stringify_pll_type = goya_stringify_pll_type,
+	.get_sob_id = goya_get_sob_id
 };
 
 void goya_tests_set_asic_funcs(struct hltests_device *hdev)
