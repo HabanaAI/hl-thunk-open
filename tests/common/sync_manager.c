@@ -28,6 +28,16 @@ struct signal_wait_thread_params {
 	bool result;
 };
 
+struct encaps_sig_wait_thread_params {
+	int fd;
+	int count;
+	bool collective_wait;
+	int engine_id;
+	pthread_barrier_t *barrier;
+	int thread_id;
+	uint32_t q_idx;
+};
+
 static uint64_t sig_seqs[SIG_WAIT_CS];
 
 static uint64_t atomic_read(uint64_t *ptr)
@@ -1144,8 +1154,430 @@ VOID test_signal_collective_wait_dma(void **state)
 	END_TEST_FUNC(_test_signal_wait(state, true, test_signal_wait_dma_th));
 }
 
-#ifndef HLTESTS_LIB_MODE
+static uint32_t waitq_map[] = {
+			GAUDI_QUEUE_ID_DMA_1_0,
+			GAUDI_QUEUE_ID_DMA_1_1,
+			GAUDI_QUEUE_ID_DMA_1_2,
+			GAUDI_QUEUE_ID_DMA_1_3
+};
 
+/*
+ * test_encaps_sig_wait_wa_th() - this thread test encaps signaling
+ * sob wraparound. each queue has pair of SOBs.
+ * it does two big reservations 32k each, without sending any actual
+ * signaling jobs to device, the driver should fails the 3rd reservation attempt
+ * if both SOB of the queue are fully reserved and more request keeps coming.
+ * after reservation fails send signaling jobs which releases all
+ * reservations, then try reserve again, this time reservation should succeed.
+ */
+static void *test_encaps_sig_wait_wa_th(void *args)
+{
+	struct encaps_sig_wait_thread_params *params =
+				(struct encaps_sig_wait_thread_params *) args;
+	struct hlthunk_wait_for_signal wait_for_signal;
+	struct reserve_sig_handle first_handle;
+	struct hlthunk_sig_res_out res_sig_out;
+	struct hltests_cs_chunk execute_chunk;
+	struct hlthunk_sig_res_in res_sig_in;
+	struct hlthunk_wait_out wait_out;
+	struct hltests_pkt_info pkt_info;
+	struct hlthunk_wait_in wait_in;
+	uint64_t seq, staged_seq1, staged_seq2;
+	uint32_t cb_size, nop_cb_size = 0, flags = 0, status;
+	int fd = params->fd, rc, iter = 0;
+	void *cb, *nop_cb;
+
+	memset(&res_sig_in, 0, sizeof(res_sig_in));
+	memset(&res_sig_out, 0, sizeof(res_sig_out));
+	memset(&execute_chunk, 0, sizeof(struct hltests_cs_chunk));
+	memset(&wait_for_signal, 0, sizeof(struct hlthunk_wait_for_signal));
+	memset(&wait_in, 0, sizeof(struct hlthunk_wait_in));
+	memset(&pkt_info, 0, sizeof(pkt_info));
+
+	cb = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
+	assert_non_null_ret_ptr(cb);
+
+	nop_cb = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
+	assert_non_null_ret_ptr(nop_cb);
+
+	cb_size = 0;
+	res_sig_in.queue_index = params->q_idx;
+	res_sig_in.count = params->count;
+
+	/*
+	 * PTHREAD_BARRIER_SERIAL_THREAD is returned to one unspecified thread
+	 * and zero is returned to each of the remaining threads.
+	 */
+	rc = pthread_barrier_wait(params->barrier);
+	if (rc && rc != PTHREAD_BARRIER_SERIAL_THREAD)
+		return NULL;
+
+	do {
+		rc = hlthunk_reserve_encaps_signals(fd, &res_sig_in,
+				&res_sig_out);
+		if (iter == 0)
+			memcpy(&first_handle, &res_sig_out.handle,
+						sizeof(first_handle));
+		/* since we're reserving 32k every time,
+		 * so we cannot iter more than twice
+		 */
+		assert_true_ret_ptr(iter <= 2);
+		iter++;
+	} while (rc == 0);
+
+	/* set encaps signals in CS on the first SOB */
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.write_to_sob.sob_id =
+			 hltests_get_sob_id(fd, first_handle.sob_base_addr_offset);
+	pkt_info.write_to_sob.base = SYNC_MNG_BASE_WS;
+	pkt_info.write_to_sob.value = params->count;
+	pkt_info.write_to_sob.mode = SOB_ADD;
+	cb_size = hltests_add_write_to_sob_pkt(fd, cb,
+					cb_size, &pkt_info);
+
+	execute_chunk.cb_ptr = cb;
+	execute_chunk.cb_size = cb_size;
+	execute_chunk.queue_index = params->q_idx;
+
+	flags = HL_CS_FLAGS_STAGED_SUBMISSION |
+			HL_CS_FLAGS_STAGED_SUBMISSION_FIRST |
+			HL_CS_FLAGS_ENCAP_SIGNALS;
+
+	rc = hltests_submit_staged_cs(fd, NULL, 0,
+			&execute_chunk, 1, flags,
+			first_handle.id,
+			&seq);
+	assert_int_equal_ret_ptr(rc, 0);
+
+	staged_seq1 = seq;
+
+	wait_for_signal.queue_index = waitq_map[params->q_idx];
+	wait_for_signal.encaps_signal_seq = staged_seq1;
+	wait_for_signal.signal_seq_nr = 1;
+	wait_for_signal.encaps_signal_offset = params->count;
+	wait_in.hlthunk_wait_for_signal = (uint64_t *) &wait_for_signal;
+	wait_in.num_wait_for_signal = 1;
+	wait_in.flags = 0;
+
+	rc = hlthunk_wait_for_reserved_encaps_signals(
+			fd, &wait_in, &wait_out);
+	assert_int_equal_ret_ptr(rc, 0);
+
+	rc = hltests_wait_for_cs_until_not_busy(fd, wait_out.seq);
+	assert_int_equal_ret_ptr(rc, HL_WAIT_CS_STATUS_COMPLETED);
+
+	nop_cb_size = hltests_add_nop_pkt(fd, nop_cb, nop_cb_size,
+			EB_TRUE, MB_TRUE);
+	execute_chunk.cb_ptr = nop_cb;
+	execute_chunk.cb_size = nop_cb_size;
+	execute_chunk.queue_index = params->q_idx;
+
+	flags = HL_CS_FLAGS_STAGED_SUBMISSION |
+			HL_CS_FLAGS_STAGED_SUBMISSION_LAST;
+	rc = hltests_submit_staged_cs(fd, NULL, 0, &execute_chunk, 1, flags,
+			staged_seq1, &seq);
+	assert_int_equal_ret_ptr(rc, 0);
+
+	rc = hltests_wait_for_cs_until_not_busy(fd, staged_seq1);
+	assert_int_equal_ret_ptr(rc, HL_WAIT_CS_STATUS_COMPLETED);
+
+	/* set encaps signals in CS on the second SOB */
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.write_to_sob.sob_id =
+			hltests_get_sob_id(fd, res_sig_out.handle.sob_base_addr_offset);
+	pkt_info.write_to_sob.base = SYNC_MNG_BASE_WS;
+	pkt_info.write_to_sob.value = params->count;
+	pkt_info.write_to_sob.mode = SOB_ADD;
+	cb_size = hltests_add_write_to_sob_pkt(fd, cb,
+					cb_size, &pkt_info);
+
+	execute_chunk.cb_ptr = cb;
+	execute_chunk.cb_size = cb_size;
+	execute_chunk.queue_index = params->q_idx;
+
+	flags = HL_CS_FLAGS_STAGED_SUBMISSION |
+			HL_CS_FLAGS_STAGED_SUBMISSION_FIRST |
+			HL_CS_FLAGS_ENCAP_SIGNALS;
+
+	rc = hltests_submit_staged_cs(fd, NULL, 0,
+			&execute_chunk, 1, flags,
+			res_sig_out.handle.id,
+			&seq);
+	assert_int_equal_ret_ptr(rc, 0);
+
+	staged_seq2 = seq;
+
+	wait_for_signal.queue_index = waitq_map[params->q_idx];
+	wait_for_signal.encaps_signal_seq = staged_seq2;
+	wait_for_signal.signal_seq_nr = 1;
+	wait_for_signal.encaps_signal_offset = params->count;
+	wait_in.hlthunk_wait_for_signal = (uint64_t *) &wait_for_signal;
+	wait_in.num_wait_for_signal = 1;
+	wait_in.flags = 0;
+
+	rc = hlthunk_wait_for_reserved_encaps_signals(
+			fd, &wait_in, &wait_out);
+	assert_int_equal_ret_ptr(rc, 0);
+
+	rc = hltests_wait_for_cs_until_not_busy(fd, wait_out.seq);
+	assert_int_equal_ret_ptr(rc, HL_WAIT_CS_STATUS_COMPLETED);
+
+	nop_cb_size = hltests_add_nop_pkt(fd, nop_cb, nop_cb_size,
+						EB_TRUE, MB_TRUE);
+	execute_chunk.cb_ptr = nop_cb;
+	execute_chunk.cb_size = nop_cb_size;
+	execute_chunk.queue_index = params->q_idx;
+
+	flags = HL_CS_FLAGS_STAGED_SUBMISSION |
+				HL_CS_FLAGS_STAGED_SUBMISSION_LAST;
+	rc = hltests_submit_staged_cs(fd, NULL, 0, &execute_chunk, 1, flags,
+						staged_seq2, &seq);
+	assert_int_equal_ret_ptr(rc, 0);
+
+	rc = hltests_wait_for_cs_until_not_busy(fd, staged_seq2);
+	assert_int_equal_ret_ptr(rc, HL_WAIT_CS_STATUS_COMPLETED);
+
+	memset(&res_sig_in, 0, sizeof(res_sig_in));
+	memset(&res_sig_out, 0, sizeof(res_sig_out));
+
+	res_sig_in.queue_index = params->q_idx;
+	res_sig_in.count = params->count;
+
+	rc = hlthunk_reserve_encaps_signals(fd, &res_sig_in, &res_sig_out);
+	assert_int_equal_ret_ptr(rc, 0);
+
+	rc = hlthunk_unreserve_encaps_signals(fd, &res_sig_out.handle, &status);
+	assert_int_equal_ret_ptr(rc, 0);
+
+	return args;
+}
+
+/*
+ * test_encaps_sig_wait_th() - this thread test encaps signaling functionality.
+ * it first reserve signals then send some job to device which basically
+ * increment the same SOB used for reservation,
+ * to the same value as it was reserved, then call API which wait
+ * on encaps signaling to finish.
+ * when reserving signal the API return SOB offset from base address.
+ * for simplicity and in order to match sob and reservation handle,
+ * we use gaudi define of the sob base address, and use it to
+ * get the sob_id(get_sob_id).
+ * a real application will use the sob full address to build the signaling jobs.
+ */
+static void *test_encaps_sig_wait_th(void *args)
+{
+	struct encaps_sig_wait_thread_params *params =
+				(struct encaps_sig_wait_thread_params *) args;
+	struct hlthunk_wait_for_signal wait_for_signal;
+	struct hltests_cs_chunk execute_chunk;
+	struct hlthunk_wait_in wait_in;
+	struct hlthunk_wait_out wait_out;
+	struct hlthunk_sig_res_in res_sig_in;
+	struct hlthunk_sig_res_out res_sig_out;
+	struct hltests_pkt_info pkt_info;
+	void *cb, *nop_cb;
+	uint64_t seq, staged_seq;
+	uint32_t cb_size, nop_cb_size = 0, flags = 0;
+	int fd = params->fd, rc;
+
+	memset(&res_sig_in, 0, sizeof(res_sig_in));
+	memset(&res_sig_out, 0, sizeof(res_sig_out));
+	memset(&execute_chunk, 0, sizeof(struct hltests_cs_chunk));
+	memset(&wait_for_signal, 0, sizeof(struct hlthunk_wait_for_signal));
+	memset(&wait_in, 0, sizeof(struct hlthunk_wait_in));
+	memset(&pkt_info, 0, sizeof(pkt_info));
+
+	cb = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
+	assert_non_null_ret_ptr(cb);
+
+	nop_cb = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
+	assert_non_null_ret_ptr(nop_cb);
+
+	cb_size = 0;
+
+	res_sig_in.queue_index = params->q_idx;
+	res_sig_in.count = params->count;
+
+	/*
+	 * PTHREAD_BARRIER_SERIAL_THREAD is returned to one unspecified thread
+	 * and zero is returned to each of the remaining threads.
+	 */
+	rc = pthread_barrier_wait(params->barrier);
+	if (rc && rc != PTHREAD_BARRIER_SERIAL_THREAD)
+		return NULL;
+
+	rc = hlthunk_reserve_encaps_signals(fd, &res_sig_in,
+			&res_sig_out);
+	assert_int_equal_ret_ptr(rc, 0);
+
+	/* set encaps signals in CS  */
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.write_to_sob.sob_id =
+			hltests_get_sob_id(fd, res_sig_out.handle.sob_base_addr_offset);
+	pkt_info.write_to_sob.base = SYNC_MNG_BASE_WS;
+	pkt_info.write_to_sob.value = params->count;
+	pkt_info.write_to_sob.mode = SOB_ADD;
+	cb_size = hltests_add_write_to_sob_pkt(fd, cb,
+					cb_size, &pkt_info);
+
+	execute_chunk.cb_ptr = cb;
+	execute_chunk.cb_size = cb_size;
+	execute_chunk.queue_index = params->q_idx;
+
+	flags = HL_CS_FLAGS_STAGED_SUBMISSION |
+			HL_CS_FLAGS_STAGED_SUBMISSION_FIRST |
+			HL_CS_FLAGS_ENCAP_SIGNALS;
+
+	rc = hltests_submit_staged_cs(fd, NULL, 0,
+			&execute_chunk, 1, flags,
+			res_sig_out.handle.id,
+			&seq);
+
+	assert_int_equal_ret_ptr(rc, 0);
+
+	staged_seq = seq;
+
+	wait_for_signal.queue_index = waitq_map[params->q_idx];
+	wait_for_signal.encaps_signal_seq = seq;
+	wait_for_signal.signal_seq_nr = 1;
+	wait_for_signal.encaps_signal_offset = params->count;
+	wait_in.hlthunk_wait_for_signal = (uint64_t *) &wait_for_signal;
+	wait_in.num_wait_for_signal = 1;
+	wait_in.flags = 0;
+
+	rc = hlthunk_wait_for_reserved_encaps_signals(
+			fd, &wait_in, &wait_out);
+	assert_int_equal_ret_ptr(rc, 0);
+
+	rc = hltests_wait_for_cs_until_not_busy(fd, wait_out.seq);
+	assert_int_equal_ret_ptr(rc, HL_WAIT_CS_STATUS_COMPLETED);
+
+	nop_cb_size = hltests_add_nop_pkt(fd, nop_cb, nop_cb_size,
+						EB_TRUE, MB_TRUE);
+
+	execute_chunk.cb_ptr = nop_cb;
+	execute_chunk.cb_size = nop_cb_size;
+	execute_chunk.queue_index = params->q_idx;
+
+	flags = HL_CS_FLAGS_STAGED_SUBMISSION |
+				HL_CS_FLAGS_STAGED_SUBMISSION_LAST;
+	rc = hltests_submit_staged_cs(fd, NULL, 0, &execute_chunk, 1, flags,
+							staged_seq, &seq);
+	assert_int_equal_ret_ptr(rc, 0);
+
+	rc = hltests_wait_for_cs_until_not_busy(fd, staged_seq);
+	assert_int_equal_ret_ptr(rc, HL_WAIT_CS_STATUS_COMPLETED);
+
+	return args;
+}
+
+static VOID _test_encaps_signal_wait(void **state, bool collective_wait,
+		int threads_num, int count,
+		void *(*__start_routine)(void *))
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct encaps_sig_wait_thread_params *thread_params;
+	pthread_barrier_t barrier;
+	pthread_t *thread_id;
+	void *retval;
+	int rc, i;
+
+	thread_params = hlthunk_malloc(threads_num * sizeof(*thread_params));
+	assert_non_null(thread_params);
+
+	thread_id = hlthunk_malloc(threads_num * sizeof(*thread_id));
+	assert_non_null(thread_id);
+
+	rc = pthread_barrier_init(&barrier, NULL, threads_num);
+	assert_int_equal(rc, 0);
+
+	/* Create and execute threads */
+	for (i = 0 ; i < threads_num ; i++) {
+		thread_params[i].barrier = &barrier;
+		thread_params[i].fd = tests_state->fd;
+		thread_params[i].count = count;
+		thread_params[i].thread_id = i;
+		thread_params[i].q_idx = i % 4;
+
+		rc = pthread_create(&thread_id[i], NULL, __start_routine,
+					&thread_params[i]);
+		assert_int_equal(rc, 0);
+	}
+
+	/* Wait for the termination of the threads */
+	for (i = 0 ; i < threads_num ; i++) {
+		rc = pthread_join(thread_id[i], &retval);
+		assert_int_equal(rc, 0);
+		assert_non_null(retval);
+	}
+
+	/* Cleanup */
+	pthread_barrier_destroy(&barrier);
+	hlthunk_free(thread_id);
+	hlthunk_free(thread_params);
+
+	END_TEST;
+}
+
+VOID test_encaps_signal_wait(void **state)
+{
+	int fd = ((struct hltests_state *)*state)->fd;
+
+	if (!hltests_is_gaudi(fd)) {
+		printf("Test is relevant only for Gaudi, skipping\n");
+		skip();
+	}
+
+	CALL_HELPER_FUNC(_test_encaps_signal_wait(state, false, 1, 200,
+				test_encaps_sig_wait_th));
+
+	END_TEST;
+}
+
+VOID test_encaps_signal_wait_parallel(void **state)
+{
+	int fd = ((struct hltests_state *)*state)->fd;
+
+	if (!hltests_is_gaudi(fd)) {
+		printf("Test is relevant only for Gaudi, skipping\n");
+		skip();
+	}
+
+	CALL_HELPER_FUNC(_test_encaps_signal_wait(state, false, 200, 200,
+				test_encaps_sig_wait_th));
+
+	END_TEST;
+}
+
+VOID test_encaps_signal_wait_sob_wa(void **state)
+{
+	int fd = ((struct hltests_state *)*state)->fd;
+
+	/*
+	 * Test for debug purposes only, since it'll always cause
+	 * error log message and will always fail CI.
+	 */
+	if (!hltests_get_parser_run_disabled_tests()) {
+		printf("This test needs to be run with -d flag\n");
+		skip();
+	}
+
+	if (!hltests_is_gaudi(fd)) {
+		printf("Test is relevant only for Gaudi, skipping\n");
+		skip();
+	}
+
+	CALL_HELPER_FUNC(_test_encaps_signal_wait(state, false, 1, 32000,
+					test_encaps_sig_wait_wa_th));
+
+	END_TEST;
+}
+
+#ifndef HLTESTS_LIB_MODE
 const struct CMUnitTest sm_tests[] = {
 	cmocka_unit_test_setup(test_sm_tpc, hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_sm_mme, hltests_ensure_device_operational),
@@ -1176,6 +1608,12 @@ const struct CMUnitTest sm_tests[] = {
 	cmocka_unit_test_setup(test_signal_collective_wait_dma,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_signal_collective_wait_parallel,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_encaps_signal_wait,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_encaps_signal_wait_parallel,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_encaps_signal_wait_sob_wa,
 				hltests_ensure_device_operational)
 };
 

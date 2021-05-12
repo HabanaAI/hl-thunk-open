@@ -1679,7 +1679,13 @@ int hltests_submit_staged_cs(int fd,
 	cs_in.flags = flags;
 
 	memset(&cs_out, 0, sizeof(cs_out));
-	rc = hlthunk_staged_command_submission(fd, staged_cs_seq,
+
+	if (flags & HL_CS_FLAGS_ENCAP_SIGNALS)
+		rc = hlthunk_staged_command_submission_encaps_signals(fd,
+						staged_cs_seq,
+						&cs_in, &cs_out);
+	else
+		rc = hlthunk_staged_command_submission(fd, staged_cs_seq,
 						&cs_in, &cs_out);
 	if (rc)
 		goto free_chunks_execute;
@@ -1933,6 +1939,14 @@ uint16_t hltests_get_first_avail_mon(int fd)
 				get_hdev_from_fd(fd)->asic_funcs;
 
 	return asic->get_first_avail_mon(DCORE_MODE_FULL_CHIP);
+}
+
+uint32_t hltests_get_sob_id(int fd, uint32_t base_addr_off)
+{
+	const struct hltests_asic_funcs *asic =
+				get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->get_sob_id(base_addr_off);
 }
 
 void hltests_set_rand_seed(uint32_t val)
