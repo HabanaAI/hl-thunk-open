@@ -1352,7 +1352,8 @@ hlthunk_public int hlthunk_signal_submission_timeout(int fd,
 static int _hlthunk_wait_for_signal(int fd,
 				struct hlthunk_wait_in *in,
 				struct hlthunk_wait_out *out,
-				uint32_t timeout)
+				uint32_t timeout,
+				bool encaps_signals)
 {
 	union hl_cs_args args;
 	struct hl_cs_chunk chunk_execute;
@@ -1379,9 +1380,17 @@ static int _hlthunk_wait_for_signal(int fd,
 	memset(&args, 0, sizeof(args));
 	memset(&chunk_execute, 0, sizeof(chunk_execute));
 	chunk_execute.queue_index = wait_for_signal->queue_index;
-	chunk_execute.signal_seq_arr =
+
+	if (encaps_signals) {
+		chunk_execute.encaps_signal_offset =
+				wait_for_signal->encaps_signal_offset;
+		chunk_execute.encaps_signal_seq =
+				wait_for_signal->encaps_signal_seq;
+	} else {
+		chunk_execute.signal_seq_arr =
 			(__u64) (uintptr_t) wait_for_signal->signal_seq_arr;
-	chunk_execute.num_signal_seq_arr = 1;
+		chunk_execute.num_signal_seq_arr = 1;
+	}
 
 	hl_in = &args.in;
 	hl_in->chunks_restore = (__u64) (uintptr_t) in->chunks_restore;
@@ -1389,6 +1398,10 @@ static int _hlthunk_wait_for_signal(int fd,
 	hl_in->chunks_execute = (__u64) (uintptr_t) &chunk_execute;
 	hl_in->num_chunks_execute = 1;
 	hl_in->cs_flags = in->flags | HL_CS_FLAGS_WAIT;
+
+	if (encaps_signals)
+		hl_in->cs_flags |= HL_CS_FLAGS_ENCAP_SIGNALS;
+
 	if (timeout) {
 		hl_in->cs_flags |= HL_CS_FLAGS_CUSTOM_TIMEOUT;
 		hl_in->timeout = timeout;
@@ -1413,14 +1426,14 @@ static int _hlthunk_wait_for_signal(int fd,
 int hlthunk_wait_for_signal_original(int fd, struct hlthunk_wait_in *in,
 					struct hlthunk_wait_out *out)
 {
-	return _hlthunk_wait_for_signal(fd, in, out, 0);
+	return _hlthunk_wait_for_signal(fd, in, out, 0, false);
 }
 
 int hlthunk_wait_for_signal_timeout_original(int fd, struct hlthunk_wait_in *in,
 					struct hlthunk_wait_out *out,
 					uint32_t timeout)
 {
-	return _hlthunk_wait_for_signal(fd, in, out, timeout);
+	return _hlthunk_wait_for_signal(fd, in, out, timeout, false);
 }
 
 hlthunk_public int hlthunk_wait_for_signal(int fd,
@@ -1443,7 +1456,8 @@ hlthunk_public int hlthunk_wait_for_signal_timeout(int fd,
 static int _hlthunk_wait_for_collective_signal(int fd,
 					struct hlthunk_wait_in *in,
 					struct hlthunk_wait_out *out,
-					uint32_t timeout)
+					uint32_t timeout,
+					bool encaps_signals)
 {
 	union hl_cs_args args;
 	struct hl_cs_chunk chunk_execute;
@@ -1470,9 +1484,18 @@ static int _hlthunk_wait_for_collective_signal(int fd,
 	memset(&args, 0, sizeof(args));
 	memset(&chunk_execute, 0, sizeof(chunk_execute));
 	chunk_execute.queue_index = wait_for_signal->queue_index;
-	chunk_execute.signal_seq_arr =
-		(__u64) (uintptr_t) wait_for_signal->signal_seq_arr;
-	chunk_execute.num_signal_seq_arr = 1;
+
+	if (encaps_signals) {
+		chunk_execute.encaps_signal_offset =
+				wait_for_signal->encaps_signal_offset;
+		chunk_execute.encaps_signal_seq =
+				wait_for_signal->encaps_signal_seq;
+	} else {
+		chunk_execute.signal_seq_arr =
+			(__u64) (uintptr_t) wait_for_signal->signal_seq_arr;
+		chunk_execute.num_signal_seq_arr = 1;
+	}
+
 	chunk_execute.collective_engine_id =
 			wait_for_signal->collective_engine_id;
 
@@ -1482,6 +1505,10 @@ static int _hlthunk_wait_for_collective_signal(int fd,
 	hl_in->chunks_execute = (__u64) (uintptr_t) &chunk_execute;
 	hl_in->num_chunks_execute = 1;
 	hl_in->cs_flags = in->flags | HL_CS_FLAGS_COLLECTIVE_WAIT;
+
+	if (encaps_signals)
+		hl_in->cs_flags |= HL_CS_FLAGS_ENCAP_SIGNALS;
+
 	if (timeout) {
 		hl_in->cs_flags |= HL_CS_FLAGS_CUSTOM_TIMEOUT;
 		hl_in->timeout = timeout;
@@ -1506,14 +1533,14 @@ static int _hlthunk_wait_for_collective_signal(int fd,
 int hlthunk_wait_for_collective_signal_original(int fd,
 		struct hlthunk_wait_in *in, struct hlthunk_wait_out *out)
 {
-	return _hlthunk_wait_for_collective_signal(fd, in, out, 0);
+	return _hlthunk_wait_for_collective_signal(fd, in, out, 0, false);
 }
 
 int hlthunk_wait_for_collective_signal_timeout_original(int fd,
 		struct hlthunk_wait_in *in, struct hlthunk_wait_out *out,
 		uint32_t timeout)
 {
-	return _hlthunk_wait_for_collective_signal(fd, in, out, timeout);
+	return _hlthunk_wait_for_collective_signal(fd, in, out, timeout, false);
 }
 
 hlthunk_public int hlthunk_wait_for_collective_signal(int fd,
@@ -2034,4 +2061,161 @@ hlthunk_public int hlthunk_debugfs_close(struct hlthunk_debugfs *debugfs)
 	}
 
 	return rc;
+}
+
+int hlthunk_reserve_encaps_signals_original(int fd,
+					struct hlthunk_sig_res_in *in,
+					struct hlthunk_sig_res_out *out)
+{
+	union hl_cs_args args;
+	struct hl_cs_in *hl_in;
+	struct hl_cs_out *hl_out;
+	int rc;
+
+	memset(&args, 0, sizeof(args));
+
+	hl_in = &args.in;
+	hl_in->encaps_signals_count = in->count;
+	hl_in->encaps_signals_q_idx = in->queue_index;
+	hl_in->num_chunks_execute = 1;
+	hl_in->cs_flags |= HL_CS_FLAGS_RESERVE_SIGNALS_ONLY;
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_CS, &args);
+	if (rc)
+		return rc;
+
+	hl_out = &args.out;
+
+	if (hl_out->status != HL_CS_STATUS_SUCCESS)
+		return -EINVAL;
+
+	hl_out = &args.out;
+	out->handle.id = hl_out->handle_id;
+	out->handle.sob_base_addr_offset = hl_out->sob_base_addr_offset;
+	out->handle.count = hl_out->count;
+	out->status = hl_out->status;
+
+	return 0;
+}
+
+int hlthunk_reserve_encaps_signals(int fd,
+					struct hlthunk_sig_res_in *in,
+					struct hlthunk_sig_res_out *out)
+{
+	return (*functions_pointers_table->fp_hlthunk_reserve_signals)(
+				fd, in, out);
+}
+
+int hlthunk_unreserve_encaps_signals_original(int fd,
+					struct reserve_sig_handle *handle,
+					uint32_t *status)
+{
+	union hl_cs_args args;
+	struct hl_cs_in *hl_in;
+	struct hl_cs_out *hl_out;
+	int rc;
+
+	memset(&args, 0, sizeof(args));
+
+	hl_in = &args.in;
+	hl_in->encaps_sig_handle_id = handle->id;
+	hl_in->num_chunks_execute = 1;
+	hl_in->cs_flags |= HL_CS_FLAGS_UNRESERVE_SIGNALS_ONLY;
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_CS, &args);
+	if (rc)
+		return rc;
+
+	hl_out = &args.out;
+
+	if (hl_out->status != HL_CS_STATUS_SUCCESS)
+		return -EINVAL;
+
+	hl_out = &args.out;
+	*status = hl_out->status;
+
+	return 0;
+}
+
+int hlthunk_unreserve_encaps_signals(int fd, struct reserve_sig_handle *handle,
+					uint32_t *status)
+{
+	return (*functions_pointers_table->fp_hlthunk_unreserve_signals)(
+					fd, handle, status);
+}
+
+int hlthunk_staged_command_submission_encaps_signals_original(int fd,
+					uint64_t handle_id,
+					struct hlthunk_cs_in *in,
+					struct hlthunk_cs_out *out)
+{
+	union hl_cs_args args;
+	struct hl_cs_in *hl_in;
+	struct hl_cs_out *hl_out;
+	int rc;
+
+	if (!(in->flags & HL_CS_FLAGS_STAGED_SUBMISSION))
+		return -EINVAL;
+
+	memset(&args, 0, sizeof(args));
+
+	hl_in = &args.in;
+	hl_in->encaps_sig_handle_id = (__u32)handle_id;
+	hl_in->chunks_restore = (__u64) (uintptr_t) in->chunks_restore;
+	hl_in->chunks_execute = (__u64) (uintptr_t) in->chunks_execute;
+	hl_in->num_chunks_restore = in->num_chunks_restore;
+	hl_in->num_chunks_execute = in->num_chunks_execute;
+	hl_in->cs_flags = in->flags | HL_CS_FLAGS_ENCAP_SIGNALS;
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_CS, &args);
+	if (rc)
+		return rc;
+
+	hl_out = &args.out;
+	out->seq = hl_out->seq;
+	out->status = hl_out->status;
+
+	return 0;
+}
+
+int hlthunk_staged_command_submission_encaps_signals(int fd,
+					uint64_t handle_id,
+					struct hlthunk_cs_in *in,
+					struct hlthunk_cs_out *out)
+{
+	return (*functions_pointers_table->fp_hlthunk_staged_cs_encaps_signals)(
+						fd, handle_id, in, out);
+}
+
+int hlthunk_wait_for_reserved_encaps_signals_original(int fd,
+					struct hlthunk_wait_in *in,
+					struct hlthunk_wait_out *out)
+{
+	return _hlthunk_wait_for_signal(fd, in, out, 0, true);
+}
+
+int hlthunk_wait_for_reserved_encaps_signals(int fd, struct hlthunk_wait_in *in,
+					struct hlthunk_wait_out *out)
+{
+	struct hlthunk_functions_pointers *fp = functions_pointers_table;
+
+	return (*fp->fp_hlthunk_wait_for_reserved_encaps_signals)(
+						fd, in, out);
+}
+
+int hlthunk_wait_for_reserved_encaps_collective_signals_original(int fd,
+					struct hlthunk_wait_in *in,
+					struct hlthunk_wait_out *out)
+{
+	return _hlthunk_wait_for_collective_signal(fd, in, out, 0, true);
+}
+
+int hlthunk_wait_for_reserved_encaps_collective_signals(int fd,
+					struct hlthunk_wait_in *in,
+					struct hlthunk_wait_out *out)
+{
+	struct hlthunk_functions_pointers *fp = functions_pointers_table;
+
+	return (*fp->fp_hlthunk_wait_for_collective_reserved_encap_sig)(
+							fd, in, out);
 }

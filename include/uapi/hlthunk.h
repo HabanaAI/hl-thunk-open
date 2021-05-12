@@ -135,12 +135,32 @@ struct hlthunk_signal_out {
 	uint32_t status;
 };
 
+struct hlthunk_sig_res_in {
+	uint32_t queue_index;
+	uint32_t count;
+};
+
+struct reserve_sig_handle {
+	uint32_t id;
+	uint32_t sob_base_addr_offset;
+	uint32_t count;
+};
+
+struct hlthunk_sig_res_out {
+	struct reserve_sig_handle handle;
+	uint32_t status;
+};
+
 struct hlthunk_wait_for_signal {
-	uint64_t *signal_seq_arr;
+	union {
+		uint64_t *signal_seq_arr;
+		uint64_t encaps_signal_seq;
+	};
 	uint32_t signal_seq_nr; /* value of 1 is currently supported */
 	uint32_t queue_index;
 	uint32_t flags; /* currently unused */
 	uint32_t collective_engine_id;
+	uint32_t encaps_signal_offset;
 };
 
 struct hlthunk_wait_in {
@@ -273,6 +293,22 @@ struct hlthunk_functions_pointers {
 						uint64_t hint_addr,
 						uint64_t host_size,
 						uint32_t flags);
+	int (*fp_hlthunk_reserve_signals)(int fd,
+					struct hlthunk_sig_res_in *in,
+					struct hlthunk_sig_res_out *out);
+	int (*fp_hlthunk_unreserve_signals)(int fd,
+					struct reserve_sig_handle *handle,
+					uint32_t *status);
+	int (*fp_hlthunk_staged_cs_encaps_signals)(int fd,
+					uint64_t sequence,
+					struct hlthunk_cs_in *in,
+					struct hlthunk_cs_out *out);
+	int (*fp_hlthunk_wait_for_reserved_encaps_signals)(int fd,
+					struct hlthunk_wait_in *in,
+					struct hlthunk_wait_out *out);
+	int (*fp_hlthunk_wait_for_collective_reserved_encap_sig)(int fd,
+					struct hlthunk_wait_in *in,
+					struct hlthunk_wait_out *out);
 };
 
 struct hlthunk_debugfs {
@@ -1009,6 +1045,76 @@ hlthunk_public int hlthunk_debugfs_write(struct hlthunk_debugfs *debugfs,
  */
 hlthunk_public int hlthunk_debugfs_close(struct hlthunk_debugfs *debugfs);
 
+/**
+ * This function reserves a number of signals for a certain stream.
+ * @param fd device descriptor
+ * @param in operation inputs which contains the queue idx and the signals count
+ * @param out output of the operation which is the handle and the status.
+ * @return 0 upon success or negative value in case of error
+ */
+hlthunk_public int hlthunk_reserve_encaps_signals(int fd,
+					struct hlthunk_sig_res_in *in,
+					struct hlthunk_sig_res_out *out);
+
+/**
+ * This function releases the signals that were reserved in
+ * hlthunk_reserve_encaps_signals
+ * @param handle reservation handle obtained from hlthunk_reserve_encaps_signals
+ * @param status as output of the operation, which is 0 in case driver succeeded
+ * to unreserve, negative value otherwise.
+ * @return 0 upon success or negative value in case of error
+ */
+hlthunk_public int hlthunk_unreserve_encaps_signals(int fd,
+					struct reserve_sig_handle *handle,
+					uint32_t *status);
+
+/**
+ * This function submits a set of jobs to a specific device as the first part
+ * of a staged submission, which includes a set of signal cmds to a
+ * reserved signals, which were reserved in hlthunk_reserve_encaps_signals.
+ * @param fd file descriptor handle of habanalabs main device
+ * @handle_id reserved signals handle id, obtained from
+ *		hlthunk_reserve_encaps_signals.
+ * @param in pointer to command submission input structure
+ * @param out pointer to command submission output structure
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_staged_command_submission_encaps_signals(int fd,
+					uint64_t handle_id,
+					struct hlthunk_cs_in *in,
+					struct hlthunk_cs_out *out);
+
+/**
+ * This function submits a job of a wait CS to a specific device
+ * This will wait for a number of signals which were resereved before calling
+ * this function. it can wait for the whole reserved signals or
+ * just to a specific offset whithin that range.
+ * @param fd file descriptor handle of habanalabs main device
+ * @param in pointer to a wait command submission input structure
+ * @param out pointer to a wait command submission output structure
+ * @return 0 for success, negative value for failure. ULLONG_MAX is returned if
+ * the given signal CS was already completed. Undefined behavior if the given
+ * seq is not of a  signal CS
+ */
+hlthunk_public int hlthunk_wait_for_reserved_encaps_signals(int fd,
+					struct hlthunk_wait_in *in,
+					struct hlthunk_wait_out *out);
+
+/**
+ * This function submits a job of a collective wait CS to a specific device
+ * This will wait for a number of signals which were resereved before calling
+ * this function. it can wait for the whole reserved signals or
+ * just for a specific offset whithin that range.
+ * @param fd file descriptor handle of habanalabs main device
+ * @param in pointer to a wait command submission input structure
+ * @param out pointer to a wait command submission output structure
+ * @return 0 for success, negative value for failure. ULLONG_MAX is returned if
+ * the given signal CS was already completed. Undefined behavior if the given
+ * seq is not of a  signal CS
+ */
+hlthunk_public int hlthunk_wait_for_reserved_encaps_collective_signals(int fd,
+					struct hlthunk_wait_in *in,
+					struct hlthunk_wait_out *out);
 #ifdef __cplusplus
 }   //extern "C"
 #endif
