@@ -1043,6 +1043,101 @@ static void *allocate_huge_mem(uint64_t size)
 }
 
 /**
+ * This function allocates memory on the host
+ * @param size how much memory to allocate
+ * @param huge whether to use huge pages for the memory allocation
+ * @return pointer to the struct hltests_memory generated.
+ * NULL is returned upon failure.
+ */
+struct hltests_memory *
+hltests_allocate_host_mem_nomap(uint64_t size, enum hltests_huge huge)
+{
+	struct hltests_memory *mem;
+
+	mem = hlthunk_malloc(sizeof(struct hltests_memory));
+	if (!mem)
+		return NULL;
+
+	mem->is_host = true;
+	mem->is_huge = huge;
+	mem->size = size;
+
+	if (mem->is_huge)
+		mem->host_ptr = allocate_huge_mem(size);
+	else
+		mem->host_ptr = malloc(size);
+
+	if (!mem->host_ptr) {
+		printf("Failed to allocate %lu bytes of host memory\n", size);
+		goto free_mem_struct;
+	}
+
+	return mem;
+
+free_mem_struct:
+	hlthunk_free(mem);
+	return NULL;
+}
+
+/**
+ * This function frees host memory allocation which were done using
+ * hltests_allocate_host_mem_nomap
+ * @param mem pointer to the hltests_memory structure
+ * @param huge whether huge pages were used for the memory allocation
+ * @return 0 for success, negative value for failure
+ */
+int hltests_free_host_mem_nounmap(struct hltests_memory *mem,
+					enum hltests_huge huge)
+{
+	/* contract: device_virt_addr must be released by this stage */
+	assert_null(mem->device_virt_addr);
+
+	if (mem->is_huge)
+		munmap(mem->host_ptr, mem->size);
+	else
+		free(mem->host_ptr);
+
+	hlthunk_free(mem);
+
+	return 0;
+}
+
+/**
+ * This function maps the host memory previously allocated by
+ * hltests_allocate_host_mem_nomap to the device virtual address space.
+ * @param fd file descriptor of the device to which the function will map
+ *           the memory
+ * @param mem pointer to the hltests_memory structure
+ * @return 0 for success, negative value for failure
+ */
+int hltests_map_host_mem(int fd, struct hltests_memory *mem)
+{
+	mem->device_virt_addr = hlthunk_host_memory_map(fd, mem->host_ptr, 0,
+							mem->size);
+	if (!mem->device_virt_addr) {
+		printf("Failed to map host memory to device\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+/**
+ * This function unmaps the host memory previously mapped by
+ * hltests_map_host_mem.
+ * @param mem pointer to the hltests_memory structure
+ * @param fd file descriptor of the device to which the memory was mapeped
+ * @return 0 for success, negative value for failure
+ */
+int hltests_unmap_host_mem(int fd, struct hltests_memory *mem)
+{
+	int rc = hlthunk_memory_unmap(fd, mem->device_virt_addr);
+
+	mem->device_virt_addr = 0;
+	return rc;
+}
+
+/**
  * This function allocates memory on the host and will map it to the device
  * virtual address space
  * @param fd file descriptor of the device to which the function will map
@@ -1956,6 +2051,11 @@ uint32_t hltests_rand_u32(void)
 	pthread_spin_unlock(&rand_lock);
 
 	return val;
+}
+
+bool hltests_rand_flip_coin(void)
+{
+	return hltests_rand_u32() & 1;
 }
 
 void hltests_fill_rand_values(void *ptr, uint32_t size)
@@ -2910,4 +3010,46 @@ int hltests_device_memory_export_dmabuf_fd(int fd, void *device_addr,
 
 	return hlthunk_device_memory_export_dmabuf_fd(fd, device_handle, size,
 							O_RDWR | O_CLOEXEC);
+}
+
+int hltest_get_host_meminfo(struct hltest_host_meminfo *res)
+{
+	FILE *fp;
+	char *line = NULL;
+	size_t len = 0;
+	ssize_t read;
+	int n_fields = 0;
+
+	fp = fopen("/proc/meminfo", "r");
+	if (!fp)
+		return -1;
+	memset(res, 0, sizeof(*res));
+
+	while ((read = getline(&line, &len, fp)) != -1) {
+		if (sscanf(line, "MemTotal: %lu", &res->mem_total) == 1)
+			n_fields++;
+		if (sscanf(line, "MemFree: %lu", &res->mem_free) == 1)
+			n_fields++;
+		if (sscanf(line, "MemAvailable: %lu", &res->mem_available) == 1)
+			n_fields++;
+		if (sscanf(line, "HugePages_Total: %lu",
+			&res->hugepage_total) == 1)
+			n_fields++;
+		if (sscanf(line, "HugePages_Free: %lu", &res->hugepage_free) ==
+		    1)
+			n_fields++;
+		if (sscanf(line, "Hugepagesize: %lu", &res->hugepage_size) == 1)
+			n_fields++;
+	}
+	if (n_fields != 6)
+		return -1;
+	res->mem_total *= 1024;
+	res->mem_free *= 1024;
+	res->mem_available *= 1024;
+	res->hugepage_size *= 1024;
+	res->page_size = getpagesize();
+	if (line)
+		free(line);
+	fclose(fp);
+	return 0;
 }

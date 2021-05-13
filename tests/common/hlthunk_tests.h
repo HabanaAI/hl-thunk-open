@@ -197,6 +197,11 @@ enum hltests_dma_perf_test_results {
 	DMA_PERF_RESULTS_MAX
 };
 
+enum hltests_random {
+	NOT_RANDOM = 0,
+	RANDOM
+};
+
 struct hltests_debugfs {
 	int addr_fd;
 	int data32_fd;
@@ -424,6 +429,16 @@ struct hltests_cb {
 	bool external;
 };
 
+struct hltest_host_meminfo {
+	uint64_t mem_total;
+	uint64_t mem_free;
+	uint64_t mem_available;
+	uint64_t page_size;
+	uint64_t hugepage_total;
+	uint64_t hugepage_free;
+	uint64_t hugepage_size;
+};
+
 struct mem_pool {
 	pthread_mutex_t lock;
 	uint64_t start;
@@ -498,7 +513,12 @@ void hltests_debugfs_write(int addr_fd, int data_fd, uint64_t full_address,
 uint64_t hltests_debugfs_read64(int addr_fd, int data_fd, uint64_t full_address);
 void hltests_debugfs_write64(int addr_fd, int data_fd, uint64_t full_address,
 				uint64_t val);
-
+struct hltests_memory *
+hltests_allocate_host_mem_nomap(uint64_t size, enum hltests_huge huge);
+int hltests_free_host_mem_nounmap(struct hltests_memory *mem,
+					enum hltests_huge huge);
+int hltests_map_host_mem(int fd, struct hltests_memory *mem);
+int hltests_unmap_host_mem(int fd, struct hltests_memory *mem);
 void *hltests_allocate_host_mem(int fd, uint64_t size, enum hltests_huge huge);
 void *hltests_allocate_device_mem(int fd, uint64_t size,
 				enum hltests_contiguous contiguous);
@@ -555,6 +575,7 @@ int hltests_get_module_params_info(int fd,
 				struct hltests_module_params_info *info);
 
 uint32_t hltests_rand_u32(void);
+bool hltests_rand_flip_coin(void);
 void hltests_fill_rand_values(void *ptr, uint32_t size);
 void hltests_fill_seq_values(void *ptr, uint32_t size);
 
@@ -664,5 +685,7 @@ const char *hltests_stringify_pll_type(int fd, uint32_t pll_idx,
 int hltests_device_memory_export_dmabuf_fd(int fd, void *device_addr,
 						uint64_t size);
 void hltests_set_rand_seed(uint32_t val);
+
+int hltest_get_host_meminfo(struct hltest_host_meminfo *res);
 
 #endif /* HLTHUNK_TESTS_H */
