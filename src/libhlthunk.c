@@ -266,20 +266,52 @@ static int hlthunk_open_device_by_name(enum hlthunk_device_name device_name,
 					enum hlthunk_node_type type)
 {
 	enum hlthunk_device_name asic_name;
-	int fd, i;
+	int fd, fd_ctrl, i, last_valid_errno;
 
+	/* Initialize to ENOENT in case there is no asic matching device_name */
+	last_valid_errno = ENOENT;
+
+	/* We do not know what minor is in use, so try them all. */
 	for (i = 0 ; i < HLTHUNK_MAX_MINOR ; i++) {
-		fd = hlthunk_open_minor(i, type);
-		if (fd >= 0) {
-			asic_name = hlthunk_get_device_name_from_fd(fd);
+		/* Regardless of what type of device the user requested, we
+		 * start by opening the control device. This is needed to get
+		 * the device name. We need the device name to tell if it is
+		 * relevant for user request, and we can't use the real device
+		 * for that as it may be busy.
+		 */
+		fd_ctrl = hlthunk_open_minor(i, HLTHUNK_NODE_CONTROL);
+		if (fd_ctrl >= 0) {
+			asic_name = hlthunk_get_device_name_from_fd(fd_ctrl);
 
 			if ((device_name == HLTHUNK_DEVICE_DONT_CARE) ||
-					(asic_name == device_name))
-				return fd;
+					(asic_name == device_name)) {
 
-			hlthunk_close(fd);
+				/* If control device requested, just return it.
+				 * We already have it open.
+				 */
+				if (type == HLTHUNK_NODE_CONTROL)
+					return fd_ctrl;
+
+				fd = hlthunk_open_minor(i, type);
+				/* Closing the control device only after open,
+				 * to prevent the device being removed at this
+				 * time interval.
+				 */
+				hlthunk_close(fd_ctrl);
+				if (fd >= 0)
+					return fd;
+
+				/* If there was an error - remember it. This is
+				 * to prevent errno from being overridden from
+				 * trying to open non-existent devices.
+				 */
+				if (errno != ENOENT)
+					last_valid_errno = errno;
+			}
 		}
 	}
+
+	errno = last_valid_errno;
 
 	return -1;
 }
