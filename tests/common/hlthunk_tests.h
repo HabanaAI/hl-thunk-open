@@ -467,6 +467,7 @@ const char *hltests_get_config_filename(void);
 int hltests_get_parser_run_disabled_tests(void);
 int hltests_get_verbose_enabled(void);
 uint32_t hltests_get_cur_seed(void);
+char *hltests_get_build_path(void);
 int hltests_is_legacy_mode_enabled(void);
 bool hltests_is_simulator(int fd);
 bool hltests_is_goya(int fd);

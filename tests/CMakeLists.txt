@@ -5,6 +5,8 @@ project(libhl-thunk-tests C)
 set(HLTHUNK_TESTS_LIBRARY hlthunk-tests)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")
 
+add_definitions(-DHLTHUNK_BUILD_PATH="${CMAKE_BUILD_PATH}")
+
 include_directories(
     ${CMOCKA_INCLUDE_DIR}
     ${CMAKE_BINARY_DIR}

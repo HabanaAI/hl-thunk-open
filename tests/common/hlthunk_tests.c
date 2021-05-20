@@ -27,6 +27,8 @@
 
 #define FRAG_MEM_MULT 3
 
+#define BUILD_PATH_MAX_LENGTH	128
+
 struct hltests_thread_params {
 	const char *group_name;
 	const struct CMUnitTest *tests;
@@ -51,6 +53,7 @@ static const char *config_filename;
 static int num_devices = 1;
 static int legacy_mode_enabled = 1;
 static uint32_t cur_seed;
+static char build_path[BUILD_PATH_MAX_LENGTH];
 
 static char asic_names[HLTHUNK_DEVICE_MAX][20] = {
 	"Goya",
@@ -861,6 +864,10 @@ int hltests_setup(void **state)
 	tests_state->security = !!module_params.security_enable;
 
 	*state = tests_state;
+
+	if (!hltests_is_legacy_mode_enabled())
+		snprintf(build_path, BUILD_PATH_MAX_LENGTH - 1,
+					"%s", HLTHUNK_BUILD_PATH);
 
 	return 0;
 
@@ -2494,6 +2501,11 @@ int hltests_get_verbose_enabled(void)
 uint32_t hltests_get_cur_seed(void)
 {
 	return cur_seed;
+}
+
+char *hltests_get_build_path(void)
+{
+	return build_path;
 }
 
 int hltests_is_legacy_mode_enabled(void)
