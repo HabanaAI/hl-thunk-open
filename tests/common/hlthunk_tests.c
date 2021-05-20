@@ -55,7 +55,7 @@ static int legacy_mode_enabled = 1;
 static uint32_t cur_seed;
 static char build_path[BUILD_PATH_MAX_LENGTH];
 
-static char asic_names[HLTHUNK_DEVICE_MAX][20] = {
+char asic_names[HLTHUNK_DEVICE_MAX][20] = {
 	"Goya",
 	"Placeholder1",
 	"Gaudi",

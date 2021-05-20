@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
+#include <ctype.h>
 #include <time.h>
 
 struct bench_mappings_custom_cfg {
@@ -28,6 +29,13 @@ struct bench_mappings_custom_cfg {
 	uint64_t n_unmaps;
 	enum hltests_random random;
 	uint32_t n_iter;
+};
+
+struct asic_benchmark_exp_cfg {
+	enum hlthunk_device_name device_name;
+	const char *test_name;
+	uint64_t timing_min;
+	uint64_t timing_max;
 };
 
 void test_debug_mode(void **state)
@@ -293,119 +301,200 @@ uint64_t hltest_bench_host_map(struct hltests_state *tests_state,
 	return total_time_ns;
 }
 
-void test_bench_host_map_nounmap_2MBx4K(void **state)
+static int asic_benchmark_exp_parsing_handler(void *user,
+						const char *section,
+						const char *name,
+						const char *value)
 {
+	struct asic_benchmark_exp_cfg *cfg =
+		(struct asic_benchmark_exp_cfg *) user;
+	char exp_section[PATH_MAX] = {0};
+
+	snprintf(exp_section, sizeof(exp_section), "%s_%s_exp_timing",
+		asic_names[cfg->device_name], cfg->test_name);
+	exp_section[0] = tolower(exp_section[0]);
+
+	if (MATCH(exp_section, "timing_max"))
+		cfg->timing_max = strtoul(value, NULL, 0);
+	else if (MATCH(exp_section, "timing_min"))
+		cfg->timing_min = strtoul(value, NULL, 0);
+	else
+		return 0; /* unknown section/name, error */
+
+	return 1;
+}
+
+/**
+ * This function will perform @hltest_bench_host_map, then validate whether
+ * the benchmark matches the expected values range, based on the supplied
+ * config file
+ * @param n_allocs number of allocations to perform before test
+ * @param alloc_size size of each allocation
+ * @param huge spefify whether huge pages shall be used for allocations
+ * @param n_maps total number of map operations to benchmark
+ * @param n_unmaps toatl number of unmap operations to benchmark
+ * @param random specify whether map/unmaps shall be done in a random order
+ *               to test fragmentation issues
+ * @param n_iter number of times to repeat the test, total time will be returned
+ * @param disabled_test test requires to be run with `run disabled tests`
+ * @param validate_exp if true, will validate expected results at the end of the
+ *                     test, else just print to the output
+ * @param test_name test name used to match expected value in configuration
+ */
+void hltest_bench_host_map_expected(struct hltests_state *tests_state,
+					uint64_t n_allocs, uint64_t alloc_size,
+					enum hltests_huge huge,
+					uint64_t n_maps, uint64_t n_unmaps,
+					enum hltests_random random,
+					uint32_t n_iter,
+					bool disabled_test,
+					bool validate_exp,
+					const char *test_name)
+{
+	struct asic_benchmark_exp_cfg cfg = {0};
+	const char *config_filename = hltests_get_config_filename();
 	uint64_t t_ns;
 
-	if (!hltests_get_parser_run_disabled_tests()) {
+	/* Check if tests is disable by default and requires explicit enable */
+	if (disabled_test && !hltests_get_parser_run_disabled_tests()) {
 		print_message("This test need to be run with -d flag\n");
 		skip();
 	}
-	t_ns = hltest_bench_host_map((struct hltests_state *)*state,
-				0x1000UL,
-				0x200000UL,
-				NOT_HUGE,
-				0x1000UL,
-				0,
-				NOT_RANDOM,
-				1);
-	print_message("%luns\n", t_ns);
-}
 
-void test_bench_host_map_nounmap_8GB(void **state)
-{
-	uint64_t t_ns;
+	/* Geting exp results from config */
+	if (validate_exp) {
+		cfg.device_name = hlthunk_get_device_name_from_fd(tests_state->fd);
+		cfg.test_name = test_name;
 
-	if (!hltests_get_parser_run_disabled_tests()) {
-		print_message("This test need to be run with -d flag\n");
-		skip();
+		if (!config_filename)
+			fail_msg(
+			"Config file not specified, cannot get exp timing\n");
+		if (ini_parse(config_filename,
+				asic_benchmark_exp_parsing_handler, &cfg) < 0)
+			fail_msg("Can't load %s\n", config_filename);
+		if (!cfg.timing_min && !cfg.timing_max)
+			fail_msg(
+			"Expected timing for benchmark not specified\n");
 	}
-	t_ns = hltest_bench_host_map((struct hltests_state *)*state,
-				1,
-				0x200000000UL,
-				NOT_HUGE,
-				1,
-				0,
-				NOT_RANDOM,
-				1);
-	print_message("%luns\n", t_ns);
-}
 
-void test_bench_host_nomap_unmap_2MBx4K(void **state)
-{
-	uint64_t t_ns;
+	/* Run the benchmark. */
+	t_ns = hltest_bench_host_map(tests_state, n_allocs, alloc_size, huge,
+					n_maps, n_unmaps, random, n_iter);
 
-	if (!hltests_get_parser_run_disabled_tests()) {
-		print_message("This test need to be run with -d flag\n");
-		skip();
+	/* Process results. */
+	if (!validate_exp)
+		/* here - just print the results */
+		print_message("%s becnhmark %ld(sec)\n", test_name,
+				t_ns / 1000000000UL);
+	else {
+		/* here - validate they are within allowed margin */
+		if (t_ns > cfg.timing_max) {
+			print_error("t_ns = %ld > cfg.timing_max = %ld\n", t_ns,
+					cfg.timing_max);
+			fail_msg("t_ns > cfg.timing_max");
+		}
+		if (t_ns < cfg.timing_min) {
+			print_error("t_ns = %ld < cfg.timing_min = %ld\n", t_ns,
+					cfg.timing_min);
+			fail_msg("t_ns < cfg.timing_min");
+		}
 	}
-	t_ns = hltest_bench_host_map((struct hltests_state *)*state,
-				0x1000UL,
-				0x200000UL,
-				NOT_HUGE,
-				0,
-				0x1000UL,
-				NOT_RANDOM,
-				1);
-	print_message("%luns\n", t_ns);
 }
 
-void test_bench_host_nomap_unmap_8GB(void **state)
-{
-	uint64_t t_ns;
-
-	if (!hltests_get_parser_run_disabled_tests()) {
-		print_message("This test need to be run with -d flag\n");
-		skip();
-	}
-	t_ns = hltest_bench_host_map((struct hltests_state *)*state,
-				1,
-				0x200000000UL,
-				NOT_HUGE,
-				0,
-				1,
-				NOT_RANDOM,
-				1);
-	print_message("%luns\n", t_ns);
+#define MAP_BENCHMARK_TEST(test_name, ...)				\
+void test_name(void **state)						\
+{									\
+	hltest_bench_host_map_expected((struct hltests_state *)*state,	\
+		__VA_ARGS__, #test_name);				\
 }
 
-void test_bench_host_map_nounmap_rand_2MBx4K(void **state)
-{
-	uint64_t t_ns;
+MAP_BENCHMARK_TEST(test_bench_host_map_unmap_2MBx4K,
+			0x1000UL, /* n_allocs */
+			0x200000UL, /* alloc_size */
+			NOT_HUGE, /* huge */
+			0x1000UL, /* n_maps */
+			0x1000UL, /* n_unmaps */
+			NOT_RANDOM, /* random */
+			1, /* n_iter */
+			false, /* disabled_test */
+			false); /* validate_exp */
 
-	if (!hltests_get_parser_run_disabled_tests()) {
-		print_message("This test need to be run with -d flag\n");
-		skip();
-	}
-	t_ns = hltest_bench_host_map((struct hltests_state *)*state,
-				0x1000UL,
-				0x200000UL,
-				NOT_HUGE,
-				0x1000UL,
-				0x1000UL,
-				RANDOM,
-				1);
-	print_message("%luns\n", t_ns);
-}
+MAP_BENCHMARK_TEST(test_bench_host_map_unmap_8GB,
+			1, /* n_allocs */
+			0x200000000UL, /* alloc_size */
+			NOT_HUGE, /* huge */
+			1, /* n_maps */
+			0, /* n_unmaps */
+			NOT_RANDOM, /* random */
+			1, /* n_iter */
+			false, /* disabled_test */
+			false); /* validate_exp */
 
-void test_bench_host_map_nounmap_huge_rand_2MBx4K(void **state)
-{
-	uint64_t t_ns;
+MAP_BENCHMARK_TEST(test_bench_host_map_nounmap_2MBx4K,
+			0x1000UL, /* n_allocs */
+			0x200000UL, /* alloc_size */
+			NOT_HUGE, /* huge */
+			0x1000UL, /* n_maps */
+			0, /* n_unmaps */
+			NOT_RANDOM, /* random */
+			1, /* n_iter */
+			true, /* disabled_test */
+			true); /* validate_exp */
 
-	if (!hltests_get_parser_run_disabled_tests()) {
-		print_message("This test need to be run with -d flag\n");
-		skip();
-	}
-	t_ns = hltest_bench_host_map((struct hltests_state *)*state,
-				0x1000UL,
-				0x200000UL,
-				HUGE,
-				0x1000UL,
-				0x1000UL,
-				RANDOM,
-				1);
-	print_message("%luns\n", t_ns);
-}
+MAP_BENCHMARK_TEST(test_bench_host_map_nounmap_8GB,
+			1, /* n_allocs */
+			0x200000000UL, /* alloc_size */
+			NOT_HUGE, /* huge */
+			1, /* n_maps */
+			0, /* n_unmaps */
+			NOT_RANDOM, /* random */
+			1, /* n_iter */
+			true, /* disabled_test */
+			true); /* validate_exp */
+
+MAP_BENCHMARK_TEST(test_bench_host_nomap_unmap_2MBx4K,
+			0x1000UL, /* n_allocs */
+			0x200000UL, /* alloc_size */
+			NOT_HUGE, /* huge */
+			0, /* n_maps */
+			0x1000UL, /* n_unmaps */
+			NOT_RANDOM, /* random */
+			1, /* n_iter */
+			true, /* disabled_test */
+			true); /* validate_exp */
+
+MAP_BENCHMARK_TEST(test_bench_host_nomap_unmap_8GB,
+			1, /* n_allocs */
+			0x200000000UL, /* alloc_size */
+			NOT_HUGE, /* huge */
+			0, /* n_maps */
+			1, /* n_unmaps */
+			NOT_RANDOM, /* random */
+			1, /* n_iter */
+			true, /* disabled_test */
+			true); /* validate_exp */
+
+MAP_BENCHMARK_TEST(test_bench_host_map_nounmap_rand_2MBx4K,
+			0x1000UL, /* n_allocs */
+			0x200000UL, /* alloc_size */
+			NOT_HUGE, /* huge */
+			0x1000UL, /* n_maps */
+			0x1000UL, /* n_unmaps */
+			RANDOM, /* random */
+			1, /* n_iter */
+			true, /* disabled_test */
+			true); /* validate_exp */
+
+MAP_BENCHMARK_TEST(test_bench_host_map_nounmap_huge_rand_2MBx4K,
+			0x1000UL, /* n_allocs */
+			0x200000UL, /* alloc_size */
+			HUGE, /* huge */
+			0x1000UL, /* n_maps */
+			0x1000UL, /* n_unmaps */
+			RANDOM, /* random */
+			1, /* n_iter */
+			true, /* disabled_test */
+			true); /* validate_exp */
 
 static int bench_mappings_custom_parsing_handler(void *user,
 						const char *section,
@@ -477,6 +566,12 @@ void test_bench_mappings_custom(void **state)
 const struct CMUnitTest profiling_tests[] = {
 	cmocka_unit_test_setup(test_debug_mode,
 			hltests_ensure_device_operational),
+	/* not checking expected */
+	cmocka_unit_test_setup(test_bench_host_map_unmap_2MBx4K,
+			hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_bench_host_map_unmap_8GB,
+			hltests_ensure_device_operational),
+	/* checking expected */
 	cmocka_unit_test_setup(test_bench_host_map_nounmap_2MBx4K,
 			hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_bench_host_map_nounmap_8GB,
