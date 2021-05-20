@@ -688,4 +688,6 @@ void hltests_set_rand_seed(uint32_t val);
 
 int hltest_get_host_meminfo(struct hltest_host_meminfo *res);
 
+extern char asic_names[HLTHUNK_DEVICE_MAX][20];
+
 #endif /* HLTHUNK_TESTS_H */
