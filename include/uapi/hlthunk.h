@@ -161,6 +161,15 @@ struct hlthunk_open_stats_info {
 	uint64_t last_open_period_ms;
 };
 
+struct hlthunk_hw_asic_status {
+	struct hlthunk_clk_throttle_info throttle;
+	struct hlthunk_open_stats_info open_stats;
+	struct hlthunk_power_info power;
+	enum hl_device_status status;
+	uint64_t timestamp_sec;
+	uint8_t valid;
+};
+
 struct hlthunk_functions_pointers {
 	/*
 	 * Functions that will be wrapped with profiler code to enable
@@ -359,6 +368,16 @@ hlthunk_public int hlthunk_get_hw_ip_info(int fd,
  */
 hlthunk_public int hlthunk_get_open_stats(int fd,
 				struct hlthunk_open_stats_info *open_stats);
+
+/**
+ * This function retrieves aggregated asic status including general status,
+ * open_stas, throttling and power info.
+ * @param fd file descriptor handle of habanalabs main or control device
+ * @param hw_asic_status info pointer to hw asic status structure
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_get_hw_asic_status(int fd,
+				struct hlthunk_hw_asic_status *hw_asic_status);
 
 /**
  * This function retrieves DRAM usage information for a specific device

@@ -78,4 +78,5 @@ HLTNK_1.1 {
 	hlthunk_wait_for_collective_signal_timeout;
 	hlthunk_wait_for_signal_timeout;
 	hlthunk_get_open_stats;
+	hlthunk_get_hw_asic_status;
 } HLTNK_1.0;

@@ -535,6 +535,39 @@ hlthunk_public int hlthunk_get_open_stats(int fd,
 	return 0;
 }
 
+hlthunk_public int hlthunk_get_hw_asic_status(int fd,
+				struct hlthunk_hw_asic_status *hw_asic_status)
+{
+	int rc;
+
+	if (!hw_asic_status)
+		return -EINVAL;
+
+	hw_asic_status->valid = 0;
+
+	rc = hlthunk_get_clk_throttle_info(fd, &hw_asic_status->throttle);
+	if (rc)
+		return rc;
+
+	rc = hlthunk_get_open_stats(fd, &hw_asic_status->open_stats);
+	if (rc)
+		return rc;
+
+	rc = hlthunk_get_power_info(fd, &hw_asic_status->power);
+	if (rc)
+		return rc;
+
+	hw_asic_status->status = hlthunk_get_device_status_info(fd);
+	if (hw_asic_status->status < 0)
+		return hw_asic_status->status;
+
+	hw_asic_status->timestamp_sec = time(NULL);
+
+	hw_asic_status->valid = 1;
+
+	return 0;
+}
+
 hlthunk_public int hlthunk_get_hw_ip_info(int fd,
 					struct hlthunk_hw_ip_info *hw_ip)
 {
