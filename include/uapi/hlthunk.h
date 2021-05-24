@@ -156,6 +156,11 @@ struct hlthunk_wait_out {
 	uint32_t status;
 };
 
+struct hlthunk_open_stats_info {
+	uint64_t open_counter;
+	uint64_t last_open_period_ms;
+};
+
 struct hlthunk_functions_pointers {
 	/*
 	 * Functions that will be wrapped with profiler code to enable
@@ -345,6 +350,15 @@ hlthunk_public int hlthunk_get_device_index_from_pci_bus_id(const char *busid);
  */
 hlthunk_public int hlthunk_get_hw_ip_info(int fd,
 					struct hlthunk_hw_ip_info *hw_ip);
+
+/**
+ * This function retrieves statstics info on device open operations
+ * @param fd file descriptor handle of habanalabs main or control device
+ * @param open_stats info pointer to open stats structure
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_get_open_stats(int fd,
+				struct hlthunk_open_stats_info *open_stats);
 
 /**
  * This function retrieves DRAM usage information for a specific device

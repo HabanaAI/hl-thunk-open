@@ -508,6 +508,33 @@ hlthunk_public int hlthunk_close(int fd)
 	return (*functions_pointers_table->fp_hlthunk_close)(fd);
 }
 
+hlthunk_public int hlthunk_get_open_stats(int fd,
+				struct hlthunk_open_stats_info *open_stats)
+{
+	struct hl_info_args args;
+	struct hlthunk_open_stats_info hl_open_stats;
+	int rc;
+
+	if (!open_stats)
+		return -EINVAL;
+
+	memset(&args, 0, sizeof(args));
+	memset(&hl_open_stats, 0, sizeof(hl_open_stats));
+
+	args.op = HL_INFO_OPEN_STATS;
+	args.return_pointer = (__u64) (uintptr_t) &hl_open_stats;
+	args.return_size = sizeof(hl_open_stats);
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	if (rc)
+		return rc;
+
+	open_stats->open_counter = hl_open_stats.open_counter;
+	open_stats->last_open_period_ms = hl_open_stats.last_open_period_ms;
+
+	return 0;
+}
+
 hlthunk_public int hlthunk_get_hw_ip_info(int fd,
 					struct hlthunk_hw_ip_info *hw_ip)
 {
