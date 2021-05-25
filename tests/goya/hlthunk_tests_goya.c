@@ -309,6 +309,7 @@ static uint32_t goya_add_monitor_and_fence(
 	default:
 		printf("Failed to configure fence - invalid QID %d\n",
 			mon_and_fence_info->queue_id);
+		fail();
 	}
 
 	if (mon_and_fence_info->mon_address)
