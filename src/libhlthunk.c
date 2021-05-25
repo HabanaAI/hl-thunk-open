@@ -70,25 +70,6 @@ static int hlthunk_ioctl(int fd, unsigned long request, void *arg)
 	return 0;
 }
 
-static const char *get_temp_dir(void)
-{
-	char *tmpdir;
-
-	tmpdir = getenv("TEMP");
-	if (tmpdir)
-		return tmpdir;
-
-	tmpdir = getenv("TMP");
-	if (tmpdir)
-		return tmpdir;
-
-	tmpdir = getenv("TMPDIR");
-	if (tmpdir)
-		return tmpdir;
-
-	return "/tmp";
-}
-
 static int hlthunk_open_minor(int device_index, enum hlthunk_node_type type)
 {
 	char buf[64], *dev_name;
