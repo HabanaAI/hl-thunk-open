@@ -257,6 +257,10 @@ static void dma_entire_dram_random(void **state, uint64_t zone_size,
 		copy_size_mb = (kv_size(array) * cfg.dma_size) / 1024 / 1024;
 		timeout = copy_size_mb *
 				DMA_ENTIRE_DRAM_PLDM_TIMEOUT_SEC_PER_MB;
+
+		if (verbose)
+			printf("timeout: %u seconds.\n", timeout);
+
 		rc = hltests_submit_cs_timeout(fd, NULL, 0, execute_arr,
 					split_cs ? 2 : 1, 0, timeout, &seq);
 	} else {
@@ -342,6 +346,10 @@ static void dma_entire_dram_random(void **state, uint64_t zone_size,
 		copy_size_mb = (kv_size(array) * cfg.dma_size) / 1024 / 1024;
 		timeout = copy_size_mb *
 				DMA_ENTIRE_DRAM_PLDM_TIMEOUT_SEC_PER_MB;
+
+		if (verbose)
+			printf("timeout: %u seconds.\n", timeout);
+
 		rc = hltests_submit_cs_timeout(fd, NULL, 0, execute_arr,
 					split_cs ? 2 : 1, 0, timeout, &seq);
 	} else {
