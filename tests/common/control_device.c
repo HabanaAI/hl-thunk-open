@@ -406,6 +406,31 @@ void test_print_pll_info(void **state)
 	}
 }
 
+void test_print_hw_asic_status(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	int rc, fd = tests_state->fd;
+	struct hlthunk_hw_asic_status hw_asic_status;
+
+	rc = hlthunk_get_hw_asic_status(fd, &hw_asic_status);
+	assert_int_equal(rc, 0);
+	assert_true(hw_asic_status.valid);
+
+	printf("\nHW ASIC Status:");
+	printf("\n-----------------------");
+	printf("\nStatus                : %d", hw_asic_status.status);
+	printf("\nThrottle reason bitmask: 0x%x",
+		hw_asic_status.throttle.clk_throttle_reason_bitmask);
+	printf("\nPower                 : %ld", hw_asic_status.power.power);
+	printf("\nOpen counter          : %ld",
+		hw_asic_status.open_stats.open_counter);
+	printf("\nLast open period (ms) : %ld",
+		hw_asic_status.open_stats.last_open_period_ms);
+	printf("\nTimestamp (sec)       : %ld", hw_asic_status.timestamp_sec);
+
+	printf("\n\n");
+}
+
 const struct CMUnitTest control_tests[] = {
 	cmocka_unit_test(test_print_hw_ip_info),
 	cmocka_unit_test(test_print_hw_idle_info),
@@ -422,7 +447,8 @@ const struct CMUnitTest control_tests[] = {
 	cmocka_unit_test(test_print_events_counters),
 	cmocka_unit_test(test_print_events_counters_aggregate),
 	cmocka_unit_test(test_print_pci_bdf),
-	cmocka_unit_test(test_print_pll_info)
+	cmocka_unit_test(test_print_pll_info),
+	cmocka_unit_test(test_print_hw_asic_status)
 };
 
 static const char *const usage[] = {
