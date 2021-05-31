@@ -288,6 +288,12 @@ static int hlthunk_open_device_by_name(enum hlthunk_device_name device_name,
 				 */
 				if (errno != ENOENT)
 					last_valid_errno = errno;
+			} else {
+				/* Need to close fd_ctrl to prevent resource
+				 * leak because we will use this variable
+				 * to hold fd of the next device in this loop
+				 */
+				hlthunk_close(fd_ctrl);
 			}
 		}
 	}
