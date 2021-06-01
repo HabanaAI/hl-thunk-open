@@ -26,6 +26,7 @@ struct signal_wait_thread_params {
 	int queue_id;
 	bool collective_wait;
 	int engine_id;
+	bool result;
 };
 
 static uint64_t sig_seqs[SIG_WAIT_CS];
@@ -691,7 +692,10 @@ static void *test_signal_wait_th(void *args)
 	struct hlthunk_wait_in wait_in;
 	struct hlthunk_wait_out wait_out;
 	struct hlthunk_wait_for_signal wait_for_signal;
-	int i, rc, fd = params->fd, queue_id = params->queue_id, iters;
+	int i, rc, fd = params->fd, queue_id = params->queue_id, iters,
+							max_up_queue_id;
+
+	max_up_queue_id = 7; /* DMA1_3 */
 
 	/* the max value of an SOB is 1 << 15 so we want to test a wraparound */
 	iters = 3 * ((1 << 15) + (1 << 14));
@@ -706,31 +710,46 @@ static void *test_signal_wait_th(void *args)
 		sig_in.queue_index = queue_id;
 
 		rc = hlthunk_signal_submission(fd, &sig_in, &sig_out);
-		assert_int_equal(rc, 0);
+		if (rc) {
+			printf("signal submission failed with rc %d\n", rc);
+			goto error;
+		}
 
 		if (i & 1) {
 			rc = hltests_wait_for_cs_until_not_busy(fd,
 								sig_out.seq);
-			assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
+			if (rc != HL_WAIT_CS_STATUS_COMPLETED) {
+				printf("wait for cs failed with rc %d\n", rc);
+				goto error;
+			}
 		}
 
-		wait_for_signal.queue_index = 7 - queue_id;
+		wait_for_signal.queue_index = max_up_queue_id - queue_id;
 		wait_for_signal.signal_seq_arr = &sig_out.seq;
 		wait_for_signal.signal_seq_nr = 1;
 		wait_in.hlthunk_wait_for_signal = (uint64_t *) &wait_for_signal;
 		wait_in.num_wait_for_signal = 1;
 
 		rc = hlthunk_wait_for_signal(fd, &wait_in, &wait_out);
-		assert_int_equal(rc, 0);
+		if (rc) {
+			printf("wait for signal failed with rc %d\n", rc);
+			goto error;
+		}
 
 		/* check if the signal CS already finished */
 		if (wait_out.seq == ULLONG_MAX)
 			continue;
 
 		rc = hltests_wait_for_cs_until_not_busy(fd, wait_out.seq);
-		assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
+		if (rc != HL_WAIT_CS_STATUS_COMPLETED) {
+			printf("wait for cs failed with rc %d\n", rc);
+			goto error;
+		}
 	}
 
+	params->result = true;
+
+error:
 	return args;
 }
 
@@ -756,7 +775,11 @@ static void *test_signal_wait_parallel_th(void *args)
 
 				rc = hlthunk_signal_submission(fd, &sig_in,
 								&sig_out);
-				assert_int_equal(rc, 0);
+				if (rc) {
+					printf("signal submission failed(%d)\n",
+						rc);
+					goto error;
+				}
 
 				sig_seqs[i] = sig_out.seq;
 
@@ -766,16 +789,14 @@ static void *test_signal_wait_parallel_th(void *args)
 				 * won't finish before the wait begins.
 				 */
 				if (i & 1)
-					while (atomic_read(&sig_seqs[i]))
-						;
+					while (atomic_read(&sig_seqs[i]));
 			}
 
 			/*
 			 * Wait for the last waiter to finish before starting a
 			 * new iteration
 			 */
-			while (atomic_read(&sig_seqs[SIG_WAIT_CS - 1]))
-				;
+			while (atomic_read(&sig_seqs[SIG_WAIT_CS - 1]));
 		} else {
 			uint64_t sig_seq;
 			uint32_t collective_engine = params->engine_id;
@@ -787,8 +808,7 @@ static void *test_signal_wait_parallel_th(void *args)
 					sizeof(wait_for_signal));
 
 				/* Wait for a valid signal sequence number */
-				while (atomic_read(&sig_seqs[i]) == 0)
-					;
+				while (atomic_read(&sig_seqs[i]) == 0);
 
 				sig_seq = sig_seqs[i];
 
@@ -806,11 +826,19 @@ static void *test_signal_wait_parallel_th(void *args)
 					rc =
 					hlthunk_wait_for_collective_signal(fd,
 							&wait_in, &wait_out);
-					assert_int_equal(rc, 0);
+					if (rc) {
+						printf("wait sig failed(%d)\n",
+							rc);
+						goto error;
+					}
 				} else {
 					rc = hlthunk_wait_for_signal(fd,
 							&wait_in, &wait_out);
-					assert_int_equal(rc, 0);
+					if (rc) {
+						printf("wait sig failed(%d)\n",
+							rc);
+						goto error;
+					}
 				}
 
 				sig_seqs[i] = 0;
@@ -821,12 +849,18 @@ static void *test_signal_wait_parallel_th(void *args)
 
 				rc = hltests_wait_for_cs_until_not_busy(fd,
 								wait_out.seq);
-				assert_int_equal(rc,
-						HL_WAIT_CS_STATUS_COMPLETED);
+				if (rc != HL_WAIT_CS_STATUS_COMPLETED) {
+					printf("wait cs failed with rc %d\n",
+						rc);
+					goto error;
+				}
 			}
 		}
 	}
 
+	params->result = true;
+
+error:
 	return args;
 }
 
@@ -869,17 +903,27 @@ static void *test_signal_wait_dma_th(void *args)
 	}
 
 	dram_ptr = hltests_allocate_device_mem(fd, dma_size, CONTIGUOUS);
-	assert_non_null(dram_ptr);
+	if (!dram_ptr) {
+		printf("allocate device mem failed\n");
+		goto error;
+	}
 	dram_addr = (uint64_t) (uintptr_t) dram_ptr;
 
 	for (i = 0 ; i < 2 ; i++) {
 		cb[i] = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
-		assert_non_null(cb[i]);
+		if (!cb[i]) {
+			printf("allocate cb failed\n");
+			goto error;
+		}
+
 	}
 
 	for (i = 0 ; i < 2 ; i++) {
 		buf[i] = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
-		assert_non_null(buf[i]);
+		if (!buf[i]) {
+			printf("allocate host mem failed\n");
+			goto error;
+		}
 		device_va[i] = hltests_get_device_va_for_host_ptr(fd, buf[i]);
 	}
 
@@ -905,7 +949,10 @@ static void *test_signal_wait_dma_th(void *args)
 		execute_arr[0].queue_index = queue_down;
 
 		rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, 0, &seq[0]);
-		assert_int_equal(rc, 0);
+		if (rc) {
+			printf("submit cs failed with rc %d\n", rc);
+			goto error;
+		}
 
 		memset(&sig_in, 0, sizeof(sig_in));
 		memset(&sig_out, 0, sizeof(sig_out));
@@ -914,7 +961,10 @@ static void *test_signal_wait_dma_th(void *args)
 
 		sig_in.queue_index = queue_down;
 		rc = hlthunk_signal_submission(fd, &sig_in, &sig_out);
-		assert_int_equal(rc, 0);
+		if (rc) {
+			printf("signal submission failed with rc %d\n", rc);
+			goto error;
+		}
 
 		wait_for_signal.queue_index = queue_up;
 		wait_for_signal.signal_seq_arr = &sig_out.seq;
@@ -928,10 +978,17 @@ static void *test_signal_wait_dma_th(void *args)
 		if (params->collective_wait) {
 			rc = hlthunk_wait_for_collective_signal(fd, &wait_in,
 								&wait_out);
-			assert_int_equal(rc, 0);
+			if (rc) {
+				printf("wait for signal failed(%d)\n", rc);
+				goto error;
+			}
 		} else {
 			rc = hlthunk_wait_for_signal(fd, &wait_in, &wait_out);
-			assert_int_equal(rc, 0);
+			if (rc) {
+				printf("wait for signal failed with rc %d\n",
+					rc);
+				goto error;
+			}
 		}
 
 		/* DMA up */
@@ -950,31 +1007,51 @@ static void *test_signal_wait_dma_th(void *args)
 		execute_arr[0].queue_index = queue_up;
 
 		rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, 0, &seq[1]);
-		assert_int_equal(rc, 0);
+		if (rc) {
+			printf("submit cs failed with rc %d\n", rc);
+			goto error;
+		}
 
 		/* Wait for DMA up to finish */
 		rc = hltests_wait_for_cs_until_not_busy(fd, seq[1]);
-		assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
-
+		if (rc != HL_WAIT_CS_STATUS_COMPLETED) {
+			printf("wait for cs failed with rc %d\n", rc);
+			goto error;
+		}
 		/* compare host memories */
 		rc = hltests_mem_compare(buf[0], buf[1], dma_size);
-		assert_int_equal(rc, 0);
+		if (rc) {
+			printf("mem compare failed with rc %d\n", rc);
+			goto error;
+		}
 	}
 
 	/* cleanup */
 	rc = hltests_free_device_mem(fd, dram_ptr);
-	assert_int_equal(rc, 0);
+	if (rc) {
+		printf("free device mem failed with rc %d\n", rc);
+		goto error;
+	}
 
 	for (i = 0 ; i < 2 ; i++) {
 		rc = hltests_free_host_mem(fd, buf[i]);
-		assert_int_equal(rc, 0);
+		if (rc) {
+			printf("free host mem failed with rc %d\n", rc);
+			goto error;
+		}
 	}
 
 	for (i = 0 ; i < 2 ; i++) {
 		rc = hltests_destroy_cb(fd, cb[i]);
-		assert_int_equal(rc, 0);
+		if (rc) {
+			printf("destroy cb failed with rc %d\n", rc);
+			goto error;
+		}
 	}
 
+	params->result = true;
+
+error:
 	return args;
 }
 
@@ -1017,6 +1094,7 @@ static void _test_signal_wait(void **state, bool collective_wait,
 		thread_params[i].queue_id = i;
 		thread_params[i].collective_wait = collective_wait;
 		thread_params[i].engine_id = GAUDI_ENGINE_ID_DMA_5;
+		thread_params[i].result = false;
 
 		rc = pthread_create(&thread_id[i], NULL, __start_routine,
 					&thread_params[i]);
@@ -1027,8 +1105,10 @@ static void _test_signal_wait(void **state, bool collective_wait,
 	for (i = 0 ; i < SIG_WAIT_TH ; i++) {
 		rc = pthread_join(thread_id[i], &retval);
 		assert_int_equal(rc, 0);
-		assert_non_null(retval);
 	}
+
+	for (i = 0 ; i < SIG_WAIT_TH ; i++)
+		assert_int_equal(thread_params[i].result, true);
 
 	hlthunk_free(thread_id);
 	hlthunk_free(thread_params);
