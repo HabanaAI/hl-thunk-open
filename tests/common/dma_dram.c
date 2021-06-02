@@ -78,6 +78,22 @@ static void dma_entire_dram_random(void **state, uint64_t zone_size,
 		skip();
 	}
 
+	/* As of 02/06/2021 entire DRAM test on GOYA-16GB cards
+	 * will fail, due to [SW-40881], *possible hw issue.
+	 * For now skip it to prevent ci failures, unless explicitly
+	 * enabled.
+	 * GOYA-16GB ram will actually be reported as 15.5GB, due to
+	 * the lower DRAM being reserved, hence the formula.
+	 */
+	if (hw_ip.dram_size >= (SZ_16G - SZ_512M) &&
+			hlthunk_get_device_name_from_fd(fd) ==
+			HLTHUNK_DEVICE_GOYA &&
+			!hltests_get_parser_run_disabled_tests()) {
+		printf("Test is disabled on this device due to [SW-40881].\n");
+		printf("To explicitly enable it, run with -d flag.\n");
+		skip();
+	}
+
 	/* if mmu is disabled split to 2 cb's */
 	if (!tests_state->mmu)
 		split_cs = true;
