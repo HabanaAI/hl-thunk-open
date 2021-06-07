@@ -930,6 +930,10 @@ void test_sram_dram_multi_ch_perf(void **state)
 	}
 
 	factor = calc_factor(num_of_ddma_ch, tested_dram_size, total_dma_size);
+	if (!factor) {
+		printf("Skipping test because dram size is too small\n");
+		skip();
+	}
 
 	assert_in_range(total_dma_size, 1, tested_dram_size);
 	assert_in_range(num_of_ddma_ch, 1, MAX_DMA_CH);
@@ -1009,6 +1013,10 @@ void test_dram_sram_multi_ch_perf(void **state)
 	}
 
 	factor = calc_factor(num_of_ddma_ch, tested_dram_size, total_dma_size);
+	if (!factor) {
+		printf("Skipping test because dram size is too small\n");
+		skip();
+	}
 
 	assert_in_range(total_dma_size, 1, tested_dram_size);
 	assert_in_range(num_of_ddma_ch, 1, MAX_DMA_CH);
@@ -1091,6 +1099,10 @@ void test_dram_dram_multi_ch_perf(void **state)
 	}
 
 	factor = calc_factor(num_of_ddma_ch, tested_dram_size, total_dma_size);
+	if (!factor) {
+		printf("Skipping test because dram size is too small\n");
+		skip();
+	}
 
 	assert_in_range(total_dma_size, 1, tested_dram_size);
 	assert_in_range(num_of_ddma_ch, 1, MAX_DMA_CH);
@@ -1174,6 +1186,10 @@ void test_sram_dram_bidirectional_full_multi_ch_perf(void **state)
 		num_of_lindma_pkts = 10;
 
 	factor = calc_factor(num_of_ddma_ch, tested_dram_size, total_dma_size);
+	if (!factor) {
+		printf("Skipping test because dram size is too small\n");
+		skip();
+	}
 
 	assert_in_range(total_dma_size, 1, tested_dram_size);
 	assert_in_range(num_of_ddma_ch, 1, MAX_DMA_CH);
