@@ -2544,7 +2544,7 @@ void hltests_parser(int argc, const char **argv, const char * const* usage,
 		OPT_STRING('c', "config", &config_filename,
 			"config filename for test(s)"),
 		OPT_INTEGER('n', "ndevices", &num_devices, "number of devices"),
-		OPT_BOOLEAN('m', "mode", &legacy_mode_enabled,
+		OPT_INTEGER('m', "mode", &legacy_mode_enabled,
 							"Legacy mode enabled"),
 		OPT_END(),
 	};
@@ -2608,9 +2608,9 @@ char *hltests_get_build_path(void)
 	return build_path;
 }
 
-int hltests_is_legacy_mode_enabled(void)
+bool hltests_is_legacy_mode_enabled(void)
 {
-	return legacy_mode_enabled;
+	return !!legacy_mode_enabled;
 }
 
 bool hltests_is_simulator(int fd)
