@@ -173,7 +173,8 @@ hltest_bench_host_map_one_iter(struct hltests_state *tests_state,
 	 */
 	if (!random && (n_maps > n_allocs || n_unmaps > n_allocs))
 		fail_msg(
-			"Invalid input n_maps=%lu, n_unmaps=%lu, n_allocs=%lu");
+			"Invalid input n_maps=%lu, n_unmaps=%lu, n_allocs=%lu",
+			n_maps, n_unmaps, n_allocs);
 
 	/* Start by allocatin host memory, as much as requested. */
 	kv_init(allocs);
