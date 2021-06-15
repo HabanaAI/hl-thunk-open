@@ -14,7 +14,6 @@
 #include <setjmp.h>
 #include <unistd.h>
 #include <limits.h>
-#include <cmocka.h>
 #include <stdio.h>
 #include <errno.h>
 #include <dirent.h>

@@ -10,7 +10,6 @@
 
 #include <stddef.h>
 #include <limits.h>
-#include <cmocka.h>
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>

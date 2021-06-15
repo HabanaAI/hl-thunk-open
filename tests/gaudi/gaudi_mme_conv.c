@@ -10,7 +10,6 @@
 #include "gaudi/gaudi.h"
 #include "gaudi/asic_reg/gaudi_regs.h"
 #include <stdarg.h>
-#include <cmocka.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <errno.h>
