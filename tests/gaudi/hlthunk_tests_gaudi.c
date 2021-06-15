@@ -15,7 +15,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <setjmp.h>
-#include <cmocka.h>
 #include <pthread.h>
 
 static uint32_t gaudi_add_nop_pkt(void *buffer, uint32_t buf_off, bool eb,

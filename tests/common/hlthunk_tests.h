@@ -21,7 +21,10 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
+
+#ifndef HLTESTS_LIB_MODE
 #include <cmocka.h>
+#endif
 
 #define ARRAY_SIZE(arr)			(sizeof(arr) / sizeof((arr)[0]))
 

@@ -12,7 +12,6 @@
 
 #include <stdarg.h>
 #include <setjmp.h>
-#include <cmocka.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <stdio.h>
