@@ -54,6 +54,8 @@ if (HLTESTS_LIB_MODE)
 
     target_link_libraries(${HLTHUNK_TESTS_LIBRARY}-static ${HLTHUNK_TESTS_LINK_LIBRARIES})
 
+    add_subdirectory(demo)
+
 else ()
     include_directories(
         ${CMOCKA_INCLUDE_DIR}
