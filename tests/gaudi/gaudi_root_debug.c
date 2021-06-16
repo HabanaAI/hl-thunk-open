@@ -340,6 +340,8 @@ void test_read_through_pci(void **state)
 	WREG32(mmPCIE_WRAP_LBW_PROT_OVR, prot);
 }
 
+#ifndef HLTESTS_LIB_MODE
+
 const struct CMUnitTest gaudi_root_debug_tests[] = {
 	cmocka_unit_test(test_hbm_read_interrupts),
 	cmocka_unit_test(test_hbm_read_temperature),
@@ -369,3 +371,5 @@ int main(int argc, const char **argv)
 			gaudi_root_debug_tests, num_tests,
 			hltests_root_debug_setup, hltests_root_debug_teardown);
 }
+
+#endif /* HLTESTS_LIB_MODE */

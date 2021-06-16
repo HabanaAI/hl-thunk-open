@@ -563,6 +563,8 @@ void test_bench_mappings_custom(void **state)
 	print_message("%luns\n", t_ns);
 }
 
+#ifndef HLTESTS_LIB_MODE
+
 const struct CMUnitTest profiling_tests[] = {
 	cmocka_unit_test_setup(test_debug_mode,
 			hltests_ensure_device_operational),
@@ -603,3 +605,5 @@ int main(int argc, const char **argv)
 	return hltests_run_group_tests("profiling", profiling_tests,
 				num_tests, hltests_setup, hltests_teardown);
 }
+
+#endif /* HLTESTS_LIB_MODE */

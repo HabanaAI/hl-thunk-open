@@ -584,6 +584,8 @@ DMA_TEST_INC_DRAM_HIGH(test_dma_dram_high_size_256MB, state, 256 * 1024 * 1024)
 DMA_TEST_INC_DRAM_HIGH(test_dma_dram_high_size_512MB, state, 512 * 1024 * 1024)
 DMA_TEST_INC_DRAM_HIGH(test_dma_dram_high_size_1GB, state, 1024 * 1024 * 1024)
 
+#ifndef HLTESTS_LIB_MODE
+
 const struct CMUnitTest dma_dram_tests[] = {
 	cmocka_unit_test_setup(test_dma_entire_dram_random_256KB,
 			hltests_ensure_device_operational),
@@ -794,3 +796,5 @@ int main(int argc, const char **argv)
 	return hltests_run_group_tests("dma_dram", dma_dram_tests, num_tests,
 					hltests_setup, hltests_teardown);
 }
+
+#endif /* HLTESTS_LIB_MODE */

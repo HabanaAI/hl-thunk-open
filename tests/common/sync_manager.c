@@ -1160,6 +1160,8 @@ static void test_signal_collective_wait_dma(void **state)
 	_test_signal_wait(state, true, test_signal_wait_dma_th);
 }
 
+#ifndef HLTESTS_LIB_MODE
+
 const struct CMUnitTest sm_tests[] = {
 	cmocka_unit_test_setup(test_sm_tpc, hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_sm_mme, hltests_ensure_device_operational),
@@ -1208,3 +1210,5 @@ int main(int argc, const char **argv)
 	return hltests_run_group_tests("sync_manager", sm_tests, num_tests,
 					hltests_setup, hltests_teardown);
 }
+
+#endif /* HLTESTS_LIB_MODE */

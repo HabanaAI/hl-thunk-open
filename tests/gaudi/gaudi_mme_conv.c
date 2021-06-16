@@ -1391,6 +1391,8 @@ void test_mme_basic_conv(void **state)
 	assert_int_equal(rc, 0);
 }
 
+#ifndef HLTESTS_LIB_MODE
+
 const struct CMUnitTest gaudi_mme_tests[] = {
 	cmocka_unit_test_setup(test_mme_basic_conv,
 				hltests_ensure_device_operational)
@@ -1411,3 +1413,5 @@ int main(int argc, const char **argv)
 	return hltests_run_group_tests("gaudi_mme", gaudi_mme_tests, num_tests,
 					hltests_setup, hltests_teardown);
 }
+
+#endif /* HLTESTS_LIB_MODE */

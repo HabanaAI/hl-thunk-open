@@ -315,6 +315,8 @@ void test_error_injection_thermal_event(void **state)
 	assert_true(temp_pre < temp_post);
 }
 
+#ifndef HLTESTS_LIB_MODE
+
 const struct CMUnitTest ei_tests[] = {
 	cmocka_unit_test_setup(test_error_injection_endless_command,
 				hltests_ensure_device_operational),
@@ -353,3 +355,5 @@ int main(int argc, const char **argv)
 	return hltests_run_group_tests("error_injection", ei_tests, num_tests,
 					hltests_setup, hltests_teardown);
 }
+
+#endif /* HLTESTS_LIB_MODE */

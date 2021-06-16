@@ -1914,6 +1914,8 @@ static void test_staged_submission_256_threads(void **state)
 	hlthunk_free(thread_id);
 }
 
+#ifndef HLTESTS_LIB_MODE
+
 const struct CMUnitTest cs_tests[] = {
 	cmocka_unit_test_setup(test_cs_nop, hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_cs_nop_16PQE,
@@ -1977,3 +1979,5 @@ int main(int argc, const char **argv)
 	return hltests_run_group_tests("command_submission", cs_tests,
 				num_tests, hltests_setup, hltests_teardown);
 }
+
+#endif /* HLTESTS_LIB_MODE */

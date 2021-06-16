@@ -666,6 +666,8 @@ void test_dma_4_queues_sram_only(void **state)
 	dma_4_queues(state, true);
 }
 
+#ifndef HLTESTS_LIB_MODE
+
 const struct CMUnitTest dma_tests[] = {
 	cmocka_unit_test_setup(test_dma_8_threads,
 			hltests_ensure_device_operational),
@@ -694,3 +696,5 @@ int main(int argc, const char **argv)
 	return hltests_run_group_tests("dma", dma_tests, num_tests,
 					hltests_setup, hltests_teardown);
 }
+
+#endif /* HLTESTS_LIB_MODE */

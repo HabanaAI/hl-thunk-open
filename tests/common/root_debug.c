@@ -215,6 +215,8 @@ void test_lbw_scan(void **state)
 		free(cfg.ranges_block);
 }
 
+#ifndef HLTESTS_LIB_MODE
+
 const struct CMUnitTest debug_tests[] = {
 		cmocka_unit_test(test_lbw_scan)
 };
@@ -239,3 +241,5 @@ int main(int argc, const char **argv)
 	return hltests_run_group_tests("debug", debug_tests, num_tests,
 			hltests_root_debug_setup, hltests_root_debug_teardown);
 }
+
+#endif /* HLTESTS_LIB_MODE */

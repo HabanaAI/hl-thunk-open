@@ -29,6 +29,7 @@
 
 #define BUILD_PATH_MAX_LENGTH	128
 
+#ifndef HLTESTS_LIB_MODE
 struct hltests_thread_params {
 	const char *group_name;
 	const struct CMUnitTest *tests;
@@ -36,6 +37,7 @@ struct hltests_thread_params {
 	CMFixtureFunction group_setup;
 	CMFixtureFunction group_teardown;
 };
+#endif
 
 static pthread_mutex_t table_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_spinlock_t rand_lock;
@@ -44,13 +46,16 @@ static khash_t(ptr) * dev_table;
 static enum hlthunk_device_name asic_name_for_testing =
 						HLTHUNK_DEVICE_DONT_CARE;
 
+#ifndef HLTESTS_LIB_MODE
 static pthread_barrier_t barrier;
 
 static int run_disabled_tests;
+static int num_devices = 1;
+#endif
+
 static int verbose_enabled;
 static const char *parser_pciaddr;
 static const char *config_filename;
-static int num_devices = 1;
 static int legacy_mode_enabled = 1;
 static uint32_t cur_seed;
 static char build_path[BUILD_PATH_MAX_LENGTH];
@@ -213,6 +218,7 @@ static void hltests_fini(void)
 	pthread_spin_destroy(&rand_lock);
 }
 
+#ifndef HLTESTS_LIB_MODE
 static void *hltests_thread_start(void *args)
 {
 	struct hltests_thread_params *params =
@@ -316,6 +322,7 @@ out:
 
 	return rc;
 }
+#endif
 
 int hltests_control_dev_open(const char *busid)
 {
@@ -2523,27 +2530,36 @@ void hltests_mem_pool_free(void *data, uint64_t addr, uint64_t size)
 }
 
 void hltests_parser(int argc, const char **argv, const char * const* usage,
-			enum hlthunk_device_name expected_device,
-			const struct CMUnitTest * const tests, int num_tests)
+			enum hlthunk_device_name expected_device
+#ifndef HLTESTS_LIB_MODE
+			,const struct CMUnitTest * const tests, int num_tests
+#endif
+			)
 {
 	struct argparse argparse;
+#ifndef HLTESTS_LIB_MODE
 	const char *test = NULL;
 	int list = 0;
 	int i;
+#endif
+	int prof = 0;
 
 	struct argparse_option options[] = {
 		OPT_HELP(),
 		OPT_GROUP("Basic options"),
+#ifndef HLTESTS_LIB_MODE
 		OPT_BOOLEAN('l', "list", &list, "list tests"),
 		OPT_BOOLEAN('d', "disabled", &run_disabled_tests,
 			"run disabled tests"),
 		OPT_STRING('s', "test", &test, "name of specific test to run"),
+		OPT_INTEGER('n', "ndevices", &num_devices, "number of devices"),
+#endif
 		OPT_BOOLEAN('v', "verbose", &verbose_enabled, "enable verbose"),
 		OPT_STRING('p', "pciaddr", &parser_pciaddr,
 			"pci address of device"),
 		OPT_STRING('c', "config", &config_filename,
 			"config filename for test(s)"),
-		OPT_INTEGER('n', "ndevices", &num_devices, "number of devices"),
+		OPT_BOOLEAN('f', "prof", &prof, "enable profiling for test(s)"),
 		OPT_INTEGER('m', "mode", &legacy_mode_enabled,
 							"Legacy mode enabled"),
 		OPT_END(),
@@ -2553,6 +2569,7 @@ void hltests_parser(int argc, const char **argv, const char * const* usage,
 	argparse_describe(&argparse, "\nRun tests using hl-thunk", NULL);
 	argc = argparse_parse(&argparse, argc, argv);
 
+#ifndef HLTESTS_LIB_MODE
 	if (list) {
 		printf("\nList of tests:");
 		printf("\n-----------------\n\n");
@@ -2562,11 +2579,16 @@ void hltests_parser(int argc, const char **argv, const char * const* usage,
 		exit(0);
 	}
 
-	asic_name_for_testing = expected_device;
-
 	if (test)
 		cmocka_set_test_filter(test);
+#endif
 
+	if (prof)
+		putenv("HABANA_PROFILE=1");
+
+	asic_name_for_testing = expected_device;
+
+#ifndef HLTESTS_LIB_MODE
 	/*
 	 * TODO:
 	 * Remove when providing multiple PCI bus addresses is supported.
@@ -2576,6 +2598,7 @@ void hltests_parser(int argc, const char **argv, const char * const* usage,
 			"The '--pciaddr' and '--ndevices' options cannot coexist\n");
 		exit(-1);
 	}
+#endif
 }
 
 const char *hltests_get_parser_pciaddr(void)
@@ -2590,7 +2613,11 @@ const char *hltests_get_config_filename(void)
 
 int hltests_get_parser_run_disabled_tests(void)
 {
+#ifndef HLTESTS_LIB_MODE
 	return run_disabled_tests;
+#else
+	return 1;
+#endif
 }
 
 int hltests_get_verbose_enabled(void)
