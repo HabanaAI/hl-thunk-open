@@ -15,7 +15,7 @@
 #include <stdio.h>
 #include <errno.h>
 
-static void cb_create_mmap_unmap_destroy(void **state, uint32_t size,
+static VOID cb_create_mmap_unmap_destroy(void **state, uint32_t size,
 					bool unmap, bool destroy)
 {
 	struct hltests_state *tests_state =
@@ -39,36 +39,39 @@ static void cb_create_mmap_unmap_destroy(void **state, uint32_t size,
 		rc = hlthunk_destroy_command_buffer(tests_state->fd, cb_handle);
 		assert_int_equal(rc, 0);
 	}
+
+	END_TEST
 }
 
-void test_cb_mmap(void **state)
+static VOID test_cb_mmap(void **state)
 {
-	cb_create_mmap_unmap_destroy(state, 0x100000, true, true);
+	END_TEST_FUNC(cb_create_mmap_unmap_destroy(state, 0x100000, true,
+								true);)
 }
 
-void test_cb_unaligned_size(void **state)
+static VOID test_cb_unaligned_size(void **state)
 {
-	cb_create_mmap_unmap_destroy(state, 5000, true, true);
+	END_TEST_FUNC(cb_create_mmap_unmap_destroy(state, 5000, true, true);)
 }
 
-void test_cb_small_unaligned_odd_size(void **state)
+static VOID test_cb_small_unaligned_odd_size(void **state)
 {
-	cb_create_mmap_unmap_destroy(state, 77, true, true);
+	END_TEST_FUNC(cb_create_mmap_unmap_destroy(state, 77, true, true);)
 }
 
-void test_cb_unaligned_odd_size(void **state)
+static VOID test_cb_unaligned_odd_size(void **state)
 {
-	cb_create_mmap_unmap_destroy(state, 92517, true, true);
+	END_TEST_FUNC(cb_create_mmap_unmap_destroy(state, 92517, true, true);)
 }
 
-void test_cb_skip_unmap(void **state)
+static VOID test_cb_skip_unmap(void **state)
 {
-	cb_create_mmap_unmap_destroy(state, 92517, false, true);
+	END_TEST_FUNC(cb_create_mmap_unmap_destroy(state, 92517, false, true);)
 }
 
-void test_cb_skip_unmap_and_destroy(void **state)
+static VOID test_cb_skip_unmap_and_destroy(void **state)
 {
-	cb_create_mmap_unmap_destroy(state, 92517, false, false);
+	END_TEST_FUNC(cb_create_mmap_unmap_destroy(state, 92517, false, false);)
 }
 
 #ifndef HLTESTS_LIB_MODE

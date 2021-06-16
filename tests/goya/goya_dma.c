@@ -16,7 +16,7 @@
 #include <unistd.h>
 #include <pthread.h>
 
-void test_dma_4_queues(void **state)
+static VOID test_dma_4_queues(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -242,6 +242,8 @@ void test_dma_4_queues(void **state)
 	assert_int_equal(rc, 0);
 	rc = hltests_free_host_mem(fd, host_src);
 	assert_int_equal(rc, 0);
+
+	END_TEST
 }
 
 #ifndef HLTESTS_LIB_MODE

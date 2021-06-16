@@ -22,7 +22,7 @@
 #define ARB_MST_QUIET_PER_SIMULATOR 0x186A0
 #define PLDM_MAX_NUM_PQE_FOR_TESTING 32
 
-void measure_cs_nop(struct hltests_state *tests_state,
+static VOID measure_cs_nop(struct hltests_state *tests_state,
 			struct hltests_cs_chunk *execute_arr, int num_of_pqe,
 			uint16_t wait_after_submit_cnt)
 {
@@ -52,10 +52,12 @@ void measure_cs_nop(struct hltests_state *tests_state,
 	time_diff = get_timediff_sec(&begin, &end);
 
 	printf("time = %.3fus\n", (time_diff / loop_cnt) * 1000000);
+
+	END_TEST
 }
 
 
-static void submit_cs_nop(void **state, int num_of_pqe,
+static VOID submit_cs_nop(void **state, int num_of_pqe,
 				uint16_t wait_after_submit_cnt)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
@@ -98,45 +100,36 @@ static void submit_cs_nop(void **state, int num_of_pqe,
 		rc = hltests_destroy_cb(fd, cb[i]);
 		assert_int_equal(rc, 0);
 	}
+
+	END_TEST
 }
 
-void test_cs_nop(void **state)
+static VOID test_cs_nop(void **state)
 {
-	submit_cs_nop(state, 1, 0);
+	END_TEST_FUNC(submit_cs_nop(state, 1, 0);)
 }
 
-void test_cs_nop_16PQE(void **state)
+static VOID test_cs_nop_16PQE(void **state)
 {
-	submit_cs_nop(state, 16, 0);
+	END_TEST_FUNC(submit_cs_nop(state, 16, 0);)
 }
 
-void test_cs_nop_32PQE(void **state)
+static VOID test_cs_nop_32PQE(void **state)
 {
-	submit_cs_nop(state, 32, 0);
+	END_TEST_FUNC(submit_cs_nop(state, 32, 0);)
 }
 
-void test_cs_nop_48PQE(void **state)
+static VOID test_cs_nop_48PQE(void **state)
 {
-	submit_cs_nop(state, 48, 0);
+	END_TEST_FUNC(submit_cs_nop(state, 48, 0);)
 }
 
-void test_cs_nop_64PQE(void **state)
+static VOID test_cs_nop_64PQE(void **state)
 {
-	submit_cs_nop(state, 64, 0);
+	END_TEST_FUNC(submit_cs_nop(state, 64, 0);)
 }
 
-void test_and_measure_wait_after_submit_cs_nop(void **state)
-{
-	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	int fd = tests_state->fd;
-
-	if (hltests_is_simulator(fd) || hltests_is_pldm(fd))
-		skip();
-
-	submit_cs_nop(state, 1, 1);
-}
-
-void test_and_measure_wait_after_64_submit_cs_nop(void **state)
+static VOID test_and_measure_wait_after_submit_cs_nop(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int fd = tests_state->fd;
@@ -144,10 +137,10 @@ void test_and_measure_wait_after_64_submit_cs_nop(void **state)
 	if (hltests_is_simulator(fd) || hltests_is_pldm(fd))
 		skip();
 
-	submit_cs_nop(state, 1, 64);
+	END_TEST_FUNC(submit_cs_nop(state, 1, 1);)
 }
 
-void test_and_measure_wait_after_256_submit_cs_nop(void **state)
+static VOID test_and_measure_wait_after_64_submit_cs_nop(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int fd = tests_state->fd;
@@ -155,10 +148,21 @@ void test_and_measure_wait_after_256_submit_cs_nop(void **state)
 	if (hltests_is_simulator(fd) || hltests_is_pldm(fd))
 		skip();
 
-	submit_cs_nop(state, 1, 256);
+	END_TEST_FUNC(submit_cs_nop(state, 1, 64);)
 }
 
-void test_cs_msg_long(void **state)
+static VOID test_and_measure_wait_after_256_submit_cs_nop(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	int fd = tests_state->fd;
+
+	if (hltests_is_simulator(fd) || hltests_is_pldm(fd))
+		skip();
+
+	END_TEST_FUNC(submit_cs_nop(state, 1, 256);)
+}
+
+static VOID test_cs_msg_long(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -180,14 +184,14 @@ void test_cs_msg_long(void **state)
 	pkt_info.msg_long.value = 0xbaba0ded;
 	cb_size = hltests_add_msg_long_pkt(fd, cb, cb_size, &pkt_info);
 
-	hltests_submit_and_wait_cs(fd, cb, cb_size,
+	END_TEST_FUNC(hltests_submit_and_wait_cs(fd, cb, cb_size,
 				hltests_get_dma_down_qid(fd, STREAM0),
-				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
+				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);)
 }
 
 #define NUM_OF_MSGS	2000
 
-void test_cs_msg_long_2000(void **state)
+static VOID test_cs_msg_long_2000(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -213,12 +217,12 @@ void test_cs_msg_long_2000(void **state)
 		cb_size = hltests_add_msg_long_pkt(fd, cb, cb_size, &pkt_info);
 	}
 
-	hltests_submit_and_wait_cs(fd, cb, cb_size,
+	END_TEST_FUNC(hltests_submit_and_wait_cs(fd, cb, cb_size,
 				hltests_get_dma_down_qid(fd, STREAM0),
-				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
+				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);)
 }
 
-void test_cs_two_streams_with_fence(void **state)
+static VOID test_cs_two_streams_with_fence(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -319,9 +323,11 @@ void test_cs_two_streams_with_fence(void **state)
 	assert_int_equal(rc, 0);
 	rc = hltests_free_host_mem(fd, src_data);
 	assert_int_equal(rc, 0);
+
+	END_TEST
 }
 
-static void hltests_cs_two_streams_arb_point(int fd,
+static VOID hltests_cs_two_streams_arb_point(int fd,
 					     struct hltests_arb_info *arb_info,
 					     uint64_t *host_data_va,
 					     uint64_t *device_data_addr,
@@ -545,9 +551,11 @@ static void hltests_cs_two_streams_arb_point(int fd,
 	assert_int_equal(rc, 0);
 	rc = hltests_destroy_cb(fd, cb_stream[2]);
 	assert_int_equal(rc, 0);
+
+	END_TEST
 }
 
-void test_cs_two_streams_with_arb(void **state)
+static VOID test_cs_two_streams_with_arb(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -634,9 +642,11 @@ void test_cs_two_streams_with_arb(void **state)
 		rc = hltests_free_host_mem(fd, data[i]);
 		assert_int_equal(rc, 0);
 	}
+
+	END_TEST
 }
 
-void test_cs_two_streams_with_priority_arb(void **state)
+static VOID test_cs_two_streams_with_priority_arb(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -791,9 +801,11 @@ void test_cs_two_streams_with_priority_arb(void **state)
 		rc = hltests_free_host_mem(fd, data[i]);
 		assert_int_equal(rc, 0);
 	}
+
+	END_TEST
 }
 
-void test_cs_two_streams_with_wrr_arb(void **state)
+static VOID test_cs_two_streams_with_wrr_arb(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -887,9 +899,11 @@ void test_cs_two_streams_with_wrr_arb(void **state)
 		rc = hltests_free_host_mem(fd, data[i]);
 		assert_int_equal(rc, 0);
 	}
+
+	END_TEST
 }
 
-void test_cs_cq_wrap_around(void **state)
+static VOID test_cs_cq_wrap_around(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int i;
@@ -900,6 +914,8 @@ void test_cs_cq_wrap_around(void **state)
 
 	for (i = 0 ; i < cq_wrap_around_num_of_cs ; i++)
 		test_cs_nop(state);
+
+	END_TEST
 }
 
 static uint32_t load_predicates_and_test_msg_long(int fd,
@@ -969,7 +985,7 @@ static uint32_t load_predicates_and_test_msg_long(int fd,
 	return value;
 }
 
-static void test_cs_load_predicates(void **state, bool is_consecutive_map)
+static VOID test_cs_load_predicates(void **state, bool is_consecutive_map)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -1011,7 +1027,7 @@ static void test_cs_load_predicates(void **state, bool is_consecutive_map)
 	msg_long_dst_sram_addr = hw_ip.sram_base_address + 0x1000;
 
 	/* Check alignment of predicates address to 128B */
-	assert_int_equal(pred_buf_sram_addr & 0x7f, 0);
+	assert_int_equal((pred_buf_sram_addr & 0x7f), 0);
 
 	pred_buf = hltests_allocate_host_mem(fd, 128, NOT_HUGE);
 	assert_non_null(pred_buf);
@@ -1054,19 +1070,21 @@ static void test_cs_load_predicates(void **state, bool is_consecutive_map)
 	/* Cleanup */
 	hltests_free_host_mem(fd, host_data);
 	hltests_free_host_mem(fd, pred_buf);
+
+	END_TEST
 }
 
-static void test_cs_load_pred_non_consecutive_map(void **state)
+static VOID test_cs_load_pred_non_consecutive_map(void **state)
 {
-	test_cs_load_predicates(state, false);
+	END_TEST_FUNC(test_cs_load_predicates(state, false);)
 }
 
-static void test_cs_load_pred_consecutive_map(void **state)
+static VOID test_cs_load_pred_consecutive_map(void **state)
 {
-	test_cs_load_predicates(state, true);
+	END_TEST_FUNC(test_cs_load_predicates(state, true);)
 }
 
-static void load_scalars_and_exe_4_rfs(int fd, uint64_t scalar_buf_sram_addr,
+static VOID load_scalars_and_exe_4_rfs(int fd, uint64_t scalar_buf_sram_addr,
 					uint64_t cb_sram_addr,
 					uint64_t msg_long_dst_sram_addr,
 					uint64_t host_data_device_va,
@@ -1183,12 +1201,13 @@ static void load_scalars_and_exe_4_rfs(int fd, uint64_t scalar_buf_sram_addr,
 	hltests_destroy_cb(fd, ddma_cb);
 
 	/* DMA MSG_LONG destination from SRAM to host */
-	hltests_dma_transfer(fd, hltests_get_dma_up_qid(fd, STREAM0),
+	END_TEST_FUNC(hltests_dma_transfer(fd,
+				hltests_get_dma_up_qid(fd, STREAM0),
 				EB_FALSE, MB_FALSE, msg_long_dst_sram_addr,
-				host_data_device_va, 4, GOYA_DMA_SRAM_TO_HOST);
+				host_data_device_va, 4, GOYA_DMA_SRAM_TO_HOST);)
 }
 
-static void test_cs_load_scalars_exe_4_rfs(void **state)
+static VOID test_cs_load_scalars_exe_4_rfs(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -1234,7 +1253,7 @@ static void test_cs_load_scalars_exe_4_rfs(void **state)
 	cb_sram_addr = hw_ip.sram_base_address + 0x2000;
 
 	/* Check alignment of scalars address to 128B */
-	assert_int_equal(scalar_buf_sram_addr & 0x7f, 0);
+	assert_int_equal((scalar_buf_sram_addr & 0x7f), 0);
 
 	scalar_buf = hltests_allocate_host_mem(fd, 16, NOT_HUGE);
 	assert_non_null(scalar_buf);
@@ -1274,9 +1293,11 @@ static void test_cs_load_scalars_exe_4_rfs(void **state)
 	/* Cleanup */
 	hltests_free_host_mem(fd, host_data);
 	hltests_free_host_mem(fd, scalar_buf);
+
+	END_TEST
 }
 
-static void load_scalars_and_exe_2_rfs(int fd, uint64_t scalar_buf_sram_addr,
+static VOID load_scalars_and_exe_2_rfs(int fd, uint64_t scalar_buf_sram_addr,
 					uint64_t cb_sram_addr, uint16_t sob0,
 					uint16_t mon0, bool is_upper_rfs,
 					bool is_separate_exe)
@@ -1370,9 +1391,11 @@ static void load_scalars_and_exe_2_rfs(int fd, uint64_t scalar_buf_sram_addr,
 	/* Cleanup */
 	hltests_destroy_cb(fd, dma_down_cb);
 	hltests_destroy_cb(fd, ddma_cb);
+
+	END_TEST
 }
 
-static void test_cs_load_scalars_exe_2_rfs(void **state, bool is_upper_rfs)
+static VOID test_cs_load_scalars_exe_2_rfs(void **state, bool is_upper_rfs)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -1414,7 +1437,7 @@ static void test_cs_load_scalars_exe_2_rfs(void **state, bool is_upper_rfs)
 	cb_sram_addr = hw_ip.sram_base_address + 0x1000;
 
 	/* Check alignment of scalars address to 128B */
-	assert_int_equal(scalar_buf_sram_addr & 0x7f, 0);
+	assert_int_equal((scalar_buf_sram_addr & 0x7f), 0);
 
 	scalar_buf = hltests_allocate_host_mem(fd, 16, NOT_HUGE);
 	assert_non_null(scalar_buf);
@@ -1447,22 +1470,24 @@ static void test_cs_load_scalars_exe_2_rfs(void **state, bool is_upper_rfs)
 
 	/* Cleanup */
 	hltests_free_host_mem(fd, scalar_buf);
+
+	END_TEST
 }
 
-static void test_cs_load_scalars_exe_lower_2_rfs(void **state)
+static VOID test_cs_load_scalars_exe_lower_2_rfs(void **state)
 {
-	test_cs_load_scalars_exe_2_rfs(state, false);
+	END_TEST_FUNC(test_cs_load_scalars_exe_2_rfs(state, false);)
 }
 
-static void test_cs_load_scalars_exe_upper_2_rfs(void **state)
+static VOID test_cs_load_scalars_exe_upper_2_rfs(void **state)
 {
-	test_cs_load_scalars_exe_2_rfs(state, true);
+	END_TEST_FUNC(test_cs_load_scalars_exe_2_rfs(state, true);)
 }
 
 #define CS_DROP_NUM_CS		256
 #define CS_DROP_NUM_CB_PER_CS	256
 
-static void test_cs_drop(void **state)
+static VOID test_cs_drop(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hltests_cs_chunk execute_arr[CS_DROP_NUM_CB_PER_CS];
@@ -1570,12 +1595,14 @@ static void test_cs_drop(void **state)
 
 	rc = hltests_free_host_mem(fd, src_data);
 	assert_int_equal(rc, 0);
+
+	END_TEST
 }
 
 #define NANO_ONE_SEC 1000000000ull
 #define NANO_TWO_SEC 2000000000ull
 
-static void test_wait_for_cs_with_timestamp(void **state)
+static VOID test_wait_for_cs_with_timestamp(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hltests_cs_chunk execute_arr[2];
@@ -1621,6 +1648,8 @@ static void test_wait_for_cs_with_timestamp(void **state)
 		rc = hltests_destroy_cb(fd, cb[i]);
 		assert_int_equal(rc, 0);
 	}
+
+	END_TEST
 }
 
 struct staged_cs_thread_params {
@@ -1651,7 +1680,7 @@ static void *test_staged_submission(void *args)
 
 	for (i = 0 ; i < 2 ; i++) {
 		cb[i] = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
-		assert_non_null(cb[i]);
+		assert_non_null_ret_ptr(cb[i]);
 		cb_size[i] = 0;
 	}
 
@@ -1664,12 +1693,12 @@ static void *test_staged_submission(void *args)
 	mon1 = params->mon_id + 1;
 
 	host_src = hltests_allocate_host_mem(fd, size, false);
-	assert_non_null(host_src);
+	assert_non_null_ret_ptr(host_src);
 	hltests_fill_rand_values(host_src, size);
 	host_src_va = hltests_get_device_va_for_host_ptr(fd, host_src);
 
 	host_dst = hltests_allocate_host_mem(fd, size, false);
-	assert_non_null(host_dst);
+	assert_non_null_ret_ptr(host_dst);
 	memset(host_dst, 0, size);
 	host_dst_va = hltests_get_device_va_for_host_ptr(fd, host_dst);
 
@@ -1678,18 +1707,18 @@ static void *test_staged_submission(void *args)
 
 	/* Allocate a common cb buffer to hold dma packets for cp_dma */
 	common_cb_buf = hltests_allocate_host_mem(fd, 0x1000, NOT_HUGE);
-	assert_non_null(common_cb_buf);
+	assert_non_null_ret_ptr(common_cb_buf);
 	memset(common_cb_buf, 0, 0x1000);
 	common_cb_buf_size = 0;
 	common_cb_device_va =
 		hltests_get_device_va_for_host_ptr(fd, common_cb_buf);
 
 	restore_cb = hltests_create_cb(fd, 0x1000, EXTERNAL, 0);
-	assert_non_null(restore_cb);
+	assert_non_null_ret_ptr(restore_cb);
 
 	/* Internal CB for CP_DMA */
 	cp_dma_cb = hltests_create_cb(fd, 0x1000, INTERNAL, cp_dma_cb_address);
-	assert_non_null(cp_dma_cb);
+	assert_non_null_ret_ptr(cp_dma_cb);
 	cp_dma_cb_device_va = hltests_get_device_va_for_host_ptr(fd, cp_dma_cb);
 
 	/* First CS - DMA to SRAM, signal SOB0 */
@@ -1719,7 +1748,7 @@ static void *test_staged_submission(void *args)
 			HL_CS_FLAGS_STAGED_SUBMISSION_FIRST;
 	rc = hltests_submit_staged_cs(fd, NULL, 0, &execute_chunk, 1, flags, 0,
 									&seq);
-	assert_int_equal(rc, 0);
+	assert_int_equal_ret_ptr(rc, 0);
 
 	staged_seq = seq;
 
@@ -1794,7 +1823,7 @@ static void *test_staged_submission(void *args)
 	flags = HL_CS_FLAGS_STAGED_SUBMISSION | HL_CS_FLAGS_FORCE_RESTORE;
 	rc = hltests_submit_staged_cs(fd, &restore_chunk, 1, &execute_chunk,
 					1, flags, staged_seq, &seq);
-	assert_int_equal(rc, 0);
+	assert_int_equal_ret_ptr(rc, 0);
 
 	/* Third CS - Fence on SOB1, DMA SRAM to HOST */
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
@@ -1826,18 +1855,18 @@ static void *test_staged_submission(void *args)
 			HL_CS_FLAGS_STAGED_SUBMISSION_LAST;
 	rc = hltests_submit_staged_cs(fd, NULL, 0, &execute_chunk, 1, flags,
 							staged_seq, &seq);
-	assert_int_equal(rc, 0);
+	assert_int_equal_ret_ptr(rc, 0);
 
 	rc = hltests_wait_for_cs_until_not_busy(fd, staged_seq);
-	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
+	assert_int_equal_ret_ptr(rc, HL_WAIT_CS_STATUS_COMPLETED);
 
 	/* Compare host memories */
 	rc = hltests_mem_compare(host_src, host_dst, size);
-	assert_int_equal(rc, 0);
+	assert_int_equal_ret_ptr(rc, 0);
 
 	for (i = 0 ; i < 2 ; i++) {
 		rc = hltests_destroy_cb(fd, cb[i]);
-		assert_int_equal(rc, 0);
+		assert_int_equal_ret_ptr(rc, 0);
 	}
 
 	hltests_free_host_mem(fd, host_src);
@@ -1845,17 +1874,17 @@ static void *test_staged_submission(void *args)
 	hltests_free_host_mem(fd, common_cb_buf);
 
 	rc = hltests_destroy_cb(fd, cp_dma_cb);
-	assert_int_equal(rc, 0);
+	assert_int_equal_ret_ptr(rc, 0);
 
 	rc = hltests_destroy_cb(fd, restore_cb);
-	assert_int_equal(rc, 0);
+	assert_int_equal_ret_ptr(rc, 0);
 
 	return args;
 }
 
 #define NUM_THREADS	256
 
-static void test_staged_submission_256_threads(void **state)
+static VOID test_staged_submission_256_threads(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct staged_cs_thread_params *thread_params;
@@ -1912,6 +1941,8 @@ static void test_staged_submission_256_threads(void **state)
 
 	hlthunk_free(thread_params);
 	hlthunk_free(thread_id);
+
+	END_TEST
 }
 
 #ifndef HLTESTS_LIB_MODE

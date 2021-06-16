@@ -37,7 +37,7 @@ struct asic_benchmark_exp_cfg {
 	uint64_t timing_max;
 };
 
-void test_debug_mode(void **state)
+static VOID test_debug_mode(void **state)
 {
 	struct hltests_state *tests_state =
 			(struct hltests_state *) *state;
@@ -57,6 +57,8 @@ void test_debug_mode(void **state)
 
 	rc = hlthunk_debug(fd, &debug);
 	assert_int_equal(rc, 0);
+
+	END_TEST
 }
 
 /**
@@ -163,7 +165,7 @@ hltest_bench_host_map_one_iter(struct hltests_state *tests_state,
 	pages_available = huge ? host_mem_info.hugepage_free :
 				(host_mem_info.mem_available / host_page_size);
 	if (pages_required > pages_available) {
-		print_message("Not enough memory on the host, skipping\n");
+		printf("Not enough memory on the host, skipping\n");
 		skip();
 	}
 
@@ -341,7 +343,7 @@ static int asic_benchmark_exp_parsing_handler(void *user,
  *                     test, else just print to the output
  * @param test_name test name used to match expected value in configuration
  */
-void hltest_bench_host_map_expected(struct hltests_state *tests_state,
+static VOID hltest_bench_host_map_expected(struct hltests_state *tests_state,
 					uint64_t n_allocs, uint64_t alloc_size,
 					enum hltests_huge huge,
 					uint64_t n_maps, uint64_t n_unmaps,
@@ -357,7 +359,7 @@ void hltest_bench_host_map_expected(struct hltests_state *tests_state,
 
 	/* Check if tests is disable by default and requires explicit enable */
 	if (disabled_test && !hltests_get_parser_run_disabled_tests()) {
-		print_message("This test need to be run with -d flag\n");
+		printf("This test need to be run with -d flag\n");
 		skip();
 	}
 
@@ -399,13 +401,16 @@ void hltest_bench_host_map_expected(struct hltests_state *tests_state,
 			fail_msg("t_ns < cfg.timing_min");
 		}
 	}
+
+	END_TEST
 }
 
 #define MAP_BENCHMARK_TEST(test_name, ...)				\
-void test_name(void **state)						\
+static VOID test_name(void **state)					\
 {									\
-	hltest_bench_host_map_expected((struct hltests_state *)*state,	\
-		__VA_ARGS__, #test_name);				\
+	END_TEST_FUNC(hltest_bench_host_map_expected(			\
+			(struct hltests_state *)*state,			\
+			__VA_ARGS__, #test_name);)			\
 }
 
 MAP_BENCHMARK_TEST(test_bench_host_map_unmap_2MBx4K,
@@ -524,7 +529,7 @@ static int bench_mappings_custom_parsing_handler(void *user,
 	return 1;
 }
 
-void test_bench_mappings_custom(void **state)
+static VOID test_bench_mappings_custom(void **state)
 {
 	struct bench_mappings_custom_cfg cfg;
 	const char *config_filename = hltests_get_config_filename();

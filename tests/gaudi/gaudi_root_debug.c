@@ -123,7 +123,7 @@ static void ieee1500_inst(struct hltests_state *tests_state, int device,
 	WREG32(base + 0x9034, 0);
 }
 
-static void test_hbm_read_temperature(void **state)
+static VOID test_hbm_read_temperature(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int device, temp;
@@ -160,9 +160,11 @@ static void test_hbm_read_temperature(void **state)
 					device);
 		}
 	}
+
+	END_TEST
 }
 
-static void test_hbm_read_interrupts(void **state)
+static VOID test_hbm_read_interrupts(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int device, ch;
@@ -241,9 +243,11 @@ static void test_hbm_read_interrupts(void **state)
 				"MC SRAM DERR dev=%d: Reg 0x8F40=0x%x, Reg 0x8F44=0x%x\n",
 				device, val, val2);
 	}
+
+	END_TEST
 }
 
-static void test_read_every_4KB_registers_block(void **state)
+static VOID test_read_every_4KB_registers_block(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	uint64_t addr, end;
@@ -262,6 +266,8 @@ static void test_read_every_4KB_registers_block(void **state)
 		val = RREG32(addr);
 		addr += 0x1000;
 	}
+
+	END_TEST
 }
 
 struct read_through_pci_cfg {
@@ -291,7 +297,7 @@ static int read_through_pci_parsing_handler(void *user, const char *section,
 	return 1;
 }
 
-void test_read_through_pci(void **state)
+static VOID test_read_through_pci(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	const char *config_filename = hltests_get_config_filename();
@@ -338,6 +344,8 @@ void test_read_through_pci(void **state)
 	}
 
 	WREG32(mmPCIE_WRAP_LBW_PROT_OVR, prot);
+
+	END_TEST
 }
 
 #ifndef HLTESTS_LIB_MODE

@@ -2149,7 +2149,7 @@ int hltests_mem_compare(void *ptr1, void *ptr2, uint64_t size)
 	return hltests_mem_compare_with_stop(ptr1, ptr2, size, true);
 }
 
-void hltests_dma_transfer(int fd, uint32_t queue_index, enum hltests_eb eb,
+int hltests_dma_transfer(int fd, uint32_t queue_index, enum hltests_eb eb,
 				enum hltests_mb mb,
 				uint64_t src_addr, uint64_t dst_addr,
 				uint32_t size,
@@ -2173,9 +2173,11 @@ void hltests_dma_transfer(int fd, uint32_t queue_index, enum hltests_eb eb,
 
 	hltests_submit_and_wait_cs(fd, ptr, offset, queue_index,
 				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
+
+	return 0;
 }
 
-void hltests_dma_dram_frag_mem_test(void **state, uint64_t size)
+int hltests_dma_dram_frag_mem_test(void **state, uint64_t size)
 {
 	void **frag_arr;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -2227,9 +2229,11 @@ void hltests_dma_dram_frag_mem_test(void **state, uint64_t size)
 		assert_int_equal(rc, 0);
 	}
 	hlthunk_free(frag_arr);
+
+	return 0;
 }
 
-void hltests_dma_dram_high_mem_test(void **state, uint64_t size)
+int hltests_dma_dram_high_mem_test(void **state, uint64_t size)
 {
 	struct hlthunk_hw_ip_info hw_ip;
 	void *device_addr;
@@ -2255,6 +2259,8 @@ void hltests_dma_dram_high_mem_test(void **state, uint64_t size)
 
 	rc = hltests_free_device_mem(fd, device_addr);
 	assert_int_equal(rc, 0);
+
+	return 0;
 }
 
 int hltests_dma_test(void **state, bool is_ddr, uint64_t size)
@@ -2346,7 +2352,7 @@ int hltests_dma_test(void **state, bool is_ddr, uint64_t size)
  * @param destroy_cb true if CB should be destroyed, false otherwise
  * @return void
  */
-void hltests_submit_and_wait_cs(int fd, void *cb_ptr, uint32_t cb_size,
+int hltests_submit_and_wait_cs(int fd, void *cb_ptr, uint32_t cb_size,
 				uint32_t queue_index,
 				enum hltests_destroy_cb destroy_cb,
 				int expected_val)
@@ -2369,6 +2375,8 @@ void hltests_submit_and_wait_cs(int fd, void *cb_ptr, uint32_t cb_size,
 		rc = hltests_destroy_cb(fd, cb_ptr);
 		assert_int_equal(rc, 0);
 	}
+
+	return 0;
 }
 
 static bool is_dev_idle_and_operational(int fd)
@@ -2428,7 +2436,8 @@ void *hltests_mem_pool_init(uint64_t start_addr, uint64_t size, uint8_t order)
 	uint64_t page_size;
 	int rc;
 
-	assert_in_range(order, PAGE_SHIFT_4KB, PAGE_SHIFT_16MB);
+	if (!(order >= PAGE_SHIFT_4KB && order <= PAGE_SHIFT_16MB))
+		return NULL;
 
 	page_size = 1ull << order;
 
@@ -2672,7 +2681,7 @@ bool hltests_is_pldm(int fd)
 	return !!module_params.pldm;
 }
 
-void test_sm_pingpong_common_cp(void **state, bool is_tpc,
+int test_sm_pingpong_common_cp(void **state, bool is_tpc,
 				bool common_cb_in_host, uint8_t engine_id)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
@@ -2946,9 +2955,11 @@ void test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	assert_int_equal(rc, 0);
 	rc = hltests_free_host_mem(fd, host_src);
 	assert_int_equal(rc, 0);
+
+	return 0;
 }
 
-void hltests_clear_sobs(int fd, uint16_t num_of_sobs)
+int hltests_clear_sobs(int fd, uint16_t num_of_sobs)
 {
 	struct hltests_pkt_info pkt_info;
 	void *cb;
@@ -2976,6 +2987,8 @@ void hltests_clear_sobs(int fd, uint16_t num_of_sobs)
 	hltests_submit_and_wait_cs(fd, cb, cb_offset,
 		hltests_get_dma_down_qid(fd, STREAM0),
 		DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
+
+	return 0;
 
 }
 

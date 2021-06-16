@@ -21,7 +21,7 @@
 #include <unistd.h>
 #include <inttypes.h>
 
-void test_print_hw_ip_info(void **state)
+static VOID test_print_hw_ip_info(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int rc, fd = tests_state->fd;
@@ -51,12 +51,12 @@ void test_print_hw_ip_info(void **state)
 
 	printf("\n\n");
 
+	END_TEST
 }
 
-static void print_engine_name(enum hlthunk_device_name device_id,
-					uint32_t engine_id)
+static VOID print_engine_name(int fd, uint32_t engine_id)
 {
-	if (device_id == HLTHUNK_DEVICE_GOYA) {
+	if (hltests_is_goya(fd)) {
 		switch (engine_id) {
 		case GOYA_ENGINE_ID_DMA_0 ... GOYA_ENGINE_ID_DMA_4:
 			printf("  DMA%d\n", engine_id - GOYA_ENGINE_ID_DMA_0);
@@ -70,7 +70,7 @@ static void print_engine_name(enum hlthunk_device_name device_id,
 		default:
 			fail_msg("Unexpected engine id %d\n", engine_id);
 		}
-	} else if (device_id == HLTHUNK_DEVICE_GAUDI) {
+	} else if (hltests_is_gaudi(fd)) {
 		switch (engine_id) {
 		case GAUDI_ENGINE_ID_DMA_0 ... GAUDI_ENGINE_ID_DMA_7:
 			printf("  DMA%d\n", engine_id - GAUDI_ENGINE_ID_DMA_0);
@@ -88,11 +88,13 @@ static void print_engine_name(enum hlthunk_device_name device_id,
 			fail_msg("Unexpected engine id %d\n", engine_id);
 		}
 	} else {
-		fail_msg("Unexpected device id %d\n", device_id);
+		fail_msg("Unexpected device\n");
 	}
+
+	END_TEST
 }
 
-void test_print_hw_idle_info(void **state)
+static VOID test_print_hw_idle_info(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int rc, fd = tests_state->fd;
@@ -119,9 +121,11 @@ void test_print_hw_idle_info(void **state)
 			print_engine_name(fd, i);
 out:
 	printf("\n");
+
+	END_TEST
 }
 
-void test_print_dram_usage_info_no_stop(void **state)
+static VOID test_print_dram_usage_info_no_stop(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int rc, fd = tests_state->fd;
@@ -140,9 +144,11 @@ void test_print_dram_usage_info_no_stop(void **state)
 
 		usleep(250 * 1000);
 	}
+
+	END_TEST
 }
 
-void test_print_device_utilization_no_stop(void **state)
+static VOID test_print_device_utilization_no_stop(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int rc, fd = tests_state->fd;
@@ -158,9 +164,11 @@ void test_print_device_utilization_no_stop(void **state)
 
 		usleep(450 * 1000);
 	}
+
+	END_TEST
 }
 
-void test_print_clk_rate(void **state)
+static VOID test_print_clk_rate(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int rc, fd = tests_state->fd;
@@ -172,9 +180,11 @@ void test_print_clk_rate(void **state)
 	printf("\n");
 	printf("Current clock rate  : %dMHz\n", cur_clk);
 	printf("Maximum clock rate  : %dMHz\n\n", max_clk);
+
+	END_TEST
 }
 
-void test_print_reset_count(void **state)
+static VOID test_print_reset_count(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int rc, fd = tests_state->fd;
@@ -186,9 +196,11 @@ void test_print_reset_count(void **state)
 	printf("\n");
 	printf("Hard reset count  : %d\n", info.hard_reset_count);
 	printf("Soft reset count  : %d\n\n", info.soft_reset_count);
+
+	END_TEST
 }
 
-void test_print_time_sync_info(void **state)
+static VOID test_print_time_sync_info(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int rc, fd = tests_state->fd;
@@ -201,9 +213,10 @@ void test_print_time_sync_info(void **state)
 	printf("Device time  : 0x%"PRIx64"\n", info.device_time);
 	printf("Host time    : 0x%"PRIx64"\n\n", info.host_time);
 
+	END_TEST
 }
 
-void test_print_hlthunk_version(void **state)
+static VOID test_print_hlthunk_version(void **state)
 {
 	char *version;
 
@@ -213,9 +226,11 @@ void test_print_hlthunk_version(void **state)
 	printf("\nhlthunk version: %s\n\n", version);
 
 	hlthunk_free(version);
+
+	END_TEST
 }
 
-void test_print_cs_drop_statistics(void **state)
+static VOID test_print_cs_drop_statistics(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int rc, fd = tests_state->fd;
@@ -262,9 +277,11 @@ void test_print_cs_drop_statistics(void **state)
 						info.ctx_validation_drop_cnt);
 
 	hlthunk_close(fd);
+
+	END_TEST
 }
 
-void test_print_pci_counters(void **state)
+static VOID test_print_pci_counters(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int rc, fd = tests_state->fd;
@@ -277,9 +294,11 @@ void test_print_pci_counters(void **state)
 	printf("rx_throughput   : %lu\n", info.rx_throughput);
 	printf("tx_throughput   : %lu\n", info.tx_throughput);
 	printf("replay counter  : %u\n\n", info.replay_cnt);
+
+	END_TEST
 }
 
-void test_print_clk_throttling_reason(void **state)
+static VOID test_print_clk_throttling_reason(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int rc, fd = tests_state->fd;
@@ -290,9 +309,11 @@ void test_print_clk_throttling_reason(void **state)
 
 	printf("\nclk throttling bitmask: %u\n\n",
 			info.clk_throttle_reason_bitmask);
+
+	END_TEST
 }
 
-void test_print_total_energy_consumption(void **state)
+static VOID test_print_total_energy_consumption(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int rc, fd = tests_state->fd;
@@ -303,9 +324,11 @@ void test_print_total_energy_consumption(void **state)
 
 	printf("\nTotal energy consumption: %lu(mj)\n\n",
 			energy_info.total_energy_consumption);
+
+	END_TEST
 }
 
-void print_events_counters(void **state, bool aggregate)
+static VOID print_events_counters(void **state, bool aggregate)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int i, rc, fd = tests_state->fd;
@@ -323,9 +346,8 @@ void print_events_counters(void **state, bool aggregate)
 		break;
 
 	default:
-		printf("Invalid device %d\n", rc);
-		fail();
-		return;
+		fail_msg("Invalid device %d\n", rc);
+		EXIT_FROM_TEST;
 	}
 
 	hw_events_arr = (uint32_t *) hlthunk_malloc(hw_events_arr_size *
@@ -342,19 +364,21 @@ void print_events_counters(void **state, bool aggregate)
 	printf("\n");
 
 	hlthunk_free((void *) hw_events_arr);
+
+	END_TEST
 }
 
-void test_print_events_counters(void **state)
+static VOID test_print_events_counters(void **state)
 {
-	print_events_counters(state, false);
+	END_TEST_FUNC(print_events_counters(state, false);)
 }
 
-void test_print_events_counters_aggregate(void **state)
+static VOID test_print_events_counters_aggregate(void **state)
 {
-	print_events_counters(state, true);
+	END_TEST_FUNC(print_events_counters(state, true);)
 }
 
-void test_print_pci_bdf(void **state)
+static VOID test_print_pci_bdf(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int rc, fd = tests_state->fd;
@@ -365,9 +389,10 @@ void test_print_pci_bdf(void **state)
 
 	printf("PCI BDF: %s\n", pci_bus_id);
 
+	END_TEST
 }
 
-void test_print_pll_info(void **state)
+static VOID test_print_pll_info(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int rc, fd = tests_state->fd;
@@ -403,9 +428,11 @@ void test_print_pll_info(void **state)
 			hltests_stringify_pll_type(fd, pll_idx, 3),
 			freq_info.output[3]);
 	}
+
+	END_TEST
 }
 
-void test_print_hw_asic_status(void **state)
+static VOID test_print_hw_asic_status(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int rc, fd = tests_state->fd;
@@ -428,6 +455,8 @@ void test_print_hw_asic_status(void **state)
 	printf("\nTimestamp (sec)       : %ld", hw_asic_status.timestamp_sec);
 
 	printf("\n\n");
+
+	END_TEST
 }
 
 #ifndef HLTESTS_LIB_MODE

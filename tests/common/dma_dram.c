@@ -50,7 +50,7 @@ static int dma_dram_parser(void *user, const char *section, const char *name,
 
 #define DMA_ENTIRE_DRAM_PLDM_TIMEOUT_SEC_PER_MB 4
 
-static void dma_entire_dram_random(void **state, uint64_t zone_size,
+static VOID dma_entire_dram_random(void **state, uint64_t zone_size,
 			uint64_t dma_size)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
@@ -114,8 +114,8 @@ static void dma_entire_dram_random(void **state, uint64_t zone_size,
 	kv_init(array);
 
 	/* check alignment to 8B */
-	assert_int_equal(cfg.dma_size & 0x7, 0);
-	assert_int_equal(cfg.zone_size & 0x7, 0);
+	assert_int_equal((cfg.dma_size & 0x7), 0);
+	assert_int_equal((cfg.zone_size & 0x7), 0);
 
 	assert_true(2 * cfg.dma_size <= cfg.zone_size);
 
@@ -446,39 +446,44 @@ static void dma_entire_dram_random(void **state, uint64_t zone_size,
 	assert_int_equal(rc, 0);
 
 	kv_destroy(array);
+
+	END_TEST
 }
 
-void test_dma_entire_dram_random_256KB(void **state)
+static VOID test_dma_entire_dram_random_256KB(void **state)
 {
 	if (!hltests_get_parser_run_disabled_tests()) {
 		printf("This test needs to be run with -d flag\n");
 		skip();
 	}
 
-	dma_entire_dram_random(state, 16 * 1024 * 1024, 256 * 1024);
+	END_TEST_FUNC(dma_entire_dram_random(state,
+					16 * 1024 * 1024, 256 * 1024);)
 }
 
-void test_dma_entire_dram_random_512KB(void **state)
+static VOID test_dma_entire_dram_random_512KB(void **state)
 {
 	if (!hltests_get_parser_run_disabled_tests()) {
 		printf("This test needs to be run with -d flag\n");
 		skip();
 	}
 
-	dma_entire_dram_random(state, 16 * 1024 * 1024, 512 * 1024);
+	END_TEST_FUNC(dma_entire_dram_random(state,
+					16 * 1024 * 1024, 512 * 1024);)
 }
 
-void test_dma_entire_dram_random_1MB(void **state)
+static VOID test_dma_entire_dram_random_1MB(void **state)
 {
 	if (!hltests_get_parser_run_disabled_tests()) {
 		printf("This test needs to be run with -d flag\n");
 		skip();
 	}
 
-	dma_entire_dram_random(state, 16 * 1024 * 1024, 1 * 1024 * 1024);
+	END_TEST_FUNC(dma_entire_dram_random(state,
+					16 * 1024 * 1024, 1 * 1024 * 1024);)
 }
 
-void test_dma_entire_dram_random_2MB(void **state)
+static VOID test_dma_entire_dram_random_2MB(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int fd = tests_state->fd;
@@ -488,7 +493,8 @@ void test_dma_entire_dram_random_2MB(void **state)
 		skip();
 	}
 
-	dma_entire_dram_random(state, 16 * 1024 * 1024, 2 * 1024 * 1024);
+	END_TEST_FUNC(dma_entire_dram_random(state,
+					16 * 1024 * 1024, 2 * 1024 * 1024);)
 }
 
 DMA_TEST_INC_DRAM(test_dma_dram_size_1KB, state, 1 * 1024)

@@ -17,7 +17,7 @@
 #include <errno.h>
 #include <unistd.h>
 
-void test_tdr_deadlock(void **state)
+static VOID test_tdr_deadlock(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hltests_pkt_info pkt_info;
@@ -40,9 +40,10 @@ void test_tdr_deadlock(void **state)
 				DESTROY_CB_FALSE, HL_WAIT_CS_STATUS_TIMEDOUT);
 
 	/* no need to destroy the CB because the device is in reset */
+	END_TEST
 }
 
-void test_endless_memory_ioctl(void **state)
+static VOID test_endless_memory_ioctl(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	void *src_ptr;
@@ -61,9 +62,11 @@ void test_endless_memory_ioctl(void **state)
 
 		usleep(1000);
 	}
+
+	END_TEST
 }
 
-void test_print_hw_ip_info(void **state)
+static VOID test_print_hw_ip_info(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -88,9 +91,11 @@ void test_print_hw_ip_info(void **state)
 		printf("\nModule ID            : %d\n", hw_ip.module_id);
 
 	printf("\n\n");
+
+	END_TEST
 }
 
-static void print_engine_name(enum hlthunk_device_name device_id,
+static VOID print_engine_name(enum hlthunk_device_name device_id,
 					uint32_t engine_id)
 {
 	if (device_id == HLTHUNK_DEVICE_GOYA) {
@@ -127,9 +132,11 @@ static void print_engine_name(enum hlthunk_device_name device_id,
 	} else {
 		fail_msg("Unexpected device id %d\n", device_id);
 	}
+
+	END_TEST
 }
 
-void test_print_hw_idle_info(void **state)
+static VOID test_print_hw_idle_info(void **state)
 {
 	struct hlthunk_engines_idle_info idle_info;
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
@@ -159,6 +166,8 @@ void test_print_hw_idle_info(void **state)
 			print_engine_name(device_id, i);
 out:
 	printf("\n");
+
+	END_TEST
 }
 
 struct dma_custom_cfg {
@@ -230,7 +239,7 @@ static int dma_custom_parsing_handler(void *user, const char *section,
 	return 1;
 }
 
-void test_dma_custom(void **state)
+static VOID test_dma_custom(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	const char *config_filename = hltests_get_config_filename();
@@ -303,7 +312,7 @@ void test_dma_custom(void **state)
 		break;
 	default:
 		fail_msg("Test doesn't support DMA direction\n");
-		return;
+		EXIT_FROM_TEST
 	}
 
 	if (cfg.chunk_size > cfg.size)
@@ -407,9 +416,11 @@ void test_dma_custom(void **state)
 		rc = hltests_free_device_mem(fd, device_ptr);
 		assert_int_equal(rc, 0);
 	}
+
+	END_TEST
 }
 
-static void test_transfer_bigger_than_alloc(void **state)
+static VOID test_transfer_bigger_than_alloc(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	void *device_ptr, *src_ptr, *ptr;
@@ -447,6 +458,7 @@ static void test_transfer_bigger_than_alloc(void **state)
 				DESTROY_CB_FALSE, HL_WAIT_CS_STATUS_TIMEDOUT);
 
 	/* no need to clean up because the device is in reset */
+	END_TEST
 }
 
 struct map_custom_cfg {
@@ -485,7 +497,7 @@ static int map_custom_parsing_handler(void *user, const char *section,
 	return 1;
 }
 
-void test_map_custom(void **state)
+static VOID test_map_custom(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	const char *config_filename = hltests_get_config_filename();
@@ -539,9 +551,11 @@ void test_map_custom(void **state)
 	printf("Creating TDR...\n");
 
 	test_tdr_deadlock(state);
+
+	END_TEST
 }
 
-void test_loop_map_work_unmap(void **state)
+static VOID test_loop_map_work_unmap(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -593,6 +607,8 @@ void test_loop_map_work_unmap(void **state)
 
 	rc = hltests_destroy_cb(fd, cb);
 	assert_int_equal(rc, 0);
+
+	END_TEST
 }
 
 static int file_descriptor_sanity_check(int fd)
@@ -604,7 +620,7 @@ static int file_descriptor_sanity_check(int fd)
 	return hlthunk_get_hw_ip_info(fd, &hw_ip);
 }
 
-void test_duplicate_file_descriptor(void **state)
+static VOID test_duplicate_file_descriptor(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	enum hlthunk_device_name device_name;
@@ -662,9 +678,11 @@ void test_duplicate_file_descriptor(void **state)
 	 * function won't try to close "fd" which was released during the test.
 	 */
 	tests_state->fd = fd_new;
+
+	END_TEST
 }
 
-void test_page_miss(void **state)
+static VOID test_page_miss(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -707,6 +725,8 @@ void test_page_miss(void **state)
 	/* Cleanup */
 	free(dst_ptr);
 	free(src_ptr);
+
+	END_TEST
 }
 
 struct register_security_cfg {
@@ -743,7 +763,7 @@ static int register_security_parsing_handler(void *user, const char *section,
 	return 1;
 }
 
-void test_register_security(void **state)
+static VOID test_register_security(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	const char *config_filename = hltests_get_config_filename();
@@ -785,18 +805,21 @@ void test_register_security(void **state)
 
 		cb_size = hltests_add_wreg32_pkt(fd, cb, 0, &pkt_info);
 
-		hltests_submit_and_wait_cs(fd, cb, cb_size, cfg.qid,
-				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
+		END_TEST_FUNC(hltests_submit_and_wait_cs(fd, cb, cb_size,
+				cfg.qid, DESTROY_CB_TRUE,
+				HL_WAIT_CS_STATUS_COMPLETED);)
 	} else {
 		pkt_info.msg_long.address = cfg.reg_addr;
 		pkt_info.msg_long.value = cfg.value;
 
 		cb_size = hltests_add_msg_long_pkt(fd, cb, 0, &pkt_info);
 
-		hltests_submit_and_wait_cs(fd, cb, cb_size,
+		END_TEST_FUNC(hltests_submit_and_wait_cs(fd, cb, cb_size,
 				hltests_get_dma_down_qid(fd, STREAM0),
-				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
+				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);)
 	}
+
+	END_TEST
 }
 
 #ifndef HLTESTS_LIB_MODE
