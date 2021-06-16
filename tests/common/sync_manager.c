@@ -35,7 +35,7 @@ static uint64_t atomic_read(uint64_t *ptr)
 	return __sync_fetch_and_add(ptr, 0);
 }
 
-static VOID test_sm(void **state, bool is_tpc, bool is_wait, uint8_t engine_id)
+VOID test_sm(void **state, bool is_tpc, bool is_wait, uint8_t engine_id)
 {
 	struct hltests_state *tests_state =
 			(struct hltests_state *) *state;
@@ -173,10 +173,10 @@ static VOID test_sm(void **state, bool is_tpc, bool is_wait, uint8_t engine_id)
 		hltests_free_host_mem(fd, dst_data);
 	}
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_sm_pingpong_upper_cp(void **state, bool is_tpc,
+VOID test_sm_pingpong_upper_cp(void **state, bool is_tpc,
 				bool upper_cb_in_host, uint8_t engine_id)
 {
 	struct hltests_state *tests_state =
@@ -416,10 +416,10 @@ static VOID test_sm_pingpong_upper_cp(void **state, bool is_tpc,
 	hltests_free_host_mem(fd, src_data);
 	hltests_free_host_mem(fd, dst_data);
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_sm_tpc(void **state)
+VOID test_sm_tpc(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -439,10 +439,10 @@ static VOID test_sm_tpc(void **state)
 		if (hw_ip.tpc_enabled_mask & (0x1 << tpc_id))
 			test_sm(state, true, true, tpc_id);
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_sm_mme(void **state)
+VOID test_sm_mme(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -461,10 +461,10 @@ static VOID test_sm_mme(void **state)
 	for (mme_id = 0 ; mme_id < mme_cnt ; mme_id++)
 		test_sm(state, false, true, mme_id);
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_sm_pingpong_tpc_upper_cp_from_sram(void **state)
+VOID test_sm_pingpong_tpc_upper_cp_from_sram(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -484,10 +484,10 @@ static VOID test_sm_pingpong_tpc_upper_cp_from_sram(void **state)
 		if (hw_ip.tpc_enabled_mask & (0x1 << tpc_id))
 			test_sm_pingpong_upper_cp(state, true, false, tpc_id);
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_sm_pingpong_mme_upper_cp_from_sram(void **state)
+VOID test_sm_pingpong_mme_upper_cp_from_sram(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -506,10 +506,10 @@ static VOID test_sm_pingpong_mme_upper_cp_from_sram(void **state)
 	for (mme_id = 0 ; mme_id < mme_cnt ; mme_id++)
 		test_sm_pingpong_upper_cp(state, false, false, mme_id);
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_sm_pingpong_tpc_upper_cp_from_host(void **state)
+VOID test_sm_pingpong_tpc_upper_cp_from_host(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -529,10 +529,10 @@ static VOID test_sm_pingpong_tpc_upper_cp_from_host(void **state)
 		if (hw_ip.tpc_enabled_mask & (0x1 << tpc_id))
 			test_sm_pingpong_upper_cp(state, true, true, tpc_id);
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_sm_pingpong_mme_upper_cp_from_host(void **state)
+VOID test_sm_pingpong_mme_upper_cp_from_host(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -551,10 +551,10 @@ static VOID test_sm_pingpong_mme_upper_cp_from_host(void **state)
 	for (mme_id = 0 ; mme_id < mme_cnt ; mme_id++)
 		test_sm_pingpong_upper_cp(state, false, true, mme_id);
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_sm_pingpong_tpc_common_cp_from_sram(void **state)
+VOID test_sm_pingpong_tpc_common_cp_from_sram(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -574,10 +574,10 @@ static VOID test_sm_pingpong_tpc_common_cp_from_sram(void **state)
 		if (hw_ip.tpc_enabled_mask & (0x1 << tpc_id))
 			test_sm_pingpong_common_cp(state, true, false, tpc_id);
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_sm_pingpong_mme_common_cp_from_sram(void **state)
+VOID test_sm_pingpong_mme_common_cp_from_sram(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -596,10 +596,10 @@ static VOID test_sm_pingpong_mme_common_cp_from_sram(void **state)
 	for (mme_id = 0 ; mme_id < mme_cnt ; mme_id++)
 		test_sm_pingpong_common_cp(state, false, false, mme_id);
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_sm_pingpong_tpc_common_cp_from_host(void **state)
+VOID test_sm_pingpong_tpc_common_cp_from_host(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -619,10 +619,10 @@ static VOID test_sm_pingpong_tpc_common_cp_from_host(void **state)
 		if (hw_ip.tpc_enabled_mask & (0x1 << tpc_id))
 			test_sm_pingpong_common_cp(state, true, true, tpc_id);
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_sm_pingpong_mme_common_cp_from_host(void **state)
+VOID test_sm_pingpong_mme_common_cp_from_host(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -641,10 +641,10 @@ static VOID test_sm_pingpong_mme_common_cp_from_host(void **state)
 	for (mme_id = 0 ; mme_id < mme_cnt ; mme_id++)
 		test_sm_pingpong_common_cp(state, false, true, mme_id);
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_sm_sob_cleanup_on_ctx_switch(void **state)
+VOID test_sm_sob_cleanup_on_ctx_switch(void **state)
 {
 	struct hltests_state *tests_state =
 				(struct hltests_state *) *state;
@@ -703,7 +703,7 @@ static VOID test_sm_sob_cleanup_on_ctx_switch(void **state)
 
 	END_TEST_FUNC(hltests_submit_and_wait_cs(fd, cb, cb_size,
 				hltests_get_dma_down_qid(fd, STREAM0),
-				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);)
+				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED));
 }
 
 static void *test_signal_wait_th(void *args)
@@ -1136,10 +1136,10 @@ static VOID _test_signal_wait(void **state, bool collective_wait,
 	hlthunk_free(thread_id);
 	hlthunk_free(thread_params);
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_signal_wait(void **state)
+VOID test_signal_wait(void **state)
 {
 	int fd = ((struct hltests_state *)*state)->fd;
 
@@ -1149,16 +1149,16 @@ static VOID test_signal_wait(void **state)
 		skip();
 	}
 
-	END_TEST_FUNC(_test_signal_wait(state, false, test_signal_wait_th);)
+	END_TEST_FUNC(_test_signal_wait(state, false, test_signal_wait_th));
 }
 
-static VOID test_signal_wait_parallel(void **state)
+VOID test_signal_wait_parallel(void **state)
 {
 	END_TEST_FUNC(_test_signal_wait(state, false,
-			test_signal_wait_parallel_th);)
+			test_signal_wait_parallel_th));
 }
 
-static VOID test_signal_collective_wait_parallel(void **state)
+VOID test_signal_collective_wait_parallel(void **state)
 {
 	int fd = ((struct hltests_state *)*state)->fd;
 
@@ -1168,15 +1168,16 @@ static VOID test_signal_collective_wait_parallel(void **state)
 	}
 
 	END_TEST_FUNC(_test_signal_wait(state, true,
-			test_signal_wait_parallel_th);)
+			test_signal_wait_parallel_th));
 }
 
-static VOID test_signal_wait_dma(void **state)
+VOID test_signal_wait_dma(void **state)
 {
-	END_TEST_FUNC(_test_signal_wait(state, false, test_signal_wait_dma_th);)
+	END_TEST_FUNC(_test_signal_wait(state, false,
+				test_signal_wait_dma_th));
 }
 
-static VOID test_signal_collective_wait_dma(void **state)
+VOID test_signal_collective_wait_dma(void **state)
 {
 	int fd = ((struct hltests_state *)*state)->fd;
 
@@ -1185,7 +1186,7 @@ static VOID test_signal_collective_wait_dma(void **state)
 		skip();
 	}
 
-	END_TEST_FUNC(_test_signal_wait(state, true, test_signal_wait_dma_th);)
+	END_TEST_FUNC(_test_signal_wait(state, true, test_signal_wait_dma_th));
 }
 
 #ifndef HLTESTS_LIB_MODE

@@ -5,7 +5,7 @@
  * All Rights Reserved.
  */
 
-#include "common/hlthunk_tests.h"
+#include "hlthunk_tests.h"
 #include "gaudi/gaudi.h"
 #include "gaudi/gaudi_packets.h"
 #include "gaudi/asic_reg/gaudi_regs.h"
@@ -97,7 +97,7 @@ static void *dma_thread_func_ext(void *args)
 	return args;
 }
 
-static VOID test_gaudi_dma_all2all(void **state)
+VOID test_gaudi_dma_all2all(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -476,10 +476,10 @@ static VOID test_gaudi_dma_all2all(void **state)
 	hlthunk_free(thread_params);
 	hlthunk_free(thread_id);
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_strided_dma(void **state)
+VOID test_strided_dma(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hltests_monitor_and_fence mon_and_fence_info;
@@ -831,7 +831,7 @@ static VOID test_strided_dma(void **state)
 	rc = hltests_destroy_cb(fd, restore_cb);
 	assert_int_equal(rc, 0);
 
-	END_TEST
+	END_TEST;
 }
 
 #ifndef HLTESTS_LIB_MODE

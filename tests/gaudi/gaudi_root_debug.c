@@ -5,7 +5,7 @@
  * All Rights Reserved.
  */
 
-#include "common/hlthunk_tests.h"
+#include "hlthunk_tests.h"
 #include "gaudi/gaudi.h"
 #include "gaudi/asic_reg/gaudi_regs.h"
 #include "gaudi/asic_reg/gaudi_blocks.h"
@@ -123,7 +123,7 @@ static void ieee1500_inst(struct hltests_state *tests_state, int device,
 	WREG32(base + 0x9034, 0);
 }
 
-static VOID test_hbm_read_temperature(void **state)
+VOID test_hbm_read_temperature(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int device, temp;
@@ -161,10 +161,10 @@ static VOID test_hbm_read_temperature(void **state)
 		}
 	}
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_hbm_read_interrupts(void **state)
+VOID test_hbm_read_interrupts(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int device, ch;
@@ -244,10 +244,10 @@ static VOID test_hbm_read_interrupts(void **state)
 				device, val, val2);
 	}
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_read_every_4KB_registers_block(void **state)
+VOID test_read_every_4KB_registers_block(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	uint64_t addr, end;
@@ -267,7 +267,7 @@ static VOID test_read_every_4KB_registers_block(void **state)
 		addr += 0x1000;
 	}
 
-	END_TEST
+	END_TEST;
 }
 
 struct read_through_pci_cfg {
@@ -297,7 +297,7 @@ static int read_through_pci_parsing_handler(void *user, const char *section,
 	return 1;
 }
 
-static VOID test_read_through_pci(void **state)
+VOID test_read_through_pci(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	const char *config_filename = hltests_get_config_filename();
@@ -345,7 +345,7 @@ static VOID test_read_through_pci(void **state)
 
 	WREG32(mmPCIE_WRAP_LBW_PROT_OVR, prot);
 
-	END_TEST
+	END_TEST;
 }
 
 #ifndef HLTESTS_LIB_MODE

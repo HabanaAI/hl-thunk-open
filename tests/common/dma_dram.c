@@ -50,7 +50,7 @@ static int dma_dram_parser(void *user, const char *section, const char *name,
 
 #define DMA_ENTIRE_DRAM_PLDM_TIMEOUT_SEC_PER_MB 4
 
-static VOID dma_entire_dram_random(void **state, uint64_t zone_size,
+VOID dma_entire_dram_random(void **state, uint64_t zone_size,
 			uint64_t dma_size)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
@@ -447,10 +447,10 @@ static VOID dma_entire_dram_random(void **state, uint64_t zone_size,
 
 	kv_destroy(array);
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_dma_entire_dram_random_256KB(void **state)
+VOID test_dma_entire_dram_random_256KB(void **state)
 {
 	if (!hltests_get_parser_run_disabled_tests()) {
 		printf("This test needs to be run with -d flag\n");
@@ -458,10 +458,10 @@ static VOID test_dma_entire_dram_random_256KB(void **state)
 	}
 
 	END_TEST_FUNC(dma_entire_dram_random(state,
-					16 * 1024 * 1024, 256 * 1024);)
+					16 * 1024 * 1024, 256 * 1024));
 }
 
-static VOID test_dma_entire_dram_random_512KB(void **state)
+VOID test_dma_entire_dram_random_512KB(void **state)
 {
 	if (!hltests_get_parser_run_disabled_tests()) {
 		printf("This test needs to be run with -d flag\n");
@@ -469,10 +469,10 @@ static VOID test_dma_entire_dram_random_512KB(void **state)
 	}
 
 	END_TEST_FUNC(dma_entire_dram_random(state,
-					16 * 1024 * 1024, 512 * 1024);)
+					16 * 1024 * 1024, 512 * 1024));
 }
 
-static VOID test_dma_entire_dram_random_1MB(void **state)
+VOID test_dma_entire_dram_random_1MB(void **state)
 {
 	if (!hltests_get_parser_run_disabled_tests()) {
 		printf("This test needs to be run with -d flag\n");
@@ -480,10 +480,10 @@ static VOID test_dma_entire_dram_random_1MB(void **state)
 	}
 
 	END_TEST_FUNC(dma_entire_dram_random(state,
-					16 * 1024 * 1024, 1 * 1024 * 1024);)
+					16 * 1024 * 1024, 1 * 1024 * 1024));
 }
 
-static VOID test_dma_entire_dram_random_2MB(void **state)
+VOID test_dma_entire_dram_random_2MB(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int fd = tests_state->fd;
@@ -494,7 +494,7 @@ static VOID test_dma_entire_dram_random_2MB(void **state)
 	}
 
 	END_TEST_FUNC(dma_entire_dram_random(state,
-					16 * 1024 * 1024, 2 * 1024 * 1024);)
+					16 * 1024 * 1024, 2 * 1024 * 1024));
 }
 
 DMA_TEST_INC_DRAM(test_dma_dram_size_1KB, state, 1 * 1024)

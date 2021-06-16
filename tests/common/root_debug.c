@@ -137,7 +137,7 @@ static int test_lbw_scan_parsing_handler(void *user, const char *section,
 	return 1;
 }
 
-static VOID test_lbw_scan(void **state)
+VOID test_lbw_scan(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	const char *config_filename = hltests_get_config_filename();
@@ -214,7 +214,7 @@ static VOID test_lbw_scan(void **state)
 	if (cfg.ranges_block)
 		free(cfg.ranges_block);
 
-	END_TEST
+	END_TEST;
 }
 
 #ifndef HLTESTS_LIB_MODE

@@ -2,11 +2,6 @@
 
 project(gauditests C)
 
-include_directories(
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/include/specs
-)
-
 set(GAUDI_UNIT_TESTS
     gaudi_dma
     gaudi_root

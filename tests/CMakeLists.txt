@@ -12,6 +12,7 @@ if (HLTESTS_LIB_MODE)
         ${CMAKE_BINARY_DIR}
         ${CMAKE_SOURCE_DIR}/include
         ${CMAKE_SOURCE_DIR}/include/specs
+        ${CMAKE_SOURCE_DIR}/include/uapi
         ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_SOURCE_DIR}/src/klib
         ${CMAKE_CURRENT_SOURCE_DIR}
@@ -42,6 +43,11 @@ if (HLTESTS_LIB_MODE)
     # Build shared/static libraries from all specified source files
     add_library(${HLTHUNK_TESTS_LIBRARY} SHARED ${SRC} ${CMAKE_CURRENT_BINARY_DIR}/version.c)
 
+    set_target_properties(${HLTHUNK_TESTS_LIBRARY} PROPERTIES
+        C_VISIBILITY_PRESET       default
+        VISIBILITY_INLINES_HIDDEN NO
+    )
+
     target_link_libraries(${HLTHUNK_TESTS_LIBRARY} ${HLTHUNK_TESTS_LINK_LIBRARIES})
 
     add_library(${HLTHUNK_TESTS_LIBRARY}-static STATIC ${SRC} ${CMAKE_CURRENT_BINARY_DIR}/version.c)
@@ -54,6 +60,7 @@ else ()
         ${CMAKE_BINARY_DIR}
         ${CMAKE_SOURCE_DIR}/include
         ${CMAKE_SOURCE_DIR}/include/specs
+        ${CMAKE_SOURCE_DIR}/include/uapi
         ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_SOURCE_DIR}/src/klib
         ${CMAKE_CURRENT_SOURCE_DIR}

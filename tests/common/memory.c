@@ -51,7 +51,7 @@ struct hints_addr_cfg {
  * The DMA size shouldn't be too big to avoid too big command buffers.
  * @param state contains the open file descriptor.
  */
-static VOID test_map_bigger_than_4GB(void **state)
+VOID test_map_bigger_than_4GB(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -131,7 +131,7 @@ static VOID test_map_bigger_than_4GB(void **state)
 	rc = hltests_free_device_mem(fd, device_addr);
 	assert_int_equal(rc, 0);
 
-	END_TEST
+	END_TEST;
 }
 
 /**
@@ -147,7 +147,7 @@ static VOID test_map_bigger_than_4GB(void **state)
  * @param contiguous indicates if the allocated device memory should be
  *        contiguous or not.
  */
-static VOID allocate_device_mem_until_full(void **state,
+VOID allocate_device_mem_until_full(void **state,
 					enum hltests_contiguous contigouos)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
@@ -206,30 +206,30 @@ static VOID allocate_device_mem_until_full(void **state,
 	if (error)
 		fail();
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_alloc_device_mem_until_full(void **state)
+VOID test_alloc_device_mem_until_full(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 
 	if (hltests_is_pldm(tests_state->fd))
 		skip();
 
-	END_TEST_FUNC(allocate_device_mem_until_full(state, NOT_CONTIGUOUS);)
+	END_TEST_FUNC(allocate_device_mem_until_full(state, NOT_CONTIGUOUS));
 }
 
-static VOID test_alloc_device_mem_until_full_contiguous(void **state)
+VOID test_alloc_device_mem_until_full_contiguous(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 
 	if (hltests_is_pldm(tests_state->fd))
 		skip();
 
-	END_TEST_FUNC(allocate_device_mem_until_full(state, CONTIGUOUS);)
+	END_TEST_FUNC(allocate_device_mem_until_full(state, CONTIGUOUS));
 }
 
-static VOID test_submit_after_unmap(void **state)
+VOID test_submit_after_unmap(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -264,10 +264,10 @@ static VOID test_submit_after_unmap(void **state)
 			hltests_get_dma_down_qid(fd, STREAM0),
 			EB_FALSE, MB_TRUE, host_src_addr,
 			(uint64_t) (uintptr_t) device_addr,
-			size, GOYA_DMA_HOST_TO_SRAM);)
+			size, GOYA_DMA_HOST_TO_SRAM));
 }
 
-static VOID test_submit_and_close(void **state)
+VOID test_submit_and_close(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	uint64_t seq, host_src_addr, size, cb_size, device_addr;
@@ -322,7 +322,7 @@ static VOID test_submit_and_close(void **state)
 	rc = hltests_destroy_cb(fd, cb);
 	assert_int_equal(rc, 0);
 
-	END_TEST
+	END_TEST;
 }
 
 static int test_hint_addresses_parsing_handler(void *user, const char *section,
@@ -374,7 +374,7 @@ static int test_hint_addresses_parsing_handler(void *user, const char *section,
 	return 1;
 }
 
-static VOID test_hint_addresses(void **state)
+VOID test_hint_addresses(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hints_addr_cfg cfg = {0};
@@ -485,7 +485,7 @@ static VOID test_hint_addresses(void **state)
 	if (test_failed)
 		fail_msg("hints test failed\n");
 
-	END_TEST
+	END_TEST;
 }
 
 #ifndef HLTESTS_LIB_MODE
