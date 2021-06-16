@@ -478,6 +478,8 @@ void test_hint_addresses(void **state)
 		fail_msg("hints test failed\n");
 }
 
+#ifndef HLTESTS_LIB_MODE
+
 const struct CMUnitTest memory_tests[] = {
 	cmocka_unit_test_setup(test_map_bigger_than_4GB,
 				hltests_ensure_device_operational),
@@ -508,3 +510,5 @@ int main(int argc, const char **argv)
 	return hltests_run_group_tests("memory", memory_tests, num_tests,
 					hltests_setup, hltests_teardown);
 }
+
+#endif /* HLTESTS_LIB_MODE */

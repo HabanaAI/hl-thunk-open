@@ -246,6 +246,8 @@ void test_write_to_mmTPC_PLL_CLK_RLX_0_from_qman(void **state)
 	WREG32(CFG_BASE + mmTPC_PLL_CLK_RLX_0, val_orig);
 }
 
+#ifndef HLTESTS_LIB_MODE
+
 const struct CMUnitTest goya_root_tests[] = {
 	cmocka_unit_test_setup(test_debugfs_sram_read_write,
 					hltests_ensure_device_operational),
@@ -279,3 +281,5 @@ int main(int argc, const char **argv)
 	return hltests_run_group_tests("goya_root", goya_root_tests, num_tests,
 				hltests_root_setup, hltests_root_teardown);
 }
+
+#endif /* HLTESTS_LIB_MODE */

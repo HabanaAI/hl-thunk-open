@@ -71,6 +71,8 @@ void test_cb_skip_unmap_and_destroy(void **state)
 	cb_create_mmap_unmap_destroy(state, 92517, false, false);
 }
 
+#ifndef HLTESTS_LIB_MODE
+
 const struct CMUnitTest cb_tests[] = {
 	cmocka_unit_test_setup(test_cb_mmap,
 				hltests_ensure_device_operational),
@@ -101,3 +103,5 @@ int main(int argc, const char **argv)
 	return hltests_run_group_tests("command_buffer", cb_tests, num_tests,
 					hltests_setup, hltests_teardown);
 }
+
+#endif /* HLTESTS_LIB_MODE */

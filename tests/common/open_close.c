@@ -125,6 +125,8 @@ void test_open_and_print_pci_bdf(void **state)
 	hlthunk_close(fd);
 }
 
+#ifndef HLTESTS_LIB_MODE
+
 const struct CMUnitTest open_close_tests[] = {
 	cmocka_unit_test(test_open_by_busid),
 	cmocka_unit_test(test_open_by_module_id),
@@ -150,3 +152,5 @@ int main(int argc, const char **argv)
 	return hltests_run_group_tests("open_close", open_close_tests,
 					num_tests, NULL, NULL);
 }
+
+#endif /* HLTESTS_LIB_MODE */

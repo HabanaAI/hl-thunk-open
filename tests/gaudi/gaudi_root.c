@@ -463,6 +463,8 @@ void test_dma_all2all_super_stress(void **state)
 	assert_int_equal(rc, 0);
 }
 
+#ifndef HLTESTS_LIB_MODE
+
 const struct CMUnitTest gaudi_root_tests[] = {
 	cmocka_unit_test_setup(test_dma_all2all_super_stress,
 				hltests_ensure_device_operational)};
@@ -488,3 +490,5 @@ int main(int argc, const char **argv)
 	return hltests_run_group_tests("gaudi_root", gaudi_root_tests,
 			num_tests, hltests_root_setup, hltests_root_teardown);
 }
+
+#endif /* HLTESTS_LIB_MODE */

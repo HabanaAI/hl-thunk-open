@@ -478,8 +478,12 @@ struct hltests_module_params_info {
 };
 
 void hltests_parser(int argc, const char **argv, const char * const* usage,
-			enum hlthunk_device_name expected_device,
-			const struct CMUnitTest * const tests, int num_tests);
+			enum hlthunk_device_name expected_device
+#ifndef HLTESTS_LIB_MODE
+			,const struct CMUnitTest * const tests, int num_tests
+#endif
+			);
+
 const char *hltests_get_parser_pciaddr(void);
 const char *hltests_get_config_filename(void);
 int hltests_get_parser_run_disabled_tests(void);
@@ -492,12 +496,13 @@ bool hltests_is_goya(int fd);
 bool hltests_is_gaudi(int fd);
 bool hltests_is_pldm(int fd);
 
+#ifndef HLTESTS_LIB_MODE
 int hltests_run_group_tests(const char *group_name,
 				const struct CMUnitTest * const tests,
 				const size_t num_tests,
 				CMFixtureFunction group_setup,
 				CMFixtureFunction group_teardown);
-
+#endif
 
 int hltests_control_dev_open(const char *busid);
 int hltests_control_dev_close(int fd);

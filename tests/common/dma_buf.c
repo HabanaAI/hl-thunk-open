@@ -321,6 +321,8 @@ void test_dmabuf_multiple_threads_shared_memory(void **state)
 					30, 20, SZ_32M, SZ_4K, true);
 }
 
+#ifndef HLTESTS_LIB_MODE
+
 const struct CMUnitTest dma_buf_tests[] = {
 	cmocka_unit_test_setup(test_dmabuf_basic,
 			hltests_ensure_device_operational),
@@ -345,3 +347,5 @@ int main(int argc, const char **argv)
 	return hltests_run_group_tests("dma_buf", dma_buf_tests, num_tests,
 					hltests_setup, hltests_teardown);
 }
+
+#endif /* HLTESTS_LIB_MODE */

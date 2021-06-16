@@ -430,6 +430,8 @@ void test_print_hw_asic_status(void **state)
 	printf("\n\n");
 }
 
+#ifndef HLTESTS_LIB_MODE
+
 const struct CMUnitTest control_tests[] = {
 	cmocka_unit_test(test_print_hw_ip_info),
 	cmocka_unit_test(test_print_hw_idle_info),
@@ -472,3 +474,5 @@ int main(int argc, const char **argv)
 					hltests_control_dev_setup,
 					hltests_control_dev_teardown);
 }
+
+#endif /* HLTESTS_LIB_MODE */

@@ -799,6 +799,8 @@ void test_register_security(void **state)
 	}
 }
 
+#ifndef HLTESTS_LIB_MODE
+
 const struct CMUnitTest debug_tests[] = {
 	cmocka_unit_test_setup(test_tdr_deadlock,
 				hltests_ensure_device_operational),
@@ -844,3 +846,5 @@ int main(int argc, const char **argv)
 	return hltests_run_group_tests("debug", debug_tests, num_tests,
 					hltests_setup, hltests_teardown);
 }
+
+#endif /* HLTESTS_LIB_MODE */

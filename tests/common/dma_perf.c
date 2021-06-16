@@ -1500,6 +1500,8 @@ static int hltests_perf_teardown(void **state)
 	return hltests_teardown(state);
 }
 
+#ifndef HLTESTS_LIB_MODE
+
 const struct CMUnitTest dma_perf_tests[] = {
 	cmocka_unit_test_setup(test_host_sram_perf,
 				hltests_ensure_device_operational),
@@ -1548,3 +1550,5 @@ int main(int argc, const char **argv)
 	return hltests_run_group_tests("dma_perf", dma_perf_tests, num_tests,
 					hltests_setup, hltests_perf_teardown);
 }
+
+#endif /* HLTESTS_LIB_MODE */
