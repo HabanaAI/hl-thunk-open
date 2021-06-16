@@ -67,10 +67,12 @@
 #define assert_ptr_not_equal_ret_ptr(p, v) if ((p) == (v)) return NULL
 
 #define assert_in_range_ret_ptr(a, min, max) \
-		if (!((a) >= (min) && (a) <= (max))) return NULL
+		if (!((a) >= (min) && (a) <= (max))) \
+			return NULL
 
 #define assert_not_in_range_ret_ptr(a, min, max) \
-		if ((a) >= (min) && (a) <= (max)) return NULL
+		if ((a) >= (min) && (a) <= (max)) \
+			return NULL
 
 #define assert_true_ret_ptr(a) if (!(a)) return NULL
 #define assert_false_ret_ptr(a) if (a) return NULL
@@ -557,7 +559,7 @@ struct hltests_module_params_info {
 
 extern char asic_names[HLTHUNK_DEVICE_MAX][20];
 
-void hltests_parser(int argc, const char **argv, const char * const* usage,
+void hltests_parser(int argc, const char **argv, const char * const*usage,
 			enum hlthunk_device_name expected_device
 #ifndef HLTESTS_LIB_MODE
 			, const struct CMUnitTest * const tests, int num_tests
