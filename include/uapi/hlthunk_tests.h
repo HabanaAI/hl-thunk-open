@@ -36,7 +36,7 @@
 #define fail() return -1
 #define skip() return 0
 
-#define fail_msg(fmt, ...) do { printf(fmt, ##__VA_ARGS__); return -1;} while (0)
+#define fail_msg(fmt, ...) do { printf(fmt, ##__VA_ARGS__); return -1; } while (0)
 #define print_message(fmt, ...) printf(fmt, ##__VA_ARGS__)
 #define print_error(fmt, ...) printf(fmt, ##__VA_ARGS__)
 
