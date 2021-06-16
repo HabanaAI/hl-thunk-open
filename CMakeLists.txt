@@ -1,4 +1,4 @@
-# COPYRIGHT (c) 2019 Habanalabs Ltd. See COPYING.md file
+# COPYRIGHT (c) 2019-2021 Habanalabs Ltd. See COPYING.md file
 
 cmake_minimum_required(VERSION 3.0.1 FATAL_ERROR)
 
@@ -87,8 +87,17 @@ add_subdirectory(src)
 
 add_subdirectory(err_inject)
 
+if (HLTESTS_LIB_MODE)
+
+    add_definitions(-DHLTESTS_LIB_MODE)
+    add_subdirectory(tests)
+
+else ()
+
 if (UNIT_TESTING)
     find_package(CMocka 1.1.3 REQUIRED)
     include(AddCMockaTest)
     add_subdirectory(tests)
+endif ()
+
 endif ()
