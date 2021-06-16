@@ -18,7 +18,7 @@
 #include <errno.h>
 #include <unistd.h>
 
-static void test_qman_write_to_protected_register(void **state, bool is_tpc)
+static VOID test_qman_write_to_protected_register(void **state, bool is_tpc)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -152,9 +152,11 @@ static void test_qman_write_to_protected_register(void **state, bool is_tpc)
 	/* Verify that the protected register wasn't written */
 	val = RREG32(cfg_address);
 	assert_int_not_equal(val, 0x789a0ded);
+
+	END_TEST
 }
 
-void test_debugfs_sram_read_write(void **state)
+static VOID test_debugfs_sram_read_write(void **state)
 {
 	struct hltests_state *tests_state =
 					(struct hltests_state *) *state;
@@ -165,9 +167,11 @@ void test_debugfs_sram_read_write(void **state)
 	val = RREG32(SRAM_BASE_ADDR + 0x200000);
 
 	assert_int_equal(0x12345678, val);
+
+	END_TEST
 }
 
-void test_write_to_cfg_space(void **state)
+static VOID test_write_to_cfg_space(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hltests_cs_chunk execute_arr[1];
@@ -200,19 +204,21 @@ void test_write_to_cfg_space(void **state)
 
 	val = RREG32(cfg_address);
 	assert_int_not_equal(val, 0xbaba0ded);
+
+	END_TEST
 }
 
-void test_tpc_qman_write_to_protected_register(void **state)
+static VOID test_tpc_qman_write_to_protected_register(void **state)
 {
-	test_qman_write_to_protected_register(state, true);
+	END_TEST_FUNC(test_qman_write_to_protected_register(state, true);)
 }
 
-void test_mme_qman_write_to_protected_register(void **state)
+static VOID test_mme_qman_write_to_protected_register(void **state)
 {
-	test_qman_write_to_protected_register(state, false);
+	END_TEST_FUNC(test_qman_write_to_protected_register(state, false);)
 }
 
-void test_write_to_mmTPC_PLL_CLK_RLX_0_from_qman(void **state)
+static VOID test_write_to_mmTPC_PLL_CLK_RLX_0_from_qman(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hltests_pkt_info pkt_info;
@@ -244,6 +250,8 @@ void test_write_to_mmTPC_PLL_CLK_RLX_0_from_qman(void **state)
 	assert_int_equal(val, 0x400040);
 
 	WREG32(CFG_BASE + mmTPC_PLL_CLK_RLX_0, val_orig);
+
+	END_TEST
 }
 
 #ifndef HLTESTS_LIB_MODE

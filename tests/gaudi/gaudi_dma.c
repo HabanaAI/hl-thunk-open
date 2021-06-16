@@ -97,7 +97,7 @@ static void *dma_thread_func_ext(void *args)
 	return args;
 }
 
-void test_gaudi_dma_all2all(void **state)
+static VOID test_gaudi_dma_all2all(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -475,9 +475,11 @@ void test_gaudi_dma_all2all(void **state)
 
 	hlthunk_free(thread_params);
 	hlthunk_free(thread_id);
+
+	END_TEST
 }
 
-void test_strided_dma(void **state)
+static VOID test_strided_dma(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hltests_monitor_and_fence mon_and_fence_info;
@@ -828,6 +830,8 @@ void test_strided_dma(void **state)
 
 	rc = hltests_destroy_cb(fd, restore_cb);
 	assert_int_equal(rc, 0);
+
+	END_TEST
 }
 
 #ifndef HLTESTS_LIB_MODE

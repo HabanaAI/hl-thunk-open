@@ -145,7 +145,8 @@ static void *dma_thread_start(void *args)
 		return NULL;
 
 	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
-	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
+	if (rc != HL_WAIT_CS_STATUS_COMPLETED)
+		return NULL;
 
 	for (i = 0 ; i < 2 ; i++) {
 		rc = hltests_destroy_cb(fd, cb[i]);
@@ -162,7 +163,7 @@ static void *dma_thread_start(void *args)
 	return args;
 }
 
-static void test_dma_threads(void **state, uint32_t num_of_threads)
+static VOID test_dma_threads(void **state, uint32_t num_of_threads)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -274,14 +275,16 @@ static void test_dma_threads(void **state, uint32_t num_of_threads)
 
 	hlthunk_free(thread_params);
 	hlthunk_free(thread_id);
+
+	END_TEST
 }
 
-void test_dma_8_threads(void **state)
+static VOID test_dma_8_threads(void **state)
 {
-	test_dma_threads(state, 8);
+	END_TEST_FUNC(test_dma_threads(state, 8);)
 }
 
-void test_dma_64_threads(void **state)
+static VOID test_dma_64_threads(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int fd = tests_state->fd;
@@ -289,10 +292,10 @@ void test_dma_64_threads(void **state)
 	if (hltests_is_pldm(fd))
 		skip();
 
-	test_dma_threads(state, 64);
+	END_TEST_FUNC(test_dma_threads(state, 64);)
 }
 
-void test_dma_512_threads(void **state)
+static VOID test_dma_512_threads(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int fd = tests_state->fd;
@@ -303,10 +306,10 @@ void test_dma_512_threads(void **state)
 		skip();
 	}
 
-	test_dma_threads(state, 512);
+	END_TEST_FUNC(test_dma_threads(state, 512);)
 }
 
-void dma_4_queues(void **state, bool sram_only)
+static VOID dma_4_queues(void **state, bool sram_only)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -654,16 +657,18 @@ void dma_4_queues(void **state, bool sram_only)
 	assert_int_equal(rc, 0);
 	rc = hltests_free_host_mem(fd, host_src);
 	assert_int_equal(rc, 0);
+
+	END_TEST
 }
 
-void test_dma_4_queues(void **state)
+static VOID test_dma_4_queues(void **state)
 {
-	dma_4_queues(state, false);
+	END_TEST_FUNC(dma_4_queues(state, false);)
 }
 
-void test_dma_4_queues_sram_only(void **state)
+static VOID test_dma_4_queues_sram_only(void **state)
 {
-	dma_4_queues(state, true);
+	END_TEST_FUNC(dma_4_queues(state, true);)
 }
 
 #ifndef HLTESTS_LIB_MODE

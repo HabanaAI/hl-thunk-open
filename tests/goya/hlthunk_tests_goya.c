@@ -461,9 +461,9 @@ static uint16_t goya_get_first_avail_mon(
 	return 0;
 }
 
-static void goya_dram_pool_init(struct hltests_device *hdev)
+static int goya_dram_pool_init(struct hltests_device *hdev)
 {
-
+	return 0;
 }
 
 static void goya_dram_pool_fini(struct hltests_device *hdev)

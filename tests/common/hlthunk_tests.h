@@ -26,6 +26,84 @@
 #include <cmocka.h>
 #endif
 
+#ifdef HLTESTS_LIB_MODE
+
+#define VOID int
+#define END_TEST return 0;
+#define END_TEST_FUNC(a) return a
+#define EXIT_FROM_TEST return 0;
+
+#define fail() return -1;
+#define skip() return 0;
+
+#define fail_msg(fmt, ...) printf(fmt, ##__VA_ARGS__); return -1;
+#define print_message(fmt, ...) printf(fmt, ##__VA_ARGS__)
+#define print_error(fmt, ...) printf(fmt, ##__VA_ARGS__)
+
+#define assert_null(p) if (p) return -1;
+#define assert_non_null(p) if (!p) return -1;
+
+#define assert_int_equal(a, b) if (a != b) return -1;
+#define assert_int_not_equal(a, b) if (a == b) return -1;
+
+#define assert_ptr_not_equal(p, v) if (p == v) return -1;
+
+#define assert_in_range(a, min, max) if (!(a >= min && a <= max)) return -1;
+#define assert_not_in_range(a, min, max) if (a >= min && a <= max) return -1;
+
+#define assert_true(a) if (!(a)) return -1;
+#define assert_false(a) if (a) return -1;
+
+#define fail_ret_ptr() return NULL;
+
+#define fail_msg_ret_ptr(fmt, ...) printf(fmt, ##__VA_ARGS__); return NULL;
+
+#define assert_null_ret_ptr(p) if (p) return NULL;
+#define assert_non_null_ret_ptr(p) if (!p) return NULL;
+
+#define assert_int_equal_ret_ptr(a, b) if (a != b) return NULL;
+#define assert_int_not_equal_ret_ptr(a, b) if (a == b) return NULL;
+
+#define assert_ptr_not_equal_ret_ptr(p, v) if (p == v) return NULL;
+
+#define assert_in_range_ret_ptr(a, min, max) \
+		if (!(a >= min && a <= max)) return NULL;
+
+#define assert_not_in_range_ret_ptr(a, min, max) \
+		if (a >= min && a <= max) return NULL;
+
+#define assert_true_ret_ptr(a) if (!(a)) return NULL;
+#define assert_false_ret_ptr(a) if (a) return NULL;
+
+#else
+
+#define VOID void
+#define END_TEST
+#define END_TEST_FUNC(a) a
+#define EXIT_FROM_TEST return;
+
+#define fail_ret_ptr() fail()
+
+#define fail_msg_ret_ptr(fmt, ...) fail_msg(fmt, ...)
+
+#define assert_null_ret_ptr(p) assert_null(p)
+#define assert_non_null_ret_ptr(p) assert_non_null(p)
+
+#define assert_int_equal_ret_ptr(a, b) assert_int_equal(a, b)
+#define assert_int_not_equal_ret_ptr(a, b) assert_int_not_equal(a, b)
+
+#define assert_ptr_not_equal_ret_ptr(p, v) assert_ptr_not_equal(p, v)
+
+#define assert_in_range_ret_ptr(a, min, max) assert_in_range(a, min, max)
+
+#define assert_not_in_range_ret_ptr(a, min, max) \
+			assert_not_in_range(a, min, max)
+
+#define assert_true_ret_ptr(a) assert_true(a)
+#define assert_false_ret_ptr(a) assert_false(a)
+
+#endif
+
 #define ARRAY_SIZE(arr)			(sizeof(arr) / sizeof((arr)[0]))
 
 #define WAIT_FOR_CS_DEFAULT_TIMEOUT	5000000 /* 5 sec */
@@ -395,7 +473,7 @@ struct hltests_asic_funcs {
 			enum hltests_dcore_separation_mode dcore_sep_mode);
 	uint16_t (*get_first_avail_mon)(
 			enum hltests_dcore_separation_mode dcore_sep_mode);
-	void (*dram_pool_init)(struct hltests_device *hdev);
+	int (*dram_pool_init)(struct hltests_device *hdev);
 	void (*dram_pool_fini)(struct hltests_device *hdev);
 	int (*dram_pool_alloc)(struct hltests_device *hdev, uint64_t size,
 				uint64_t *return_addr);
@@ -569,6 +647,10 @@ int hltests_submit_staged_cs(int fd, struct hltests_cs_chunk *restore_arr,
 				uint64_t staged_cs_seq,
 				uint64_t *seq);
 int hltests_wait_for_legacy_cs(int fd, uint64_t seq, uint64_t timeout_us);
+int hltests_submit_and_wait_cs(int fd, void *cb_ptr, uint32_t cb_size,
+				uint32_t queue_index,
+				enum hltests_destroy_cb destroy_cb,
+				int expected_val);
 
 int hltests_control_dev_setup(void **state);
 int hltests_control_dev_teardown(void **state);
@@ -591,7 +673,7 @@ int hltests_mem_compare_with_stop(void *ptr1, void *ptr2, uint64_t size, bool
 			stop_on_err);
 int hltests_mem_compare(void *ptr1, void *ptr2, uint64_t size);
 
-void hltests_dma_transfer(int fd, uint32_t queue_index, enum hltests_eb eb,
+int hltests_dma_transfer(int fd, uint32_t queue_index, enum hltests_eb eb,
 				enum hltests_mb mb,
 				uint64_t src_addr, uint64_t dst_addr,
 				uint32_t size,
@@ -602,21 +684,17 @@ int hltests_dma_test(void **state, bool is_ddr, uint64_t size);
 int hltests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us);
 int hltests_wait_for_cs_until_not_busy(int fd, uint64_t seq);
 
-void hltests_submit_and_wait_cs(int fd, void *cb_ptr, uint32_t cb_size,
-				uint32_t queue_index,
-				enum hltests_destroy_cb destroy_cb,
-				int expected_val);
+int hltests_dma_dram_frag_mem_test(void **state, uint64_t size);
 
-void hltests_dma_dram_frag_mem_test(void **state, uint64_t size);
-
-void hltests_dma_dram_high_mem_test(void **state, uint64_t size);
+int hltests_dma_dram_high_mem_test(void **state, uint64_t size);
 
 int hltests_ensure_device_operational(void **state);
 
-void test_sm_pingpong_common_cp(void **state, bool is_tpc,
+int test_sm_pingpong_common_cp(void **state, bool is_tpc,
 				bool common_cb_in_host, uint8_t tpc_id);
 
-void hltests_clear_sobs(int fd, uint16_t num_of_sobs);
+int hltests_clear_sobs(int fd, uint16_t num_of_sobs);
+void hltests_clear_sobs_offset(int fd, uint16_t num_of_sobs, uint16_t offset);
 
 /* Generic memory addresses pool */
 void *hltests_mem_pool_init(uint64_t start_addr, uint64_t size, uint8_t order);

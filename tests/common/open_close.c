@@ -19,7 +19,7 @@
 #include <sys/sysmacros.h>
 #include <unistd.h>
 
-void test_open_by_busid(void **state)
+static VOID test_open_by_busid(void **state)
 {
 	const char *pciaddr = hltests_get_parser_pciaddr();
 
@@ -30,13 +30,15 @@ void test_open_by_busid(void **state)
 
 	if (hltests_setup(state)) {
 		printf("Failed to open device with pci address %s\n", pciaddr);
-		return;
+		fail();
 	}
 
 	hltests_teardown(state);
+
+	END_TEST
 }
 
-void test_open_twice(void **state)
+static VOID test_open_twice(void **state)
 {
 	int fd, fd2;
 
@@ -47,9 +49,11 @@ void test_open_twice(void **state)
 	assert_int_equal(fd2, -1);
 
 	hlthunk_close(fd);
+
+	END_TEST
 }
 
-void test_open_by_module_id(void **state)
+static VOID test_open_by_module_id(void **state)
 {
 	int fd;
 
@@ -62,9 +66,11 @@ void test_open_by_module_id(void **state)
 	assert_in_range(fd, 0, INT_MAX);
 
 	hlthunk_close(fd);
+
+	END_TEST
 }
 
-void test_open_close_without_ioctl(void **state)
+static VOID test_open_close_without_ioctl(void **state)
 {
 	const char *pciaddr = hltests_get_parser_pciaddr();
 	int fd;
@@ -73,9 +79,11 @@ void test_open_close_without_ioctl(void **state)
 	assert_in_range(fd, 0, INT_MAX);
 
 	hlthunk_close(fd);
+
+	END_TEST
 }
 
-void test_close_without_releasing_debug(void **state)
+static VOID test_close_without_releasing_debug(void **state)
 {
 	const char *pciaddr = hltests_get_parser_pciaddr();
 	struct hl_debug_args debug;
@@ -106,9 +114,11 @@ void test_close_without_releasing_debug(void **state)
 
 	rc = hlthunk_close(fd);
 	assert_int_equal(rc, 0);
+
+	END_TEST
 }
 
-void test_open_and_print_pci_bdf(void **state)
+static VOID test_open_and_print_pci_bdf(void **state)
 {
 	const char *pciaddr = hltests_get_parser_pciaddr();
 	char pci_bus_id[16];
@@ -123,6 +133,8 @@ void test_open_and_print_pci_bdf(void **state)
 	printf("PCI BDF: %s\n", pci_bus_id);
 
 	hlthunk_close(fd);
+
+	END_TEST
 }
 
 #ifndef HLTESTS_LIB_MODE

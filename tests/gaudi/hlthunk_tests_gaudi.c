@@ -785,7 +785,7 @@ int gaudi_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us)
 	return hltests_wait_for_legacy_cs(fd, seq, timeout_us);
 }
 
-static void gaudi_dram_pool_init(struct hltests_device *hdev)
+static int gaudi_dram_pool_init(struct hltests_device *hdev)
 {
 	struct hlthunk_hw_ip_info hw_ip;
 	int rc;
@@ -794,12 +794,14 @@ static void gaudi_dram_pool_init(struct hltests_device *hdev)
 	assert_int_equal(rc, 0);
 
 	if (!hw_ip.dram_enabled)
-		return;
+		return 0;
 
 	hdev->priv = hltests_mem_pool_init(hw_ip.dram_base_address,
 						hw_ip.dram_size,
 						PAGE_SHIFT_2MB);
 	assert_non_null(hdev->priv);
+
+	return 0;
 }
 
 static void gaudi_dram_pool_fini(struct hltests_device *hdev)

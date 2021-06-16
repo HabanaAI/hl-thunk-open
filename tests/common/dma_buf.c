@@ -83,7 +83,7 @@ static int ibv_read_from_mr(int imp_fd, uint64_t mr_handle, void *userptr,
 	return ioctl(imp_fd, HL_IMPORTER_IOCTL_READ_FROM_MR, &args);
 }
 
-static void test_dmabuf_check_prerequisites(int fd, int imp_fd)
+static VOID test_dmabuf_check_prerequisites(int fd, int imp_fd)
 {
 	if (hltests_is_pldm(fd)) {
 		printf("Skipping test on PLDM\n");
@@ -99,6 +99,8 @@ static void test_dmabuf_check_prerequisites(int fd, int imp_fd)
 		printf("Skipping test because importer device is missing\n");
 		skip();
 	}
+
+	END_TEST
 }
 
 struct test_dmabuf_params {
@@ -126,17 +128,17 @@ static void *dmabuf_thread_start(void *args)
 	/* Allocate host/device memories */
 
 	host_src = hltests_allocate_host_mem(fd, alloc_size, NOT_HUGE);
-	assert_non_null(host_src);
+	assert_non_null_ret_ptr(host_src);
 	host_src_device_va = hltests_get_device_va_for_host_ptr(fd, host_src);
 
 	host_dst = hltests_allocate_host_mem(fd, alloc_size, NOT_HUGE);
-	assert_non_null(host_dst);
+	assert_non_null_ret_ptr(host_dst);
 	host_dst_device_va = hltests_get_device_va_for_host_ptr(fd, host_dst);
 
 	if (!params->device_addr) {
 		device_addr = hltests_allocate_device_mem(fd, alloc_size,
 								NOT_CONTIGUOUS);
-		assert_non_null(device_addr);
+		assert_non_null_ret_ptr(device_addr);
 	} else {
 		device_addr = params->device_addr;
 	}
@@ -145,11 +147,11 @@ static void *dmabuf_thread_start(void *args)
 
 	dmabuf_fd = hltests_device_memory_export_dmabuf_fd(fd, device_addr,
 								alloc_size);
-	assert_in_range(fd, 0, INT_MAX);
+	assert_in_range_ret_ptr(fd, 0, INT_MAX);
 
 	rc = ibv_reg_dmabuf_mr(imp_fd, 0, alloc_size, 0, dmabuf_fd, 0,
 				&mr_handle);
-	assert_int_equal(rc, 0);
+	assert_int_equal_ret_ptr(rc, 0);
 
 	/*
 	 * PTHREAD_BARRIER_SERIAL_THREAD is returned to one unspecified thread
@@ -173,7 +175,7 @@ static void *dmabuf_thread_start(void *args)
 
 		rc = ibv_write_to_mr(imp_fd, mr_handle, host_src, offset,
 					access_size);
-		assert_int_equal(rc, 0);
+		assert_int_equal_ret_ptr(rc, 0);
 
 		if (params->verify_memory) {
 			hltests_dma_transfer(fd,
@@ -185,7 +187,7 @@ static void *dmabuf_thread_start(void *args)
 
 			rc = hltests_mem_compare(host_src, host_dst,
 							access_size);
-			assert_int_equal(rc, 0);
+			assert_int_equal_ret_ptr(rc, 0);
 		}
 
 		/* Read from MR */
@@ -203,38 +205,38 @@ static void *dmabuf_thread_start(void *args)
 
 		rc = ibv_read_from_mr(imp_fd, mr_handle, host_dst, offset,
 					access_size);
-		assert_int_equal(rc, 0);
+		assert_int_equal_ret_ptr(rc, 0);
 
 		if (params->verify_memory) {
 			rc = hltests_mem_compare(host_src, host_dst,
 							access_size);
-			assert_int_equal(rc, 0);
+			assert_int_equal_ret_ptr(rc, 0);
 		}
 	}
 
 	/* Cleanup */
 
 	rc = ibv_dereg_mr(imp_fd, mr_handle);
-	assert_int_equal(rc, 0);
+	assert_int_equal_ret_ptr(rc, 0);
 
 	rc = close(dmabuf_fd);
-	assert_int_equal(rc, 0);
+	assert_int_equal_ret_ptr(rc, 0);
 
 	if (!params->device_addr) {
 		rc = hltests_free_device_mem(fd, device_addr);
-		assert_int_equal(rc, 0);
+		assert_int_equal_ret_ptr(rc, 0);
 	}
 
 	rc = hltests_free_host_mem(fd, host_dst);
-	assert_int_equal(rc, 0);
+	assert_int_equal_ret_ptr(rc, 0);
 
 	rc = hltests_free_host_mem(fd, host_src);
-	assert_int_equal(rc, 0);
+	assert_int_equal_ret_ptr(rc, 0);
 
 	return args;
 }
 
-void _test_dmabuf_multiple_threads(int fd, int imp_fd, uint32_t num_of_threads,
+static VOID _test_dmabuf_multiple_threads(int fd, int imp_fd, uint32_t num_of_threads,
 				uint32_t iterations, uint64_t alloc_size,
 				uint64_t access_size, bool shared_device_memory)
 {
@@ -295,30 +297,32 @@ void _test_dmabuf_multiple_threads(int fd, int imp_fd, uint32_t num_of_threads,
 	pthread_barrier_destroy(&barrier);
 	hlthunk_free(thread_id);
 	hlthunk_free(thread_params);
+
+	END_TEST
 }
 
-void test_dmabuf_basic(void **state)
+static VOID test_dmabuf_basic(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 
-	_test_dmabuf_multiple_threads(tests_state->fd, tests_state->imp_fd,
-					1, 1, SZ_32M, SZ_4K, false);
+	END_TEST_FUNC(_test_dmabuf_multiple_threads(tests_state->fd, tests_state->imp_fd,
+					1, 1, SZ_32M, SZ_4K, false);)
 }
 
-void test_dmabuf_multiple_threads_non_shared_memory(void **state)
+static VOID test_dmabuf_multiple_threads_non_shared_memory(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 
-	_test_dmabuf_multiple_threads(tests_state->fd, tests_state->imp_fd,
-					15, 10, SZ_32M, SZ_4K, false);
+	END_TEST_FUNC(_test_dmabuf_multiple_threads(tests_state->fd, tests_state->imp_fd,
+					15, 10, SZ_32M, SZ_4K, false);)
 }
 
-void test_dmabuf_multiple_threads_shared_memory(void **state)
+static VOID test_dmabuf_multiple_threads_shared_memory(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 
-	_test_dmabuf_multiple_threads(tests_state->fd, tests_state->imp_fd,
-					30, 20, SZ_32M, SZ_4K, true);
+	END_TEST_FUNC(_test_dmabuf_multiple_threads(tests_state->fd, tests_state->imp_fd,
+					30, 20, SZ_32M, SZ_4K, true);)
 }
 
 #ifndef HLTESTS_LIB_MODE
