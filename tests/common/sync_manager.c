@@ -181,7 +181,7 @@ VOID test_sm_pingpong_upper_cp(void **state, bool is_tpc,
 {
 	struct hltests_state *tests_state =
 			(struct hltests_state *) *state;
-	void *src_data, *dst_data, *engine_cb, *restore_cb, *dmadown_cb,
+	void *src_data, *dst_data, *engine_cb, *restore_cb = NULL, *dmadown_cb,
 		*dmaup_cb;
 	uint64_t src_data_device_va, dst_data_device_va, device_data_address,
 		engine_cb_sram_addr, engine_cb_device_va;
