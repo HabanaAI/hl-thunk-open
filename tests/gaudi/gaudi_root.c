@@ -463,6 +463,8 @@ VOID test_dma_all2all_super_stress(void **state)
 
 	rc = hltests_free_host_mem(fd, data_buf);
 	assert_int_equal(rc, 0);
+
+	END_TEST;
 }
 
 #ifndef HLTESTS_LIB_MODE
