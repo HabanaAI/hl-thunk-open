@@ -5,6 +5,7 @@ project(commontests C)
 include_directories(
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/include/specs
+    ${CMAKE_SOURCE_DIR}/include/uapi
 )
 
 set(COMMON_UNIT_TESTS
@@ -17,7 +18,6 @@ set(COMMON_UNIT_TESTS
     dma_sram
     dma_dram
     dma_perf
-    dma_buf
     debug
     profiling
     control_device

@@ -1,11 +1,6 @@
-# COPYRIGHT (c) 2019 Habanalabs Ltd. See COPYING.md file
+# COPYRIGHT (c) 2019-2021 Habanalabs Ltd. See COPYING.md file
 
 project(goyatests C)
-
-include_directories(
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/include/specs
-)
 
 set(GOYA_UNIT_TESTS
     goya_root

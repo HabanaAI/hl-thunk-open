@@ -5,7 +5,7 @@
  * All Rights Reserved.
  */
 
-#include "common/hlthunk_tests.h"
+#include "hlthunk_tests.h"
 #include "goya/goya.h"
 #include "goya/asic_reg/goya_regs.h"
 
@@ -18,7 +18,7 @@
 #include <errno.h>
 #include <unistd.h>
 
-static VOID test_qman_write_to_protected_register(void **state, bool is_tpc)
+VOID test_qman_write_to_protected_register(void **state, bool is_tpc)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -153,10 +153,10 @@ static VOID test_qman_write_to_protected_register(void **state, bool is_tpc)
 	val = RREG32(cfg_address);
 	assert_int_not_equal(val, 0x789a0ded);
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_debugfs_sram_read_write(void **state)
+VOID test_debugfs_sram_read_write(void **state)
 {
 	struct hltests_state *tests_state =
 					(struct hltests_state *) *state;
@@ -168,10 +168,10 @@ static VOID test_debugfs_sram_read_write(void **state)
 
 	assert_int_equal(0x12345678, val);
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_write_to_cfg_space(void **state)
+VOID test_write_to_cfg_space(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hltests_cs_chunk execute_arr[1];
@@ -205,20 +205,20 @@ static VOID test_write_to_cfg_space(void **state)
 	val = RREG32(cfg_address);
 	assert_int_not_equal(val, 0xbaba0ded);
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_tpc_qman_write_to_protected_register(void **state)
+VOID test_tpc_qman_write_to_protected_register(void **state)
 {
-	END_TEST_FUNC(test_qman_write_to_protected_register(state, true);)
+	END_TEST_FUNC(test_qman_write_to_protected_register(state, true));
 }
 
-static VOID test_mme_qman_write_to_protected_register(void **state)
+VOID test_mme_qman_write_to_protected_register(void **state)
 {
-	END_TEST_FUNC(test_qman_write_to_protected_register(state, false);)
+	END_TEST_FUNC(test_qman_write_to_protected_register(state, false));
 }
 
-static VOID test_write_to_mmTPC_PLL_CLK_RLX_0_from_qman(void **state)
+VOID test_write_to_mmTPC_PLL_CLK_RLX_0_from_qman(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hltests_pkt_info pkt_info;
@@ -251,7 +251,7 @@ static VOID test_write_to_mmTPC_PLL_CLK_RLX_0_from_qman(void **state)
 
 	WREG32(CFG_BASE + mmTPC_PLL_CLK_RLX_0, val_orig);
 
-	END_TEST
+	END_TEST;
 }
 
 #ifndef HLTESTS_LIB_MODE

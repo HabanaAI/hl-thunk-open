@@ -181,7 +181,7 @@ static void destroy_cb_map(struct hltests_device *hdev)
 	pthread_mutex_destroy(&hdev->cb_table_lock);
 }
 
-static int hltests_init(void)
+int hltests_init(void)
 {
 	int rc;
 
@@ -209,7 +209,7 @@ free_spinlock:
 	return rc;
 }
 
-static void hltests_fini(void)
+void hltests_fini(void)
 {
 	if (!dev_table)
 		return;
@@ -2541,7 +2541,7 @@ void hltests_mem_pool_free(void *data, uint64_t addr, uint64_t size)
 void hltests_parser(int argc, const char **argv, const char * const* usage,
 			enum hlthunk_device_name expected_device
 #ifndef HLTESTS_LIB_MODE
-			,const struct CMUnitTest * const tests, int num_tests
+			, const struct CMUnitTest * const tests, int num_tests
 #endif
 			)
 {

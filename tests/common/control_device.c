@@ -21,7 +21,7 @@
 #include <unistd.h>
 #include <inttypes.h>
 
-static VOID test_print_hw_ip_info(void **state)
+VOID test_print_hw_ip_info(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int rc, fd = tests_state->fd;
@@ -51,10 +51,10 @@ static VOID test_print_hw_ip_info(void **state)
 
 	printf("\n\n");
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID print_engine_name(int fd, uint32_t engine_id)
+VOID print_engine_name(int fd, uint32_t engine_id)
 {
 	if (hltests_is_goya(fd)) {
 		switch (engine_id) {
@@ -91,10 +91,10 @@ static VOID print_engine_name(int fd, uint32_t engine_id)
 		fail_msg("Unexpected device\n");
 	}
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_print_hw_idle_info(void **state)
+VOID test_print_hw_idle_info(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int rc, fd = tests_state->fd;
@@ -122,10 +122,10 @@ static VOID test_print_hw_idle_info(void **state)
 out:
 	printf("\n");
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_print_dram_usage_info_no_stop(void **state)
+VOID test_print_dram_usage_info_no_stop(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int rc, fd = tests_state->fd;
@@ -145,10 +145,10 @@ static VOID test_print_dram_usage_info_no_stop(void **state)
 		usleep(250 * 1000);
 	}
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_print_device_utilization_no_stop(void **state)
+VOID test_print_device_utilization_no_stop(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int rc, fd = tests_state->fd;
@@ -165,10 +165,10 @@ static VOID test_print_device_utilization_no_stop(void **state)
 		usleep(450 * 1000);
 	}
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_print_clk_rate(void **state)
+VOID test_print_clk_rate(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int rc, fd = tests_state->fd;
@@ -181,10 +181,10 @@ static VOID test_print_clk_rate(void **state)
 	printf("Current clock rate  : %dMHz\n", cur_clk);
 	printf("Maximum clock rate  : %dMHz\n\n", max_clk);
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_print_reset_count(void **state)
+VOID test_print_reset_count(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int rc, fd = tests_state->fd;
@@ -197,10 +197,10 @@ static VOID test_print_reset_count(void **state)
 	printf("Hard reset count  : %d\n", info.hard_reset_count);
 	printf("Soft reset count  : %d\n\n", info.soft_reset_count);
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_print_time_sync_info(void **state)
+VOID test_print_time_sync_info(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int rc, fd = tests_state->fd;
@@ -213,10 +213,10 @@ static VOID test_print_time_sync_info(void **state)
 	printf("Device time  : 0x%"PRIx64"\n", info.device_time);
 	printf("Host time    : 0x%"PRIx64"\n\n", info.host_time);
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_print_hlthunk_version(void **state)
+VOID test_print_hlthunk_version(void **state)
 {
 	char *version;
 
@@ -227,10 +227,10 @@ static VOID test_print_hlthunk_version(void **state)
 
 	hlthunk_free(version);
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_print_cs_drop_statistics(void **state)
+VOID test_print_cs_drop_statistics(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int rc, fd = tests_state->fd;
@@ -278,10 +278,10 @@ static VOID test_print_cs_drop_statistics(void **state)
 
 	hlthunk_close(fd);
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_print_pci_counters(void **state)
+VOID test_print_pci_counters(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int rc, fd = tests_state->fd;
@@ -295,10 +295,10 @@ static VOID test_print_pci_counters(void **state)
 	printf("tx_throughput   : %lu\n", info.tx_throughput);
 	printf("replay counter  : %u\n\n", info.replay_cnt);
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_print_clk_throttling_reason(void **state)
+VOID test_print_clk_throttling_reason(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int rc, fd = tests_state->fd;
@@ -310,10 +310,10 @@ static VOID test_print_clk_throttling_reason(void **state)
 	printf("\nclk throttling bitmask: %u\n\n",
 			info.clk_throttle_reason_bitmask);
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_print_total_energy_consumption(void **state)
+VOID test_print_total_energy_consumption(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int rc, fd = tests_state->fd;
@@ -325,10 +325,10 @@ static VOID test_print_total_energy_consumption(void **state)
 	printf("\nTotal energy consumption: %lu(mj)\n\n",
 			energy_info.total_energy_consumption);
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID print_events_counters(void **state, bool aggregate)
+VOID print_events_counters(void **state, bool aggregate)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int i, rc, fd = tests_state->fd;
@@ -365,20 +365,20 @@ static VOID print_events_counters(void **state, bool aggregate)
 
 	hlthunk_free((void *) hw_events_arr);
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_print_events_counters(void **state)
+VOID test_print_events_counters(void **state)
 {
-	END_TEST_FUNC(print_events_counters(state, false);)
+	END_TEST_FUNC(print_events_counters(state, false));
 }
 
-static VOID test_print_events_counters_aggregate(void **state)
+VOID test_print_events_counters_aggregate(void **state)
 {
-	END_TEST_FUNC(print_events_counters(state, true);)
+	END_TEST_FUNC(print_events_counters(state, true));
 }
 
-static VOID test_print_pci_bdf(void **state)
+VOID test_print_pci_bdf(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int rc, fd = tests_state->fd;
@@ -389,10 +389,10 @@ static VOID test_print_pci_bdf(void **state)
 
 	printf("PCI BDF: %s\n", pci_bus_id);
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_print_pll_info(void **state)
+VOID test_print_pll_info(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int rc, fd = tests_state->fd;
@@ -429,10 +429,10 @@ static VOID test_print_pll_info(void **state)
 			freq_info.output[3]);
 	}
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_print_hw_asic_status(void **state)
+VOID test_print_hw_asic_status(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int rc, fd = tests_state->fd;
@@ -456,7 +456,7 @@ static VOID test_print_hw_asic_status(void **state)
 
 	printf("\n\n");
 
-	END_TEST
+	END_TEST;
 }
 
 #ifndef HLTESTS_LIB_MODE

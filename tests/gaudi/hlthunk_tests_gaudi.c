@@ -5,8 +5,8 @@
  * All Rights Reserved.
  */
 
-#include "common/hlthunk_tests.h"
-#include "uapi/hlthunk.h"
+#include "hlthunk_tests.h"
+#include "hlthunk.h"
 #include "gaudi/gaudi.h"
 #include "gaudi/gaudi_packets.h"
 #include "gaudi/asic_reg/gaudi_regs.h"

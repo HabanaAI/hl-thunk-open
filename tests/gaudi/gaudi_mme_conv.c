@@ -6,7 +6,7 @@
  */
 
 #include "uapi/hlthunk.h"
-#include "common/hlthunk_tests.h"
+#include "hlthunk_tests.h"
 #include "gaudi/gaudi.h"
 #include "gaudi/asic_reg/gaudi_regs.h"
 #include <stdarg.h>
@@ -1070,7 +1070,7 @@ static void dma_cb_prepare(int fd, void *dma_cb,
 				&pkt_info);
 }
 
-static VOID test_mme_basic_conv(void **state)
+VOID test_mme_basic_conv(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	uint64_t mme_master0_cb_sram, mme_master2_cb_sram, inputs_sram_addr,
@@ -1390,7 +1390,7 @@ static VOID test_mme_basic_conv(void **state)
 	rc = hltests_free_host_mem(fd, host_dst);
 	assert_int_equal(rc, 0);
 
-	END_TEST
+	END_TEST;
 }
 
 #ifndef HLTESTS_LIB_MODE

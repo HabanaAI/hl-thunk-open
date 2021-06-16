@@ -107,7 +107,7 @@ exit:
 	return rc;
 }
 
-static VOID test_error_injection_endless_command(void **state)
+VOID test_error_injection_endless_command(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_reset_count_info pre, post;
@@ -127,10 +127,10 @@ static VOID test_error_injection_endless_command(void **state)
 	      (post.hard_reset_count == pre.hard_reset_count)))
 		fail_msg("Driver did not recover from command lockup");
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_error_injection_non_fatal_event(void **state)
+VOID test_error_injection_non_fatal_event(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_reset_count_info pre, post;
@@ -185,10 +185,10 @@ exit:
 	assert_int_equal(rc, 0);
 	assert_false(event_num >= hw_ip.num_of_events || event_num < 0);
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_error_injection_fatal_event(void **state)
+VOID test_error_injection_fatal_event(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_reset_count_info pre, post;
@@ -257,10 +257,10 @@ exit:
 	assert_false(event_num >= hw_ip.num_of_events || event_num < 0);
 	assert_in_range(fd, 0, INT_MAX);
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_error_injection_heartbeat(void **state)
+VOID test_error_injection_heartbeat(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_reset_count_info pre, post;
@@ -290,10 +290,10 @@ static VOID test_error_injection_heartbeat(void **state)
 	      (post.soft_reset_count == pre.soft_reset_count)))
 		fail_msg("Driver did not recover from loss of heartbeat");
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_error_injection_thermal_event(void **state)
+VOID test_error_injection_thermal_event(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	long temp_pre, temp_post;
@@ -322,7 +322,7 @@ static VOID test_error_injection_thermal_event(void **state)
 
 	assert_true(temp_pre < temp_post);
 
-	END_TEST
+	END_TEST;
 }
 
 #ifndef HLTESTS_LIB_MODE

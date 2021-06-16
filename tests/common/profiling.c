@@ -37,7 +37,7 @@ struct asic_benchmark_exp_cfg {
 	uint64_t timing_max;
 };
 
-static VOID test_debug_mode(void **state)
+VOID test_debug_mode(void **state)
 {
 	struct hltests_state *tests_state =
 			(struct hltests_state *) *state;
@@ -58,7 +58,7 @@ static VOID test_debug_mode(void **state)
 	rc = hlthunk_debug(fd, &debug);
 	assert_int_equal(rc, 0);
 
-	END_TEST
+	END_TEST;
 }
 
 /**
@@ -343,7 +343,7 @@ static int asic_benchmark_exp_parsing_handler(void *user,
  *                     test, else just print to the output
  * @param test_name test name used to match expected value in configuration
  */
-static VOID hltest_bench_host_map_expected(struct hltests_state *tests_state,
+VOID hltest_bench_host_map_expected(struct hltests_state *tests_state,
 					uint64_t n_allocs, uint64_t alloc_size,
 					enum hltests_huge huge,
 					uint64_t n_maps, uint64_t n_unmaps,
@@ -402,15 +402,15 @@ static VOID hltest_bench_host_map_expected(struct hltests_state *tests_state,
 		}
 	}
 
-	END_TEST
+	END_TEST;
 }
 
 #define MAP_BENCHMARK_TEST(test_name, ...)				\
-static VOID test_name(void **state)					\
+VOID test_name(void **state)					\
 {									\
 	END_TEST_FUNC(hltest_bench_host_map_expected(			\
 			(struct hltests_state *)*state,			\
-			__VA_ARGS__, #test_name);)			\
+			__VA_ARGS__, #test_name));			\
 }
 
 MAP_BENCHMARK_TEST(test_bench_host_map_unmap_2MBx4K,
@@ -529,7 +529,7 @@ static int bench_mappings_custom_parsing_handler(void *user,
 	return 1;
 }
 
-static VOID test_bench_mappings_custom(void **state)
+VOID test_bench_mappings_custom(void **state)
 {
 	struct bench_mappings_custom_cfg cfg;
 	const char *config_filename = hltests_get_config_filename();
@@ -566,6 +566,8 @@ static VOID test_bench_mappings_custom(void **state)
 		cfg.random, cfg.n_iter);
 
 	print_message("%luns\n", t_ns);
+
+	END_TEST;
 }
 
 #ifndef HLTESTS_LIB_MODE

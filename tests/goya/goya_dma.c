@@ -5,7 +5,7 @@
  * All Rights Reserved.
  */
 
-#include "common/hlthunk_tests.h"
+#include "hlthunk_tests.h"
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -16,7 +16,7 @@
 #include <unistd.h>
 #include <pthread.h>
 
-static VOID test_dma_4_queues(void **state)
+VOID test_dma_4_queues_goya(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -243,13 +243,13 @@ static VOID test_dma_4_queues(void **state)
 	rc = hltests_free_host_mem(fd, host_src);
 	assert_int_equal(rc, 0);
 
-	END_TEST
+	END_TEST;
 }
 
 #ifndef HLTESTS_LIB_MODE
 
 const struct CMUnitTest goya_dma_tests[] = {
-	cmocka_unit_test_setup(test_dma_4_queues,
+	cmocka_unit_test_setup(test_dma_4_queues_goya,
 				hltests_ensure_device_operational)
 };
 

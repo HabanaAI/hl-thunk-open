@@ -5,7 +5,7 @@
  * All Rights Reserved.
  */
 
-#include "common/hlthunk_tests.h"
+#include "hlthunk_tests.h"
 #include "gaudi/gaudi.h"
 #include "gaudi/asic_reg/gaudi_regs.h"
 #include "gaudi/gaudi_packets.h"
@@ -24,7 +24,7 @@
 
 #define NUM_OF_INT_Q 6
 
-static VOID activate_super_stress_dma_channels(void **state,
+VOID activate_super_stress_dma_channels(void **state,
 					struct hlthunk_hw_ip_info *hw_ip,
 					int num_of_iterations)
 {
@@ -290,7 +290,7 @@ static VOID activate_super_stress_dma_channels(void **state,
 	rc = hltests_destroy_cb(fd, restore_cb);
 	assert_int_equal(rc, 0);
 
-	END_TEST
+	END_TEST;
 }
 
 enum dma_super_stress_modes {
@@ -353,7 +353,7 @@ static int dma_super_stress_parsing_handler(void *user, const char *section,
 	return 1;
 }
 
-static VOID test_dma_all2all_super_stress(void **state)
+VOID test_dma_all2all_super_stress(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	const char *config_filename = hltests_get_config_filename();

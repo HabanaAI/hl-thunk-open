@@ -17,7 +17,7 @@
 #include <unistd.h>
 #include <pthread.h>
 
-static VOID test_dma_entire_sram_random(void **state)
+VOID test_dma_entire_sram_random(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -29,7 +29,7 @@ static VOID test_dma_entire_sram_random(void **state)
 	rc = hlthunk_get_hw_ip_info(tests_state->fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
-	END_TEST_FUNC(hltests_dma_test(state, false, hw_ip.sram_size);)
+	END_TEST_FUNC(hltests_dma_test(state, false, hw_ip.sram_size));
 }
 
 DMA_TEST_INC_SRAM(test_dma_sram_size_1KB, state, 1 * 1024)

@@ -9,7 +9,7 @@
 #define HLTHUNK_TESTS_H
 
 #include "misc/habanalabs.h"
-#include "uapi/hlthunk.h"
+#include "hlthunk.h"
 #include "khash.h"
 #include "specs/common/pci_ids.h"
 
@@ -29,78 +29,78 @@
 #ifdef HLTESTS_LIB_MODE
 
 #define VOID int
-#define END_TEST return 0;
-#define END_TEST_FUNC(a) return a
-#define EXIT_FROM_TEST return 0;
+#define END_TEST return 0
+#define END_TEST_FUNC(a) return (a)
+#define EXIT_FROM_TEST return 0
 
-#define fail() return -1;
-#define skip() return 0;
+#define fail() return -1
+#define skip() return 0
 
-#define fail_msg(fmt, ...) printf(fmt, ##__VA_ARGS__); return -1;
+#define fail_msg(fmt, ...) printf(fmt, ##__VA_ARGS__); return -1
 #define print_message(fmt, ...) printf(fmt, ##__VA_ARGS__)
 #define print_error(fmt, ...) printf(fmt, ##__VA_ARGS__)
 
-#define assert_null(p) if (p) return -1;
-#define assert_non_null(p) if (!p) return -1;
+#define assert_null(p) if (p) return -1
+#define assert_non_null(p) if (!(p)) return -1
 
-#define assert_int_equal(a, b) if (a != b) return -1;
-#define assert_int_not_equal(a, b) if (a == b) return -1;
+#define assert_int_equal(a, b) if ((a) != (b)) return -1
+#define assert_int_not_equal(a, b) if ((a) == (b)) return -1
 
-#define assert_ptr_not_equal(p, v) if (p == v) return -1;
+#define assert_ptr_not_equal(p, v) if ((p) == (v)) return -1
 
-#define assert_in_range(a, min, max) if (!(a >= min && a <= max)) return -1;
-#define assert_not_in_range(a, min, max) if (a >= min && a <= max) return -1;
+#define assert_in_range(a, min, max) if (!((a) >= (min) && (a) <= (max))) return -1
+#define assert_not_in_range(a, min, max) if ((a) >= (min) && (a) <= (max)) return -1
 
-#define assert_true(a) if (!(a)) return -1;
-#define assert_false(a) if (a) return -1;
+#define assert_true(a) if (!(a)) return -1
+#define assert_false(a) if (a) return -1
 
-#define fail_ret_ptr() return NULL;
+#define fail_ret_ptr() return NULL
 
-#define fail_msg_ret_ptr(fmt, ...) printf(fmt, ##__VA_ARGS__); return NULL;
+#define fail_msg_ret_ptr(fmt, ...) printf(fmt, ##__VA_ARGS__); return NULL
 
-#define assert_null_ret_ptr(p) if (p) return NULL;
-#define assert_non_null_ret_ptr(p) if (!p) return NULL;
+#define assert_null_ret_ptr(p) if (p) return NULL
+#define assert_non_null_ret_ptr(p) if (!(p)) return NULL
 
-#define assert_int_equal_ret_ptr(a, b) if (a != b) return NULL;
-#define assert_int_not_equal_ret_ptr(a, b) if (a == b) return NULL;
+#define assert_int_equal_ret_ptr(a, b) if ((a) != (b)) return NULL
+#define assert_int_not_equal_ret_ptr(a, b) if ((a) == (b)) return NULL
 
-#define assert_ptr_not_equal_ret_ptr(p, v) if (p == v) return NULL;
+#define assert_ptr_not_equal_ret_ptr(p, v) if ((p) == (v)) return NULL
 
 #define assert_in_range_ret_ptr(a, min, max) \
-		if (!(a >= min && a <= max)) return NULL;
+		if (!((a) >= (min) && (a) <= (max))) return NULL
 
 #define assert_not_in_range_ret_ptr(a, min, max) \
-		if (a >= min && a <= max) return NULL;
+		if ((a) >= (min) && (a) <= (max)) return NULL
 
-#define assert_true_ret_ptr(a) if (!(a)) return NULL;
-#define assert_false_ret_ptr(a) if (a) return NULL;
+#define assert_true_ret_ptr(a) if (!(a)) return NULL
+#define assert_false_ret_ptr(a) if (a) return NULL
 
 #else
 
 #define VOID void
 #define END_TEST
-#define END_TEST_FUNC(a) a
-#define EXIT_FROM_TEST return;
+#define END_TEST_FUNC(a) (a)
+#define EXIT_FROM_TEST return
 
 #define fail_ret_ptr() fail()
 
 #define fail_msg_ret_ptr(fmt, ...) fail_msg(fmt, ...)
 
-#define assert_null_ret_ptr(p) assert_null(p)
-#define assert_non_null_ret_ptr(p) assert_non_null(p)
+#define assert_null_ret_ptr(p) assert_null((p))
+#define assert_non_null_ret_ptr(p) assert_non_null((p))
 
-#define assert_int_equal_ret_ptr(a, b) assert_int_equal(a, b)
-#define assert_int_not_equal_ret_ptr(a, b) assert_int_not_equal(a, b)
+#define assert_int_equal_ret_ptr(a, b) assert_int_equal((a), (b))
+#define assert_int_not_equal_ret_ptr(a, b) assert_int_not_equal((a), (b))
 
-#define assert_ptr_not_equal_ret_ptr(p, v) assert_ptr_not_equal(p, v)
+#define assert_ptr_not_equal_ret_ptr(p, v) assert_ptr_not_equal((p), (v))
 
-#define assert_in_range_ret_ptr(a, min, max) assert_in_range(a, min, max)
+#define assert_in_range_ret_ptr(a, min, max) assert_in_range((a), (min), (max))
 
 #define assert_not_in_range_ret_ptr(a, min, max) \
-			assert_not_in_range(a, min, max)
+			assert_not_in_range((a), (min), (max))
 
-#define assert_true_ret_ptr(a) assert_true(a)
-#define assert_false_ret_ptr(a) assert_false(a)
+#define assert_true_ret_ptr(a) assert_true((a))
+#define assert_false_ret_ptr(a) assert_false((a))
 
 #endif
 
@@ -555,10 +555,12 @@ struct hltests_module_params_info {
 	uint32_t fw_loading_ext;
 };
 
+extern char asic_names[HLTHUNK_DEVICE_MAX][20];
+
 void hltests_parser(int argc, const char **argv, const char * const* usage,
 			enum hlthunk_device_name expected_device
 #ifndef HLTESTS_LIB_MODE
-			,const struct CMUnitTest * const tests, int num_tests
+			, const struct CMUnitTest * const tests, int num_tests
 #endif
 			);
 
@@ -774,6 +776,247 @@ void hltests_set_rand_seed(uint32_t val);
 
 int hltest_get_host_meminfo(struct hltest_host_meminfo *res);
 
-extern char asic_names[HLTHUNK_DEVICE_MAX][20];
+int hltests_init(void);
+void hltests_fini(void);
+
+/* Tests */
+VOID test_hbm_read_temperature(void **state);
+VOID test_hbm_read_interrupts(void **state);
+VOID test_print_asic_rev(void **state);
+VOID test_read_every_4KB_registers_block(void **state);
+VOID test_read_through_pci(void **state);
+VOID test_tpc_corner_with_inbound_pci_hbw(void **state);
+VOID rate_limiter_init(struct hltests_state *tests_state);
+VOID activate_all2all_dma_channels(void **state, uint64_t *dram_addr,
+					uint32_t dma_size,
+					struct hlthunk_hw_ip_info *hw_ip);
+VOID test_dma_all2all_stress(void **state);
+VOID test_dma_all2all_stress_minimum_host_memory(void **state);
+VOID activate_super_stress_dma_channels(void **state,
+					struct hlthunk_hw_ip_info *hw_ip,
+					int num_of_iterations);
+VOID test_dma_all2all_super_stress(void **state);
+VOID test_mme_basic_conv(void **state);
+VOID test_conn_alloc_destroy(void **state);
+VOID test_conn_set_context(void **state);
+VOID test_gaudi_dma_all2all(void **state);
+VOID test_strided_dma(void **state);
+VOID test_threads(void **state, uint32_t num_of_threads,
+				uint32_t num_of_iter, void *(*func)(void *));
+VOID test_wq_threads(void **state);
+VOID test_conn_threads(void **state, uint32_t num_of_threads,
+				uint32_t num_of_iter);
+VOID test_conn_1_thread(void **state);
+VOID test_conn_8_threads(void **state);
+VOID test_conn_512_threads(void **state);
+VOID test_conn_1023_threads(void **state);
+VOID test_print_ips_macs(void **state);
+VOID test_qman_write_to_protected_register(void **state, bool is_tpc);
+VOID test_debugfs_sram_read_write(void **state);
+VOID test_write_to_cfg_space(void **state);
+VOID test_tpc_qman_write_to_protected_register(void **state);
+VOID test_mme_qman_write_to_protected_register(void **state);
+VOID test_write_to_mmTPC_PLL_CLK_RLX_0_from_qman(void **state);
+VOID test_dma_4_queues_goya(void **state);
+VOID test_axi_drain_functionality(void **state);
+VOID test_fence_cnt_cleanup_on_ctx_switch(void **state);
+VOID handle_block_security_violations(struct hltests_state *tests_state,
+					     int raw, int col,
+					     const uint64_t array[raw][col],
+					     uint64_t mask);
+VOID test_check_for_security_violations(void **state);
+VOID inc_sobs(int fd, uint16_t first_sob, uint16_t num_of_sobs);
+VOID test_deny_access_to_secured_sobjs(void **state);
+VOID test_deny_mon_access_to_secured_area(void **state);
+VOID test_deny_access_to_secured_monitors(void **state);
+VOID test_tdr_deadlock(void **state);
+VOID test_endless_memory_ioctl(void **state);
+VOID test_dma_custom(void **state);
+VOID test_transfer_bigger_than_alloc(void **state);
+VOID test_map_custom(void **state);
+VOID test_loop_map_work_unmap(void **state);
+VOID test_duplicate_file_descriptor(void **state);
+VOID test_page_miss(void **state);
+VOID test_register_security(void **state);
+VOID test_open_by_busid(void **state);
+VOID test_open_twice(void **state);
+VOID test_open_by_module_id(void **state);
+VOID test_open_close_without_ioctl(void **state);
+VOID test_close_without_releasing_debug(void **state);
+VOID test_open_and_print_pci_bdf(void **state);
+VOID test_sm(void **state, bool is_tpc, bool is_wait, uint8_t engine_id);
+VOID test_sm_pingpong_upper_cp(void **state, bool is_tpc,
+				bool upper_cb_in_host, uint8_t engine_id);
+VOID test_sm_tpc(void **state);
+VOID test_sm_mme(void **state);
+VOID test_sm_pingpong_tpc_upper_cp_from_sram(void **state);
+VOID test_sm_pingpong_mme_upper_cp_from_sram(void **state);
+VOID test_sm_pingpong_tpc_upper_cp_from_host(void **state);
+VOID test_sm_pingpong_mme_upper_cp_from_host(void **state);
+VOID test_sm_pingpong_tpc_common_cp_from_sram(void **state);
+VOID test_sm_pingpong_mme_common_cp_from_sram(void **state);
+VOID test_sm_pingpong_tpc_common_cp_from_host(void **state);
+VOID test_sm_pingpong_mme_common_cp_from_host(void **state);
+VOID test_sm_sob_cleanup_on_ctx_switch(void **state);
+VOID test_sm_monitor_set_sram(void **state);
+VOID test_sm_monitor_set_hostmem(void **state);
+VOID test_signal_wait(void **state);
+VOID test_signal_wait_parallel(void **state);
+VOID test_signal_collective_wait_parallel(void **state);
+VOID test_signal_wait_dma(void **state);
+VOID test_sm_long_mode(void **state);
+VOID test_signal_collective_wait_dma(void **state);
+VOID test_print_hw_ip_info(void **state);
+VOID print_engine_name(int fd, uint32_t engine_id);
+VOID test_print_hw_idle_info(void **state);
+VOID test_print_dram_usage_info_no_stop(void **state);
+VOID test_print_device_utilization_no_stop(void **state);
+VOID test_print_clk_rate(void **state);
+VOID test_print_reset_count(void **state);
+VOID test_print_time_sync_info(void **state);
+VOID test_print_hlthunk_version(void **state);
+VOID test_print_cs_drop_statistics(void **state);
+VOID test_print_pci_counters(void **state);
+VOID test_print_clk_throttling_reason(void **state);
+VOID test_print_total_energy_consumption(void **state);
+VOID print_events_counters(void **state, bool aggregate);
+VOID test_print_events_counters(void **state);
+VOID test_print_events_counters_aggregate(void **state);
+VOID test_print_pci_bdf(void **state);
+VOID test_print_pll_info(void **state);
+VOID test_print_hw_asic_status(void **state);
+VOID test_dma_entire_sram_random(void **state);
+VOID test_dmabuf_multiple_threads(void **state, uint32_t num_of_threads,
+				uint32_t iterations, uint64_t alloc_size,
+				uint64_t access_size, bool shared_device_memory,
+				bool random_offset);
+VOID test_dmabuf_basic(void **state);
+VOID test_dmabuf_multiple_threads_non_shared_memory(void **state);
+VOID test_dmabuf_multiple_threads_shared_memory(void **state);
+VOID test_host_sram_perf(void **state);
+VOID test_sram_host_perf(void **state);
+VOID test_host_dram_perf(void **state);
+VOID test_dram_host_perf(void **state);
+VOID test_sram_dram_single_ch_perf(void **state);
+VOID test_dram_sram_single_ch_perf(void **state);
+VOID test_dram_dram_single_ch_perf(void **state);
+VOID test_sram_dram_multi_ch_perf(void **state);
+VOID test_dram_sram_multi_ch_perf(void **state);
+VOID test_dram_dram_multi_ch_perf(void **state);
+VOID test_sram_dram_bidirectional_full_multi_ch_perf(void **state);
+VOID test_dram_sram_5ch_perf(void **state);
+VOID test_host_sram_bidirectional_perf(void **state);
+VOID test_host_dram_bidirectional_perf(void **state);
+VOID test_map_bigger_than_4GB(void **state);
+VOID allocate_device_mem_until_full(void **state,
+					enum hltests_contiguous contigouos);
+VOID alloc_device_mem_scrubbed(void **state,
+		enum hltests_contiguous contigouos);
+VOID test_alloc_device_mem_until_full(void **state);
+VOID test_alloc_device_mem_until_full_contiguous(void **state);
+VOID test_alloc_device_mem_scrubbed(void **state);
+VOID test_alloc_device_mem_scrubbed_contiguous(void **state);
+VOID test_submit_after_unmap(void **state);
+VOID test_submit_and_close(void **state);
+VOID test_hint_addresses(void **state);
+VOID test_dmmu_hint_address(void **state);
+VOID test_pmmu_hint_address(void **state, bool is_huge);
+VOID test_pmmu_hint_address_regular_page(void **state);
+VOID test_pmmu_hint_address_huge_page(void **state);
+VOID test_dma_threads(void **state, uint32_t num_of_threads);
+VOID test_dma_8_threads(void **state);
+VOID test_dma_64_threads(void **state);
+VOID test_dma_512_threads(void **state);
+VOID dma_4_queues(void **state, bool sram_only);
+VOID test_dma_4_queues(void **state);
+VOID test_dma_4_queues_sram_only(void **state);
+VOID test_lbw_scan(void **state);
+VOID test_debug_mode(void **state);
+VOID hltest_bench_host_map_expected(struct hltests_state *tests_state,
+					uint64_t n_allocs, uint64_t alloc_size,
+					enum hltests_huge huge,
+					uint64_t n_maps, uint64_t n_unmaps,
+					enum hltests_random random,
+					uint32_t n_iter,
+					bool disabled_test,
+					bool validate_exp,
+					const char *test_name);
+VOID test_bench_mappings_custom(void **state);
+VOID submit_cs_nop(void **state, int num_of_pqe,
+				uint16_t wait_after_submit_cnt);
+VOID test_cs_nop(void **state);
+VOID test_cs_nop_16PQE(void **state);
+VOID test_cs_nop_32PQE(void **state);
+VOID test_cs_nop_48PQE(void **state);
+VOID test_cs_nop_64PQE(void **state);
+VOID test_and_measure_wait_after_submit_cs_nop(void **state);
+VOID test_and_measure_wait_after_64_submit_cs_nop(void **state);
+VOID test_and_measure_wait_after_256_submit_cs_nop(void **state);
+VOID test_cs_msg_long(void **state);
+VOID test_cs_msg_long_2000(void **state);
+VOID test_cs_two_streams_with_fence(void **state);
+VOID hltests_cs_two_streams_arb_point(int fd,
+					     struct hltests_arb_info *arb_info,
+					     uint64_t *host_data_va,
+					     uint64_t *device_data_addr,
+					     uint16_t sob_id,
+					     uint16_t *mon_id,
+					     uint32_t dma_size,
+					     bool ds_direction);
+VOID test_cs_two_streams_with_arb(void **state);
+VOID test_cs_two_streams_with_priority_arb(void **state);
+VOID test_cs_two_streams_with_wrr_arb(void **state);
+VOID test_cs_cq_wrap_around(void **state);
+VOID test_cs_load_predicates(void **state, bool is_consecutive_map);
+VOID test_cs_load_pred_non_consecutive_map(void **state);
+VOID test_cs_load_pred_consecutive_map(void **state);
+VOID load_scalars_and_exe_4_rfs(int fd, uint64_t scalar_buf_sram_addr,
+					uint64_t cb_sram_addr,
+					uint64_t msg_long_dst_sram_addr,
+					uint64_t host_data_device_va,
+					bool is_separate_exe);
+VOID test_cs_load_scalars_exe_4_rfs(void **state);
+VOID load_scalars_and_exe_2_rfs(int fd, uint64_t scalar_buf_sram_addr,
+					uint64_t cb_sram_addr, uint16_t sob0,
+					uint16_t mon0, bool is_upper_rfs,
+					bool is_separate_exe);
+VOID test_cs_load_scalars_exe_2_rfs(void **state, bool is_upper_rfs);
+VOID test_cs_load_scalars_exe_lower_2_rfs(void **state);
+VOID test_cs_load_scalars_exe_upper_2_rfs(void **state);
+VOID test_cs_cb_list(void **state);
+VOID test_cs_cb_list_with_parallel_pqe(void **state);
+VOID test_cs_drop(void **state);
+VOID test_wait_for_cs_with_timestamp(void **state);
+VOID test_staged_submission_256_threads(void **state);
+VOID test_wait_for_interrupt(void **state);
+VOID dma_entire_dram_random(void **state, uint64_t zone_size,
+			uint64_t dma_size);
+VOID test_dma_entire_dram_random_256KB(void **state);
+VOID test_dma_entire_dram_random_512KB(void **state);
+VOID test_dma_entire_dram_random_1MB(void **state);
+VOID test_dma_entire_dram_random_2MB(void **state);
+VOID cb_create_mmap_unmap_destroy(void **state, uint32_t size,
+					bool unmap, bool destroy);
+VOID test_cb_mmap(void **state);
+VOID test_cb_unaligned_size(void **state);
+VOID test_cb_small_unaligned_odd_size(void **state);
+VOID test_cb_unaligned_odd_size(void **state);
+VOID test_cb_skip_unmap(void **state);
+VOID test_cb_skip_unmap_and_destroy(void **state);
+VOID test_cb_unalign(void **state);
+VOID submit_unalign_device_common_cb(int fd, void *upper_cb,
+				uint64_t host_buf_va, int offset,
+				bool sram_test);
+VOID submit_unalign_host_common_cb(int fd, void *upper_cb,
+				uint64_t host_buf_va, int offset);
+VOID test_common_cb_unalign(void **state);
+VOID test_cb_kernel_mapped(void **state);
+VOID test_error_injection_endless_command(void **state);
+VOID test_error_injection_non_fatal_event(void **state);
+VOID test_error_injection_fatal_event(void **state);
+VOID test_error_injection_heartbeat(void **state);
+VOID test_error_injection_thermal_event(void **state);
+VOID test_dma_all2all_dram2sram(void **state);
+VOID test_dma_all2all_dram2dram(void **state);
 
 #endif /* HLTHUNK_TESTS_H */

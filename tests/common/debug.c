@@ -17,7 +17,7 @@
 #include <errno.h>
 #include <unistd.h>
 
-static VOID test_tdr_deadlock(void **state)
+VOID test_tdr_deadlock(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hltests_pkt_info pkt_info;
@@ -40,10 +40,10 @@ static VOID test_tdr_deadlock(void **state)
 				DESTROY_CB_FALSE, HL_WAIT_CS_STATUS_TIMEDOUT);
 
 	/* no need to destroy the CB because the device is in reset */
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_endless_memory_ioctl(void **state)
+VOID test_endless_memory_ioctl(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	void *src_ptr;
@@ -63,111 +63,7 @@ static VOID test_endless_memory_ioctl(void **state)
 		usleep(1000);
 	}
 
-	END_TEST
-}
-
-static VOID test_print_hw_ip_info(void **state)
-{
-	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	struct hlthunk_hw_ip_info hw_ip;
-	int rc, fd = tests_state->fd;
-
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
-	printf("\nDevice information:");
-	printf("\n-----------------------");
-	printf("\nDevice id            : 0x%x", hw_ip.device_id);
-	printf("\nDRAM enabled         : %d", hw_ip.dram_enabled);
-	printf("\nDRAM base address    : 0x%lx", hw_ip.dram_base_address);
-	printf("\nDRAM size            : %lu (0x%lx)", hw_ip.dram_size,
-							hw_ip.dram_size);
-	printf("\nSRAM base address    : 0x%lx", hw_ip.sram_base_address);
-	printf("\nSRAM size            : %u (0x%x)", hw_ip.sram_size,
-							hw_ip.sram_size);
-	printf("\nTPC enabled mask     : 0x%x", hw_ip.tpc_enabled_mask);
-
-	if (hltests_is_gaudi(fd))
-		printf("\nModule ID            : %d\n", hw_ip.module_id);
-
-	printf("\n\n");
-
-	END_TEST
-}
-
-static VOID print_engine_name(enum hlthunk_device_name device_id,
-					uint32_t engine_id)
-{
-	if (device_id == HLTHUNK_DEVICE_GOYA) {
-		switch (engine_id) {
-		case GOYA_ENGINE_ID_DMA_0 ... GOYA_ENGINE_ID_DMA_4:
-			printf("  DMA%d\n", engine_id - GOYA_ENGINE_ID_DMA_0);
-			break;
-		case GOYA_ENGINE_ID_MME_0:
-			printf("  MME\n");
-			break;
-		case GOYA_ENGINE_ID_TPC_0 ... GOYA_ENGINE_ID_TPC_7:
-			printf("  TPC%d\n", engine_id - GOYA_ENGINE_ID_TPC_0);
-			break;
-		default:
-			fail_msg("Unexpected engine id %d\n", engine_id);
-		}
-	} else if (device_id == HLTHUNK_DEVICE_GAUDI) {
-		switch (engine_id) {
-		case GAUDI_ENGINE_ID_DMA_0 ... GAUDI_ENGINE_ID_DMA_7:
-			printf("  DMA%d\n", engine_id - GAUDI_ENGINE_ID_DMA_0);
-			break;
-		case GAUDI_ENGINE_ID_MME_0 ... GAUDI_ENGINE_ID_MME_3:
-			printf("  MME%d\n", engine_id - GAUDI_ENGINE_ID_MME_0);
-			break;
-		case GAUDI_ENGINE_ID_TPC_0 ... GAUDI_ENGINE_ID_TPC_7:
-			printf("  TPC%d\n", engine_id - GAUDI_ENGINE_ID_TPC_0);
-			break;
-		case GAUDI_ENGINE_ID_NIC_0 ... GAUDI_ENGINE_ID_NIC_9:
-			printf("  NIC%d\n", engine_id - GAUDI_ENGINE_ID_NIC_0);
-			break;
-		default:
-			fail_msg("Unexpected engine id %d\n", engine_id);
-		}
-	} else {
-		fail_msg("Unexpected device id %d\n", device_id);
-	}
-
-	END_TEST
-}
-
-static VOID test_print_hw_idle_info(void **state)
-{
-	struct hlthunk_engines_idle_info idle_info;
-	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	enum hlthunk_device_name device_id;
-	uint64_t i;
-	bool is_idle;
-	int rc, fd = tests_state->fd;
-
-	printf("\n");
-	printf("Idle status\n");
-	printf("-----------\n");
-
-	is_idle = hlthunk_is_device_idle(fd);
-	if (is_idle) {
-		printf("Device is idle\n");
-		goto out;
-	}
-
-	rc = hlthunk_get_busy_engines_mask(fd, &idle_info);
-	assert_int_equal(rc, 0);
-
-	device_id = hlthunk_get_device_name_from_fd(fd);
-
-	printf("Busy engine(s):\n");
-	for (i = 0 ; i < sizeof(idle_info.mask) * CHAR_BIT ; i++)
-		if (idle_info.mask[i >> 6] & (1ull << (i & 0x3f)))
-			print_engine_name(device_id, i);
-out:
-	printf("\n");
-
-	END_TEST
+	END_TEST;
 }
 
 struct dma_custom_cfg {
@@ -239,7 +135,7 @@ static int dma_custom_parsing_handler(void *user, const char *section,
 	return 1;
 }
 
-static VOID test_dma_custom(void **state)
+VOID test_dma_custom(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	const char *config_filename = hltests_get_config_filename();
@@ -312,7 +208,7 @@ static VOID test_dma_custom(void **state)
 		break;
 	default:
 		fail_msg("Test doesn't support DMA direction\n");
-		EXIT_FROM_TEST
+		EXIT_FROM_TEST;
 	}
 
 	if (cfg.chunk_size > cfg.size)
@@ -417,10 +313,10 @@ static VOID test_dma_custom(void **state)
 		assert_int_equal(rc, 0);
 	}
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_transfer_bigger_than_alloc(void **state)
+VOID test_transfer_bigger_than_alloc(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	void *device_ptr, *src_ptr, *ptr;
@@ -458,7 +354,7 @@ static VOID test_transfer_bigger_than_alloc(void **state)
 				DESTROY_CB_FALSE, HL_WAIT_CS_STATUS_TIMEDOUT);
 
 	/* no need to clean up because the device is in reset */
-	END_TEST
+	END_TEST;
 }
 
 struct map_custom_cfg {
@@ -497,7 +393,7 @@ static int map_custom_parsing_handler(void *user, const char *section,
 	return 1;
 }
 
-static VOID test_map_custom(void **state)
+VOID test_map_custom(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	const char *config_filename = hltests_get_config_filename();
@@ -552,10 +448,10 @@ static VOID test_map_custom(void **state)
 
 	test_tdr_deadlock(state);
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_loop_map_work_unmap(void **state)
+VOID test_loop_map_work_unmap(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -608,7 +504,7 @@ static VOID test_loop_map_work_unmap(void **state)
 	rc = hltests_destroy_cb(fd, cb);
 	assert_int_equal(rc, 0);
 
-	END_TEST
+	END_TEST;
 }
 
 static int file_descriptor_sanity_check(int fd)
@@ -620,7 +516,7 @@ static int file_descriptor_sanity_check(int fd)
 	return hlthunk_get_hw_ip_info(fd, &hw_ip);
 }
 
-static VOID test_duplicate_file_descriptor(void **state)
+VOID test_duplicate_file_descriptor(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	enum hlthunk_device_name device_name;
@@ -679,10 +575,10 @@ static VOID test_duplicate_file_descriptor(void **state)
 	 */
 	tests_state->fd = fd_new;
 
-	END_TEST
+	END_TEST;
 }
 
-static VOID test_page_miss(void **state)
+VOID test_page_miss(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -726,7 +622,7 @@ static VOID test_page_miss(void **state)
 	free(dst_ptr);
 	free(src_ptr);
 
-	END_TEST
+	END_TEST;
 }
 
 struct register_security_cfg {
@@ -763,7 +659,7 @@ static int register_security_parsing_handler(void *user, const char *section,
 	return 1;
 }
 
-static VOID test_register_security(void **state)
+VOID test_register_security(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	const char *config_filename = hltests_get_config_filename();
@@ -807,7 +703,7 @@ static VOID test_register_security(void **state)
 
 		END_TEST_FUNC(hltests_submit_and_wait_cs(fd, cb, cb_size,
 				cfg.qid, DESTROY_CB_TRUE,
-				HL_WAIT_CS_STATUS_COMPLETED);)
+				HL_WAIT_CS_STATUS_COMPLETED));
 	} else {
 		pkt_info.msg_long.address = cfg.reg_addr;
 		pkt_info.msg_long.value = cfg.value;
@@ -816,10 +712,10 @@ static VOID test_register_security(void **state)
 
 		END_TEST_FUNC(hltests_submit_and_wait_cs(fd, cb, cb_size,
 				hltests_get_dma_down_qid(fd, STREAM0),
-				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);)
+				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED));
 	}
 
-	END_TEST
+	END_TEST;
 }
 
 #ifndef HLTESTS_LIB_MODE
@@ -828,10 +724,6 @@ const struct CMUnitTest debug_tests[] = {
 	cmocka_unit_test_setup(test_tdr_deadlock,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_endless_memory_ioctl,
-				hltests_ensure_device_operational),
-	cmocka_unit_test_setup(test_print_hw_ip_info,
-				hltests_ensure_device_operational),
-	cmocka_unit_test_setup(test_print_hw_idle_info,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_dma_custom,
 				hltests_ensure_device_operational),
