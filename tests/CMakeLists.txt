@@ -2,7 +2,7 @@
 
 project(libhl-thunk-tests C)
 
-set(HLTHUNK_TESTS_LIBRARY hlthunk-tests)
+set(HLTHUNK_TESTS_LIBRARY hl-thunk-tests)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")
 
 add_definitions(-DHLTHUNK_BUILD_PATH="${CMAKE_BUILD_PATH}")
