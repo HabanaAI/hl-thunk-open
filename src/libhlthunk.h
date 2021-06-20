@@ -147,7 +147,8 @@ int hlthunk_profiler_get_trace_original(int fd, void *buffer, uint64_t *size,
 void hlthunk_profiler_destroy_original(void);
 uint64_t hlthunk_host_memory_map_original(int fd, void *host_virt_addr,
 					  uint64_t hint_addr,
-					  uint64_t host_size);
+					  uint64_t host_size,
+					  uint32_t flags);
 int hlthunk_memory_unmap_original(int fd, uint64_t device_virt_addr);
 int hlthunk_get_hw_block_original(int fd, uint64_t block_address,
 					uint32_t *block_size, uint64_t *handle);

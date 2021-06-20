@@ -194,7 +194,8 @@ struct hlthunk_functions_pointers {
 							uint64_t hint_addr);
 	uint64_t (*fp_hlthunk_host_memory_map)(int fd, void *host_virt_addr,
 						uint64_t hint_addr,
-						uint64_t host_size);
+						uint64_t host_size,
+						uint32_t flags);
 	int (*fp_hlthunk_memory_unmap)(int fd, uint64_t device_virt_addr);
 	int (*fp_hlthunk_debug)(int fd, struct hl_debug_args *debug);
 	int (*fp_hlthunk_request_command_buffer)(int fd, uint32_t cb_size,
@@ -808,6 +809,24 @@ hlthunk_public uint64_t hlthunk_device_memory_map(int fd, uint64_t handle,
 hlthunk_public uint64_t hlthunk_host_memory_map(int fd, void *host_virt_addr,
 						uint64_t hint_addr,
 						uint64_t host_size);
+
+/**
+ * This function asks the driver to map a previously allocated host memory
+ * to the device's MMU and to allocate for it a VA in the device address space.
+ * In this variation the function allows to specify custom flags for memory map.
+ * @param fd file descriptor of the device that this memory will be mapped to
+ * @param host_virt_addr the user's VA of memory area on the host
+ * @param hint_addr the user can request from the driver that the device VA will
+ * be a specific address. The driver doesn't have to comply to this request but
+ * will take it under consideration
+ * @param host_size the size of the memory area
+ * @param flags custom flags for the memory map
+ * @return VA in the device address space. 0 is returned upon failure
+ */
+hlthunk_public uint64_t hlthunk_host_memory_map_flags(int fd, void *host_virt_addr,
+						uint64_t hint_addr,
+						uint64_t host_size,
+						uint32_t flags);
 
 /**
  * This function unmaps a mapping in the device's MMU that was previously done

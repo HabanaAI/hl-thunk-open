@@ -1684,7 +1684,8 @@ hlthunk_public uint64_t hlthunk_device_memory_map(int fd, uint64_t handle,
 hlthunk_public uint64_t hlthunk_host_memory_map_original(int fd,
 						void *host_virt_addr,
 						uint64_t hint_addr,
-						uint64_t host_size)
+						uint64_t host_size,
+						uint32_t flags)
 {
 	union hl_mem_args ioctl_args;
 	int rc;
@@ -1693,7 +1694,7 @@ hlthunk_public uint64_t hlthunk_host_memory_map_original(int fd,
 	ioctl_args.in.map_host.host_virt_addr = (uint64_t) host_virt_addr;
 	ioctl_args.in.map_host.mem_size = host_size;
 	ioctl_args.in.map_host.hint_addr = hint_addr;
-	ioctl_args.in.flags = HL_MEM_USERPTR;
+	ioctl_args.in.flags = flags | HL_MEM_USERPTR;
 	ioctl_args.in.op = HL_MEM_OP_MAP;
 
 	rc = hlthunk_ioctl(fd, HL_IOCTL_MEMORY, &ioctl_args);
@@ -1707,8 +1708,18 @@ hlthunk_public uint64_t hlthunk_host_memory_map(int fd, void *host_virt_addr,
 						uint64_t hint_addr,
 						uint64_t host_size)
 {
+	return hlthunk_host_memory_map_flags(
+			fd, host_virt_addr, hint_addr, host_size, 0);
+}
+
+hlthunk_public uint64_t hlthunk_host_memory_map_flags(int fd,
+							void *host_virt_addr,
+							uint64_t hint_addr,
+							uint64_t host_size,
+							uint32_t flags)
+{
 	return (*functions_pointers_table->fp_hlthunk_host_memory_map)(
-			fd, host_virt_addr, hint_addr, host_size);
+			fd, host_virt_addr, hint_addr, host_size, flags);
 }
 
 hlthunk_public int hlthunk_memory_unmap_original(int fd,
