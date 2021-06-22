@@ -2935,6 +2935,45 @@ int hltests_clear_sobs(int fd, uint16_t num_of_sobs)
 
 }
 
+void *hltests_map_hw_block(int fd, uint64_t block_addr, uint32_t *block_size)
+{
+	uint64_t handle;
+	void *ptr;
+	int rc;
+
+	if (hltests_is_simulator(fd)) {
+		*block_size = 0;
+		return (void *) block_addr;
+	}
+
+	rc = hlthunk_get_hw_block(fd, block_addr, block_size, &handle);
+	if (rc) {
+		printf(
+			"Failed to retrieve a HW block handle [block_address 0x%"PRIx64", rc %d]\n",
+			block_addr, rc);
+		return NULL;
+	}
+
+	ptr = mmap(NULL, *block_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd,
+			handle);
+	if (ptr == MAP_FAILED) {
+		printf(
+			"Failed to mmap a HW block handle [block_address 0x%"PRIx64", rc %d]\n",
+			block_addr, rc);
+		ptr = NULL;
+	}
+
+	return ptr;
+}
+
+int hltests_unmap_hw_block(int fd, void *host_addr, uint32_t block_size)
+{
+	if (hltests_is_simulator(fd))
+		return 0;
+
+	return munmap(host_addr, block_size);
+}
+
 double get_timediff_sec(struct timespec *begin, struct timespec *end)
 {
 	return (end->tv_nsec - begin->tv_nsec) / 1000000000.0 +
