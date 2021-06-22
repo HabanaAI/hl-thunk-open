@@ -698,6 +698,9 @@ int test_sm_pingpong_common_cp(void **state, bool is_tpc,
 int hltests_clear_sobs(int fd, uint16_t num_of_sobs);
 void hltests_clear_sobs_offset(int fd, uint16_t num_of_sobs, uint16_t offset);
 
+void *hltests_map_hw_block(int fd, uint64_t block_addr, uint32_t *block_size);
+int hltests_unmap_hw_block(int fd, void *host_addr, uint32_t block_size);
+
 /* Generic memory addresses pool */
 void *hltests_mem_pool_init(uint64_t start_addr, uint64_t size, uint8_t order);
 void hltests_mem_pool_fini(void *data);
