@@ -170,6 +170,18 @@ struct hlthunk_hw_asic_status {
 	uint8_t valid;
 };
 
+struct hlthunk_wait_multi_cs_in {
+	uint64_t *seq;
+	uint64_t timeout_us;
+	uint32_t seq_len;
+};
+
+struct hlthunk_wait_multi_cs_out {
+	uint32_t status;
+	uint32_t seq_set;
+	uint8_t completed;
+};
+
 struct hlthunk_functions_pointers {
 	/*
 	 * Functions that will be wrapped with profiler code to enable
@@ -653,11 +665,38 @@ hlthunk_public int hlthunk_wait_for_cs(int fd, uint64_t seq,
  * value is 0, the driver won't sleep at all. It will check the status of the
  * CS and return immediately
  * @param status pointer to uint32_t to store the wait status
- * @timestamp: nanoseconds timestamp recorded once cs is completed
+ * @param timestamp nanoseconds timestamp recorded once cs is completed
  * @return 0 for success, negative value for failure
  */
 hlthunk_public int hlthunk_wait_for_cs_with_timestamp(int fd, uint64_t seq,
 					uint64_t timeout_us, uint32_t *status,
+					uint64_t *timestamp);
+
+/**
+ * This function waits until at least one command submission from a sequence
+ * of command submissions of a specific device has finished executing
+ * @param fd file descriptor handle of habanalabs main device
+ * @param in pointer to a wait for multi CS input structure
+ * @param out pointer to a wait for multi CS output structure
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_wait_for_multi_cs(int fd,
+					struct hlthunk_wait_multi_cs_in *in,
+					struct hlthunk_wait_multi_cs_out *out);
+
+/**
+ * This function waits until at least one command submission from a sequence
+ * of command submissions of a specific device has finished executing
+ * @param fd file descriptor handle of habanalabs main device
+ * @param in pointer to a wait for multi CS input structure
+ * @param out pointer to a wait for multi CS output structure
+ * @param timestamp nanoseconds timestamp of the first CS to be completed. set
+ * to zero if the timestamp cannot be determined.
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_wait_for_multi_cs_with_timestamp(int fd,
+					struct hlthunk_wait_multi_cs_in *in,
+					struct hlthunk_wait_multi_cs_out *out,
 					uint64_t *timestamp);
 
 /**
