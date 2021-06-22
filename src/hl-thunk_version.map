@@ -78,4 +78,6 @@ HLTNK_1.1 {
 	hlthunk_wait_for_signal_timeout;
 	hlthunk_get_hw_asic_status;
 	hlthunk_host_memory_map_flags;
+	hlthunk_wait_for_multi_cs;
+	hlthunk_wait_for_multi_cs_with_timestamp;
 } HLTNK_1.0;

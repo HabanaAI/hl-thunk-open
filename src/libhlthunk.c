@@ -1582,6 +1582,62 @@ hlthunk_public int hlthunk_wait_for_cs_with_timestamp(int fd, uint64_t seq,
 	return rc;
 }
 
+static int hlthunk_wait_for_multi_cs_common(int fd, union hl_wait_cs_args *args,
+					struct hlthunk_wait_multi_cs_in *in,
+					struct hlthunk_wait_multi_cs_out *out)
+{
+	struct hl_wait_cs_in *hl_in;
+	struct hl_wait_cs_out *hl_out;
+	int rc;
+
+	memset(args, 0, sizeof(*args));
+
+	hl_in = &args->in;
+	hl_in->seq = (__u64) (uintptr_t) in->seq;
+	hl_in->seq_arr_len = in->seq_len;
+	hl_in->timeout_us = in->timeout_us;
+	hl_in->flags = HL_WAIT_CS_FLAGS_MULTI_CS;
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_WAIT_CS, args);
+
+	hl_out = &args->out;
+	out->status = hl_out->status;
+	if (!rc) {
+		out->seq_set = hl_out->cs_completion_map;
+		out->completed = (uint32_t)__builtin_popcountll(
+						hl_out->cs_completion_map);
+	}
+
+	return rc;
+}
+
+hlthunk_public int hlthunk_wait_for_multi_cs(int fd,
+					struct hlthunk_wait_multi_cs_in *in,
+					struct hlthunk_wait_multi_cs_out *out)
+{
+	union hl_wait_cs_args args;
+
+	return hlthunk_wait_for_multi_cs_common(fd, &args, in, out);
+}
+
+hlthunk_public int hlthunk_wait_for_multi_cs_with_timestamp(int fd,
+					struct hlthunk_wait_multi_cs_in *in,
+					struct hlthunk_wait_multi_cs_out *out,
+					uint64_t *timestamp)
+{
+	union hl_wait_cs_args args;
+	int rc;
+
+	*timestamp = 0;
+
+	rc = hlthunk_wait_for_multi_cs_common(fd, &args, in, out);
+
+	if (args.out.flags & HL_WAIT_CS_STATUS_FLAG_TIMESTAMP_VLD)
+		*timestamp = args.out.timestamp_nsec;
+
+	return rc;
+}
+
 hlthunk_public int hlthunk_wait_for_interrupt(int fd, void *addr,
 					uint32_t target_value,
 					uint32_t interrupt_id,
