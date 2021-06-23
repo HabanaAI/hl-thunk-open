@@ -222,6 +222,247 @@ VOID test_cs_msg_long_2000(void **state)
 				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED));
 }
 
+struct complete_multi_cs_params {
+	uint64_t *seq;
+	uint32_t seq_len;
+	int fd;
+	uint16_t sob0;
+	unsigned int sleep_us;
+};
+
+static void *multi_cs_complete_first_cs(void *data)
+{
+	struct complete_multi_cs_params *params =
+			(struct complete_multi_cs_params *) data;
+	struct hltests_pkt_info pkt_info;
+	uint32_t signal_cb_size = 0;
+	void *signal_cb;
+	int rc;
+
+	signal_cb = hltests_create_cb(params->fd, 0x1000, EXTERNAL, 0);
+	assert_non_null_ret_ptr(signal_cb);
+
+	/* signal first CS on the list */
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.write_to_sob.sob_id = params->sob0;
+	pkt_info.write_to_sob.value = 1;
+	pkt_info.write_to_sob.mode = SOB_SET;
+	signal_cb_size = hltests_add_write_to_sob_pkt(params->fd, signal_cb,
+						signal_cb_size, &pkt_info);
+
+	/*
+	 * make best effort to signal CS while "wait-for-multi-CS" is already
+	 * waiting (i.e. test the signal path and not the poll path)
+	 */
+	if (params->sleep_us)
+		usleep(params->sleep_us);
+
+	/*
+	 * we are submitting this CS to stream 1 not to cause completion
+	 * for the multi CS (pending on stream 0)
+	 */
+	rc = hltests_submit_and_wait_cs(params->fd, signal_cb, signal_cb_size,
+				hltests_get_dma_up_qid(params->fd, STREAM1),
+				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
+	assert_int_equal_ret_ptr(rc, 0);
+
+	return data;
+}
+
+VOID test_wait_for_multi_cs_common(void **state, bool do_complete)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	uint32_t mon_cb_size[HL_WAIT_MULTI_CS_LIST_MAX_LEN] = {0};
+	void *signal_cb, *mon_cb[HL_WAIT_MULTI_CS_LIST_MAX_LEN];
+	uint64_t timestamp, seq[HL_WAIT_MULTI_CS_LIST_MAX_LEN];
+	struct hltests_monitor_and_fence mon_and_fence_info;
+	struct complete_multi_cs_params mcs_params = {0};
+	struct hlthunk_wait_multi_cs_out mcs_out = {0};
+	struct hlthunk_wait_multi_cs_in mcs_in;
+	struct hltests_cs_chunk execute_arr[1];
+	struct hltests_pkt_info pkt_info;
+	int rc, i, fd = tests_state->fd;
+	uint16_t mon_base, sob0, sob1;
+	uint32_t signal_cb_size;
+	pthread_t thread_id;
+	void *retval;
+
+	if (!hltests_is_gaudi(fd)) {
+		printf("Test is skipped. Goya doesn't support multi-CS\n");
+		skip();
+	}
+
+	/*
+	 * test structure: complete mode
+	 * STEP 1: HL_WAIT_MULTI_CS_LIST_MAX_LEN CSs are submitted to the
+	 *         same QID (in the main thread)
+	 *    where:
+	 *    - CS0: fence on SOB0
+	 *    - CS1-END: fence on SOB1
+	 *
+	 * STEP 2: another CS is submitted by different thread which set SOB0
+	 *         to the value that will signals CS0 on the CS list.
+	 *
+	 * STEP 3: wait for multi CS in the main thread (expect to see only
+	 *         CS0 returning the wait call)
+	 *
+	 * SETP 4: signal SOB 1 to signal all other CSs
+	 *
+	 *
+	 * test structure: poll mode
+	 * STEP 1: HL_WAIT_MULTI_CS_LIST_MAX_LEN CSs are submitted to the
+	 *         same QID (in the main thread)
+	 *    where:
+	 *    - CS0: no fence
+	 *    - CS1-END: fence on SOB1
+	 *
+	 * STEP 2: wait for CS0 to complete (to make sure the poll will succeed)
+	 *
+	 * STEP 3: wait for multi CS in the main thread (expect to see only
+	 *         CS0 returning the wait call)
+	 *
+	 * SETP 4: signal SOB 1 to signal all other CSs
+	 */
+
+	sob0 = hltests_get_first_avail_sob(fd);
+	sob1 = sob0 + 1;
+	hltests_clear_sobs(fd, 2);
+	mon_base = hltests_get_first_avail_mon(fd);
+
+	/*
+	 * init all CSs to wait on SOB:
+	 * 1. CS0 waits on SOB0
+	 * 2. all other CSs waits on SOB1
+	 */
+	for (i = 0; i < HL_WAIT_MULTI_CS_LIST_MAX_LEN; i++) {
+		mon_cb[i] = hltests_create_cb(fd, 0x1000, EXTERNAL, 0);
+		assert_non_null(mon_cb[i]);
+
+		/*
+		 * In case we want to get completion by polling we do not hold
+		 * CS0 on a fence.
+		 * all other CSs are waiting on a fence
+		 * In any case, if we want to get actual completion the first
+		 * CS fences on difference monitor than other CSs on
+		 * the list
+		 */
+		if (!((i == 0) && !do_complete)) {
+			memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
+			mon_and_fence_info.queue_id = hltests_get_dma_down_qid(fd, STREAM0);
+			mon_and_fence_info.cmdq_fence = false;
+			mon_and_fence_info.sob_id = (i == 0) ? sob0 : sob1;
+			mon_and_fence_info.mon_id = mon_base + i;
+			mon_and_fence_info.mon_address = 0;
+			mon_and_fence_info.sob_val = 1;
+			mon_and_fence_info.dec_fence = true;
+			mon_and_fence_info.mon_payload = 1;
+			mon_cb_size[i] = hltests_add_monitor_and_fence(fd, mon_cb[i],
+							0, &mon_and_fence_info);
+		}
+
+		mon_cb_size[i] = hltests_add_nop_pkt(fd, mon_cb[i],
+						mon_cb_size[i], EB_FALSE,
+						MB_FALSE);
+
+		/* First CS: Submit CB of stream 0 */
+		execute_arr[0].cb_ptr = mon_cb[i];
+		execute_arr[0].cb_size = mon_cb_size[i];
+		execute_arr[0].queue_index =
+					hltests_get_dma_down_qid(fd, STREAM0);
+		rc = hltests_submit_cs_timeout(fd, NULL, 0, execute_arr, 1, 0,
+								30, &seq[i]);
+		assert_int_equal(rc, 0);
+	}
+
+	if (do_complete) {
+		/* in case we want the multi-CS to complete with completion
+		 * (not by polling) we use thread that wait (hopefully) till
+		 * CS0 is waiting on the fence and then wake the call by
+		 * completion
+		 */
+
+		/* update multi-CS params */
+		mcs_params.seq = seq;
+		mcs_params.seq_len = HL_WAIT_MULTI_CS_LIST_MAX_LEN;
+		mcs_params.sob0 = sob0;
+		mcs_params.fd = fd;
+		mcs_params.sleep_us = 500000;
+		rc = pthread_create(&thread_id, NULL, multi_cs_complete_first_cs,
+									&mcs_params);
+		assert_int_equal(rc, 0);
+	} else {
+		/*
+		 * in case we want to test the poll flow we make sure CS0 is
+		 * completed before waiting on multi CS
+		 */
+		rc = hltests_wait_for_cs_until_not_busy(fd, seq[0]);
+		assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
+	}
+
+	mcs_in.seq = seq;
+	mcs_in.timeout_us = WAIT_FOR_CS_DEFAULT_TIMEOUT;
+	mcs_in.seq_len = HL_WAIT_MULTI_CS_LIST_MAX_LEN;
+	rc = hlthunk_wait_for_multi_cs_with_timestamp(fd, &mcs_in, &mcs_out,
+								&timestamp);
+
+	/* we expect only CS0 to be completed */
+	assert_int_equal(rc, 0);
+	assert_int_equal(mcs_out.completed, 1);
+	assert_int_equal(mcs_out.seq_set, (uint32_t)(0x1));
+	assert_int_equal(mcs_out.status, HL_WAIT_CS_STATUS_COMPLETED);
+
+	/* wait for thread completion only if we do completion */
+	if (do_complete) {
+		rc = pthread_join(thread_id, &retval);
+		assert_int_equal(rc, 0);
+		assert_non_null(retval);
+	}
+
+	signal_cb = hltests_create_cb(fd, 0x1000, EXTERNAL, 0);
+	assert_non_null(signal_cb);
+	signal_cb_size = 0;
+
+	/* signal the reset of CSs on the list */
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.write_to_sob.sob_id = sob1;
+	pkt_info.write_to_sob.value = 1;
+	pkt_info.write_to_sob.mode = SOB_SET;
+	signal_cb_size = hltests_add_write_to_sob_pkt(fd, signal_cb,
+					signal_cb_size, &pkt_info);
+
+	rc = hltests_submit_and_wait_cs(fd, signal_cb, signal_cb_size,
+			hltests_get_dma_up_qid(fd, STREAM0),
+				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
+	assert_int_equal(rc, 0);
+
+	/* wait for all other CSs */
+	for (i = 1; i < HL_WAIT_MULTI_CS_LIST_MAX_LEN; i++) {
+		rc = hltests_wait_for_cs_until_not_busy(fd, seq[i]);
+		assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
+	}
+
+	for (i = 0; i < HL_WAIT_MULTI_CS_LIST_MAX_LEN; i++) {
+		rc = hltests_destroy_cb(fd, mon_cb[i]);
+		assert_int_equal(rc, 0);
+	}
+
+	END_TEST;
+}
+
+VOID test_wait_for_multi_cs_complete(void **state)
+{
+	END_TEST_FUNC(test_wait_for_multi_cs_common(state, true));
+}
+
+VOID test_wait_for_multi_cs_poll(void **state)
+{
+	END_TEST_FUNC(test_wait_for_multi_cs_common(state, false));
+}
+
 VOID test_cs_two_streams_with_fence(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
@@ -1993,6 +2234,10 @@ const struct CMUnitTest cs_tests[] = {
 	cmocka_unit_test_setup(test_wait_for_cs_with_timestamp,
 					hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_staged_submission_256_threads,
+					hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_wait_for_multi_cs_complete,
+					hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_wait_for_multi_cs_poll,
 					hltests_ensure_device_operational)
 };
 
