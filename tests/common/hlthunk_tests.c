@@ -20,6 +20,7 @@
 #include <time.h>
 #include <inttypes.h>
 #include <sys/ioctl.h>
+#include <xmmintrin.h>
 
 #ifndef MAP_HUGE_2MB
 	#define MAP_HUGE_2MB    (21 << MAP_HUGE_SHIFT)
@@ -2970,6 +2971,29 @@ int hltests_unmap_hw_block(int fd, void *host_addr, uint32_t block_size)
 		return 0;
 
 	return munmap(host_addr, block_size);
+}
+
+int hltests_read_lbw_mem(int fd, void *dst, void *src, uint32_t size)
+{
+	memcpy(dst, src, size);
+	return 0;
+}
+
+int hltests_write_lbw_mem(int fd, void *dst, void *src, uint32_t size)
+{
+	_mm_sfence();
+	memcpy(dst, src, size);
+	return 0;
+}
+
+int hltests_read_lbw_reg(int fd, void *src, uint32_t *value)
+{
+	return hltests_read_lbw_mem(fd, value, src, sizeof(*value));
+}
+
+int hltests_write_lbw_reg(int fd, void *dst, uint32_t value)
+{
+	return hltests_write_lbw_mem(fd, dst, &value, sizeof(value));
 }
 
 double get_timediff_sec(struct timespec *begin, struct timespec *end)
