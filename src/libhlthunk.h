@@ -102,7 +102,9 @@ do { \
 	.fp_hlthunk_staged_cs_timeout = \
 		hlthunk_staged_command_submission_timeout_original,\
 	.fp_hlthunk_get_hw_block = hlthunk_get_hw_block_original,\
-	.fp_hlthunk_wait_for_interrupt = hlthunk_wait_for_interrupt\
+	.fp_hlthunk_wait_for_interrupt = hlthunk_wait_for_interrupt,\
+	.fp_hlthunk_host_memory_map_flags = \
+		hlthunk_host_memory_map_flags_original\
 }
 
 int hlthunk_command_submission_original(int fd, struct hlthunk_cs_in *in,
@@ -146,6 +148,9 @@ int hlthunk_profiler_get_trace_original(int fd, void *buffer, uint64_t *size,
 					uint64_t *num_entries);
 void hlthunk_profiler_destroy_original(void);
 uint64_t hlthunk_host_memory_map_original(int fd, void *host_virt_addr,
+					  uint64_t hint_addr,
+					  uint64_t host_size);
+uint64_t hlthunk_host_memory_map_flags_original(int fd, void *host_virt_addr,
 					  uint64_t hint_addr,
 					  uint64_t host_size,
 					  uint32_t flags);
