@@ -206,8 +206,7 @@ struct hlthunk_functions_pointers {
 							uint64_t hint_addr);
 	uint64_t (*fp_hlthunk_host_memory_map)(int fd, void *host_virt_addr,
 						uint64_t hint_addr,
-						uint64_t host_size,
-						uint32_t flags);
+						uint64_t host_size);
 	int (*fp_hlthunk_memory_unmap)(int fd, uint64_t device_virt_addr);
 	int (*fp_hlthunk_debug)(int fd, struct hl_debug_args *debug);
 	int (*fp_hlthunk_request_command_buffer)(int fd, uint32_t cb_size,
@@ -270,6 +269,10 @@ struct hlthunk_functions_pointers {
 					struct hlthunk_cs_in *in,
 					struct hlthunk_cs_out *out,
 					uint32_t timeout);
+	uint64_t (*fp_hlthunk_host_memory_map_flags)(int fd, void *host_virt_addr,
+						uint64_t hint_addr,
+						uint64_t host_size,
+						uint32_t flags);
 };
 
 struct hlthunk_debugfs {
