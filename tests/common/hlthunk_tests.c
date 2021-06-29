@@ -2102,7 +2102,7 @@ int hltests_dma_transfer(int fd, uint32_t queue_index, enum hltests_eb eb,
 	void *ptr;
 	struct hltests_pkt_info pkt_info;
 
-	ptr = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
+	ptr = hltests_create_cb(fd, 0x1000, EXTERNAL, 0);
 	assert_non_null(ptr);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
@@ -2114,10 +2114,8 @@ int hltests_dma_transfer(int fd, uint32_t queue_index, enum hltests_eb eb,
 	pkt_info.dma.dma_dir = dma_dir;
 	offset = hltests_add_dma_pkt(fd, ptr, offset, &pkt_info);
 
-	hltests_submit_and_wait_cs(fd, ptr, offset, queue_index,
+	return hltests_submit_and_wait_cs(fd, ptr, offset, queue_index,
 				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
-
-	return 0;
 }
 
 int hltests_dma_dram_frag_mem_test(void **state, uint64_t size)
