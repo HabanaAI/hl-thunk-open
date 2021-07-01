@@ -419,7 +419,7 @@ VOID dma_entire_dram_random(void **state, uint64_t zone_size,
 	/* cleanup */
 	if (verbose) {
 		clock_gettime(CLOCK_MONOTONIC_RAW, &end);
-		printf("comparison took %u seconds.\ncleanup...",
+		printf("comparison took %u seconds.\ncleanup...\n",
 			(unsigned int) get_timediff_sec(&begin, &end));
 		clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
 	}
