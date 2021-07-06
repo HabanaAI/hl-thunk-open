@@ -32,6 +32,8 @@
 #define END_TEST return 0
 #define END_TEST_FUNC(a) return (a)
 #define EXIT_FROM_TEST return 0
+#define CALL_HELPER_FUNC(func) \
+		do { int _rc = (func); if (_rc) return _rc; } while (0)
 
 #define fail() return -1
 #define skip() return 0
@@ -83,6 +85,7 @@
 #define END_TEST
 #define END_TEST_FUNC(a) (a)
 #define EXIT_FROM_TEST return
+#define CALL_HELPER_FUNC(func) (func)
 
 #define fail_ret_ptr() fail()
 
