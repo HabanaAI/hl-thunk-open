@@ -30,12 +30,12 @@ VOID activate_super_stress_dma_channels(void **state,
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hltests_cs_chunk restore_arr[1], execute_arr[NUM_OF_INT_Q + 1];
-	uint32_t cb_common_size, cp_dma_cb_size[NUM_OF_INT_Q] = {0},
+	uint32_t cb_common_size, queue, cp_dma_cb_size[NUM_OF_INT_Q] = {0},
 		common_cb_buf_size[NUM_OF_INT_Q] = {0}, nop_cb_size = 0,
-		restore_cb_size = 0, queue, dma_size = 1 << 29;
+		restore_cb_size = 0;
 	uint64_t seq, common_cb_device_va[NUM_OF_INT_Q],
 		cp_dma_cb_device_va[NUM_OF_INT_Q],
-		sram_base, cp_dma_sram_addr;
+		sram_base, cp_dma_sram_addr, dma_size = 1 << 29;
 	void *restore_cb, *nop_cb, *common_cb_buf[NUM_OF_INT_Q],
 		*cp_dma_cb[NUM_OF_INT_Q];
 	struct hltests_pkt_info pkt_info;
