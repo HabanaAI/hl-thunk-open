@@ -289,10 +289,6 @@ struct hlthunk_functions_pointers {
 					struct hlthunk_cs_in *in,
 					struct hlthunk_cs_out *out,
 					uint32_t timeout);
-	uint64_t (*fp_hlthunk_host_memory_map_flags)(int fd, void *host_virt_addr,
-						uint64_t hint_addr,
-						uint64_t host_size,
-						uint32_t flags);
 	int (*fp_hlthunk_reserve_signals)(int fd,
 					struct hlthunk_sig_res_in *in,
 					struct hlthunk_sig_res_out *out);
@@ -309,6 +305,10 @@ struct hlthunk_functions_pointers {
 	int (*fp_hlthunk_wait_for_collective_reserved_encap_sig)(int fd,
 					struct hlthunk_wait_in *in,
 					struct hlthunk_wait_out *out);
+	uint64_t (*fp_hlthunk_host_memory_map_flags)(int fd, void *host_virt_addr,
+						uint64_t hint_addr,
+						uint64_t host_size,
+						uint32_t flags);
 };
 
 struct hlthunk_debugfs {
