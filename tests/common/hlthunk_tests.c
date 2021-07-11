@@ -2053,7 +2053,7 @@ int hltests_mem_compare_with_stop(void *ptr1, void *ptr2, uint64_t size,
 					bool stop_on_err)
 {
 	uint64_t *p1 = (uint64_t *) ptr1, *p2 = (uint64_t *) ptr2;
-	uint32_t err_cnt = 0, rounddown_aligned_size, remainder, i = 0;
+	uint64_t err_cnt = 0, rounddown_aligned_size, remainder, i = 0;
 
 	rounddown_aligned_size = size & ~(sizeof(uint64_t) - 1);
 	remainder = size - rounddown_aligned_size;
