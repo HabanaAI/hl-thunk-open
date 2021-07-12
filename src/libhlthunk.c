@@ -276,7 +276,7 @@ static int hlthunk_open_device_by_name(enum hlthunk_device_name device_name,
 				 * to prevent the device being removed at this
 				 * time interval.
 				 */
-				hlthunk_close(fd_ctrl);
+				hlthunk_close_original(fd_ctrl);
 				if (fd >= 0)
 					return fd;
 
@@ -291,7 +291,7 @@ static int hlthunk_open_device_by_name(enum hlthunk_device_name device_name,
 				 * leak because we will use this variable
 				 * to hold fd of the next device in this loop
 				 */
-				hlthunk_close(fd_ctrl);
+				hlthunk_close_original(fd_ctrl);
 			}
 		}
 	}
@@ -444,7 +444,7 @@ hlthunk_public int hlthunk_open_by_module_id(uint32_t module_id)
 
 		rc = hlthunk_get_hw_ip_info(ctrl_fd, &hw_ip);
 
-		hlthunk_close(ctrl_fd);
+		hlthunk_close_original(ctrl_fd);
 
 		if ((rc) || (hw_ip.module_id != module_id))
 			continue;
