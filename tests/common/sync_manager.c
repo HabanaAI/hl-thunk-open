@@ -205,13 +205,6 @@ VOID test_sm_pingpong_upper_cp(void **state, bool is_tpc,
 				"Test is skipped. Goya's common CP can't be in host\n");
 			skip();
 		}
-
-		/* This test can't run if mmu disabled */
-		if (!tests_state->mmu) {
-			printf(
-				"Test is skipped. MMU must be enabled\n");
-			skip();
-		}
 	}
 
 	/* Get device information, especially tpc enabled mask */
@@ -449,11 +442,6 @@ VOID test_sm_mme(void **state)
 	uint8_t mme_id, mme_cnt;
 	int rc, fd = tests_state->fd;
 
-	if (!tests_state->mme) {
-		printf("MME is disabled so skipping test\n");
-		skip();
-	}
-
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
@@ -493,11 +481,6 @@ VOID test_sm_pingpong_mme_upper_cp_from_sram(void **state)
 	struct hlthunk_hw_ip_info hw_ip;
 	uint8_t mme_id, mme_cnt;
 	int rc, fd = tests_state->fd;
-
-	if (!tests_state->mme) {
-		printf("MME is disabled so skipping test\n");
-		skip();
-	}
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
@@ -539,11 +522,6 @@ VOID test_sm_pingpong_mme_upper_cp_from_host(void **state)
 	uint8_t mme_id, mme_cnt;
 	int rc, fd = tests_state->fd;
 
-	if (!tests_state->mme) {
-		printf("MME is disabled so skipping test\n");
-		skip();
-	}
-
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
@@ -584,11 +562,6 @@ VOID test_sm_pingpong_mme_common_cp_from_sram(void **state)
 	uint8_t mme_id, mme_cnt;
 	int rc, fd = tests_state->fd;
 
-	if (!tests_state->mme) {
-		printf("MME is disabled so skipping test\n");
-		skip();
-	}
-
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
@@ -628,11 +601,6 @@ VOID test_sm_pingpong_mme_common_cp_from_host(void **state)
 	struct hlthunk_hw_ip_info hw_ip;
 	uint8_t mme_id, mme_cnt;
 	int rc, fd = tests_state->fd;
-
-	if (!tests_state->mme) {
-		printf("MME is disabled so skipping test\n");
-		skip();
-	}
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
@@ -917,13 +885,8 @@ static void *test_signal_wait_dma_th(void *args)
 	queue_down = hltests_get_dma_down_qid(fd, STREAM0);
 	queue_up = hltests_get_dma_up_qid(fd, STREAM0);
 
-	if (hltests_is_simulator(fd)) {
-		dma_size = 1 << 24;
-		j = 10;
-	} else {
-		dma_size = 1 << 27;
-		j = 100;
-	}
+	dma_size = 1 << 27;
+	j = 100;
 
 	dram_ptr = hltests_allocate_device_mem(fd, dma_size, CONTIGUOUS);
 	if (!dram_ptr) {
@@ -1089,8 +1052,8 @@ static VOID _test_signal_wait(void **state, bool collective_wait,
 	pthread_t *thread_id;
 	void *retval;
 
-	if (hltests_is_goya(fd) || hltests_is_pldm(fd)) {
-		printf("Test not supported on Goya/PLDM, skipping.\n");
+	if (hltests_is_goya(fd)) {
+		printf("Test not supported on Goya, skipping.\n");
 		skip();
 	}
 
@@ -1141,14 +1104,6 @@ static VOID _test_signal_wait(void **state, bool collective_wait,
 
 VOID test_signal_wait(void **state)
 {
-	int fd = ((struct hltests_state *)*state)->fd;
-
-	if (hltests_is_simulator(fd) &&
-	    !hltests_get_parser_run_disabled_tests()) {
-		printf("Test is skipped by default in simulator\n");
-		skip();
-	}
-
 	END_TEST_FUNC(_test_signal_wait(state, false, test_signal_wait_th));
 }
 

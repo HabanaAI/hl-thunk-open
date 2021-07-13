@@ -67,9 +67,6 @@ VOID submit_cs_nop(void **state, int num_of_pqe,
 	void *cb[64];
 	int rc, i, fd = tests_state->fd;
 
-	if (hltests_is_pldm(fd) && (num_of_pqe > PLDM_MAX_NUM_PQE_FOR_TESTING))
-		skip();
-
 	assert_in_range(num_of_pqe, 1, 64);
 
 	for (i = 0 ; i < num_of_pqe ; i++) {
@@ -131,34 +128,16 @@ VOID test_cs_nop_64PQE(void **state)
 
 VOID test_and_measure_wait_after_submit_cs_nop(void **state)
 {
-	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	int fd = tests_state->fd;
-
-	if (hltests_is_simulator(fd) || hltests_is_pldm(fd))
-		skip();
-
 	END_TEST_FUNC(submit_cs_nop(state, 1, 1));
 }
 
 VOID test_and_measure_wait_after_64_submit_cs_nop(void **state)
 {
-	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	int fd = tests_state->fd;
-
-	if (hltests_is_simulator(fd) || hltests_is_pldm(fd))
-		skip();
-
 	END_TEST_FUNC(submit_cs_nop(state, 1, 64));
 }
 
 VOID test_and_measure_wait_after_256_submit_cs_nop(void **state)
 {
-	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	int fd = tests_state->fd;
-
-	if (hltests_is_simulator(fd) || hltests_is_pldm(fd))
-		skip();
-
 	END_TEST_FUNC(submit_cs_nop(state, 1, 256));
 }
 
@@ -946,10 +925,7 @@ VOID test_cs_two_streams_with_priority_arb(void **state)
 	arb_info.priority[STREAM1] = 1;
 	arb_info.priority[STREAM2] = 3;
 
-	if (hltests_is_simulator(fd))
-		arb_info.arb_mst_quiet_val = ARB_MST_QUIET_PER_SIMULATOR;
-	else
-		arb_info.arb_mst_quiet_val = ARB_MST_QUIET_PER_DEFAULT;
+	arb_info.arb_mst_quiet_val = ARB_MST_QUIET_PER_DEFAULT;
 
 	/* Stream 0: Fence on SOB0 + LIN_DMA from host src0 to SRAM */
 	/* Stream 1: Fence on SOB0 + LIN_DMA from host src1 to SRAM */
@@ -1017,27 +993,6 @@ VOID test_cs_two_streams_with_priority_arb(void **state)
 	rc = hltests_mem_compare(src_data[0], dst_data, dma_size);
 	assert_int_equal(rc, 0);
 
-	if (hltests_is_simulator(fd)) {
-		void *cb_arbiter;
-		uint32_t cb_arbiter_size = 0;
-
-		/* Restore arb_mst_quiet register value */
-		cb_arbiter = hltests_create_cb(fd, 0x1000, EXTERNAL, 0);
-		assert_non_null(cb_arbiter);
-
-		memset(&pkt_info, 0, sizeof(pkt_info));
-		pkt_info.eb = EB_FALSE;
-		pkt_info.mb = MB_FALSE;
-		arb_info.arb_mst_quiet_val = ARB_MST_QUIET_PER_DEFAULT;
-		cb_arbiter_size = hltests_add_arb_en_pkt(fd, cb_arbiter,
-				cb_arbiter_size, &pkt_info, &arb_info,
-				hltests_get_dma_down_qid(fd, STREAM0), true);
-
-		hltests_submit_and_wait_cs(fd, cb_arbiter, cb_arbiter_size,
-				hltests_get_dma_down_qid(fd, STREAM0),
-				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
-	}
-
 	for (i = 0 ; i < 3 ; i++) {
 		rc = hltests_free_host_mem(fd, data[i]);
 		assert_int_equal(rc, 0);
@@ -1061,12 +1016,6 @@ VOID test_cs_two_streams_with_wrr_arb(void **state)
 	/* This test can't run on Goya because it doesn't have streams */
 	if (hlthunk_get_device_name_from_fd(fd) == HLTHUNK_DEVICE_GOYA) {
 		printf("Test is skipped. Goya doesn't have streams\n");
-		skip();
-	}
-
-	/* TODO: re-enable the test on PLDM when SW-19239 is fixed */
-	if (hltests_is_pldm(tests_state->fd)) {
-		printf("Test is temporarily disabled on PLDM, skipping\n");
 		skip();
 	}
 
@@ -1146,12 +1095,8 @@ VOID test_cs_two_streams_with_wrr_arb(void **state)
 
 VOID test_cs_cq_wrap_around(void **state)
 {
-	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	int i;
 	uint32_t cq_wrap_around_num_of_cs = 1000;
-
-	if (hltests_is_pldm(tests_state->fd))
-		skip();
+	int i;
 
 	for (i = 0 ; i < cq_wrap_around_num_of_cs ; i++)
 		test_cs_nop(state);
@@ -1449,96 +1394,6 @@ VOID load_scalars_and_exe_4_rfs(int fd, uint64_t scalar_buf_sram_addr,
 				GOYA_DMA_SRAM_TO_HOST));
 }
 
-VOID test_cs_load_scalars_exe_4_rfs(void **state)
-{
-	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	struct hlthunk_hw_ip_info hw_ip;
-	struct hltests_pkt_info pkt_info;
-	uint64_t scalar_buf_sram_addr, scalar_buf_device_va, cb_sram_addr,
-			msg_long_dst_sram_addr, host_data_device_va;
-	uint32_t *host_data, value;
-	uint8_t *scalar_buf;
-	int rc, fd = tests_state->fd;
-
-	/* Goya doesn't support LOAD_AND_EXE packets */
-	if (hltests_is_goya(fd)) {
-		printf("Test is not relevant for Goya, skipping\n");
-		skip();
-	}
-
-	/* Temporarily skip for Gaudi due to failures which are under debug */
-	if (hltests_is_gaudi(fd) && !hltests_is_simulator(fd)) {
-		printf("Test curretnly doesn't support Gaudi ASIC, skipping\n");
-		skip();
-	}
-
-	/* SRAM MAP (base + )
-	 * 0x0    : 4 x 4 bytes for scalars data [R0-R3]
-	 * 0x1000 : MSG_LONG destination
-	 * 0x2000 : Internal CB
-	 *
-	 * Test description:
-	 * 1. In a single LOAD_AND_EXE packet, load scalars data that include a
-	 *    MSG_LONG packet (16B), and execute the instruction with ETYPE=0
-	 *    (4 RFs).
-	 * 2. Verify that the MSG_LONG destination is updated as expected.
-	 * 3. Load scalars data that includes a MSG_LONG packet (16B).
-	 * 4. In a different LOAD_AND_EXE packet, execute the instruction with
-	 *    ETYPE=0 (4 RFs).
-	 * 5. Verify that the MSG_LONG destination is updated as expected.
-	 */
-
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-	scalar_buf_sram_addr = hw_ip.sram_base_address;
-	msg_long_dst_sram_addr = hw_ip.sram_base_address + 0x1000;
-	cb_sram_addr = hw_ip.sram_base_address + 0x2000;
-
-	/* Check alignment of scalars address to 128B */
-	assert_int_equal((scalar_buf_sram_addr & 0x7f), 0);
-
-	scalar_buf = hltests_allocate_host_mem(fd, 16, NOT_HUGE);
-	assert_non_null(scalar_buf);
-	scalar_buf_device_va =
-			hltests_get_device_va_for_host_ptr(fd, scalar_buf);
-
-	host_data = hltests_allocate_host_mem(fd, 4, NOT_HUGE);
-	assert_non_null(host_data);
-	host_data_device_va = hltests_get_device_va_for_host_ptr(fd, host_data);
-
-	/* Prepare scalars buffer and DMA it from host to SRAM */
-	hltests_fill_rand_values(&value, 4);
-	memset(&pkt_info, 0, sizeof(pkt_info));
-	pkt_info.eb = EB_FALSE;
-	pkt_info.mb = MB_FALSE;
-	pkt_info.msg_long.address = msg_long_dst_sram_addr;
-	pkt_info.msg_long.value = value;
-	hltests_add_msg_long_pkt(fd, scalar_buf, 0, &pkt_info);
-
-	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
-				EB_FALSE, MB_FALSE, scalar_buf_device_va,
-				scalar_buf_sram_addr, 16,
-				GOYA_DMA_HOST_TO_SRAM);
-
-	/* Load and execute in a single packet */
-	load_scalars_and_exe_4_rfs(fd, scalar_buf_sram_addr, cb_sram_addr,
-					msg_long_dst_sram_addr,
-					host_data_device_va, false);
-	assert_int_equal(*host_data, value);
-
-	/* Load and execute in separate packets */
-	load_scalars_and_exe_4_rfs(fd, scalar_buf_sram_addr, cb_sram_addr,
-					msg_long_dst_sram_addr,
-					host_data_device_va, true);
-	assert_int_equal(*host_data, value);
-
-	/* Cleanup */
-	hltests_free_host_mem(fd, host_data);
-	hltests_free_host_mem(fd, scalar_buf);
-
-	END_TEST;
-}
-
 VOID load_scalars_and_exe_2_rfs(int fd, uint64_t scalar_buf_sram_addr,
 					uint64_t cb_sram_addr, uint16_t sob0,
 					uint16_t mon0, bool is_upper_rfs,
@@ -1748,16 +1603,6 @@ VOID test_cs_drop(void **state)
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
-
-	if (hltests_is_simulator(fd)) {
-		printf("Test is not relevant for Simulator, skipping\n");
-		skip();
-	}
-
-	if (hltests_is_pldm(fd)) {
-		printf("Test is not relevant for PLDM, skipping\n");
-		skip();
-	}
 
 	if (hltests_is_goya(fd)) {
 		printf("Test is  not supported on Goya, skipping.\n");
@@ -2222,8 +2067,6 @@ const struct CMUnitTest cs_tests[] = {
 	cmocka_unit_test_setup(test_cs_load_pred_non_consecutive_map,
 					hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_cs_load_pred_consecutive_map,
-					hltests_ensure_device_operational),
-	cmocka_unit_test_setup(test_cs_load_scalars_exe_4_rfs,
 					hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_cs_load_scalars_exe_lower_2_rfs,
 					hltests_ensure_device_operational),

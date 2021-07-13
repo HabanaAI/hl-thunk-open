@@ -400,11 +400,6 @@ VOID test_print_pll_info(void **state)
 	uint32_t pll_idx, max_pll_idx;
 	struct hlthunk_pll_frequency_info freq_info;
 
-	if (hltests_is_simulator(fd)) {
-		printf("Test is not required on simulator\n");
-		skip();
-	}
-
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 	printf("\nCPUCP: %s\n", hw_ip.cpucp_version);

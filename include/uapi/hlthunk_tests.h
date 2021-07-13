@@ -320,9 +320,6 @@ struct hltests_state {
 	double perf_outcomes[DMA_PERF_RESULTS_MAX];
 	struct hltests_debugfs debugfs;
 	int fd;
-	bool mme;
-	bool mmu;
-	bool security;
 	enum hlthunk_device_name asic_type;
 };
 
@@ -532,33 +529,6 @@ struct mem_pool {
 	uint8_t *pool;
 };
 
-struct hltests_module_params_info {
-	uint64_t tpc_mask;
-	uint32_t gaudi_huge_page_optimization;
-	uint32_t timeout_locked;
-	uint32_t reset_on_lockup;
-	uint32_t pldm;
-	uint32_t mmu_enable;
-	uint32_t clock_gating;
-	uint32_t mme_enable;
-	uint32_t dram_enable;
-	uint32_t cpu_enable;
-	uint32_t reset_pcilink;
-	uint32_t config_pll;
-	uint32_t cpu_queues_enable;
-	uint32_t fw_loading;
-	uint32_t heartbeat;
-	uint32_t axi_drain;
-	uint32_t security_enable;
-	uint32_t sram_scrambler_enable;
-	uint32_t dram_scrambler_enable;
-	uint32_t dram_size_ratio;
-	uint32_t hbm_ecc_enable;
-	uint32_t reserved;
-	uint32_t hard_reset_on_fw_events;
-	uint32_t fw_loading_ext;
-};
-
 extern char asic_names[HLTHUNK_DEVICE_MAX][20];
 
 void hltests_parser(int argc, const char **argv, const char * const*usage,
@@ -575,10 +545,8 @@ int hltests_get_verbose_enabled(void);
 uint32_t hltests_get_cur_seed(void);
 char *hltests_get_build_path(void);
 bool hltests_is_legacy_mode_enabled(void);
-bool hltests_is_simulator(int fd);
 bool hltests_is_goya(int fd);
 bool hltests_is_gaudi(int fd);
-bool hltests_is_pldm(int fd);
 
 #ifndef HLTESTS_LIB_MODE
 int hltests_run_group_tests(const char *group_name,
@@ -665,9 +633,6 @@ int hltests_root_setup(void **state);
 int hltests_root_teardown(void **state);
 int hltests_root_debug_setup(void **state);
 int hltests_root_debug_teardown(void **state);
-
-int hltests_get_module_params_info(int fd,
-				struct hltests_module_params_info *info);
 
 uint32_t hltests_rand_u32(void);
 bool hltests_rand_flip_coin(void);
@@ -977,7 +942,6 @@ VOID load_scalars_and_exe_4_rfs(int fd, uint64_t scalar_buf_sram_addr,
 					uint64_t msg_long_dst_sram_addr,
 					uint64_t host_data_device_va,
 					bool is_separate_exe);
-VOID test_cs_load_scalars_exe_4_rfs(void **state);
 VOID load_scalars_and_exe_2_rfs(int fd, uint64_t scalar_buf_sram_addr,
 					uint64_t cb_sram_addr, uint16_t sob0,
 					uint16_t mon0, bool is_upper_rfs,

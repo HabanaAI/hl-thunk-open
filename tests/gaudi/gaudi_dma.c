@@ -131,12 +131,6 @@ VOID test_gaudi_dma_all2all(void **state)
 		skip();
 	}
 
-	/* This test can't run if mmu is disabled */
-	if (!tests_state->mmu) {
-		printf("Test is skipped. MMU must be enabled\n");
-		skip();
-	}
-
 	/* Allocate arrays for threads management */
 	thread_id = (pthread_t *) hlthunk_malloc(2 * sizeof(*thread_id));
 	assert_non_null(thread_id);

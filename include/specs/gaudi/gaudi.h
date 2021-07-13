@@ -70,4 +70,6 @@
 
 #define DEVICE_CACHE_LINE_SIZE	128
 
+#define SPMU_MAX_COUNTERS	6
+
 #endif /* GAUDI_H */
