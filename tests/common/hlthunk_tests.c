@@ -69,33 +69,6 @@ char asic_names[HLTHUNK_DEVICE_MAX][20] = {
 	"Don't care"
 };
 
-static struct hltests_module_params_info default_module_params = {
-	.gaudi_huge_page_optimization = 1,
-	.timeout_locked = 5,
-	.reset_on_lockup = 1,
-	.pldm = 0,
-	.mmu_enable = 1,
-	.clock_gating = 1,
-	.mme_enable = 1,
-	.tpc_mask = 0x3FF,
-	.dram_enable = 1,
-	.cpu_enable = 1,
-	.reset_pcilink = 0,
-	.config_pll = 0,
-	.cpu_queues_enable = 1,
-	.fw_loading = 0x3,
-	.heartbeat = 1,
-	.axi_drain = 1,
-	.security_enable = 1,
-	.sram_scrambler_enable = 1,
-	.dram_scrambler_enable = 1,
-	.dram_size_ratio = 0,
-	.hbm_ecc_enable = 1,
-	.reserved = 0,
-	.hard_reset_on_fw_events = 1,
-	.fw_loading_ext = 0
-};
-
 static struct hltests_device *get_hdev_from_fd(int fd)
 {
 	struct hltests_device *hdev;
@@ -828,7 +801,6 @@ int hltests_control_dev_teardown(void **state)
 int hltests_setup(void **state)
 {
 	struct hltests_state *tests_state;
-	struct hltests_module_params_info module_params;
 	int rc, fd;
 
 	tests_state = hltests_alloc_state();
@@ -842,17 +814,6 @@ int hltests_setup(void **state)
 		goto free_state;
 	}
 
-	memset(&module_params, 0, sizeof(module_params));
-	rc = hltests_get_module_params_info(fd, &module_params);
-	if (rc) {
-		printf("Failed to retrieve values of module parameters\n");
-		goto close_fd;
-	}
-
-	tests_state->mme = !!module_params.mme_enable;
-	tests_state->mmu = !!module_params.mmu_enable;
-	tests_state->security = !!module_params.security_enable;
-
 	*state = tests_state;
 
 	if (!hltests_is_legacy_mode_enabled())
@@ -861,9 +822,6 @@ int hltests_setup(void **state)
 
 	return 0;
 
-close_fd:
-	if (hltests_close(fd))
-		printf("Problem in closing FD, ignoring...\n");
 free_state:
 	hlthunk_free(tests_state);
 
@@ -993,16 +951,6 @@ static int hltests_ioctl(int fd, unsigned long request, void *arg)
 	} while (ret == -1 && (errno == EINTR || errno == EAGAIN));
 
 	return ret;
-}
-
-int hltests_get_module_params_info(int fd,
-				struct hltests_module_params_info *info)
-{
-	if (!info)
-		return -EINVAL;
-
-	*info = default_module_params;
-	return 0;
 }
 
 static void *allocate_huge_mem(uint64_t size)
@@ -2133,9 +2081,6 @@ int hltests_dma_dram_frag_mem_test(void **state, uint64_t size)
 	 * fragmentation.
 	 */
 
-	if (hltests_is_pldm(fd) && size > PLDM_MAX_DMA_SIZE_FOR_TESTING)
-		skip();
-
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 	page_num = size / hw_ip.dram_page_size;
@@ -2187,9 +2132,6 @@ int hltests_dma_dram_high_mem_test(void **state, uint64_t size)
 	 * will begin from high memory address
 	 */
 
-	if (hltests_is_pldm(fd) && size > PLDM_MAX_DMA_SIZE_FOR_TESTING)
-		skip();
-
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 	alloc_size = hw_ip.dram_size / 2;
@@ -2214,9 +2156,6 @@ int hltests_dma_test(void **state, bool is_ddr, uint64_t size)
 	uint32_t dma_dir_down, dma_dir_up;
 	bool is_huge = !!((size > SZ_32K) && (size < SZ_1G));
 	int rc, fd = tests_state->fd;
-
-	if (hltests_is_pldm(fd) && size > PLDM_MAX_DMA_SIZE_FOR_TESTING)
-		skip();
 
 	/* Sanity and memory allocation */
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
@@ -2325,16 +2264,8 @@ static bool is_dev_idle_and_operational(int fd)
 {
 	enum hl_device_status dev_status;
 	bool is_idle;
-	enum hl_pci_ids device_id;
 
-	/* TODO: Remove when is_idle function is implemented on simulator */
-	device_id = hlthunk_get_device_id_from_fd(fd);
-	if (device_id == PCI_IDS_GOYA_SIMULATOR ||
-			device_id == PCI_IDS_GAUDI_SIMULATOR)
-		is_idle = true;
-	else
-		is_idle = hlthunk_is_device_idle(fd);
-
+	is_idle = hlthunk_is_device_idle(fd);
 	dev_status = hlthunk_get_device_status_info(fd);
 
 	return (is_idle && dev_status == HL_DEVICE_STATUS_OPERATIONAL);
@@ -2343,23 +2274,14 @@ static bool is_dev_idle_and_operational(int fd)
 int hltests_ensure_device_operational(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	struct hltests_module_params_info module_params;
 	uint32_t timeout_locked, i;
-	int fd = tests_state->fd, rc;
+	int fd = tests_state->fd;
 
 	if (is_dev_idle_and_operational(fd))
 		return 0;
 
-	memset(&module_params, 0, sizeof(module_params));
-	rc = hltests_get_module_params_info(fd, &module_params);
-	if (rc) {
-		printf("Failed to retrieve values of module parameters\n");
-		return errno;
-	}
-
-	timeout_locked = module_params.timeout_locked;
-	if (timeout_locked > 1000)
-		timeout_locked = 1000;
+	/* default CS timeout in driver */
+	timeout_locked = 30;
 
 	for (i = 0 ; i <= timeout_locked ; i++) {
 		sleep(1);
@@ -2591,17 +2513,6 @@ bool hltests_is_legacy_mode_enabled(void)
 	return !!legacy_mode_enabled;
 }
 
-bool hltests_is_simulator(int fd)
-{
-	struct hltests_device *hdev = get_hdev_from_fd(fd);
-
-	if (hdev->device_id == PCI_IDS_GOYA_SIMULATOR ||
-		hdev->device_id == PCI_IDS_GAUDI_SIMULATOR)
-		return true;
-
-	return false;
-}
-
 bool hltests_is_goya(int fd)
 {
 	return (hlthunk_get_device_name_from_fd(fd) == HLTHUNK_DEVICE_GOYA);
@@ -2610,17 +2521,6 @@ bool hltests_is_goya(int fd)
 bool hltests_is_gaudi(int fd)
 {
 	return (hlthunk_get_device_name_from_fd(fd) == HLTHUNK_DEVICE_GAUDI);
-}
-
-bool hltests_is_pldm(int fd)
-{
-	struct hltests_module_params_info module_params;
-	int rc;
-
-	rc = hltests_get_module_params_info(fd, &module_params);
-	assert_int_equal(rc, 0);
-
-	return !!module_params.pldm;
 }
 
 int test_sm_pingpong_common_cp(void **state, bool is_tpc,
@@ -2651,13 +2551,6 @@ int test_sm_pingpong_common_cp(void **state, bool is_tpc,
 						HLTHUNK_DEVICE_GOYA) {
 			printf(
 				"Test is skipped. Goya's common CP can't be in host\n");
-			skip();
-		}
-
-		/* This test can't run if mmu disabled */
-		if (!tests_state->mmu) {
-			printf(
-				"Test is skipped. MMU must be enabled\n");
 			skip();
 		}
 	}
@@ -2940,11 +2833,6 @@ void *hltests_map_hw_block(int fd, uint64_t block_addr, uint32_t *block_size)
 	void *ptr;
 	int rc;
 
-	if (hltests_is_simulator(fd)) {
-		*block_size = 0;
-		return (void *) block_addr;
-	}
-
 	rc = hlthunk_get_hw_block(fd, block_addr, block_size, &handle);
 	if (rc) {
 		printf(
@@ -2967,9 +2855,6 @@ void *hltests_map_hw_block(int fd, uint64_t block_addr, uint32_t *block_size)
 
 int hltests_unmap_hw_block(int fd, void *host_addr, uint32_t block_size)
 {
-	if (hltests_is_simulator(fd))
-		return 0;
-
 	return munmap(host_addr, block_size);
 }
 

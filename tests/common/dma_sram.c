@@ -23,9 +23,6 @@ VOID test_dma_entire_sram_random(void **state)
 	struct hlthunk_hw_ip_info hw_ip;
 	int rc;
 
-	if (hltests_is_pldm(tests_state->fd))
-		skip();
-
 	rc = hlthunk_get_hw_ip_info(tests_state->fd, &hw_ip);
 	assert_int_equal(rc, 0);
 

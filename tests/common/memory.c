@@ -61,19 +61,11 @@ VOID test_map_bigger_than_4GB(void **state)
 	uint32_t dma_dir_down, dma_dir_up;
 	int rc, fd = tests_state->fd;
 
-	if (hltests_is_pldm(fd))
-		skip();
-
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
 	if (!hw_ip.dram_enabled) {
 		printf("DRAM is disabled so skipping test\n");
-		skip();
-	}
-
-	if (!tests_state->mmu) {
-		printf("MMU is disabled so skipping test\n");
 		skip();
 	}
 
@@ -169,7 +161,7 @@ VOID allocate_device_mem_until_full(void **state,
 	total_size = hw_ip.dram_size;
 	if ((hw_ip.dram_page_size == 0) ||
 				is_power_of_2(hw_ip.dram_page_size)) {
-		chunk_size = hltests_is_simulator(fd) ? SZ_32M : SZ_512M;
+		chunk_size = SZ_512M;
 		/* handle devices with dram_page_size > 32M */
 		chunk_size = chunk_size > hw_ip.dram_page_size ?
 					chunk_size : hw_ip.dram_page_size;
@@ -211,21 +203,11 @@ VOID allocate_device_mem_until_full(void **state,
 
 VOID test_alloc_device_mem_until_full(void **state)
 {
-	struct hltests_state *tests_state = (struct hltests_state *) *state;
-
-	if (hltests_is_pldm(tests_state->fd))
-		skip();
-
 	END_TEST_FUNC(allocate_device_mem_until_full(state, NOT_CONTIGUOUS));
 }
 
 VOID test_alloc_device_mem_until_full_contiguous(void **state)
 {
-	struct hltests_state *tests_state = (struct hltests_state *) *state;
-
-	if (hltests_is_pldm(tests_state->fd))
-		skip();
-
 	END_TEST_FUNC(allocate_device_mem_until_full(state, CONTIGUOUS));
 }
 
