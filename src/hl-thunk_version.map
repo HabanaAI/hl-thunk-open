@@ -91,3 +91,13 @@ HLTNK_1.3 {
 	hlthunk_wait_for_reserved_encaps_signals;
 	hlthunk_wait_for_reserved_encaps_collective_signals;
 } HLTNK_1.1;
+HLTNK_1.4 {
+	global:
+
+	hlthunk_get_hw_ip_info;
+
+	local:
+
+	hlthunk_get_hw_ip_info_v1_0;
+	hlthunk_get_hw_ip_info_v1_4;
+} HLTNK_1.3;

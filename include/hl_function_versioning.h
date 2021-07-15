@@ -68,6 +68,13 @@ __asm__(".symver " HL_STR(b) HL_STR(e) ", " HL_STR(b) "@@HLTNK_" HL_STR(n))
  */
 #define MAP_STATIC_SYMBOL(f, p)
 
+/*
+ * lib_compat_public
+ * Attribute to be used in order to set the visibility of the lib routines
+ * that serve as version dependent compatibility routines.
+ */
+#define lib_compat_public __attribute__((visibility("default")))
+
 #else
 /*
  * No symbol versioning in use
@@ -77,6 +84,8 @@ __asm__(".symver " HL_STR(b) HL_STR(e) ", " HL_STR(b) "@@HLTNK_" HL_STR(n))
 #define BIND_DEFAULT_SYMBOL(b, e, n)
 #define UNPAREN(x) x
 #define MAP_STATIC_SYMBOL(f, p) UNPAREN(f __attribute__((alias(HL_STR(p)))))
+#define lib_compat_public
+
 /*
  * HL_BUILD_SHARED_LIB=n
  */

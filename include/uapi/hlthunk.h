@@ -38,6 +38,38 @@ enum hlthunk_device_name {
 	HLTHUNK_DEVICE_MAX
 };
 
+/**
+ * struct hlthunk_hw_ip_info - hardware information on various IPs in the ASIC
+ * @sram_base_address: The first SRAM physical base address that is free to be
+ *                     used by the user.
+ * @dram_base_address: The first DRAM virtual or physical base address that is
+ *                     free to be used by the user.
+ * @dram_size: The DRAM size that is available to the user.
+ * @sram_size: The SRAM size that is available to the user.
+ * @num_of_events: The number of events that can be received from the f/w. This
+ *                 is needed so the user can what is the size of the h/w events
+ *                 array he needs to pass to the kernel when he wants to fetch
+ *                 the event counters.
+ * @device_id: PCI device ID of the ASIC.
+ * @cpld_version: CPLD version on the board.
+ * @psoc_pci_pll_nr: PCI PLL NR value. Needed by the profiler in some ASICs.
+ * @psoc_pci_pll_nf: PCI PLL NF value. Needed by the profiler in some ASICs.
+ * @psoc_pci_pll_od: PCI PLL OD value. Needed by the profiler in some ASICs.
+ * @psoc_pci_pll_div_factor: PCI PLL DIV factor value. Needed by the profiler
+ *                           in some ASICs.
+ * @tpc_enabled_mask: Bit-mask that represents which TPCs are enabled. Relevant
+ *                    for Goya/Gaudi only.
+ * @dram_enabled: Whether the DRAM is enabled.
+ * @cpucp_version: The CPUCP f/w version.
+ * @module_id: Module ID of the ASIC for mezzanine cards in servers
+ *             (From OCP spec).
+ * @card_name: The card name as passed by the f/w.
+ * @dram_page_size: The DRAM physical page size.
+ * @first_available_interrupt_id: The first available interrupt ID for the user
+ *                                to be used when it works with user interrupts.
+ * @server_type: Server type that the Gaudi ASIC is currently installed in.
+ *               The value is according to enum hl_server_type
+ */
 struct hlthunk_hw_ip_info {
 	uint64_t sram_base_address;
 	uint64_t dram_base_address;
@@ -57,6 +89,7 @@ struct hlthunk_hw_ip_info {
 	uint8_t card_name[HL_INFO_CARD_NAME_MAX_LEN];
 	uint64_t dram_page_size;
 	uint16_t first_available_interrupt_id;
+	uint16_t server_type;
 };
 
 struct hlthunk_dram_usage_info {
