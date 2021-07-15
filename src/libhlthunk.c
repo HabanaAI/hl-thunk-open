@@ -566,51 +566,78 @@ hlthunk_public int hlthunk_get_hw_asic_status(int fd,
 	return 0;
 }
 
-hlthunk_public int hlthunk_get_hw_ip_info(int fd,
-					struct hlthunk_hw_ip_info *hw_ip)
+static int get_hw_ip_info(int fd, struct hlthunk_hw_ip_info *hw_ip,
+				struct hl_info_hw_ip_info *hl_hw_ip)
 {
 	struct hl_info_args args;
-	struct hl_info_hw_ip_info hl_hw_ip;
 	int rc;
 
 	if (!hw_ip)
 		return -EINVAL;
 
 	memset(&args, 0, sizeof(args));
-	memset(&hl_hw_ip, 0, sizeof(hl_hw_ip));
+	memset(hl_hw_ip, 0, sizeof(*hl_hw_ip));
 
 	args.op = HL_INFO_HW_IP_INFO;
-	args.return_pointer = (__u64) (uintptr_t) &hl_hw_ip;
-	args.return_size = sizeof(hl_hw_ip);
+	args.return_pointer = (__u64) (uintptr_t) hl_hw_ip;
+	args.return_size = sizeof(*hl_hw_ip);
 
 	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
 	if (rc)
 		return rc;
 
-	hw_ip->sram_base_address = hl_hw_ip.sram_base_address;
-	hw_ip->dram_base_address = hl_hw_ip.dram_base_address;
-	hw_ip->dram_size = hl_hw_ip.dram_size;
-	hw_ip->sram_size = hl_hw_ip.sram_size;
-	hw_ip->num_of_events = hl_hw_ip.num_of_events;
-	hw_ip->device_id = hl_hw_ip.device_id;
-	hw_ip->cpld_version = hl_hw_ip.cpld_version;
-	hw_ip->psoc_pci_pll_nr = hl_hw_ip.psoc_pci_pll_nr;
-	hw_ip->psoc_pci_pll_nf = hl_hw_ip.psoc_pci_pll_nf;
-	hw_ip->psoc_pci_pll_od = hl_hw_ip.psoc_pci_pll_od;
-	hw_ip->psoc_pci_pll_div_factor = hl_hw_ip.psoc_pci_pll_div_factor;
-	hw_ip->tpc_enabled_mask = hl_hw_ip.tpc_enabled_mask;
-	hw_ip->dram_enabled = hl_hw_ip.dram_enabled;
-	memcpy(hw_ip->cpucp_version, hl_hw_ip.cpucp_version,
+	hw_ip->sram_base_address = hl_hw_ip->sram_base_address;
+	hw_ip->dram_base_address = hl_hw_ip->dram_base_address;
+	hw_ip->dram_size = hl_hw_ip->dram_size;
+	hw_ip->sram_size = hl_hw_ip->sram_size;
+	hw_ip->num_of_events = hl_hw_ip->num_of_events;
+	hw_ip->device_id = hl_hw_ip->device_id;
+	hw_ip->cpld_version = hl_hw_ip->cpld_version;
+	hw_ip->psoc_pci_pll_nr = hl_hw_ip->psoc_pci_pll_nr;
+	hw_ip->psoc_pci_pll_nf = hl_hw_ip->psoc_pci_pll_nf;
+	hw_ip->psoc_pci_pll_od = hl_hw_ip->psoc_pci_pll_od;
+	hw_ip->psoc_pci_pll_div_factor = hl_hw_ip->psoc_pci_pll_div_factor;
+	hw_ip->tpc_enabled_mask = hl_hw_ip->tpc_enabled_mask;
+	hw_ip->dram_enabled = hl_hw_ip->dram_enabled;
+	memcpy(hw_ip->cpucp_version, hl_hw_ip->cpucp_version,
 		HL_INFO_VERSION_MAX_LEN);
-	memcpy(hw_ip->card_name, hl_hw_ip.card_name,
+	memcpy(hw_ip->card_name, hl_hw_ip->card_name,
 		HL_INFO_CARD_NAME_MAX_LEN);
-	hw_ip->module_id = hl_hw_ip.module_id;
-	hw_ip->dram_page_size = hl_hw_ip.dram_page_size;
+	hw_ip->module_id = hl_hw_ip->module_id;
+	hw_ip->dram_page_size = hl_hw_ip->dram_page_size;
 	hw_ip->first_available_interrupt_id =
-		hl_hw_ip.first_available_interrupt_id;
+		hl_hw_ip->first_available_interrupt_id;
 
 	return 0;
 }
+
+lib_compat_public __vsym int hlthunk_get_hw_ip_info_v1_0(int fd,
+					struct hlthunk_hw_ip_info *hw_ip)
+{
+	struct hl_info_hw_ip_info hl_hw_ip;
+
+	return get_hw_ip_info(fd, hw_ip, &hl_hw_ip);
+}
+VERSION_SYMBOL(hlthunk_get_hw_ip_info, _v1_0, 1.0);
+
+lib_compat_public int hlthunk_get_hw_ip_info_v1_4(int fd,
+					struct hlthunk_hw_ip_info *hw_ip)
+{
+	struct hl_info_hw_ip_info hl_hw_ip;
+	int rc;
+
+	rc = get_hw_ip_info(fd, hw_ip, &hl_hw_ip);
+	if (rc)
+		return rc;
+
+	hw_ip->server_type = hl_hw_ip.server_type;
+
+	return 0;
+}
+BIND_DEFAULT_SYMBOL(hlthunk_get_hw_ip_info, _v1_4, 1.4);
+MAP_STATIC_SYMBOL(lib_compat_public int hlthunk_get_hw_ip_info(int fd,
+					struct hlthunk_hw_ip_info *hw_ip),
+		hlthunk_get_hw_ip_info_v1_4);
 
 hlthunk_public int hlthunk_get_dram_usage(int fd,
 				struct hlthunk_dram_usage_info *dram_usage)
