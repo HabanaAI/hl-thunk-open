@@ -45,6 +45,7 @@ VOID test_print_hw_ip_info(void **state)
 					hw_ip.first_available_interrupt_id);
 
 	printf("\nTPC enabled mask     : 0x%x", hw_ip.tpc_enabled_mask);
+	printf("\nServer type          : %u", hw_ip.server_type);
 
 	if (hltests_is_gaudi(fd))
 		printf("\nModule ID            : %d", hw_ip.module_id);
