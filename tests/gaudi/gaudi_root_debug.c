@@ -544,6 +544,87 @@ VOID test_read_e2e_rl_cfg(void **state)
 		printf("DMA IF W_N CH %d SRAM SCRAMBLER EN = %d\n", i, val);
 	}
 
+	val = RREG32(CFG_BASE + mmDMA_IF_E_N_DOWN_RSP_MID_WGHT_0);
+	printf("DMA IF E_N DOWN RSP MID WGHT 0 = 0x%x\n", val);
+	val = RREG32(CFG_BASE + mmDMA_IF_E_N_DOWN_RSP_MID_WGHT_1);
+	printf("DMA IF E_N DOWN RSP MID WGHT 1 = 0x%x\n", val);
+	val = RREG32(CFG_BASE + mmDMA_IF_E_S_DOWN_RSP_MID_WGHT_0);
+	printf("DMA IF E_S DOWN RSP MID WGHT 0 = 0x%x\n", val);
+	val = RREG32(CFG_BASE + mmDMA_IF_E_S_DOWN_RSP_MID_WGHT_1);
+	printf("DMA IF E_S DOWN RSP MID WGHT 1 = 0x%x\n", val);
+	val = RREG32(CFG_BASE + mmDMA_IF_W_S_DOWN_RSP_MID_WGHT_0);
+	printf("DMA IF W_S DOWN RSP MID WGHT 0 = 0x%x\n", val);
+	val = RREG32(CFG_BASE + mmDMA_IF_W_S_DOWN_RSP_MID_WGHT_1);
+	printf("DMA IF W_S DOWN RSP MID WGHT 1 = 0x%x\n", val);
+	val = RREG32(CFG_BASE + mmDMA_IF_W_N_DOWN_RSP_MID_WGHT_0);
+	printf("DMA IF W_N DOWN RSP MID WGHT 0 = 0x%x\n", val);
+	val = RREG32(CFG_BASE + mmDMA_IF_W_N_DOWN_RSP_MID_WGHT_1);
+	printf("DMA IF W_N DOWN RSP MID WGHT 1 = 0x%x\n", val);
+
+	block_offset = mmDMA_IF_E_N_DOWN_CH1_RL_HBM_EN -
+			mmDMA_IF_E_N_DOWN_CH0_RL_HBM_EN;
+
+	for (i = 0 ; i < 2; i++) {
+		val = RREG32(CFG_BASE + mmDMA_IF_E_N_DOWN_CH0_RL_HBM_EN + block_offset * i);
+		printf("DMA IF E_N CH %d RL HBM EN = %d\n", i, val);
+		val = RREG32(CFG_BASE + mmDMA_IF_E_N_DOWN_CH0_RL_SRAM_EN + block_offset * i);
+		printf("DMA IF E_N CH %d RL SRAM EN = %d\n", i, val);
+		val = RREG32(CFG_BASE + mmDMA_IF_E_N_DOWN_CH0_RL_SRAM_SAT + block_offset * i);
+		printf("DMA IF E_N CH %d RL SRAM SAT = %d\n", i, val);
+		val = RREG32(CFG_BASE + mmDMA_IF_E_N_DOWN_CH0_RL_SRAM_RST + block_offset * i);
+		printf("DMA IF E_N CH %d RL SRAM RST = %d\n", i, val);
+		val = RREG32(CFG_BASE + mmDMA_IF_E_N_DOWN_CH0_RL_SRAM_TIMEOUT + block_offset * i);
+		printf("DMA IF E_N CH %d RL SRAM TIMEOUT = %d\n", i, val);
+	}
+
+	block_offset = mmDMA_IF_E_S_DOWN_CH1_RL_HBM_EN -
+			mmDMA_IF_E_S_DOWN_CH0_RL_HBM_EN;
+
+	for (i = 0 ; i < 2; i++) {
+		val = RREG32(CFG_BASE + mmDMA_IF_E_S_DOWN_CH0_RL_HBM_EN + block_offset * i);
+		printf("DMA IF E_S CH %d RL HBM EN = %d\n", i, val);
+		val = RREG32(CFG_BASE + mmDMA_IF_E_S_DOWN_CH0_RL_SRAM_EN + block_offset * i);
+		printf("DMA IF E_S CH %d RL SRAM EN = %d\n", i, val);
+		val = RREG32(CFG_BASE + mmDMA_IF_E_S_DOWN_CH0_RL_SRAM_SAT + block_offset * i);
+		printf("DMA IF E_S CH %d RL SRAM SAT = %d\n", i, val);
+		val = RREG32(CFG_BASE + mmDMA_IF_E_S_DOWN_CH0_RL_SRAM_RST + block_offset * i);
+		printf("DMA IF E_S CH %d RL SRAM RST = %d\n", i, val);
+		val = RREG32(CFG_BASE + mmDMA_IF_E_S_DOWN_CH0_RL_SRAM_TIMEOUT + block_offset * i);
+		printf("DMA IF E_S CH %d RL SRAM TIMEOUT = %d\n", i, val);
+	}
+
+	block_offset = mmDMA_IF_W_S_DOWN_CH1_RL_HBM_EN -
+			mmDMA_IF_W_S_DOWN_CH0_RL_HBM_EN;
+
+	for (i = 0 ; i < 2; i++) {
+		val = RREG32(CFG_BASE + mmDMA_IF_W_S_DOWN_CH0_RL_HBM_EN + block_offset * i);
+		printf("DMA IF W_S CH %d RL HBM EN = %d\n", i, val);
+		val = RREG32(CFG_BASE + mmDMA_IF_W_S_DOWN_CH0_RL_SRAM_EN + block_offset * i);
+		printf("DMA IF W_S CH %d RL SRAM EN = %d\n", i, val);
+		val = RREG32(CFG_BASE + mmDMA_IF_W_S_DOWN_CH0_RL_SRAM_SAT + block_offset * i);
+		printf("DMA IF W_S CH %d RL SRAM SAT = %d\n", i, val);
+		val = RREG32(CFG_BASE + mmDMA_IF_W_S_DOWN_CH0_RL_SRAM_RST + block_offset * i);
+		printf("DMA IF W_S CH %d RL SRAM RST = %d\n", i, val);
+		val = RREG32(CFG_BASE + mmDMA_IF_W_S_DOWN_CH0_RL_SRAM_TIMEOUT + block_offset * i);
+		printf("DMA IF W_S CH %d RL SRAM TIMEOUT = %d\n", i, val);
+	}
+
+	block_offset = mmDMA_IF_W_N_DOWN_CH1_RL_HBM_EN -
+			mmDMA_IF_W_N_DOWN_CH0_RL_HBM_EN;
+
+	for (i = 0 ; i < 2; i++) {
+		val = RREG32(CFG_BASE + mmDMA_IF_W_N_DOWN_CH0_RL_HBM_EN + block_offset * i);
+		printf("DMA IF W_N CH %d RL HBM EN = %d\n", i, val);
+		val = RREG32(CFG_BASE + mmDMA_IF_W_N_DOWN_CH0_RL_SRAM_EN + block_offset * i);
+		printf("DMA IF W_N CH %d RL SRAM EN = %d\n", i, val);
+		val = RREG32(CFG_BASE + mmDMA_IF_W_N_DOWN_CH0_RL_SRAM_SAT + block_offset * i);
+		printf("DMA IF W_N CH %d RL SRAM SAT = %d\n", i, val);
+		val = RREG32(CFG_BASE + mmDMA_IF_W_N_DOWN_CH0_RL_SRAM_RST + block_offset * i);
+		printf("DMA IF W_N CH %d RL SRAM RST = %d\n", i, val);
+		val = RREG32(CFG_BASE + mmDMA_IF_W_N_DOWN_CH0_RL_SRAM_TIMEOUT + block_offset * i);
+		printf("DMA IF W_N CH %d RL SRAM TIMEOUT = %d\n", i, val);
+	}
+
 	END_TEST;
 }
 
