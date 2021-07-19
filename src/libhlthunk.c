@@ -226,7 +226,7 @@ hlthunk_public int hlthunk_get_pci_bus_id_from_fd(int fd, char *pci_bus_id,
 
 	pci_fd = open(pci_bus_file_name, O_RDONLY);
 	if (pci_fd < 0)
-		return rc;
+		return pci_fd;
 
 	rc = read(pci_fd, read_busid, BUSID_WITH_DOMAIN_LEN);
 	close(pci_fd);
