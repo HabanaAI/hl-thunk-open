@@ -137,7 +137,7 @@ hlthunk_public int hlthunk_get_device_index_from_pci_bus_id(const char *busid)
 	dir = opendir(base_path);
 	if (dir == NULL) {
 		printf("Failed to open habanalabs directory\n");
-		return errno;
+		return -errno;
 	}
 
 	while ((entry = readdir(dir)) != NULL) {
