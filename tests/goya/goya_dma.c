@@ -47,12 +47,12 @@ VOID test_dma_4_queues_goya(void **state)
 	memset(dma_cb_size, 0, sizeof(dma_cb_size));
 
 	/* Allocate memory on host and DRAM and set the SRAM address */
-	host_src = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
+	host_src = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE_MAP);
 	assert_non_null(host_src);
 	hltests_fill_rand_values(host_src, dma_size);
 	host_src_device_va = hltests_get_device_va_for_host_ptr(fd, host_src);
 
-	host_dst = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
+	host_dst = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE_MAP);
 	assert_non_null(host_dst);
 	memset(host_dst, 0, dma_size);
 	host_dst_device_va = hltests_get_device_va_for_host_ptr(fd, host_dst);

@@ -76,7 +76,7 @@ VOID activate_super_stress_dma_channels(void **state,
 
 		if (queue != GAUDI_QUEUE_ID_DMA_5_0) {
 			common_cb_buf[i] = hltests_allocate_host_mem(fd,
-					cb_common_size, NOT_HUGE);
+					cb_common_size, NOT_HUGE_MAP);
 			assert_non_null(common_cb_buf[i]);
 			memset(common_cb_buf[i], 0, cb_common_size);
 			common_cb_buf_size[i] = 0;
@@ -425,7 +425,7 @@ VOID test_dma_all2all_super_stress(void **state)
 	assert_true(hw_ip.dram_size > NUM_OF_INT_Q * 0x100000000ull);
 
 	/* prepare external data buffer */
-	data_buf = hltests_allocate_host_mem(fd, host_size, NOT_HUGE);
+	data_buf = hltests_allocate_host_mem(fd, host_size, NOT_HUGE_MAP);
 	assert_non_null(data_buf);
 	data_buf_va = hltests_get_device_va_for_host_ptr(fd, data_buf);
 

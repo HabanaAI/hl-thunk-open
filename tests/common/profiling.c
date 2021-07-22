@@ -416,7 +416,7 @@ VOID test_name(void **state)					\
 MAP_BENCHMARK_TEST(test_bench_host_map_unmap_2MBx4K,
 			0x1000UL, /* n_allocs */
 			0x200000UL, /* alloc_size */
-			NOT_HUGE, /* huge */
+			NOT_HUGE_MAP, /* huge */
 			0x1000UL, /* n_maps */
 			0x1000UL, /* n_unmaps */
 			NOT_RANDOM, /* random */
@@ -427,7 +427,7 @@ MAP_BENCHMARK_TEST(test_bench_host_map_unmap_2MBx4K,
 MAP_BENCHMARK_TEST(test_bench_host_map_unmap_8GB,
 			1, /* n_allocs */
 			0x200000000UL, /* alloc_size */
-			NOT_HUGE, /* huge */
+			NOT_HUGE_MAP, /* huge */
 			1, /* n_maps */
 			0, /* n_unmaps */
 			NOT_RANDOM, /* random */
@@ -438,7 +438,7 @@ MAP_BENCHMARK_TEST(test_bench_host_map_unmap_8GB,
 MAP_BENCHMARK_TEST(test_bench_host_map_nounmap_2MBx4K,
 			0x1000UL, /* n_allocs */
 			0x200000UL, /* alloc_size */
-			NOT_HUGE, /* huge */
+			NOT_HUGE_MAP, /* huge */
 			0x1000UL, /* n_maps */
 			0, /* n_unmaps */
 			NOT_RANDOM, /* random */
@@ -449,7 +449,7 @@ MAP_BENCHMARK_TEST(test_bench_host_map_nounmap_2MBx4K,
 MAP_BENCHMARK_TEST(test_bench_host_map_nounmap_8GB,
 			1, /* n_allocs */
 			0x200000000UL, /* alloc_size */
-			NOT_HUGE, /* huge */
+			NOT_HUGE_MAP, /* huge */
 			1, /* n_maps */
 			0, /* n_unmaps */
 			NOT_RANDOM, /* random */
@@ -460,7 +460,7 @@ MAP_BENCHMARK_TEST(test_bench_host_map_nounmap_8GB,
 MAP_BENCHMARK_TEST(test_bench_host_nomap_unmap_2MBx4K,
 			0x1000UL, /* n_allocs */
 			0x200000UL, /* alloc_size */
-			NOT_HUGE, /* huge */
+			NOT_HUGE_MAP, /* huge */
 			0, /* n_maps */
 			0x1000UL, /* n_unmaps */
 			NOT_RANDOM, /* random */
@@ -471,7 +471,7 @@ MAP_BENCHMARK_TEST(test_bench_host_nomap_unmap_2MBx4K,
 MAP_BENCHMARK_TEST(test_bench_host_nomap_unmap_8GB,
 			1, /* n_allocs */
 			0x200000000UL, /* alloc_size */
-			NOT_HUGE, /* huge */
+			NOT_HUGE_MAP, /* huge */
 			0, /* n_maps */
 			1, /* n_unmaps */
 			NOT_RANDOM, /* random */
@@ -482,7 +482,7 @@ MAP_BENCHMARK_TEST(test_bench_host_nomap_unmap_8GB,
 MAP_BENCHMARK_TEST(test_bench_host_map_nounmap_rand_2MBx4K,
 			0x1000UL, /* n_allocs */
 			0x200000UL, /* alloc_size */
-			NOT_HUGE, /* huge */
+			NOT_HUGE_MAP, /* huge */
 			0x1000UL, /* n_maps */
 			0x1000UL, /* n_unmaps */
 			RANDOM, /* random */
@@ -493,7 +493,7 @@ MAP_BENCHMARK_TEST(test_bench_host_map_nounmap_rand_2MBx4K,
 MAP_BENCHMARK_TEST(test_bench_host_map_nounmap_huge_rand_2MBx4K,
 			0x1000UL, /* n_allocs */
 			0x200000UL, /* alloc_size */
-			HUGE, /* huge */
+			HUGE_MAP, /* huge */
 			0x1000UL, /* n_maps */
 			0x1000UL, /* n_unmaps */
 			RANDOM, /* random */

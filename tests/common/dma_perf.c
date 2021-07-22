@@ -310,7 +310,7 @@ VOID test_host_sram_perf(void **state)
 
 	sram_addr = hw_ip.sram_base_address;
 
-	src_ptr = hltests_allocate_host_mem(fd, cfg.dma_size, HUGE);
+	src_ptr = hltests_allocate_host_mem(fd, cfg.dma_size, HUGE_MAP);
 	assert_non_null(src_ptr);
 
 	host_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
@@ -359,7 +359,7 @@ VOID test_sram_host_perf(void **state)
 
 	sram_addr = hw_ip.sram_base_address;
 
-	dst_ptr = hltests_allocate_host_mem(fd, cfg.dma_size, HUGE);
+	dst_ptr = hltests_allocate_host_mem(fd, cfg.dma_size, HUGE_MAP);
 	assert_non_null(dst_ptr);
 
 	host_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
@@ -415,7 +415,7 @@ VOID test_host_dram_perf(void **state)
 						NOT_CONTIGUOUS);
 	assert_non_null(dram_addr);
 
-	src_ptr = hltests_allocate_host_mem(fd, cfg.dma_size, HUGE);
+	src_ptr = hltests_allocate_host_mem(fd, cfg.dma_size, HUGE_MAP);
 	assert_non_null(src_ptr);
 
 	host_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
@@ -472,7 +472,7 @@ VOID test_dram_host_perf(void **state)
 						NOT_CONTIGUOUS);
 	assert_non_null(dram_addr);
 
-	dst_ptr = hltests_allocate_host_mem(fd, cfg.dma_size, HUGE);
+	dst_ptr = hltests_allocate_host_mem(fd, cfg.dma_size, HUGE_MAP);
 	assert_non_null(dst_ptr);
 
 	host_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
@@ -542,7 +542,7 @@ static double indirect_perf_test(int fd, uint32_t num_of_dma_ch,
 	for (ch = 0 ; ch < num_of_dma_ch ; ch++) {
 		lower_cb[ch] = hltests_allocate_host_mem(fd,
 				(num_of_lindma_pkts + 10) * LIN_DMA_PKT_SIZE,
-				NOT_HUGE);
+				NOT_HUGE_MAP);
 		assert_non_null(lower_cb[ch]);
 
 		lower_cb_device_va[ch] = hltests_get_device_va_for_host_ptr(fd,
@@ -603,7 +603,7 @@ static double indirect_perf_test(int fd, uint32_t num_of_dma_ch,
 						lower_cb_offset, &pkt_info);
 
 		/* Setup upper CB for internal DMA engine (cp_dma) */
-		cp_dma_cb[ch] = hltests_allocate_host_mem(fd, 0x1000, NOT_HUGE);
+		cp_dma_cb[ch] = hltests_allocate_host_mem(fd, 0x1000, NOT_HUGE_MAP);
 		assert_non_null(cp_dma_cb[ch]);
 		cp_dma_cb_device_va[ch] =
 			hltests_get_device_va_for_host_ptr(fd, cp_dma_cb[ch]);
@@ -1243,11 +1243,11 @@ VOID test_host_sram_bidirectional_perf(void **state)
 	sram_addr1 = hw_ip.sram_base_address;
 	sram_addr2 = sram_addr1 + cfg.dma_size;
 
-	src_ptr = hltests_allocate_host_mem(fd, cfg.dma_size, HUGE);
+	src_ptr = hltests_allocate_host_mem(fd, cfg.dma_size, HUGE_MAP);
 	assert_non_null(src_ptr);
 	host_src_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
 
-	dst_ptr = hltests_allocate_host_mem(fd, cfg.dma_size, HUGE);
+	dst_ptr = hltests_allocate_host_mem(fd, cfg.dma_size, HUGE_MAP);
 	assert_non_null(dst_ptr);
 	host_dst_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
 
@@ -1316,11 +1316,11 @@ VOID test_host_dram_bidirectional_perf(void **state)
 						NOT_CONTIGUOUS);
 	assert_non_null(dram_ptr2);
 
-	src_ptr = hltests_allocate_host_mem(fd, cfg.dma_size, HUGE);
+	src_ptr = hltests_allocate_host_mem(fd, cfg.dma_size, HUGE_MAP);
 	assert_non_null(src_ptr);
 	host_src_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
 
-	dst_ptr = hltests_allocate_host_mem(fd, cfg.dma_size, HUGE);
+	dst_ptr = hltests_allocate_host_mem(fd, cfg.dma_size, HUGE_MAP);
 	assert_non_null(dst_ptr);
 	host_dst_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
 

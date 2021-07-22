@@ -1382,7 +1382,7 @@ void *hltests_create_cb(int fd, uint32_t cb_size,
 		if (cb->ptr == MAP_FAILED)
 			goto destroy_cb;
 	} else {
-		cb->ptr = hltests_allocate_host_mem(fd, cb_size, NOT_HUGE);
+		cb->ptr = hltests_allocate_host_mem(fd, cb_size, NOT_HUGE_MAP);
 		if (!cb->ptr)
 			goto free_cb;
 
@@ -2591,12 +2591,12 @@ int test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	engine_common_cb_sram_addr = hw_ip.sram_base_address + 0x3000;
 
 	/* Allocate two buffers on the host for data transfers */
-	host_src = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
+	host_src = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE_MAP);
 	assert_non_null(host_src);
 	hltests_fill_rand_values(host_src, dma_size);
 	host_src_device_va = hltests_get_device_va_for_host_ptr(fd, host_src);
 
-	host_dst = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
+	host_dst = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE_MAP);
 	assert_non_null(host_dst);
 	memset(host_dst, 0, dma_size);
 	host_dst_device_va = hltests_get_device_va_for_host_ptr(fd, host_dst);
@@ -2610,7 +2610,7 @@ int test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	 * fetch it directly from the host, or we will download it to SRAM and
 	 * the ASIC will run it from there
 	 */
-	engine_common_cb = hltests_allocate_host_mem(fd, 0x1000, NOT_HUGE);
+	engine_common_cb = hltests_allocate_host_mem(fd, 0x1000, NOT_HUGE_MAP);
 	assert_non_null(engine_common_cb);
 	memset(engine_common_cb, 0, 0x1000);
 	engine_common_cb_device_va = hltests_get_device_va_for_host_ptr(fd,
