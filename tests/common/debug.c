@@ -54,7 +54,7 @@ VOID test_endless_memory_ioctl(void **state)
 	 */
 
 	while (1) {
-		src_ptr = hltests_allocate_host_mem(fd, SZ_4K, NOT_HUGE);
+		src_ptr = hltests_allocate_host_mem(fd, SZ_4K, NOT_HUGE_MAP);
 
 		usleep(1000);
 
@@ -214,7 +214,7 @@ VOID test_dma_custom(void **state)
 	if (cfg.chunk_size > cfg.size)
 		cfg.chunk_size = cfg.size;
 
-	src_ptr = hltests_allocate_host_mem(fd, cfg.chunk_size, NOT_HUGE);
+	src_ptr = hltests_allocate_host_mem(fd, cfg.chunk_size, NOT_HUGE_MAP);
 	assert_non_null(src_ptr);
 	host_src_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
 
@@ -228,14 +228,14 @@ VOID test_dma_custom(void **state)
 
 	if (cfg.zero_before_write) {
 		zero_ptr = hltests_allocate_host_mem(fd, cfg.chunk_size,
-								NOT_HUGE);
+								NOT_HUGE_MAP);
 		assert_non_null(src_ptr);
 		host_zero_addr = hltests_get_device_va_for_host_ptr(fd,
 								zero_ptr);
 		memset(zero_ptr, 0, cfg.chunk_size);
 	}
 
-	dst_ptr = hltests_allocate_host_mem(fd, cfg.chunk_size, NOT_HUGE);
+	dst_ptr = hltests_allocate_host_mem(fd, cfg.chunk_size, NOT_HUGE_MAP);
 	assert_non_null(dst_ptr);
 	memset(dst_ptr, 0, cfg.chunk_size);
 	host_dst_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
@@ -333,7 +333,7 @@ VOID test_transfer_bigger_than_alloc(void **state)
 	assert_non_null(device_ptr);
 	device_addr = (uint64_t) (uintptr_t) device_ptr;
 
-	src_ptr = hltests_allocate_host_mem(fd, host_alloc_size, NOT_HUGE);
+	src_ptr = hltests_allocate_host_mem(fd, host_alloc_size, NOT_HUGE_MAP);
 	assert_non_null(src_ptr);
 	host_src_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
 
@@ -434,7 +434,7 @@ VOID test_map_custom(void **state)
 
 	for (i = 0 ; i < cfg.host_num_of_alloc ; i++) {
 		host_addr = hltests_allocate_host_mem(fd, cfg.host_size,
-							NOT_HUGE);
+							NOT_HUGE_MAP);
 		assert_non_null(host_addr);
 	}
 
@@ -479,7 +479,7 @@ VOID test_loop_map_work_unmap(void **state)
 	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_DRAM;
 
 	for (i = 0 ; i < 20000 ; i++) {
-		src_ptr = hltests_allocate_host_mem(fd, total_size, HUGE);
+		src_ptr = hltests_allocate_host_mem(fd, total_size, HUGE_MAP);
 		assert_non_null(src_ptr);
 		host_src_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
 

@@ -1218,21 +1218,21 @@ VOID test_mme_basic_conv(void **state)
 	output_sram = sram_base + 0x1D70;
 
 	/* Alloc host mem for conv inputs */
-	host_src_inputs = hltests_allocate_host_mem(fd, in_size, NOT_HUGE);
+	host_src_inputs = hltests_allocate_host_mem(fd, in_size, NOT_HUGE_MAP);
 	assert_non_null(host_src_inputs);
 	host_src_inputs_device_va =
 			hltests_get_device_va_for_host_ptr(fd, host_src_inputs);
 	memcpy(host_src_inputs, ifm_buffer_ui, in_size);
 
 	/* Alloc host mem for conv weights */
-	host_src_weights = hltests_allocate_host_mem(fd, wght_size, NOT_HUGE);
+	host_src_weights = hltests_allocate_host_mem(fd, wght_size, NOT_HUGE_MAP);
 	assert_non_null(host_src_weights);
 	host_src_weights_device_va =
 		hltests_get_device_va_for_host_ptr(fd, host_src_weights);
 	memcpy(host_src_weights, weights_buffer_ui, wght_size);
 
 	/* Alloc host mem for output */
-	host_dst = hltests_allocate_host_mem(fd, output_size, NOT_HUGE);
+	host_dst = hltests_allocate_host_mem(fd, output_size, NOT_HUGE_MAP);
 	assert_non_null(host_dst);
 	memset(host_dst, 0, output_size);
 	host_dst_device_va = hltests_get_device_va_for_host_ptr(fd, host_dst);
@@ -1246,13 +1246,13 @@ VOID test_mme_basic_conv(void **state)
 	/* Allocate Command buffers */
 	/* 1. MME master0/master2 configs CB: */
 	mme_master0_config_cb =
-			hltests_allocate_host_mem(fd, SZ_4K, NOT_HUGE);
+			hltests_allocate_host_mem(fd, SZ_4K, NOT_HUGE_MAP);
 	assert_non_null(mme_master0_config_cb);
 	mme_master0_config_cb_device_va = hltests_get_device_va_for_host_ptr(fd,
 				mme_master0_config_cb);
 
 	mme_master2_config_cb =
-			hltests_allocate_host_mem(fd, SZ_4K, NOT_HUGE);
+			hltests_allocate_host_mem(fd, SZ_4K, NOT_HUGE_MAP);
 	assert_non_null(mme_master2_config_cb);
 	mme_master2_config_cb_device_va = hltests_get_device_va_for_host_ptr(fd,
 				mme_master2_config_cb);

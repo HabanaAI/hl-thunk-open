@@ -152,12 +152,12 @@ VOID dma_entire_dram_random(void **state, uint64_t zone_size,
 
 	i = 0;
 	while (dram_addr < (dram_addr_end - cfg.dma_size)) {
-		buf[0] = hltests_allocate_host_mem(fd, cfg.dma_size, NOT_HUGE);
+		buf[0] = hltests_allocate_host_mem(fd, cfg.dma_size, NOT_HUGE_MAP);
 		assert_non_null(buf[0]);
 		hltests_fill_rand_values(buf[0], cfg.dma_size);
 		device_va[0] = hltests_get_device_va_for_host_ptr(fd, buf[0]);
 
-		buf[1] = hltests_allocate_host_mem(fd, cfg.dma_size, NOT_HUGE);
+		buf[1] = hltests_allocate_host_mem(fd, cfg.dma_size, NOT_HUGE_MAP);
 		assert_non_null(buf[1]);
 		memset(buf[1], 0, cfg.dma_size);
 		device_va[1] = hltests_get_device_va_for_host_ptr(fd, buf[1]);

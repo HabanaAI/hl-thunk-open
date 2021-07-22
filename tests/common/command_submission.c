@@ -469,7 +469,7 @@ VOID test_cs_two_streams_with_fence(void **state)
 	device_data_address = hw_ip.sram_base_address + 0x1000;
 
 	/* Allocate buffer on host for data transfer */
-	src_data = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
+	src_data = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE_MAP);
 	assert_non_null(src_data);
 	hltests_fill_rand_values(src_data, dma_size);
 	src_data_device_va = hltests_get_device_va_for_host_ptr(fd, src_data);
@@ -804,7 +804,7 @@ VOID test_cs_two_streams_with_arb(void **state)
 
 	/* Allocate buffers on host for data transfer */
 	for (i = 0 ; i < 4 ; i++) {
-		data[i] = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
+		data[i] = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE_MAP);
 		assert_non_null(data[i]);
 		memset(data[i], 0, dma_size);
 		data_va[i] = hltests_get_device_va_for_host_ptr(fd, data[i]);
@@ -896,7 +896,7 @@ VOID test_cs_two_streams_with_priority_arb(void **state)
 
 	/* Allocate buffers on host for data transfer */
 	for (i = 0 ; i < 3 ; i++) {
-		data[i] = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
+		data[i] = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE_MAP);
 		assert_non_null(data[i]);
 		memset(data[i], 0, dma_size);
 		data_va[i] = hltests_get_device_va_for_host_ptr(fd, data[i]);
@@ -1030,7 +1030,7 @@ VOID test_cs_two_streams_with_wrr_arb(void **state)
 
 	/* Allocate buffers on host for data transfer */
 	for (i = 0 ; i < 4 ; i++) {
-		data[i] = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
+		data[i] = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE_MAP);
 		assert_non_null(data[i]);
 		memset(data[i], 0, dma_size);
 		data_va[i] = hltests_get_device_va_for_host_ptr(fd, data[i]);
@@ -1215,11 +1215,11 @@ VOID test_cs_load_predicates(void **state, bool is_consecutive_map)
 	/* Check alignment of predicates address to 128B */
 	assert_int_equal((pred_buf_sram_addr & 0x7f), 0);
 
-	pred_buf = hltests_allocate_host_mem(fd, 128, NOT_HUGE);
+	pred_buf = hltests_allocate_host_mem(fd, 128, NOT_HUGE_MAP);
 	assert_non_null(pred_buf);
 	pred_buf_device_va = hltests_get_device_va_for_host_ptr(fd, pred_buf);
 
-	host_data = hltests_allocate_host_mem(fd, 4, NOT_HUGE);
+	host_data = hltests_allocate_host_mem(fd, 4, NOT_HUGE_MAP);
 	assert_non_null(host_data);
 	host_data_device_va = hltests_get_device_va_for_host_ptr(fd, host_data);
 
@@ -1536,7 +1536,7 @@ VOID test_cs_load_scalars_exe_2_rfs(void **state, bool is_upper_rfs)
 	/* Check alignment of scalars address to 128B */
 	assert_int_equal((scalar_buf_sram_addr & 0x7f), 0);
 
-	scalar_buf = hltests_allocate_host_mem(fd, 16, NOT_HUGE);
+	scalar_buf = hltests_allocate_host_mem(fd, 16, NOT_HUGE_MAP);
 	assert_non_null(scalar_buf);
 	scalar_buf_device_va =
 			hltests_get_device_va_for_host_ptr(fd, scalar_buf);
@@ -1614,7 +1614,7 @@ VOID test_cs_drop(void **state)
 
 	queue_down = hltests_get_dma_down_qid(fd, STREAM0);
 	queue_up = hltests_get_dma_up_qid(fd, STREAM0);
-	src_data = hltests_allocate_host_mem(fd, 0x100000, NOT_HUGE);
+	src_data = hltests_allocate_host_mem(fd, 0x100000, NOT_HUGE_MAP);
 	device_data_address = hw_ip.sram_base_address + 0x1000;
 	src_data_device_va = hltests_get_device_va_for_host_ptr(fd, src_data);
 
@@ -1793,7 +1793,7 @@ static void *test_staged_submission(void *args)
 	cp_dma_cb_address = params->sram_addr + (size * 3);
 
 	/* Allocate a common cb buffer to hold dma packets for cp_dma */
-	common_cb_buf = hltests_allocate_host_mem(fd, 0x1000, NOT_HUGE);
+	common_cb_buf = hltests_allocate_host_mem(fd, 0x1000, NOT_HUGE_MAP);
 	assert_non_null_ret_ptr(common_cb_buf);
 	memset(common_cb_buf, 0, 0x1000);
 	common_cb_buf_size = 0;

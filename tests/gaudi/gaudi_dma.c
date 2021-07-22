@@ -205,7 +205,7 @@ VOID test_gaudi_dma_all2all(void **state)
 		}
 
 		common_cb_buf[i] = hltests_allocate_host_mem(fd,
-						int_dma_size, NOT_HUGE);
+						int_dma_size, NOT_HUGE_MAP);
 		assert_non_null(common_cb_buf[i]);
 		memset(common_cb_buf[i], 0, int_dma_size);
 		common_cb_buf_size[i] = 0;
@@ -345,7 +345,7 @@ VOID test_gaudi_dma_all2all(void **state)
 
 	for (i = 0 ; i < 2 ; i++) {
 		ext_buf[i] = hltests_allocate_host_mem(fd,
-						ext_dma_size, NOT_HUGE);
+						ext_dma_size, NOT_HUGE_MAP);
 		assert_non_null(ext_buf[i]);
 		ext_buf_size[i] = 0;
 		ext_buf_va[i] = hltests_get_device_va_for_host_ptr(fd,
@@ -512,14 +512,14 @@ VOID test_strided_dma(void **state)
 	cb[0] = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(cb[0]);
 
-	src_buf = hltests_allocate_host_mem(fd, data_size, NOT_HUGE);
+	src_buf = hltests_allocate_host_mem(fd, data_size, NOT_HUGE_MAP);
 	assert_non_null(src_buf);
 
 	src_buf_va = hltests_get_device_va_for_host_ptr(fd, src_buf);
 
 	hltests_fill_rand_values(src_buf, data_size);
 
-	dst_buf = hltests_allocate_host_mem(fd, total_dma_size, NOT_HUGE);
+	dst_buf = hltests_allocate_host_mem(fd, total_dma_size, NOT_HUGE_MAP);
 	assert_non_null(dst_buf);
 
 	dst_buf_va = hltests_get_device_va_for_host_ptr(fd, dst_buf);

@@ -256,8 +256,8 @@ enum hltests_destroy_cb {
 };
 
 enum hltests_huge {
-	NOT_HUGE = 0,
-	HUGE
+	NOT_HUGE_MAP = 0,
+	HUGE_MAP
 };
 
 enum hltests_contiguous {

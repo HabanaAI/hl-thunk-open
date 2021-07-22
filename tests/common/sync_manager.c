@@ -69,12 +69,12 @@ VOID test_sm(void **state, bool is_tpc, bool is_wait, uint8_t engine_id)
 	cb_engine_address = hw_ip.sram_base_address + 0x2000;
 
 	/* Allocate two buffers on the host for data transfers */
-	src_data = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
+	src_data = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE_MAP);
 	assert_non_null(src_data);
 	hltests_fill_rand_values(src_data, dma_size);
 	src_data_device_va = hltests_get_device_va_for_host_ptr(fd, src_data);
 
-	dst_data = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
+	dst_data = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE_MAP);
 	assert_non_null(dst_data);
 	memset(dst_data, 0, dma_size);
 	dst_data_device_va = hltests_get_device_va_for_host_ptr(fd, dst_data);
@@ -242,12 +242,12 @@ VOID test_sm_pingpong_upper_cp(void **state, bool is_tpc,
 	hltests_clear_sobs(fd, 2);
 
 	/* Allocate two buffers on the host for data transfers */
-	src_data = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
+	src_data = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE_MAP);
 	assert_non_null(src_data);
 	hltests_fill_rand_values(src_data, dma_size);
 	src_data_device_va = hltests_get_device_va_for_host_ptr(fd, src_data);
 
-	dst_data = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
+	dst_data = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE_MAP);
 	assert_non_null(dst_data);
 	memset(dst_data, 0, dma_size);
 	dst_data_device_va = hltests_get_device_va_for_host_ptr(fd, dst_data);
@@ -905,7 +905,7 @@ static void *test_signal_wait_dma_th(void *args)
 	}
 
 	for (i = 0 ; i < 2 ; i++) {
-		buf[i] = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
+		buf[i] = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE_MAP);
 		if (!buf[i]) {
 			printf("allocate host mem failed\n");
 			goto error;

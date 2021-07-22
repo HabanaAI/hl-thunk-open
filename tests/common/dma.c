@@ -201,7 +201,7 @@ VOID test_dma_threads(void **state, uint32_t num_of_threads)
 	/* Allocate memory on host and initiate threads parameters */
 	for (i = 0 ; i < num_of_threads ; i++) {
 		thread_params[i].host_src =
-			hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
+			hltests_allocate_host_mem(fd, dma_size, NOT_HUGE_MAP);
 		assert_non_null(thread_params[i].host_src);
 		hltests_fill_rand_values(thread_params[i].host_src, dma_size);
 		thread_params[i].host_src_device_va =
@@ -209,7 +209,7 @@ VOID test_dma_threads(void **state, uint32_t num_of_threads)
 						thread_params[i].host_src);
 
 		thread_params[i].host_dst =
-			hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
+			hltests_allocate_host_mem(fd, dma_size, NOT_HUGE_MAP);
 		assert_non_null(thread_params[i].host_dst);
 		memset(thread_params[i].host_dst, 0, dma_size);
 		thread_params[i].host_dst_device_va =
@@ -357,12 +357,12 @@ VOID dma_4_queues(void **state, bool sram_only)
 	sram_addr = hw_ip.sram_base_address;
 
 	/* Allocate memory on host and DRAM and set the SRAM address */
-	host_src = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
+	host_src = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE_MAP);
 	assert_non_null(host_src);
 	hltests_fill_rand_values(host_src, dma_size);
 	host_src_device_va = hltests_get_device_va_for_host_ptr(fd, host_src);
 
-	host_dst = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
+	host_dst = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE_MAP);
 	assert_non_null(host_dst);
 	memset(host_dst, 0, dma_size);
 	host_dst_device_va = hltests_get_device_va_for_host_ptr(fd, host_dst);
@@ -389,7 +389,7 @@ VOID dma_4_queues(void **state, bool sram_only)
 	hltests_clear_sobs(fd, 3);
 	for (i = 0 ; i < 2 ; i++) {
 		common_cb_buf[i] = hltests_allocate_host_mem(fd, SZ_4K,
-								NOT_HUGE);
+								NOT_HUGE_MAP);
 		assert_non_null(common_cb_buf[i]);
 		memset(common_cb_buf[i], 0, SZ_4K);
 		common_cb_buf_size[i] = 0;

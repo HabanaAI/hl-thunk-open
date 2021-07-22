@@ -77,12 +77,12 @@ VOID test_map_bigger_than_4GB(void **state)
 	dma_dir_down = GOYA_DMA_HOST_TO_DRAM;
 	dma_dir_up = GOYA_DMA_DRAM_TO_HOST;
 
-	src_ptr = hltests_allocate_host_mem(fd, total_size, NOT_HUGE);
+	src_ptr = hltests_allocate_host_mem(fd, total_size, NOT_HUGE_MAP);
 	assert_non_null(src_ptr);
 	hltests_fill_rand_values(src_ptr, total_size);
 	host_src_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
 
-	dst_ptr = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE);
+	dst_ptr = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE_MAP);
 	assert_non_null(dst_ptr);
 	memset(dst_ptr, 0, dma_size);
 	host_dst_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
