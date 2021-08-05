@@ -1352,6 +1352,12 @@ static void *test_encaps_sig_wait_wa_th(void *args)
 	rc = hlthunk_unreserve_encaps_signals(fd, &res_sig_out.handle, &status);
 	assert_int_equal_ret_ptr(rc, 0);
 
+	rc = hltests_destroy_cb(fd, nop_cb);
+	assert_int_equal_ret_ptr(rc, 0);
+
+	rc = hltests_destroy_cb(fd, cb);
+	assert_int_equal_ret_ptr(rc, 0);
+
 	return args;
 }
 
@@ -1471,6 +1477,12 @@ static void *test_encaps_sig_wait_th(void *args)
 
 	rc = hltests_wait_for_cs_until_not_busy(fd, staged_seq);
 	assert_int_equal_ret_ptr(rc, HL_WAIT_CS_STATUS_COMPLETED);
+
+	rc = hltests_destroy_cb(fd, nop_cb);
+	assert_int_equal_ret_ptr(rc, 0);
+
+	rc = hltests_destroy_cb(fd, cb);
+	assert_int_equal_ret_ptr(rc, 0);
 
 	return args;
 }
