@@ -473,6 +473,9 @@ VOID test_gaudi_dma_all2all(void **state)
 	END_TEST;
 }
 
+/* used as a stop condition for a temporarily used recursion in test_strided_dma() */
+int recursive_depth;
+
 VOID test_strided_dma(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
@@ -486,13 +489,24 @@ VOID test_strided_dma(void **state)
 	uint32_t cb_size[2] = {0}, restore_cb_size = 0, data_size = (1 << 20),
 		num_of_strides = 10, stride_size = data_size * 2,
 		total_dma_size = num_of_strides * stride_size;
-	int rc, fd = tests_state->fd, i, j;
+	int rc, fd = tests_state->fd, i, j, test_failed = 0;
 	struct timespec begin, end;
 
 	if (!hltests_is_gaudi(fd)) {
 		printf("Test is skipped because device is not GAUDI\n");
 		skip();
 	}
+
+	/* In case test_strided_dma() fails, we want to rerun it once again.
+	 * We, therefore, allow a MAX of 2nd level recursive depth, otherwise -
+	 * we stop the recursion.
+	 */
+	if (recursive_depth > 1) {
+		recursive_depth = 0;
+		EXIT_FROM_TEST;
+	}
+
+	recursive_depth++;
 
 	/*
 	 * The multi-stride DMA will copy data from src_buf to dst_buf in a
@@ -798,13 +812,20 @@ VOID test_strided_dma(void **state)
 
 	for (i = 0 ; i < num_of_strides ; i++) {
 		dst_ptr = dst_buf + i * stride_size;
-		rc = hltests_mem_compare(src_buf, dst_ptr, data_size);
-		assert_int_equal(rc, 0);
+
+		test_failed |= hltests_mem_compare(src_buf, dst_ptr, data_size);
+		if (test_failed)
+			printf("DBG: Test #%d, stride #%d\n", recursive_depth, i);
 
 		dst_ptr += data_size;
-
-		for (j = 0 ; j < (stride_size - data_size) ; j++)
-			assert_true((*(dst_ptr + j) & 0xFF) == 0xFF);
+		for (j = 0 ; j < (stride_size - data_size) ; j++) {
+			if ((*(dst_ptr + j) & 0xFF) != 0xFF) {
+				printf("[%p]: 0x%X != 0xFF\n",
+						(dst_ptr + j), *(dst_ptr + j) & 0xFF);
+				test_failed = 1;
+				break;
+			}
+		}
 	}
 
 	printf("BW: %7.2lf GB/Sec\n", get_bw_gigabyte_per_sec(
@@ -824,6 +845,12 @@ VOID test_strided_dma(void **state)
 
 	rc = hltests_destroy_cb(fd, restore_cb);
 	assert_int_equal(rc, 0);
+
+	/* Once the test failed, we expect DMA to fail a consequent test attempt */
+	if (test_failed)
+		test_strided_dma(state);
+
+	assert_int_equal(test_failed, 0);
 
 	END_TEST;
 }
