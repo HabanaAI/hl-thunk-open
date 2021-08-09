@@ -571,9 +571,6 @@ int hltests_close(int fd);
 void *hltests_cb_mmap(int fd, size_t len, off_t offset);
 int hltests_cb_munmap(void *addr, size_t length);
 
-int hltests_debugfs_open(int fd);
-int hltests_debugfs_close(int fd);
-
 uint32_t hltests_debugfs_read(int addr_fd, int data_fd, uint64_t full_address);
 void hltests_debugfs_write(int addr_fd, int data_fd, uint64_t full_address,
 				uint32_t val);
