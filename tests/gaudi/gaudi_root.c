@@ -41,11 +41,8 @@ VOID activate_super_stress_dma_channels(void **state,
 	struct hltests_pkt_info pkt_info;
 	struct hltests_monitor_and_fence mon_and_fence_info;
 	int rc, fd = tests_state->fd, i, j, loop_cnt;
+	double *all2all_perf_outcome;
 	struct timespec begin, end;
-	double time_diff;
-
-	void *dma5_cb;
-	uint32_t dma5_cb_size = 0;
 
 	/* 31.5GB * X */
 	loop_cnt = (hw_ip->dram_size / dma_size) * num_of_iterations;
@@ -59,9 +56,6 @@ VOID activate_super_stress_dma_channels(void **state,
 	nop_cb = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(nop_cb);
 
-	dma5_cb = hltests_create_cb(fd, HL_MAX_CB_SIZE, EXTERNAL, 0);
-	assert_non_null(dma5_cb);
-
 	hltests_clear_sobs(fd, 512);
 
 	/* prepare internal DMAs */
@@ -70,134 +64,74 @@ VOID activate_super_stress_dma_channels(void **state,
 	cb_common_size = 0x100000;
 
 	for (i = 0 ; i < NUM_OF_INT_Q ; i++, queue += 4) {
-
 		uint64_t dma_ch_start_addr = hw_ip->dram_base_address +
-				i * 0x100000000ull;
+						i * 0x100000000ull;
 
-		if (queue != GAUDI_QUEUE_ID_DMA_5_0) {
-			common_cb_buf[i] = hltests_allocate_host_mem(fd,
-					cb_common_size, NOT_HUGE_MAP);
-			assert_non_null(common_cb_buf[i]);
-			memset(common_cb_buf[i], 0, cb_common_size);
-			common_cb_buf_size[i] = 0;
-			common_cb_device_va[i] =
-					hltests_get_device_va_for_host_ptr(fd,
+		common_cb_buf[i] = hltests_allocate_host_mem(fd, cb_common_size,
+								NOT_HUGE_MAP);
+		assert_non_null(common_cb_buf[i]);
+		memset(common_cb_buf[i], 0, cb_common_size);
+		common_cb_buf_size[i] = 0;
+		common_cb_device_va[i] = hltests_get_device_va_for_host_ptr(fd,
 							common_cb_buf[i]);
 
-			for (j = 0 ; j < loop_cnt ; j++) {
-				uint64_t dst_addr = dma_ch_start_addr +
-						dma_size;
+		for (j = 0 ; j < loop_cnt ; j++) {
+			uint64_t dst_addr = dma_ch_start_addr + dma_size;
 
-				if (dst_addr >= hw_ip->dram_base_address +
-						hw_ip->dram_size)
-					dst_addr = hw_ip->dram_base_address;
+			if (dst_addr >= hw_ip->dram_base_address +
+							hw_ip->dram_size)
+				dst_addr = hw_ip->dram_base_address;
 
-				memset(&pkt_info, 0, sizeof(pkt_info));
-				pkt_info.eb = EB_FALSE;
-				pkt_info.mb = MB_FALSE;
-				pkt_info.dma.src_addr = dma_ch_start_addr;
-				pkt_info.dma.dst_addr = dst_addr;
-				pkt_info.dma.size = dma_size;
-				pkt_info.dma.dma_dir = GOYA_DMA_DRAM_TO_DRAM;
+			memset(&pkt_info, 0, sizeof(pkt_info));
+			pkt_info.eb = EB_FALSE;
+			pkt_info.mb = MB_FALSE;
+			pkt_info.dma.src_addr = dma_ch_start_addr;
+			pkt_info.dma.dst_addr = dst_addr;
+			pkt_info.dma.size = dma_size;
+			pkt_info.dma.dma_dir = GOYA_DMA_DRAM_TO_DRAM;
 
-				common_cb_buf_size[i] = hltests_add_dma_pkt(fd,
+			common_cb_buf_size[i] = hltests_add_dma_pkt(fd,
+							common_cb_buf[i],
+							common_cb_buf_size[i],
+							&pkt_info);
+
+			dma_ch_start_addr += dma_size;
+			if (dma_ch_start_addr >= hw_ip->dram_base_address +
+							hw_ip->dram_size)
+				dma_ch_start_addr = hw_ip->dram_base_address;
+		}
+
+		memset(&pkt_info, 0, sizeof(pkt_info));
+		pkt_info.eb = EB_TRUE;
+		pkt_info.mb = MB_TRUE;
+		pkt_info.write_to_sob.sob_id = i * 8;
+		pkt_info.write_to_sob.value = 1;
+		pkt_info.write_to_sob.mode = SOB_SET;
+		common_cb_buf_size[i] = hltests_add_write_to_sob_pkt(fd,
 						common_cb_buf[i],
 						common_cb_buf_size[i],
 						&pkt_info);
 
-				dma_ch_start_addr += dma_size;
-				if (dma_ch_start_addr >=
-						hw_ip->dram_base_address+
-						hw_ip->dram_size)
-					dma_ch_start_addr =
-						hw_ip->dram_base_address;
-			}
-
-			memset(&pkt_info, 0, sizeof(pkt_info));
-			pkt_info.eb = EB_TRUE;
-			pkt_info.mb = MB_TRUE;
-			pkt_info.write_to_sob.sob_id = i * 8;
-			pkt_info.write_to_sob.value = 1;
-			pkt_info.write_to_sob.mode = SOB_SET;
-			common_cb_buf_size[i] = hltests_add_write_to_sob_pkt(fd,
-							common_cb_buf[i],
-							common_cb_buf_size[i],
-							&pkt_info);
-		} else {
-			memset(dma5_cb, 0, HL_MAX_CB_SIZE);
-
-			for (j = 0 ; j < loop_cnt ; j++) {
-				uint64_t dst_addr = dma_ch_start_addr +
-						dma_size;
-
-				if (dst_addr >= hw_ip->dram_base_address +
-						hw_ip->dram_size)
-					dst_addr = hw_ip->dram_base_address;
-
-				memset(&pkt_info, 0, sizeof(pkt_info));
-				pkt_info.eb = EB_FALSE;
-				pkt_info.mb = MB_FALSE;
-				pkt_info.dma.src_addr = dma_ch_start_addr;
-				pkt_info.dma.dst_addr = dst_addr;
-				pkt_info.dma.size = dma_size;
-				pkt_info.dma.dma_dir = GOYA_DMA_DRAM_TO_DRAM;
-
-				dma5_cb_size = hltests_add_dma_pkt(fd,
-								dma5_cb,
-								dma5_cb_size,
-								&pkt_info);
-
-				dma_ch_start_addr += dma_size;
-				if (dma_ch_start_addr >=
-						hw_ip->dram_base_address +
-						hw_ip->dram_size)
-					dma_ch_start_addr =
-						hw_ip->dram_base_address;
-			}
-
-			memset(&pkt_info, 0, sizeof(pkt_info));
-			pkt_info.eb = EB_TRUE;
-			pkt_info.mb = MB_TRUE;
-			pkt_info.write_to_sob.sob_id = i * 8;
-			pkt_info.write_to_sob.value = 1;
-			pkt_info.write_to_sob.mode = SOB_SET;
-			dma5_cb_size = hltests_add_write_to_sob_pkt(fd,
-							dma5_cb,
-							dma5_cb_size,
-							&pkt_info);
-		}
-
 		cp_dma_sram_addr = sram_base + (NUM_OF_INT_Q * cb_common_size) +
 								(i * 0x20);
 
-		if (queue != GAUDI_QUEUE_ID_DMA_5_0) {
-			cp_dma_cb[i] = hltests_create_cb(fd, SZ_4K,
-					INTERNAL, cp_dma_sram_addr);
-			assert_non_null(cp_dma_cb[i]);
-			cp_dma_cb_device_va[i] =
-					hltests_get_device_va_for_host_ptr(fd,
-							cp_dma_cb[i]);
+		cp_dma_cb[i] = hltests_create_cb(fd, SZ_4K, INTERNAL,
+							cp_dma_sram_addr);
+		assert_non_null(cp_dma_cb[i]);
+		cp_dma_cb_device_va[i] = hltests_get_device_va_for_host_ptr(fd,
+								cp_dma_cb[i]);
 
-			memset(&pkt_info, 0, sizeof(pkt_info));
-			pkt_info.eb = EB_FALSE;
-			pkt_info.mb = MB_TRUE;
-			pkt_info.cp_dma.src_addr = sram_base +
-					i * cb_common_size;
-			pkt_info.cp_dma.size = common_cb_buf_size[i];
-			cp_dma_cb_size[i] = hltests_add_cp_dma_pkt(fd,
-					cp_dma_cb[i],
+		memset(&pkt_info, 0, sizeof(pkt_info));
+		pkt_info.eb = EB_FALSE;
+		pkt_info.mb = MB_TRUE;
+		pkt_info.cp_dma.src_addr = sram_base + i * cb_common_size;
+		pkt_info.cp_dma.size = common_cb_buf_size[i];
+		cp_dma_cb_size[i] = hltests_add_cp_dma_pkt(fd, cp_dma_cb[i],
 					cp_dma_cb_size[i], &pkt_info);
-		}
 
-		if (queue == GAUDI_QUEUE_ID_DMA_5_0) {
-			execute_arr[i].cb_ptr = dma5_cb;
-			execute_arr[i].cb_size = dma5_cb_size;
-			execute_arr[i].queue_index = queue;
-		} else {
-			execute_arr[i].cb_ptr = cp_dma_cb[i];
-			execute_arr[i].cb_size = cp_dma_cb_size[i];
-			execute_arr[i].queue_index = queue;
-		}
+		execute_arr[i].cb_ptr = cp_dma_cb[i];
+		execute_arr[i].cb_size = cp_dma_cb_size[i];
+		execute_arr[i].queue_index = queue;
 
 		memset(&pkt_info, 0, sizeof(pkt_info));
 		pkt_info.eb = EB_FALSE;
@@ -221,7 +155,6 @@ VOID activate_super_stress_dma_channels(void **state,
 							restore_cb_size,
 							&pkt_info);
 
-		/* setting up the monitor to look at the relevant SOB group */
 		memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
 		mon_and_fence_info.queue_id =
 					hltests_get_dma_down_qid(fd, STREAM0);
@@ -252,38 +185,34 @@ VOID activate_super_stress_dma_channels(void **state,
 
 	/* execute internal DMAs */
 	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr,
-				NUM_OF_INT_Q + 1, HL_CS_FLAGS_FORCE_RESTORE,
-				&seq);
+			NUM_OF_INT_Q + 1, HL_CS_FLAGS_FORCE_RESTORE, &seq);
 	assert_int_equal(rc, 0);
 
 	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
 	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
 
 	clock_gettime(CLOCK_MONOTONIC_RAW, &end);
-	time_diff = (end.tv_nsec - begin.tv_nsec) / 1000000000.0 +
-						(end.tv_sec  - begin.tv_sec);
+
+	all2all_perf_outcome =
+		&tests_state->perf_outcomes[DMA_PERF_ALL2ALL_SUPER_STRESS];
 
 	/* We multiply the result by 2 because the read and write of the DMA
 	 * are both from DRAM
 	 */
-	printf("Bandwidth result: %lf GB/Sec\n",
-		(((double)(dma_size) * loop_cnt * NUM_OF_INT_Q * 2) / time_diff)
-							/ 1024 / 1024 / 1024);
+	*all2all_perf_outcome = get_bw_gigabyte_per_sec(
+			dma_size * loop_cnt * NUM_OF_INT_Q * 2,
+			&begin, &end);
+
+	printf("Bandwidth result: %lf GB/Sec\n", *all2all_perf_outcome);
 
 	for (i = 0 ; i < NUM_OF_INT_Q ; i++) {
+		rc = hltests_destroy_cb(fd, cp_dma_cb[i]);
+		assert_int_equal(rc, 0);
 
-		if (execute_arr[i].queue_index != GAUDI_QUEUE_ID_DMA_5_0) {
-			rc = hltests_destroy_cb(fd, cp_dma_cb[i]);
-			assert_int_equal(rc, 0);
-
-			rc = hltests_free_host_mem(fd, common_cb_buf[i]);
-			assert_int_equal(rc, 0);
-
-		} else {
-			rc = hltests_destroy_cb(fd, dma5_cb);
-			assert_int_equal(rc, 0);
-		}
+		rc = hltests_free_host_mem(fd, common_cb_buf[i]);
+		assert_int_equal(rc, 0);
 	}
+
 	rc = hltests_destroy_cb(fd, nop_cb);
 	assert_int_equal(rc, 0);
 
