@@ -738,6 +738,7 @@ uint8_t hltests_get_tpc_cnt(int fd);
 uint8_t hltests_get_mme_cnt(int fd);
 uint16_t hltests_get_first_avail_sob(int fd);
 uint16_t hltests_get_first_avail_mon(int fd);
+uint16_t hltests_get_first_avail_interrupt(int fd);
 uint32_t hltests_get_sob_id(int fd, uint32_t base_addr_off);
 uint16_t hltests_get_monitors_cnt_per_dcore(int fd);
 
