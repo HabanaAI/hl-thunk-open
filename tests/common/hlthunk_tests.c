@@ -1941,6 +1941,15 @@ uint16_t hltests_get_first_avail_mon(int fd)
 	return asic->get_first_avail_mon(DCORE_MODE_FULL_CHIP);
 }
 
+uint16_t hltests_get_first_avail_interrupt(int fd)
+{
+	struct hlthunk_hw_ip_info hw_ip = {};
+
+	hlthunk_get_hw_ip_info(fd, &hw_ip);
+
+	return hw_ip.first_available_interrupt_id;
+}
+
 uint32_t hltests_get_sob_id(int fd, uint32_t base_addr_off)
 {
 	const struct hltests_asic_funcs *asic =
