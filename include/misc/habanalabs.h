@@ -272,11 +272,23 @@ enum hl_gaudi_pll_index {
 	HL_GAUDI_PLL_MAX
 };
 
+/**
+ * enum hl_device_status - Device status information.
+ * @HL_DEVICE_STATUS_OPERATIONAL: Device is operational.
+ * @HL_DEVICE_STATUS_IN_RESET: Device is currently during reset.
+ * @HL_DEVICE_STATUS_MALFUNCTION: Device is unusable.
+ * @HL_DEVICE_STATUS_NEEDS_RESET: Device needs reset because auto reset was disabled.
+ * @HL_DEVICE_STATUS_IN_DEVICE_CREATION: Device is operational but its creation is still in
+ *                                       progress.
+ * @HL_DEVICE_STATUS_LAST: Last status.
+ */
 enum hl_device_status {
 	HL_DEVICE_STATUS_OPERATIONAL,
 	HL_DEVICE_STATUS_IN_RESET,
 	HL_DEVICE_STATUS_MALFUNCTION,
-	HL_DEVICE_STATUS_NEEDS_RESET
+	HL_DEVICE_STATUS_NEEDS_RESET,
+	HL_DEVICE_STATUS_IN_DEVICE_CREATION,
+	HL_DEVICE_STATUS_LAST = HL_DEVICE_STATUS_IN_DEVICE_CREATION
 };
 
 enum hl_server_type {
