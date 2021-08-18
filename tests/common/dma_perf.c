@@ -151,6 +151,14 @@ static double execute_host_bidirectional_transfer(int fd,
 
 	clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
 
+	if (hltests_is_pldm(fd)) {
+		/* Write on device memory first to avoid ECC error on pldm */
+		hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
+					EB_FALSE, MB_TRUE, host_to_device->src_addr,
+					device_to_host->src_addr, device_to_host->size,
+					host_to_device->dma_dir);
+	}
+
 	rc = hltests_submit_cs(fd, NULL, 0, execute_arr,
 				h2d_num_of_cb + d2h_num_of_cb, 0, &seq);
 	assert_int_equal(rc, 0);
