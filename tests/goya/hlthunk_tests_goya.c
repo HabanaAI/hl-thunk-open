@@ -15,6 +15,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#define mmSYNC_MNGR_MON_STATUS_0                                     0x114000
+#define mmSYNC_MNGR_MON_STATUS_255                                   0x1143FC
+
 static uint32_t goya_add_nop_pkt(void *buffer, uint32_t buf_off, bool eb,
 					bool mb)
 {
@@ -575,6 +578,11 @@ static uint32_t goya_get_sob_id(uint32_t base_addr_off)
 	return 0;
 }
 
+static uint16_t goya_get_mon_cnt_per_dcore(void)
+{
+	return (((mmSYNC_MNGR_MON_STATUS_255 - mmSYNC_MNGR_MON_STATUS_0) + 4) >> 2);
+}
+
 static const struct hltests_asic_funcs goya_funcs = {
 	.add_arb_en_pkt = goya_add_arb_en_pkt,
 	.add_monitor_and_fence = goya_add_monitor_and_fence,
@@ -608,7 +616,8 @@ static const struct hltests_asic_funcs goya_funcs = {
 	.get_max_pll_idx = goya_get_max_pll_idx,
 	.stringify_pll_idx = goya_stringify_pll_idx,
 	.stringify_pll_type = goya_stringify_pll_type,
-	.get_sob_id = goya_get_sob_id
+	.get_sob_id = goya_get_sob_id,
+	.get_mon_cnt_per_dcore = goya_get_mon_cnt_per_dcore
 };
 
 void goya_tests_set_asic_funcs(struct hltests_device *hdev)

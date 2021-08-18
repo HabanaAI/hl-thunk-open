@@ -1949,6 +1949,13 @@ uint32_t hltests_get_sob_id(int fd, uint32_t base_addr_off)
 	return asic->get_sob_id(base_addr_off);
 }
 
+uint16_t hltests_get_monitors_cnt_per_dcore(int fd)
+{
+	const struct hltests_asic_funcs *asic = get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->get_mon_cnt_per_dcore();
+}
+
 void hltests_set_rand_seed(uint32_t val)
 {
 	cur_seed = val;
