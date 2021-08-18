@@ -907,6 +907,12 @@ static uint32_t gaudi_get_sob_id(uint32_t base_addr_off)
        return (base_addr_off - (mmSYNC_MNGR_W_S_SYNC_MNGR_OBJS_SOB_OBJ_0)) / 4;
 }
 
+static uint16_t gaudi_get_mon_cnt_per_dcore(void)
+{
+	return (((mmSYNC_MNGR_E_N_SYNC_MNGR_OBJS_MON_STATUS_511 -
+			mmSYNC_MNGR_E_N_SYNC_MNGR_OBJS_MON_STATUS_0) + 4) >> 2);
+}
+
 static const struct hltests_asic_funcs gaudi_funcs = {
 	.add_arb_en_pkt = gaudi_add_arb_en_pkt,
 	.add_monitor_and_fence = gaudi_add_monitor_and_fence,
@@ -940,8 +946,8 @@ static const struct hltests_asic_funcs gaudi_funcs = {
 	.get_max_pll_idx = gaudi_get_max_pll_idx,
 	.stringify_pll_idx = gaudi_stringify_pll_idx,
 	.stringify_pll_type = gaudi_stringify_pll_type,
-	.get_sob_id = gaudi_get_sob_id
-
+	.get_sob_id = gaudi_get_sob_id,
+	.get_mon_cnt_per_dcore = gaudi_get_mon_cnt_per_dcore
 };
 
 void gaudi_tests_set_asic_funcs(struct hltests_device *hdev)

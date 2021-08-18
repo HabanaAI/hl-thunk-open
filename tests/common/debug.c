@@ -337,7 +337,7 @@ VOID test_transfer_bigger_than_alloc(void **state)
 	assert_non_null(src_ptr);
 	host_src_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
 
-	ptr = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
+	ptr = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(ptr);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
@@ -465,7 +465,7 @@ VOID test_loop_map_work_unmap(void **state)
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
-	cb = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
+	cb = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(cb);
 
 	dram_ptr = hltests_allocate_device_mem(fd, total_size, CONTIGUOUS);
@@ -688,7 +688,7 @@ VOID test_register_security(void **state)
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
-	cb = hltests_create_cb(fd, getpagesize(), EXTERNAL, 0);
+	cb = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(cb);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
@@ -718,6 +718,145 @@ VOID test_register_security(void **state)
 	END_TEST;
 }
 
+struct scan_with_sm_cfg {
+	uint64_t start_addr;
+	uint64_t end_addr;
+	uint32_t value;
+	bool sequential;
+	bool random;
+};
+
+static int scan_with_sm_parsing_handler(void *user, const char *section,
+					const char *name, const char *value)
+{
+	struct scan_with_sm_cfg *cfg = (struct scan_with_sm_cfg *) user;
+	char *tmp;
+
+	if (MATCH("scan_with_sm", "start_addr")) {
+		cfg->start_addr = strtoul(value, NULL, 0);
+	} else if (MATCH("scan_with_sm", "end_addr")) {
+		cfg->end_addr = strtoul(value, NULL, 0);
+	} else if (MATCH("scan_with_sm", "sequential")) {
+		tmp = strdup(value);
+		if (!tmp)
+			return 1;
+
+		cfg->sequential = strcmp("true", tmp) ? false : true;
+		if (cfg->sequential)
+			cfg->random = false;
+		free(tmp);
+	} else if (MATCH("scan_with_sm", "value")) {
+		cfg->value = strtoul(value, NULL, 0);
+		cfg->random = false;
+	} else {
+		return 0; /* unknown section/name, error */
+	}
+
+	return 1;
+}
+
+VOID test_scan_with_sm(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	const char *config_filename = hltests_get_config_filename();
+	struct hltests_monitor_and_fence mon_and_fence_info;
+	struct hltests_pkt_info write_to_sob, clear_sob;
+	struct hlthunk_hw_ip_info hw_ip;
+	int rc, fd = tests_state->fd;
+	struct scan_with_sm_cfg cfg;
+	uint32_t cb_size, seq_val;
+	uint64_t cur_addr;
+	uint16_t sob_id;
+	void *cb;
+
+	if (!config_filename)
+		fail_msg("User didn't supply a configuration file name!\n");
+
+	memset(&cfg, 0, sizeof(struct scan_with_sm_cfg));
+	cfg.random = true;
+
+	if (ini_parse(config_filename, scan_with_sm_parsing_handler, &cfg) < 0)
+		fail_msg("Can't load %s\n", config_filename);
+
+	printf("Configuration loaded from %s:\n", config_filename);
+	printf("start address = 0x%lx, end address = 0x%lx\n", cfg.start_addr, cfg.end_addr);
+
+	if (cfg.random)
+		printf("random values\n\n");
+	else if (cfg.sequential)
+		printf("sequential values\n\n");
+	else
+		printf("fixed fill value = 0x%x\n\n", cfg.value);
+
+	assert_in_range(cfg.start_addr, 0, cfg.end_addr - 4);
+
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+
+	cb = hltests_create_cb(fd, HL_MAX_CB_SIZE, EXTERNAL, 0);
+	assert_non_null(cb);
+
+	sob_id = hltests_get_first_avail_sob(fd);
+
+	memset(&clear_sob, 0, sizeof(clear_sob));
+	clear_sob.eb = EB_TRUE;
+	clear_sob.mb = MB_TRUE;
+	clear_sob.write_to_sob.sob_id = sob_id;
+	clear_sob.write_to_sob.value = 0;
+	clear_sob.write_to_sob.mode = SOB_SET;
+
+	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
+	mon_and_fence_info.queue_id = hltests_get_dma_down_qid(fd, 0);
+	mon_and_fence_info.cmdq_fence = false;
+	mon_and_fence_info.sob_id = sob_id;
+	mon_and_fence_info.mon_id = hltests_get_first_avail_mon(fd);
+	mon_and_fence_info.sob_val = 1;
+	mon_and_fence_info.no_fence = true;
+
+	memset(&write_to_sob, 0, sizeof(write_to_sob));
+	write_to_sob.eb = EB_TRUE;
+	write_to_sob.mb = MB_TRUE;
+	write_to_sob.write_to_sob.sob_id = sob_id;
+	write_to_sob.write_to_sob.value = 1;
+	write_to_sob.write_to_sob.mode = SOB_SET;
+
+	cb_size = 0;
+	cb_size = hltests_add_write_to_sob_pkt(fd, cb, cb_size, &clear_sob);
+
+	for (cur_addr = cfg.start_addr, seq_val = 0;  cur_addr < cfg.end_addr ; cur_addr += 4) {
+		mon_and_fence_info.mon_address = cur_addr;
+
+		if (cfg.random)
+			mon_and_fence_info.mon_payload = hltests_rand_u32();
+		else if (cfg.sequential)
+			mon_and_fence_info.mon_payload = seq_val++;
+		else
+			mon_and_fence_info.mon_payload = cfg.value;
+
+
+		cb_size = hltests_add_monitor_and_fence(fd, cb, cb_size, &mon_and_fence_info);
+
+		mon_and_fence_info.mon_id++;
+
+		if (cb_size + 0x100 > HL_MAX_CB_SIZE || mon_and_fence_info.mon_id ==
+						hltests_get_monitors_cnt_per_dcore(fd)) {
+
+			cb_size = hltests_add_write_to_sob_pkt(fd, cb, cb_size, &write_to_sob);
+
+			hltests_submit_and_wait_cs(fd, cb, cb_size,
+						hltests_get_dma_down_qid(fd, STREAM0),
+						DESTROY_CB_FALSE, HL_WAIT_CS_STATUS_COMPLETED);
+			cb_size = 0;
+			mon_and_fence_info.mon_id = hltests_get_first_avail_mon(fd);
+			cb_size = hltests_add_write_to_sob_pkt(fd, cb, cb_size, &clear_sob);
+		}
+	}
+
+	hltests_destroy_cb(fd, cb);
+
+	END_TEST;
+}
+
 #ifndef HLTESTS_LIB_MODE
 
 const struct CMUnitTest debug_tests[] = {
@@ -738,6 +877,8 @@ const struct CMUnitTest debug_tests[] = {
 	cmocka_unit_test_setup(test_page_miss,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_register_security,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_scan_with_sm,
 				hltests_ensure_device_operational)
 };
 
