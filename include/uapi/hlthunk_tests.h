@@ -499,6 +499,7 @@ struct hltests_asic_funcs {
 	const char *(*stringify_pll_type)(uint32_t pll_idx, uint8_t type_idx);
 	uint32_t (*get_sob_id)(uint32_t base_addr_off);
 	uint16_t (*get_mon_cnt_per_dcore)(void);
+	int (*get_stream_master_qid_arr)(uint32_t **qid_arr);
 };
 
 struct hltests_memory {
@@ -742,6 +743,7 @@ uint16_t hltests_get_first_avail_mon(int fd);
 uint16_t hltests_get_first_avail_interrupt(int fd);
 uint32_t hltests_get_sob_id(int fd, uint32_t base_addr_off);
 uint16_t hltests_get_monitors_cnt_per_dcore(int fd);
+int hltests_get_stream_master_qid_arr(int fd, uint32_t **qid_arr);
 
 void goya_tests_set_asic_funcs(struct hltests_device *hdev);
 void gaudi_tests_set_asic_funcs(struct hltests_device *hdev);
