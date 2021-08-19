@@ -913,6 +913,24 @@ static uint16_t gaudi_get_mon_cnt_per_dcore(void)
 			mmSYNC_MNGR_E_N_SYNC_MNGR_OBJS_MON_STATUS_0) + 4) >> 2);
 }
 
+static uint32_t gaudi_stream_master[] = {
+	GAUDI_QUEUE_ID_DMA_0_0,
+	GAUDI_QUEUE_ID_DMA_0_1,
+	GAUDI_QUEUE_ID_DMA_0_2,
+	GAUDI_QUEUE_ID_DMA_0_3,
+	GAUDI_QUEUE_ID_DMA_1_0,
+	GAUDI_QUEUE_ID_DMA_1_1,
+	GAUDI_QUEUE_ID_DMA_1_2,
+	GAUDI_QUEUE_ID_DMA_1_3
+};
+
+static int gaudi_get_stream_master_qid_arr(uint32_t **qid_arr)
+{
+	*qid_arr = gaudi_stream_master;
+
+	return ARRAY_SIZE(gaudi_stream_master);
+}
+
 static const struct hltests_asic_funcs gaudi_funcs = {
 	.add_arb_en_pkt = gaudi_add_arb_en_pkt,
 	.add_monitor_and_fence = gaudi_add_monitor_and_fence,
@@ -947,7 +965,8 @@ static const struct hltests_asic_funcs gaudi_funcs = {
 	.stringify_pll_idx = gaudi_stringify_pll_idx,
 	.stringify_pll_type = gaudi_stringify_pll_type,
 	.get_sob_id = gaudi_get_sob_id,
-	.get_mon_cnt_per_dcore = gaudi_get_mon_cnt_per_dcore
+	.get_mon_cnt_per_dcore = gaudi_get_mon_cnt_per_dcore,
+	.get_stream_master_qid_arr = gaudi_get_stream_master_qid_arr
 };
 
 void gaudi_tests_set_asic_funcs(struct hltests_device *hdev)

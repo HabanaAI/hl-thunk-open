@@ -201,9 +201,16 @@ VOID test_cs_msg_long_2000(void **state)
 				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED));
 }
 
+enum complete_multi_cs_qid {
+	QID_MULTI_CS,
+	QID_SIGNALING_THREAD,
+	QID_MULTI_CS_NUM
+};
+
 struct complete_multi_cs_params {
 	uint64_t *seq;
 	uint32_t seq_len;
+	uint32_t qid;
 	int fd;
 	uint16_t sob0;
 	unsigned int sleep_us;
@@ -238,13 +245,9 @@ static void *multi_cs_complete_first_cs(void *data)
 	if (params->sleep_us)
 		usleep(params->sleep_us);
 
-	/*
-	 * we are submitting this CS to stream 1 not to cause completion
-	 * for the multi CS (pending on stream 0)
-	 */
 	rc = hltests_submit_and_wait_cs(params->fd, signal_cb, signal_cb_size,
-				hltests_get_dma_up_qid(params->fd, STREAM1),
-				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
+						params->qid, DESTROY_CB_TRUE,
+						HL_WAIT_CS_STATUS_COMPLETED);
 	assert_int_equal_ret_ptr(rc, 0);
 
 	return data;
@@ -259,17 +262,14 @@ VOID test_wait_for_multi_cs_common(void **state, bool do_complete)
 	struct hltests_monitor_and_fence mon_and_fence_info;
 	struct complete_multi_cs_params mcs_params = {0};
 	struct hlthunk_wait_multi_cs_out mcs_out = {0};
+	uint32_t signal_cb_size, *stream_master_tbl;
 	struct hlthunk_wait_multi_cs_in mcs_in;
 	struct hltests_cs_chunk execute_arr[1];
 	struct hltests_pkt_info pkt_info;
 	int rc, i, fd = tests_state->fd;
 	uint16_t mon_base, sob0, sob1;
-	uint32_t signal_cb_size;
 	pthread_t thread_id;
 	void *retval;
-
-	printf("Multi-CS tests need to be adjusted to new logic- skipping\n");
-	skip();
 
 	if (!hltests_is_gaudi(fd)) {
 		printf("Test is skipped. Goya doesn't support multi-CS\n");
@@ -279,13 +279,16 @@ VOID test_wait_for_multi_cs_common(void **state, bool do_complete)
 	/*
 	 * test structure: complete mode
 	 * STEP 1: HL_WAIT_MULTI_CS_LIST_MAX_LEN CSs are submitted to the
-	 *         same QID (in the main thread)
+	 *         same stream master QID (in the main thread)
 	 *    where:
 	 *    - CS0: fence on SOB0
 	 *    - CS1-END: fence on SOB1
 	 *
 	 * STEP 2: another CS is submitted by different thread which set SOB0
-	 *         to the value that will signals CS0 on the CS list.
+	 *         to the value that will signals CS0 on the CS list. this on
+	 *         has to be submitted to stream master QID which is different
+	 *         from the one used for the CS list. that is in order to
+	 *         avoid completing the multi-CS call by itself.
 	 *
 	 * STEP 3: wait for multi CS in the main thread (expect to see only
 	 *         CS0 returning the wait call)
@@ -295,7 +298,7 @@ VOID test_wait_for_multi_cs_common(void **state, bool do_complete)
 	 *
 	 * test structure: poll mode
 	 * STEP 1: HL_WAIT_MULTI_CS_LIST_MAX_LEN CSs are submitted to the
-	 *         same QID (in the main thread)
+	 *         same stream master QID (in the main thread)
 	 *    where:
 	 *    - CS0: no fence
 	 *    - CS1-END: fence on SOB1
@@ -313,8 +316,10 @@ VOID test_wait_for_multi_cs_common(void **state, bool do_complete)
 	hltests_clear_sobs(fd, 2);
 	mon_base = hltests_get_first_avail_mon(fd);
 
+	assert_true(hltests_get_stream_master_qid_arr(fd, &stream_master_tbl) > QID_MULTI_CS_NUM);
+
 	/*
-	 * init all CSs to wait on SOB:
+	 * init all CSs to wait on SOBs:
 	 * 1. CS0 waits on SOB0
 	 * 2. all other CSs waits on SOB1
 	 */
@@ -327,12 +332,11 @@ VOID test_wait_for_multi_cs_common(void **state, bool do_complete)
 		 * CS0 on a fence.
 		 * all other CSs are waiting on a fence
 		 * In any case, if we want to get actual completion the first
-		 * CS fences on difference monitor than other CSs on
-		 * the list
+		 * CS fences on different monitor than other CSs on the list
 		 */
 		if (!((i == 0) && !do_complete)) {
 			memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
-			mon_and_fence_info.queue_id = hltests_get_dma_down_qid(fd, STREAM0);
+			mon_and_fence_info.queue_id = stream_master_tbl[QID_MULTI_CS];
 			mon_and_fence_info.cmdq_fence = false;
 			mon_and_fence_info.sob_id = (i == 0) ? sob0 : sob1;
 			mon_and_fence_info.mon_id = mon_base + i;
@@ -351,8 +355,7 @@ VOID test_wait_for_multi_cs_common(void **state, bool do_complete)
 		/* First CS: Submit CB of stream 0 */
 		execute_arr[0].cb_ptr = mon_cb[i];
 		execute_arr[0].cb_size = mon_cb_size[i];
-		execute_arr[0].queue_index =
-					hltests_get_dma_down_qid(fd, STREAM0);
+		execute_arr[0].queue_index = stream_master_tbl[QID_MULTI_CS];
 		rc = hltests_submit_cs_timeout(fd, NULL, 0, execute_arr, 1, 0,
 								30, &seq[i]);
 		assert_int_equal(rc, 0);
@@ -368,6 +371,7 @@ VOID test_wait_for_multi_cs_common(void **state, bool do_complete)
 		/* update multi-CS params */
 		mcs_params.seq = seq;
 		mcs_params.seq_len = HL_WAIT_MULTI_CS_LIST_MAX_LEN;
+		mcs_params.qid = stream_master_tbl[QID_SIGNALING_THREAD];
 		mcs_params.sob0 = sob0;
 		mcs_params.fd = fd;
 		mcs_params.sleep_us = 500000;

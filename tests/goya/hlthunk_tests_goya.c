@@ -583,6 +583,11 @@ static uint16_t goya_get_mon_cnt_per_dcore(void)
 	return (((mmSYNC_MNGR_MON_STATUS_255 - mmSYNC_MNGR_MON_STATUS_0) + 4) >> 2);
 }
 
+static int goya_get_stream_master_qid_arr(uint32_t **qid_arr)
+{
+	return -1;
+}
+
 static const struct hltests_asic_funcs goya_funcs = {
 	.add_arb_en_pkt = goya_add_arb_en_pkt,
 	.add_monitor_and_fence = goya_add_monitor_and_fence,
@@ -617,7 +622,8 @@ static const struct hltests_asic_funcs goya_funcs = {
 	.stringify_pll_idx = goya_stringify_pll_idx,
 	.stringify_pll_type = goya_stringify_pll_type,
 	.get_sob_id = goya_get_sob_id,
-	.get_mon_cnt_per_dcore = goya_get_mon_cnt_per_dcore
+	.get_mon_cnt_per_dcore = goya_get_mon_cnt_per_dcore,
+	.get_stream_master_qid_arr = goya_get_stream_master_qid_arr
 };
 
 void goya_tests_set_asic_funcs(struct hltests_device *hdev)
