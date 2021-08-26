@@ -2104,6 +2104,27 @@ int hltests_dma_transfer(int fd, uint32_t queue_index, enum hltests_eb eb,
 				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
 }
 
+int hltests_zero_device_memory(int fd, uint64_t dst_addr, uint32_t size,
+				enum hltests_goya_dma_direction dma_dir)
+{
+	uint64_t host_src_addr;
+	void *src_ptr;
+
+	src_ptr = hltests_allocate_host_mem(fd, size, HUGE_MAP);
+	assert_non_null(src_ptr);
+
+	memset(src_ptr, 0, size);
+	host_src_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
+
+	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
+				EB_FALSE, MB_TRUE, host_src_addr,
+				dst_addr, size, dma_dir);
+
+	hltests_free_host_mem(fd, src_ptr);
+
+	return 0;
+}
+
 int hltests_dma_dram_frag_mem_test(void **state, uint64_t size)
 {
 	void **frag_arr;

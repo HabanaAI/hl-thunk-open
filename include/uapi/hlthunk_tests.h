@@ -656,6 +656,9 @@ int hltests_dma_transfer(int fd, uint32_t queue_index, enum hltests_eb eb,
 				uint32_t size,
 				enum hltests_goya_dma_direction dma_dir);
 
+int hltests_zero_device_memory(int fd, uint64_t dst_addr, uint32_t size,
+				enum hltests_goya_dma_direction dma_dir);
+
 int hltests_dma_test(void **state, bool is_ddr, uint64_t size);
 
 int hltests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us);
