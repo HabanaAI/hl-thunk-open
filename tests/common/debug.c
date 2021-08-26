@@ -762,11 +762,11 @@ VOID test_scan_with_sm(void **state)
 	struct hltests_monitor_and_fence mon_and_fence_info;
 	struct hltests_pkt_info write_to_sob, clear_sob;
 	struct hlthunk_hw_ip_info hw_ip;
+	uint16_t sob_id, mon_per_dcore;
 	int rc, fd = tests_state->fd;
 	struct scan_with_sm_cfg cfg;
 	uint32_t cb_size, seq_val;
 	uint64_t cur_addr;
-	uint16_t sob_id;
 	void *cb;
 
 	if (!config_filename)
@@ -797,6 +797,7 @@ VOID test_scan_with_sm(void **state)
 	assert_non_null(cb);
 
 	sob_id = hltests_get_first_avail_sob(fd);
+	mon_per_dcore = hltests_get_monitors_cnt_per_dcore(fd);
 
 	memset(&clear_sob, 0, sizeof(clear_sob));
 	clear_sob.eb = EB_TRUE;
@@ -838,8 +839,8 @@ VOID test_scan_with_sm(void **state)
 
 		mon_and_fence_info.mon_id++;
 
-		if (cb_size + 0x100 > HL_MAX_CB_SIZE || mon_and_fence_info.mon_id ==
-						hltests_get_monitors_cnt_per_dcore(fd)) {
+		if (cur_addr + 4 >= cfg.end_addr || cb_size + 0x100 > HL_MAX_CB_SIZE ||
+					mon_and_fence_info.mon_id == mon_per_dcore) {
 
 			cb_size = hltests_add_write_to_sob_pkt(fd, cb, cb_size, &write_to_sob);
 
