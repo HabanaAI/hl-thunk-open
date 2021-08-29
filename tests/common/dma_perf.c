@@ -501,6 +501,7 @@ static double indirect_perf_test(int fd, uint32_t num_of_dma_ch,
 	struct hlthunk_hw_ip_info hw_ip;
 	struct hltests_pkt_info pkt_info;
 	struct hltests_monitor_and_fence mon_and_fence_info;
+	struct hltests_monitor mon_info;
 	void *cp_dma_cb[MAX_DMA_CH], *cb, *lower_cb[MAX_DMA_CH];
 	uint64_t cp_dma_cb_device_va[MAX_DMA_CH],
 		lower_cb_device_va[MAX_DMA_CH], total_dma_size = 0;
@@ -549,18 +550,15 @@ static double indirect_perf_test(int fd, uint32_t num_of_dma_ch,
 								lower_cb[ch]);
 
 		/* Just configure and ARM the monitor but don't put the fence */
-		memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
-		mon_and_fence_info.queue_id = transfer[ch].queue_index;
-		mon_and_fence_info.cmdq_fence = true;
-		mon_and_fence_info.sob_id = sob0 + 1;
-		mon_and_fence_info.mon_id = mon0 + 1 + ch;
-		mon_and_fence_info.mon_address = 0;
-		mon_and_fence_info.sob_val = 1;
-		mon_and_fence_info.dec_fence = true;
-		mon_and_fence_info.mon_payload = 1;
-		mon_and_fence_info.no_fence = true;
-		lower_cb_offset = hltests_add_monitor_and_fence(fd,
-					lower_cb[ch], 0, &mon_and_fence_info);
+		memset(&mon_info, 0, sizeof(mon_info));
+		mon_info.sob_id = sob0 + 1;
+		mon_info.mon_id = mon0 + 1 + ch;
+		mon_info.mon_address = hltests_get_fence_addr(fd,
+						transfer[ch].queue_index, true);
+		mon_info.sob_val = 1;
+		mon_info.mon_payload = 1;
+		lower_cb_offset = hltests_add_monitor(fd,
+					lower_cb[ch], 0, &mon_info);
 
 		/* add 1 to SOB2 by the DDMA QMAN */
 		memset(&pkt_info, 0, sizeof(pkt_info));

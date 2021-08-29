@@ -407,12 +407,25 @@ struct hltests_pkt_info {
 	};
 };
 
+struct hltests_monitor {
+	union {
+		uint64_t mon_address;
+		uint8_t cq_id;
+	};
+	uint64_t sob_val;
+	uint32_t mon_payload;
+	bool avoid_arm_mon;
+	uint16_t sob_id;
+	uint16_t mon_id;
+	uint8_t long_mode;
+	uint8_t cq_enable;
+};
+
 struct hltests_monitor_and_fence {
 	uint64_t mon_address;
 	uint32_t mon_payload;
 	bool cmdq_fence;
 	bool dec_fence; /* decrement the fence once it reaches the gate value */
-	bool no_fence; /* true to avoid adding the fence packet */
 	uint16_t sob_id;
 	uint16_t mon_id;
 	uint16_t sob_val;
@@ -448,6 +461,9 @@ struct hltests_asic_funcs {
 			enum hltests_dcore_separation_mode dcore_sep_mode,
 			void *buffer, uint32_t buf_off,
 			struct hltests_monitor_and_fence *mon_and_fence);
+	uint32_t (*add_monitor)(void *buffer, uint32_t buf_off,
+					struct hltests_monitor *mon);
+	uint64_t (*get_fence_addr)(uint32_t qid, bool cmdq_fence);
 	uint32_t (*add_nop_pkt)(void *buffer, uint32_t buf_off, bool eb,
 				bool mb);
 	uint32_t (*add_wreg32_pkt)(void *buffer, uint32_t buf_off,
@@ -751,6 +767,9 @@ uint32_t hltests_add_load_and_exe_pkt(int fd, void *buffer, uint32_t buf_off,
 
 uint32_t hltests_add_monitor_and_fence(int fd, void *buffer, uint32_t buf_off,
 		struct hltests_monitor_and_fence *mon_and_fence_info);
+uint32_t hltests_add_monitor(int fd, void *buffer, uint32_t buf_off,
+		struct hltests_monitor *mon_info);
+uint64_t hltests_get_fence_addr(int fd, uint32_t qid, bool cmdq_fence);
 uint32_t hltests_add_arb_en_pkt(int fd, void *buffer, uint32_t buf_off,
 		struct hltests_pkt_info *pkt_info,
 		struct hltests_arb_info *arb_info,

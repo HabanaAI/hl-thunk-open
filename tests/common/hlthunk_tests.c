@@ -1877,6 +1877,23 @@ uint32_t hltests_add_monitor_and_fence(int fd, void *buffer, uint32_t buf_off,
 					buf_off, mon_and_fence_info);
 }
 
+uint32_t hltests_add_monitor(int fd, void *buffer, uint32_t buf_off,
+		struct hltests_monitor *mon_info)
+{
+	const struct hltests_asic_funcs *asic =
+			get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->add_monitor(buffer, buf_off, mon_info);
+}
+
+uint64_t hltests_get_fence_addr(int fd, uint32_t qid, bool cmdq_fence)
+{
+	const struct hltests_asic_funcs *asic =
+			get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->get_fence_addr(qid, cmdq_fence);
+}
+
 uint32_t hltests_add_arb_en_pkt(int fd, void *buffer, uint32_t buf_off,
 		struct hltests_pkt_info *pkt_info,
 		struct hltests_arb_info *arb_info,

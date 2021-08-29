@@ -759,7 +759,7 @@ VOID test_scan_with_sm(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	const char *config_filename = hltests_get_config_filename();
-	struct hltests_monitor_and_fence mon_and_fence_info;
+	struct hltests_monitor mon_info;
 	struct hltests_pkt_info write_to_sob, clear_sob;
 	struct hlthunk_hw_ip_info hw_ip;
 	uint16_t sob_id, mon_per_dcore;
@@ -806,13 +806,10 @@ VOID test_scan_with_sm(void **state)
 	clear_sob.write_to_sob.value = 0;
 	clear_sob.write_to_sob.mode = SOB_SET;
 
-	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
-	mon_and_fence_info.queue_id = hltests_get_dma_down_qid(fd, 0);
-	mon_and_fence_info.cmdq_fence = false;
-	mon_and_fence_info.sob_id = sob_id;
-	mon_and_fence_info.mon_id = hltests_get_first_avail_mon(fd);
-	mon_and_fence_info.sob_val = 1;
-	mon_and_fence_info.no_fence = true;
+	memset(&mon_info, 0, sizeof(mon_info));
+	mon_info.sob_id = sob_id;
+	mon_info.mon_id = hltests_get_first_avail_mon(fd);
+	mon_info.sob_val = 1;
 
 	memset(&write_to_sob, 0, sizeof(write_to_sob));
 	write_to_sob.eb = EB_TRUE;
@@ -825,22 +822,22 @@ VOID test_scan_with_sm(void **state)
 	cb_size = hltests_add_write_to_sob_pkt(fd, cb, cb_size, &clear_sob);
 
 	for (cur_addr = cfg.start_addr, seq_val = 0;  cur_addr < cfg.end_addr ; cur_addr += 4) {
-		mon_and_fence_info.mon_address = cur_addr;
+		mon_info.mon_address = cur_addr;
 
 		if (cfg.random)
-			mon_and_fence_info.mon_payload = hltests_rand_u32();
+			mon_info.mon_payload = hltests_rand_u32();
 		else if (cfg.sequential)
-			mon_and_fence_info.mon_payload = seq_val++;
+			mon_info.mon_payload = seq_val++;
 		else
-			mon_and_fence_info.mon_payload = cfg.value;
+			mon_info.mon_payload = cfg.value;
 
 
-		cb_size = hltests_add_monitor_and_fence(fd, cb, cb_size, &mon_and_fence_info);
+		cb_size = hltests_add_monitor(fd, cb, cb_size, &mon_info);
 
-		mon_and_fence_info.mon_id++;
+		mon_info.mon_id++;
 
 		if (cur_addr + 4 >= cfg.end_addr || cb_size + 0x100 > HL_MAX_CB_SIZE ||
-					mon_and_fence_info.mon_id == mon_per_dcore) {
+					mon_info.mon_id == mon_per_dcore) {
 
 			cb_size = hltests_add_write_to_sob_pkt(fd, cb, cb_size, &write_to_sob);
 
@@ -848,7 +845,7 @@ VOID test_scan_with_sm(void **state)
 						hltests_get_dma_down_qid(fd, STREAM0),
 						DESTROY_CB_FALSE, HL_WAIT_CS_STATUS_COMPLETED);
 			cb_size = 0;
-			mon_and_fence_info.mon_id = hltests_get_first_avail_mon(fd);
+			mon_info.mon_id = hltests_get_first_avail_mon(fd);
 			cb_size = hltests_add_write_to_sob_pkt(fd, cb, cb_size, &clear_sob);
 		}
 	}
