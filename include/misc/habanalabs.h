@@ -873,10 +873,7 @@ struct hl_mem_in {
 
 	/* HL_MEM_OP_* */
 	__u32 op;
-	/* HL_MEM_* flags.
-	 * For the HL_MEM_OP_EXPORT_DMABUF_FD opcode, this field holds the
-	 * DMA-BUF file/FD flags.
-	 */
+	/* HL_MEM_* flags */
 	__u32 flags;
 	/* Context ID - Currently not in use */
 	__u32 ctx_id;

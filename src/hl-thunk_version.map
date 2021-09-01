@@ -64,7 +64,6 @@ HLTNK_1.0 {
 	hlthunk_wait_for_cs_with_timestamp;
 	hlthunk_wait_for_interrupt;
 	hlthunk_wait_for_signal;
-	hlthunk_device_memory_export_dmabuf_fd;
 
 	local: *;
 };
@@ -77,6 +76,5 @@ HLTNK_1.1 {
 	hlthunk_staged_command_submission_timeout;
 	hlthunk_wait_for_collective_signal_timeout;
 	hlthunk_wait_for_signal_timeout;
-	hlthunk_get_open_stats;
 	hlthunk_get_hw_asic_status;
 } HLTNK_1.0;
