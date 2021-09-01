@@ -884,13 +884,6 @@ VOID test_print_pci_bdf(void **state);
 VOID test_print_pll_info(void **state);
 VOID test_print_hw_asic_status(void **state);
 VOID test_dma_entire_sram_random(void **state);
-VOID test_dmabuf_multiple_threads(void **state, uint32_t num_of_threads,
-				uint32_t iterations, uint64_t alloc_size,
-				uint64_t access_size, bool shared_device_memory,
-				bool random_offset);
-VOID test_dmabuf_basic(void **state);
-VOID test_dmabuf_multiple_threads_non_shared_memory(void **state);
-VOID test_dmabuf_multiple_threads_shared_memory(void **state);
 VOID test_host_sram_perf(void **state);
 VOID test_sram_host_perf(void **state);
 VOID test_host_dram_perf(void **state);
