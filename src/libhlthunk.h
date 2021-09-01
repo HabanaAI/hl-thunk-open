@@ -102,9 +102,7 @@ do { \
 	.fp_hlthunk_staged_cs_timeout = \
 		hlthunk_staged_command_submission_timeout_original,\
 	.fp_hlthunk_get_hw_block = hlthunk_get_hw_block_original,\
-	.fp_hlthunk_wait_for_interrupt = hlthunk_wait_for_interrupt,\
-	.fp_hlthunk_device_memory_export_dmabuf_fd =\
-		hlthunk_device_memory_export_dmabuf_fd\
+	.fp_hlthunk_wait_for_interrupt = hlthunk_wait_for_interrupt\
 }
 
 int hlthunk_command_submission_original(int fd, struct hlthunk_cs_in *in,
