@@ -364,8 +364,18 @@ struct hltests_pkt_info {
 			uint16_t sob_id;
 		} arm_monitor;
 		struct {
+			uint16_t address;
+			uint8_t wr_num;
+			uint8_t msb_sob_id;
+			bool long_mode;
+			bool cq_enable;
+			bool lbw_enable;
+			bool long_high_group;
+		} config_monitor;
+		struct {
+			uint8_t long_mode;
 			uint16_t sob_id;
-			uint16_t value;
+			uint64_t value;
 			enum hl_tests_write_to_sob_mod mode;
 			enum sync_mng_base base;
 		} write_to_sob;
