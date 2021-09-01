@@ -1,3 +1,5 @@
+misc/
+
 specs/hl_boot_if.h
 specs/qman_if.h
 specs/simulator.h
