@@ -462,16 +462,6 @@ struct hl_info_time_sync {
 };
 
 /**
- * struct hl_info_sync_manager - sync manager information
- * @first_available_sync_object: first available sob
- * @first_available_monitor: first available monitor
- */
-struct hl_info_sync_manager {
-	__u32 first_available_sync_object;
-	__u32 first_available_monitor;
-};
-
-/**
  * struct hl_info_pci_counters - pci counters
  * @rx_throughput: PCI rx throughput KBps
  * @tx_throughput: PCI tx throughput KBps
@@ -524,6 +514,19 @@ struct hl_open_stats_info {
  */
 struct hl_power_info {
 	__u64 power;
+};
+
+/**
+ * struct hl_info_sync_manager - sync manager information
+ * @first_available_sync_object: first available sob
+ * @first_available_monitor: first available monitor
+ * @first_available_cq: first available cq
+ */
+struct hl_info_sync_manager {
+	__u32 first_available_sync_object;
+	__u32 first_available_monitor;
+	__u32 first_available_cq;
+	__u32 reserved;
 };
 
 /**
@@ -603,6 +606,9 @@ struct hl_info_args {
 /* 2MB minus 32 bytes for 2xMSG_PROT */
 #define HL_MAX_CB_SIZE		(0x200000 - 32)
 
+/* Indicates whether the command buffer should be mapped to the device's MMU */
+#define HL_CB_FLAGS_MAP		0x1
+
 struct hl_cb_in {
 	/* Handle of CB or 0 if we want to create one */
 	__u64 cb_handle;
@@ -614,7 +620,8 @@ struct hl_cb_in {
 	__u32 cb_size;
 	/* Context ID - Currently not in use */
 	__u32 ctx_id;
-	__u32 pad;
+	/* HL_CB_FLAGS_* */
+	__u32 flags;
 };
 
 struct hl_cb_out {
@@ -635,6 +642,22 @@ union hl_cb_args {
 	struct hl_cb_in in;
 	struct hl_cb_out out;
 };
+
+/* HL_CS_CHUNK_FLAGS_ values
+ *
+ * HL_CS_CHUNK_FLAGS_USER_ALLOC_CB:
+ *      Indicates if the CB was allocated and mapped by userspace.
+ *      User allocated CB is a command buffer allocated by the user, via malloc
+ *      (or similar). After allocating the CB, the user invokes “memory ioctl”
+ *      to map the user memory into a device virtual address. The user provides
+ *      this address via the cb_handle field. The interface provides the
+ *      ability to create a large CBs, Which aren’t limited to
+ *      “HL_MAX_CB_SIZE”. Therefore, it increases the PCI-DMA queues
+ *      throughput. This CB allocation method also reduces the use of Linux
+ *      DMA-able memory pool. Which are limited and used by other Linux
+ *      sub-systems.
+ */
+#define HL_CS_CHUNK_FLAGS_USER_ALLOC_CB 0x1
 
 /*
  * This structure size must always be fixed to 64-bytes for backward
@@ -712,7 +735,7 @@ struct hl_cs_chunk {
 	__u32 pad[10];
 };
 
-/* SIGNAL/WAIT/COLLECTIVE_WAIT flags are mutually exclusive */
+/* SIGNAL and WAIT/COLLECTIVE_WAIT flags are mutually exclusive */
 #define HL_CS_FLAGS_FORCE_RESTORE		0x1
 #define HL_CS_FLAGS_SIGNAL			0x2
 #define HL_CS_FLAGS_WAIT			0x4
@@ -1193,6 +1216,12 @@ struct hl_debug_args {
  *
  * When creating a new CB, the IOCTL returns a handle of it, and the user-space
  * process needs to use that handle to mmap the buffer so it can access them.
+ *
+ * In some instances, the device must access the command buffer through the
+ * device's MMU, and thus its memory should be mapped. In these cases, user can
+ * indicate the driver that such a mapping is required.
+ * The resulting device virtual address will be used internally by the driver,
+ * and won't be returned to user.
  *
  */
 #define HL_IOCTL_CB		\
