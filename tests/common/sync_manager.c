@@ -1123,35 +1123,10 @@ VOID test_signal_wait_parallel(void **state)
 			test_signal_wait_parallel_th));
 }
 
-VOID test_signal_collective_wait_parallel(void **state)
-{
-	int fd = ((struct hltests_state *)*state)->fd;
-
-	if (!hltests_is_gaudi(fd)) {
-		printf("Test is relevant only for Gaudi, skipping\n");
-		skip();
-	}
-
-	END_TEST_FUNC(_test_signal_wait(state, true,
-			test_signal_wait_parallel_th));
-}
-
 VOID test_signal_wait_dma(void **state)
 {
 	END_TEST_FUNC(_test_signal_wait(state, false,
 				test_signal_wait_dma_th));
-}
-
-VOID test_signal_collective_wait_dma(void **state)
-{
-	int fd = ((struct hltests_state *)*state)->fd;
-
-	if (!hltests_is_gaudi(fd)) {
-		printf("Test is relevant only for Gaudi, skipping\n");
-		skip();
-	}
-
-	END_TEST_FUNC(_test_signal_wait(state, true, test_signal_wait_dma_th));
 }
 
 static uint32_t waitq_map[] = {
@@ -1616,10 +1591,6 @@ const struct CMUnitTest sm_tests[] = {
 	cmocka_unit_test_setup(test_signal_wait_parallel,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_signal_wait_dma,
-				hltests_ensure_device_operational),
-	cmocka_unit_test_setup(test_signal_collective_wait_dma,
-				hltests_ensure_device_operational),
-	cmocka_unit_test_setup(test_signal_collective_wait_parallel,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_encaps_signal_wait,
 				hltests_ensure_device_operational),
