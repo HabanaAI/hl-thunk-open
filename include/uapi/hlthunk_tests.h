@@ -602,6 +602,8 @@ int hltests_free_host_mem_nounmap(struct hltests_memory *mem,
 int hltests_map_host_mem(int fd, struct hltests_memory *mem);
 int hltests_unmap_host_mem(int fd, struct hltests_memory *mem);
 void *hltests_allocate_host_mem(int fd, uint64_t size, enum hltests_huge huge);
+void *hltests_allocate_host_mem_aligned(int fd, uint64_t size, uint64_t align,
+				enum hltests_huge huge);
 void *hltests_allocate_device_mem(int fd, uint64_t size,
 				enum hltests_contiguous contiguous);
 int hltests_free_host_mem(int fd, void *vaddr);

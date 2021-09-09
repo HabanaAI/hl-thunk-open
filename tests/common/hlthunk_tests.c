@@ -1070,15 +1070,17 @@ int hltests_unmap_host_mem(int fd, struct hltests_memory *mem)
 }
 
 /**
- * This function allocates memory on the host and will map it to the device
- * virtual address space
+ * This function allocates memory on the host, aligned as specified, and will
+ * map it to the device virtual address space
  * @param fd file descriptor of the device to which the function will map
  *           the memory
  * @param size how much memory to allocate
+ * @param align desired alignment in bytes, 0 meaning unaligned
  * @param huge whether to use huge pages for the memory allocation
  * @return pointer to the host memory. NULL is returned upon failure
  */
-void *hltests_allocate_host_mem(int fd, uint64_t size, enum hltests_huge huge)
+void *hltests_allocate_host_mem_aligned(int fd, uint64_t size, uint64_t align,
+				enum hltests_huge huge)
 {
 	struct hltests_device *hdev;
 	struct hltests_memory *mem;
@@ -1103,10 +1105,10 @@ void *hltests_allocate_host_mem(int fd, uint64_t size, enum hltests_huge huge)
 		/* Failed to allocate huge memory, fall-back to regular memory */
 		if (!mem->host_ptr) {
 			mem->is_huge = false;
-			mem->host_ptr = malloc(size);
+			mem->host_ptr = align ? aligned_alloc(align, size) : malloc(size);
 		}
 	} else {
-		mem->host_ptr = malloc(size);
+		mem->host_ptr = align ? aligned_alloc(align, size) : malloc(size);
 	}
 
 	if (!mem->host_ptr) {
@@ -1139,6 +1141,20 @@ free_allocation:
 free_mem_struct:
 	hlthunk_free(mem);
 	return NULL;
+}
+
+/**
+ * This function allocates memory on the host and will map it to the device
+ * virtual address space
+ * @param fd file descriptor of the device to which the function will map
+ *           the memory
+ * @param size how much memory to allocate
+ * @param huge whether to use huge pages for the memory allocation
+ * @return pointer to the host memory. NULL is returned upon failure
+ */
+void *hltests_allocate_host_mem(int fd, uint64_t size, enum hltests_huge huge)
+{
+	return hltests_allocate_host_mem_aligned(fd, size, 0, huge);
 }
 
 /**
@@ -1389,7 +1405,7 @@ void *hltests_create_cb(int fd, uint32_t cb_size,
 		if (cb->ptr == MAP_FAILED)
 			goto destroy_cb;
 	} else {
-		cb->ptr = hltests_allocate_host_mem(fd, cb_size, NOT_HUGE_MAP);
+		cb->ptr = hltests_allocate_host_mem_aligned(fd, cb->cb_size, 0, NOT_HUGE_MAP);
 		if (!cb->ptr)
 			goto free_cb;
 
