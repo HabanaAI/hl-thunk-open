@@ -1475,9 +1475,9 @@ uint32_t hltests_add_packet_to_cb(void *ptr, uint32_t offset, void *pkt,
 	return offset + pkt_size;
 }
 
-static int fill_cs_chunk(struct hltests_device *hdev,
-		struct hl_cs_chunk *chunk, void *cb_ptr, uint32_t cb_size,
-		uint32_t queue_index)
+int hltests_fill_cs_chunk(struct hltests_device *hdev,
+			struct hl_cs_chunk *chunk, void *cb_ptr,
+			uint32_t cb_size, uint32_t queue_index)
 {
 	struct hltests_cb *cb;
 	khint_t k;
@@ -1514,7 +1514,7 @@ static int fill_cs_chunks(struct hltests_device *hdev,
 	int i, rc;
 
 	for (i = 0 ; i < num_chunks ; i++) {
-		rc = fill_cs_chunk(hdev, &submit_arr[i],
+		rc = hltests_fill_cs_chunk(hdev, &submit_arr[i],
 				chunks_arr[i].cb_ptr,
 				chunks_arr[i].cb_size,
 				chunks_arr[i].queue_index);

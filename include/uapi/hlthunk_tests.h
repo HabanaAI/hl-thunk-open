@@ -617,6 +617,11 @@ int hltests_destroy_cb(int fd, void *ptr);
 uint32_t hltests_add_packet_to_cb(void *ptr, uint32_t offset, void *pkt,
 					uint32_t pkt_size);
 
+int hltests_fill_cs_chunk(struct hltests_device *hdev,
+				struct hl_cs_chunk *chunk,
+				void *cb_ptr,
+				uint32_t cb_size,
+				uint32_t queue_index);
 int hltests_submit_cs(int fd, struct hltests_cs_chunk *restore_arr,
 				uint32_t restore_arr_size,
 				struct hltests_cs_chunk *execute_arr,
