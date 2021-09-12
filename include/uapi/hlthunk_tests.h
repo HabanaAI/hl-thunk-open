@@ -109,6 +109,11 @@
 
 #endif
 
+#ifdef HLTHUNK_TESTS_SANITIZER
+#undef skip
+#define skip() EXIT_FROM_TEST
+#endif
+
 #define ARRAY_SIZE(arr)			(sizeof(arr) / sizeof((arr)[0]))
 
 #define WAIT_FOR_CS_DEFAULT_TIMEOUT	5000000 /* 5 sec */
@@ -659,18 +664,18 @@ int hltests_dma_transfer(int fd, uint32_t queue_index, enum hltests_eb eb,
 int hltests_zero_device_memory(int fd, uint64_t dst_addr, uint32_t size,
 				enum hltests_goya_dma_direction dma_dir);
 
-int hltests_dma_test(void **state, bool is_ddr, uint64_t size);
+VOID hltests_dma_test(void **state, bool is_ddr, uint64_t size);
 
 int hltests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us);
 int hltests_wait_for_cs_until_not_busy(int fd, uint64_t seq);
 
-int hltests_dma_dram_frag_mem_test(void **state, uint64_t size);
+VOID hltests_dma_dram_frag_mem_test(void **state, uint64_t size);
 
-int hltests_dma_dram_high_mem_test(void **state, uint64_t size);
+VOID hltests_dma_dram_high_mem_test(void **state, uint64_t size);
 
 int hltests_ensure_device_operational(void **state);
 
-int test_sm_pingpong_common_cp(void **state, bool is_tpc,
+VOID test_sm_pingpong_common_cp(void **state, bool is_tpc,
 				bool common_cb_in_host, uint8_t tpc_id);
 
 int hltests_clear_sobs(int fd, uint16_t num_of_sobs);

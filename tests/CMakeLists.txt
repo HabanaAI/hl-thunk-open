@@ -7,6 +7,10 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")
 
 add_definitions(-DHLTHUNK_BUILD_PATH="${CMAKE_BUILD_PATH}")
 
+if (SANITIZE_ON)
+    add_definitions(-DHLTHUNK_TESTS_SANITIZER)
+endif()
+
 if (HLTESTS_LIB_MODE)
     include_directories(
         ${CMAKE_BINARY_DIR}

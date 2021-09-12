@@ -2125,7 +2125,7 @@ int hltests_zero_device_memory(int fd, uint64_t dst_addr, uint32_t size,
 	return 0;
 }
 
-int hltests_dma_dram_frag_mem_test(void **state, uint64_t size)
+VOID hltests_dma_dram_frag_mem_test(void **state, uint64_t size)
 {
 	void **frag_arr;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -2175,10 +2175,10 @@ int hltests_dma_dram_frag_mem_test(void **state, uint64_t size)
 	}
 	hlthunk_free(frag_arr);
 
-	return 0;
+	END_TEST;
 }
 
-int hltests_dma_dram_high_mem_test(void **state, uint64_t size)
+VOID hltests_dma_dram_high_mem_test(void **state, uint64_t size)
 {
 	struct hlthunk_hw_ip_info hw_ip;
 	void *device_addr;
@@ -2202,10 +2202,10 @@ int hltests_dma_dram_high_mem_test(void **state, uint64_t size)
 	rc = hltests_free_device_mem(fd, device_addr);
 	assert_int_equal(rc, 0);
 
-	return 0;
+	END_TEST;
 }
 
-int hltests_dma_test(void **state, bool is_ddr, uint64_t size)
+VOID hltests_dma_test(void **state, bool is_ddr, uint64_t size)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -2278,7 +2278,7 @@ int hltests_dma_test(void **state, bool is_ddr, uint64_t size)
 		assert_int_equal(rc, 0);
 	}
 
-	return 0;
+	END_TEST;
 }
 
 /**
@@ -2581,7 +2581,7 @@ bool hltests_is_gaudi(int fd)
 	return (hlthunk_get_device_name_from_fd(fd) == HLTHUNK_DEVICE_GAUDI);
 }
 
-int test_sm_pingpong_common_cp(void **state, bool is_tpc,
+VOID test_sm_pingpong_common_cp(void **state, bool is_tpc,
 				bool common_cb_in_host, uint8_t engine_id)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
@@ -2849,7 +2849,7 @@ int test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	rc = hltests_free_host_mem(fd, host_src);
 	assert_int_equal(rc, 0);
 
-	return 0;
+	END_TEST;
 }
 
 int hltests_clear_sobs(int fd, uint16_t num_of_sobs)

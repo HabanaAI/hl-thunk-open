@@ -133,13 +133,15 @@ static struct hltests_memory *hltest_host_map_kv_fetch(void *kv, int i,
  * @param n_unmaps toatl number of unmap operations to benchmark
  * @param random specify whether map/unmaps shall be done in a random order
  * to test fragmentation issues
- * @return benchmark measured in nanoseconds
+ * @param measure_ns benchmark measured in nanoseconds
+ * @return 0 upon success
  */
-static uint64_t
+static int
 hltest_bench_host_map_one_iter(struct hltests_state *tests_state,
 			       uint64_t n_allocs, uint64_t alloc_size,
 			       enum hltests_huge huge, uint64_t n_maps,
-			       uint64_t n_unmaps, enum hltests_random random)
+			       uint64_t n_unmaps, enum hltests_random random,
+			       uint64_t *measure_ns)
 {
 	struct hltest_host_meminfo host_mem_info;
 	struct hltests_memory *mem;
@@ -166,7 +168,7 @@ hltest_bench_host_map_one_iter(struct hltests_state *tests_state,
 				(host_mem_info.mem_available / host_page_size);
 	if (pages_required > pages_available) {
 		printf("Not enough memory on the host, skipping\n");
-		skip();
+		return -ENOMEM;
 	}
 
 	/* In case of non random, n_maps and n_unmaps cannot be higher than
@@ -267,8 +269,10 @@ hltest_bench_host_map_one_iter(struct hltests_state *tests_state,
 	}
 	kv_destroy(allocs);
 
-	return (t_end.tv_sec - t_start.tv_sec) * 1000000000 +
+	*measure_ns = (t_end.tv_sec - t_start.tv_sec) * 1000000000 +
 		(t_end.tv_nsec - t_start.tv_nsec);
+
+	return 0;
 }
 
 /**
@@ -282,25 +286,33 @@ hltest_bench_host_map_one_iter(struct hltests_state *tests_state,
  * @param random specify whether map/unmaps shall be done in a random order
  *               to test fragmentation issues
  * @param n_iter number of times to repeat the test, total time will be returned
- * @return sum of benchmarks measured in nanoseconds
+ * @param sum_measured_ns sum of benchmarks measured in nanoseconds
+ * @return 0 upon success
  */
-uint64_t hltest_bench_host_map(struct hltests_state *tests_state,
+int hltest_bench_host_map(struct hltests_state *tests_state,
 				uint64_t n_allocs, uint64_t alloc_size,
 				enum hltests_huge huge,
 				uint64_t n_maps, uint64_t n_unmaps,
 				enum hltests_random random,
-				uint32_t n_iter)
+				uint32_t n_iter, uint64_t *sum_measured_ns)
 {
+	uint64_t iter_time_ns = 0, total_time_ns = 0;
 	uint32_t i;
-	uint64_t total_time_ns = 0;
+	int rc;
 
 	for (i = 0; i < n_iter; ++i) {
-		total_time_ns += hltest_bench_host_map_one_iter(
+		rc = hltest_bench_host_map_one_iter(
 			tests_state, n_allocs, alloc_size, huge, n_maps,
-			n_unmaps, random);
+			n_unmaps, random, &iter_time_ns);
+		if (rc)
+			return rc;
+
+		total_time_ns += iter_time_ns;
 	}
 
-	return total_time_ns;
+	*sum_measured_ns = total_time_ns;
+
+	return 0;
 }
 
 static int asic_benchmark_exp_parsing_handler(void *user,
@@ -355,7 +367,8 @@ VOID hltest_bench_host_map_expected(struct hltests_state *tests_state,
 {
 	struct asic_benchmark_exp_cfg cfg = {0};
 	const char *config_filename = hltests_get_config_filename();
-	uint64_t t_ns;
+	uint64_t t_ns = 0;
+	int rc;
 
 	/* Check if tests is disable by default and requires explicit enable */
 	if (disabled_test && !hltests_get_parser_run_disabled_tests()) {
@@ -380,8 +393,10 @@ VOID hltest_bench_host_map_expected(struct hltests_state *tests_state,
 	}
 
 	/* Run the benchmark. */
-	t_ns = hltest_bench_host_map(tests_state, n_allocs, alloc_size, huge,
-					n_maps, n_unmaps, random, n_iter);
+	rc = hltest_bench_host_map(tests_state, n_allocs, alloc_size, huge,
+				n_maps, n_unmaps, random, n_iter, &t_ns);
+	if (rc)
+		skip();
 
 	/* Process results. */
 	if (!validate_exp)
@@ -533,7 +548,8 @@ VOID test_bench_mappings_custom(void **state)
 {
 	struct bench_mappings_custom_cfg cfg;
 	const char *config_filename = hltests_get_config_filename();
-	uint64_t t_ns;
+	uint64_t t_ns = 0;
+	int rc;
 
 	if (!hltests_get_parser_run_disabled_tests()) {
 		print_message("This test need to be run with -d flag\n");
@@ -560,10 +576,12 @@ VOID test_bench_mappings_custom(void **state)
 		cfg.n_maps, cfg.n_unmaps,
 		cfg.random, cfg.n_iter);
 
-	t_ns = hltest_bench_host_map((struct hltests_state *)*state,
-					cfg.n_allocs, cfg.alloc_size, cfg.huge,
-		cfg.n_maps, cfg.n_unmaps,
-		cfg.random, cfg.n_iter);
+	rc = hltest_bench_host_map((struct hltests_state *)*state,
+				cfg.n_allocs, cfg.alloc_size, cfg.huge,
+				cfg.n_maps, cfg.n_unmaps, cfg.random,
+				cfg.n_iter, &t_ns);
+	if (rc)
+		skip();
 
 	print_message("%luns\n", t_ns);
 
