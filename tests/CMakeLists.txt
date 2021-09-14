@@ -16,6 +16,7 @@ if (HLTESTS_LIB_MODE)
         ${CMAKE_BINARY_DIR}
         ${CMAKE_SOURCE_DIR}/include
         ${CMAKE_SOURCE_DIR}/include/specs
+        ${CMAKE_SOURCE_DIR}/include/specs/common
         ${CMAKE_SOURCE_DIR}/include/uapi
         ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_SOURCE_DIR}/src/klib
@@ -66,6 +67,7 @@ else ()
         ${CMAKE_BINARY_DIR}
         ${CMAKE_SOURCE_DIR}/include
         ${CMAKE_SOURCE_DIR}/include/specs
+        ${CMAKE_SOURCE_DIR}/include/specs/common
         ${CMAKE_SOURCE_DIR}/include/uapi
         ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_SOURCE_DIR}/src/klib

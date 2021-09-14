@@ -11,7 +11,7 @@
 #include "misc/habanalabs.h"
 #include "hlthunk.h"
 #include "khash.h"
-#include "specs/common/pci_ids.h"
+#include "pci_ids.h"
 
 #include <stdint.h>
 #include <sys/types.h>
