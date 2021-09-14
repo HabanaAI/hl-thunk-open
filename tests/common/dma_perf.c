@@ -542,7 +542,7 @@ static double indirect_perf_test(int fd, uint32_t num_of_dma_ch,
 	for (ch = 0 ; ch < num_of_dma_ch ; ch++) {
 		lower_cb[ch] = hltests_allocate_host_mem(fd,
 				(num_of_lindma_pkts + 10) * LIN_DMA_PKT_SIZE,
-				NOT_HUGE_MAP);
+				HUGE_MAP);
 		assert_non_null(lower_cb[ch]);
 
 		lower_cb_device_va[ch] = hltests_get_device_va_for_host_ptr(fd,
@@ -603,7 +603,7 @@ static double indirect_perf_test(int fd, uint32_t num_of_dma_ch,
 						lower_cb_offset, &pkt_info);
 
 		/* Setup upper CB for internal DMA engine (cp_dma) */
-		cp_dma_cb[ch] = hltests_allocate_host_mem(fd, 0x1000, NOT_HUGE_MAP);
+		cp_dma_cb[ch] = hltests_allocate_host_mem(fd, 0x1000, HUGE_MAP);
 		assert_non_null(cp_dma_cb[ch]);
 		cp_dma_cb_device_va[ch] =
 			hltests_get_device_va_for_host_ptr(fd, cp_dma_cb[ch]);
