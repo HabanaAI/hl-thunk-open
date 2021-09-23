@@ -102,3 +102,13 @@ HLTNK_1.4 {
 	hlthunk_get_hw_ip_info_v1_0;
 	hlthunk_get_hw_ip_info_v1_4;
 } HLTNK_1.3;
+
+HLTNK_1.6 {
+	global:
+
+	hlthunk_wait_for_interrupt;
+
+	local:
+
+	hlthunk_wait_for_interrupt_v1_6;
+} HLTNK_1.4;

@@ -297,7 +297,7 @@ struct hlthunk_functions_pointers {
 						uint32_t *block_size,
 						uint64_t *handle);
 	int (*fp_hlthunk_wait_for_interrupt)(int fd, void *addr,
-					uint32_t target_value,
+					uint64_t target_value,
 					uint32_t interrupt_id,
 					uint32_t timeout_us,
 					uint32_t *status);
@@ -790,7 +790,7 @@ hlthunk_public int hlthunk_wait_for_multi_cs_with_timestamp(int fd,
  * @return 0 for success, negative value for failure
  */
 hlthunk_public int hlthunk_wait_for_interrupt(int fd, void *addr,
-					uint32_t target_value,
+					uint64_t target_value,
 					uint32_t interrupt_id,
 					uint32_t timeout_us,
 					uint32_t *status);

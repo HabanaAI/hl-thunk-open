@@ -1666,8 +1666,8 @@ hlthunk_public int hlthunk_wait_for_multi_cs_with_timestamp(int fd,
 	return rc;
 }
 
-hlthunk_public int hlthunk_wait_for_interrupt(int fd, void *addr,
-					uint32_t target_value,
+lib_compat_public int hlthunk_wait_for_interrupt_v1_6(int fd, void *addr,
+					uint64_t target_value,
 					uint32_t interrupt_id,
 					uint32_t timeout_us,
 					uint32_t *status)
@@ -1698,6 +1698,26 @@ hlthunk_public int hlthunk_wait_for_interrupt(int fd, void *addr,
 
 	return rc;
 }
+BIND_DEFAULT_SYMBOL(hlthunk_wait_for_interrupt, _v1_6, 1.6);
+
+lib_compat_public int hlthunk_wait_for_interrupt_v1_0(int fd, void *addr,
+					uint32_t target_value,
+					uint32_t interrupt_id,
+					uint32_t timeout_us,
+					uint32_t *status)
+{
+	return hlthunk_wait_for_interrupt_v1_6(fd, addr, target_value,
+					interrupt_id, timeout_us, status);
+}
+VERSION_SYMBOL(hlthunk_wait_for_interrupt, _v1_0, 1.0);
+
+MAP_STATIC_SYMBOL(lib_compat_public int hlthunk_wait_for_interrupt(int fd,
+							void *addr,
+							uint64_t target_value,
+							uint32_t interrupt_id,
+							uint32_t timeout_us,
+							uint32_t *status),
+			hlthunk_wait_for_interrupt_v1_6);
 
 hlthunk_public uint32_t hlthunk_get_device_id_from_fd(int fd)
 {
