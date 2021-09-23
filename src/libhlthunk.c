@@ -85,7 +85,6 @@ static int hlthunk_open_minor(int device_index, enum hlthunk_node_type type)
 		break;
 
 	default:
-		printf("invalid type %d\n", type);
 		return -1;
 	}
 
@@ -101,10 +100,8 @@ static int hlthunk_open_by_busid(const char *busid, enum hlthunk_node_type type)
 	int device_index;
 
 	device_index = hlthunk_get_device_index_from_pci_bus_id(busid);
-	if (device_index < 0) {
-		printf("No device for the given PCI address %s\n", busid);
+	if (device_index < 0)
 		return -EINVAL;
-	}
 
 	return hlthunk_open_minor(device_index, type);
 }
@@ -135,10 +132,8 @@ hlthunk_public int hlthunk_get_device_index_from_pci_bus_id(const char *busid)
 	}
 
 	dir = opendir(base_path);
-	if (dir == NULL) {
-		printf("Failed to open habanalabs directory\n");
+	if (dir == NULL)
 		return -errno;
-	}
 
 	while ((entry = readdir(dir)) != NULL) {
 		if (strstr(entry->d_name, virtual_device_prefix) != NULL)
@@ -192,7 +187,6 @@ hlthunk_public enum hlthunk_device_name hlthunk_get_device_name_from_fd(int fd)
 	case PCI_IDS_GAUDI_SEC:
 		return HLTHUNK_DEVICE_GAUDI;
 	default:
-		printf("Invalid device type 0x%x\n", device_id);
 		break;
 	}
 
@@ -329,9 +323,6 @@ void hlthunk_set_profiler(void)
 
 	if (set_profiler_function)
 		(*set_profiler_function)(functions_pointers_table);
-#else
-	printf(
-		"HABANA_PROFILE_LEGACY is set to 1, but profiler is not supported in this build\n");
 #endif
 }
 
@@ -381,9 +372,6 @@ void hlthunk_enable_shim(void)
 		}
 		fclose(file);
 	}
-	if (!flag)
-		printf("HABANA_PROFILE=1 but profiler is not supported in this build\n"
-			);
 #endif
 }
 
@@ -1387,20 +1375,14 @@ static int _hlthunk_wait_for_signal(int fd,
 	struct hl_cs_out *hl_out;
 	int rc;
 
-	if (in->num_wait_for_signal != 1) {
-		printf(
-			"Currently only one wait for signal CS is supported in each ioctl\n");
+	if (in->num_wait_for_signal != 1)
 		return -EINVAL;
-	}
 
 	wait_for_signal =
 		(struct hlthunk_wait_for_signal *) in->hlthunk_wait_for_signal;
 
-	if (wait_for_signal->signal_seq_nr != 1) {
-		printf(
-			"Currently only one signal CS seq is supported in a wait for signal CS\n");
+	if (wait_for_signal->signal_seq_nr != 1)
 		return -EINVAL;
-	}
 
 	memset(&args, 0, sizeof(args));
 	memset(&chunk_execute, 0, sizeof(chunk_execute));
@@ -1491,20 +1473,14 @@ static int _hlthunk_wait_for_collective_signal(int fd,
 	struct hl_cs_out *hl_out;
 	int rc;
 
-	if (in->num_wait_for_signal != 1) {
-		printf(
-			"Currently only one wait for signal CS is supported in each ioctl\n");
+	if (in->num_wait_for_signal != 1)
 		return -EINVAL;
-	}
 
 	wait_for_signal =
 		(struct hlthunk_wait_for_signal *) in->hlthunk_wait_for_signal;
 
-	if (wait_for_signal->signal_seq_nr != 1) {
-		printf(
-			"Currently only one signal CS seq is supported in a wait for signal CS\n");
+	if (wait_for_signal->signal_seq_nr != 1)
 		return -EINVAL;
-	}
 
 	memset(&args, 0, sizeof(args));
 	memset(&chunk_execute, 0, sizeof(chunk_execute));
@@ -1980,7 +1956,6 @@ hlthunk_public int hlthunk_debugfs_open(int fd,
 
 	debugfs_addr_fd = open(path, O_WRONLY);
 	if (debugfs_addr_fd == -1) {
-		printf("Failed to open debugfs addr_fd (forgot sudo ?)\n");
 		rc = -EPERM;
 		goto err_exit;
 	}
@@ -1991,7 +1966,6 @@ hlthunk_public int hlthunk_debugfs_open(int fd,
 	debugfs_data_fd = open(path, O_RDWR);
 
 	if (debugfs_data_fd == -1) {
-		printf("Failed to open debugfs data_fd (forgot sudo ?)\n");
 		rc = -EPERM;
 		goto err_exit;
 	}
@@ -2002,7 +1976,6 @@ hlthunk_public int hlthunk_debugfs_open(int fd,
 	clk_gate_fd = open(path, O_RDWR);
 
 	if (clk_gate_fd == -1) {
-		printf("Failed to open clk_gate_fd (forgot sudo ?)\n");
 		rc = -EPERM;
 		goto err_exit;
 	}
@@ -2014,12 +1987,12 @@ hlthunk_public int hlthunk_debugfs_open(int fd,
 	size = pread(debugfs->clk_gate_fd,
 		     debugfs->clk_gate_val, sizeof(debugfs->clk_gate_val), 0);
 	if (size < 0)
-		perror("Failed to read debugfs clk gate fd\n");
+		return -errno;
 
 	size = write(debugfs->clk_gate_fd, clk_gate_str,
 			strlen(clk_gate_str) + 1);
 	if (size < 0)
-		perror("Failed to write debugfs clk gate\n");
+		return -errno;
 
 	hlthunk_free(path);
 	return 0;
@@ -2044,16 +2017,12 @@ hlthunk_public int hlthunk_debugfs_read(struct hlthunk_debugfs *debugfs,
 	sprintf(addr_str, "0x%lx", full_address);
 
 	size = write(debugfs->addr_fd, addr_str, strlen(addr_str) + 1);
-	if (size < 0) {
-		perror("Failed to write to debugfs address fd\n");
+	if (size < 0)
 		return -errno;
-	}
 
 	size = pread(debugfs->data_fd, value, sizeof(value), 0);
-	if (size < 0) {
-		perror("Failed to read from debugfs data fd\n");
+	if (size < 0)
 		return -errno;
-	}
 
 	*val = strtoul(value, NULL, 16);
 	return 0;
@@ -2069,16 +2038,12 @@ hlthunk_public int hlthunk_debugfs_write(struct hlthunk_debugfs *debugfs,
 	sprintf(val_str, "0x%x", val);
 
 	size = write(debugfs->addr_fd, addr_str, strlen(addr_str) + 1);
-	if (size < 0) {
-		perror("Failed to write to debugfs address fd\n");
+	if (size < 0)
 		return -errno;
-	}
 
 	size = write(debugfs->data_fd, val_str, strlen(val_str) + 1);
-	if (size < 0) {
-		perror("Failed to write to debugfs data fd\n");
+	if (size < 0)
 		return -errno;
-	}
 
 	return 0;
 }
@@ -2098,10 +2063,8 @@ hlthunk_public int hlthunk_debugfs_close(struct hlthunk_debugfs *debugfs)
 		size = write(debugfs->clk_gate_fd,
 			     debugfs->clk_gate_val,
 			     strlen(debugfs->clk_gate_val) + 1);
-		if (size < 0) {
-			perror("Failed to write to debugfs clk_gate fd\n");
+		if (size < 0)
 			rc = -EIO;
-		}
 
 		close(debugfs->clk_gate_fd);
 	}
