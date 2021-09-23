@@ -796,6 +796,31 @@ hlthunk_public int hlthunk_wait_for_interrupt(int fd, void *addr,
 					uint32_t *status);
 
 /**
+ * This wait registers to get a timestamp when
+ * an interrupt occurs and target value is greater or equal
+ * than the content of a given user address.
+ * timestamp 0 means that the interrupt didn't occur yet (target wasn't reached).
+ * @param fd file descriptor handle of habanalabs main device
+ * @param addr user address for target value comparison
+ * @param target_value target value for comparison
+ * @param interrupt_id interrupt id to wait for, set to all 1s in order to
+ * register to all user interrupts
+ * @param timeout_us absolute timeout to wait in microseconds. If the timeout
+ * value is 0, the driver won't sleep at all. It will perform the comparison
+ * without waiting for the interrupt to expire and will return immediately
+ * @param status pointer to uint32_t to store the wait status
+ * @param timestamp system timestamp in nanoseconds at time of interrupt.
+ * 0, the interrupt wasn't triggered yet (CQ target wasn't reached).
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_wait_for_interrupt_with_timestamp(int fd, void *addr,
+					uint64_t target_value,
+					uint32_t interrupt_id,
+					uint32_t timeout_us,
+					uint32_t *status,
+					uint64_t *timestamp);
+
+/**
  * This function submits a job of a signal CS to a specific device
  * @param fd file descriptor handle of habanalabs main device
  * @param in pointer to a signal command submission input structure

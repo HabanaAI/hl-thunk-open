@@ -107,6 +107,7 @@ HLTNK_1.6 {
 	global:
 
 	hlthunk_wait_for_interrupt;
+	hlthunk_wait_for_interrupt_with_timestamp;
 
 	local:
 
