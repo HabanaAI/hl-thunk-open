@@ -994,10 +994,17 @@ hltests_allocate_host_mem_nomap(uint64_t size, enum hltests_huge huge)
 	mem->is_huge = huge;
 	mem->size = size;
 
-	if (mem->is_huge)
+	if (mem->is_huge) {
 		mem->host_ptr = allocate_huge_mem(size);
-	else
+
+		/* Failed to allocate huge memory, fall-back to regular memory */
+		if (!mem->host_ptr) {
+			mem->is_huge = false;
+			mem->host_ptr = malloc(size);
+		}
+	} else {
 		mem->host_ptr = malloc(size);
+	}
 
 	if (!mem->host_ptr) {
 		printf("Failed to allocate %lu bytes of host memory\n", size);
