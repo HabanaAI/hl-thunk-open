@@ -902,6 +902,11 @@ static const char *gaudi_stringify_pll_type(uint32_t pll_idx, uint8_t type_idx)
 	}
 }
 
+uint64_t gaudi_get_dram_va_reserved_addr_start(void)
+{
+	return 0;
+}
+
 static uint32_t gaudi_get_sob_id(uint32_t base_addr_off)
 {
        return (base_addr_off - (mmSYNC_MNGR_W_S_SYNC_MNGR_OBJS_SOB_OBJ_0)) / 4;
@@ -964,6 +969,7 @@ static const struct hltests_asic_funcs gaudi_funcs = {
 	.get_max_pll_idx = gaudi_get_max_pll_idx,
 	.stringify_pll_idx = gaudi_stringify_pll_idx,
 	.stringify_pll_type = gaudi_stringify_pll_type,
+	.get_dram_va_reserved_addr_start = gaudi_get_dram_va_reserved_addr_start,
 	.get_sob_id = gaudi_get_sob_id,
 	.get_mon_cnt_per_dcore = gaudi_get_mon_cnt_per_dcore,
 	.get_stream_master_qid_arr = gaudi_get_stream_master_qid_arr

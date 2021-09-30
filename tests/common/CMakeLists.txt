@@ -23,6 +23,7 @@ set(COMMON_UNIT_TESTS
     control_device
     error_injection
     root_debug
+    debugfs
 )
 
 foreach(_UNIT_TEST ${COMMON_UNIT_TESTS})

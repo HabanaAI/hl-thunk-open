@@ -512,6 +512,7 @@ struct hltests_asic_funcs {
 	int (*get_max_pll_idx)(void);
 	const char *(*stringify_pll_idx)(uint32_t pll_idx);
 	const char *(*stringify_pll_type)(uint32_t pll_idx, uint8_t type_idx);
+	uint64_t (*get_dram_va_reserved_addr_start)(void);
 	uint32_t (*get_sob_id)(uint32_t base_addr_off);
 	uint16_t (*get_mon_cnt_per_dcore)(void);
 	int (*get_stream_master_qid_arr)(uint32_t **qid_arr);
@@ -585,6 +586,8 @@ int hltests_control_dev_open(const char *busid);
 int hltests_control_dev_close(int fd);
 int hltests_open(const char *busid);
 int hltests_close(int fd);
+
+struct hltests_device *get_hdev_from_fd(int fd);
 
 void *hltests_cb_mmap(int fd, size_t len, off_t offset);
 int hltests_cb_munmap(void *addr, size_t length);

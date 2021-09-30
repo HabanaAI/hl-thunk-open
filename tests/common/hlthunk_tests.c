@@ -69,7 +69,7 @@ char asic_names[HLTHUNK_DEVICE_MAX][20] = {
 	"Don't care"
 };
 
-static struct hltests_device *get_hdev_from_fd(int fd)
+struct hltests_device *get_hdev_from_fd(int fd)
 {
 	struct hltests_device *hdev;
 	khint_t k;

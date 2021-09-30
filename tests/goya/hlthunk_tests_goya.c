@@ -573,6 +573,11 @@ static const char *goya_stringify_pll_type(uint32_t pll_idx, uint8_t type_idx)
 	}
 }
 
+uint64_t goya_get_dram_va_reserved_addr_start(void)
+{
+	return 0;
+}
+
 static uint32_t goya_get_sob_id(uint32_t base_addr_off)
 {
 	return 0;
@@ -621,6 +626,7 @@ static const struct hltests_asic_funcs goya_funcs = {
 	.get_max_pll_idx = goya_get_max_pll_idx,
 	.stringify_pll_idx = goya_stringify_pll_idx,
 	.stringify_pll_type = goya_stringify_pll_type,
+	.get_dram_va_reserved_addr_start = goya_get_dram_va_reserved_addr_start,
 	.get_sob_id = goya_get_sob_id,
 	.get_mon_cnt_per_dcore = goya_get_mon_cnt_per_dcore,
 	.get_stream_master_qid_arr = goya_get_stream_master_qid_arr
