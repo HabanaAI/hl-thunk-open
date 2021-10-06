@@ -1716,11 +1716,6 @@ hlthunk_public int hlthunk_wait_for_interrupt_with_timestamp(int fd, void *addr,
 	hl_in->interrupt_timeout_us = timeout_us;
 	hl_in->flags = HL_WAIT_CS_FLAGS_INTERRUPT;
 
-	if (timestamp) {
-		hl_in->flags |= HL_CS_FLAGS_TIMESTAMP;
-		*timestamp = 0;
-	}
-
 	if (interrupt_id == UINT_MAX)
 		hl_in->flags |= HL_WAIT_CS_FLAGS_INTERRUPT_MASK;
 	else
