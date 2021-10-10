@@ -2039,6 +2039,382 @@ VOID test_staged_submission_256_threads(void **state)
 	END_TEST;
 }
 
+#define MAX_NUM_SUBMIT_THREADS 8
+#define NUM_OF_WAIT_THREADS 2
+#define NUM_OF_CS_PER_QID 1000000
+
+/**
+ * struct submitted_seq_buf_params - parameters of CS buffer maintained for each QID
+ * @seq: buffer of seqs.
+ * @buf_len: seqs buffer length.
+ * @num_of_active_seqs: number of active seqs. Active seq is seq of CS that was submitted
+ *                      and yet to be completed.
+ * @active_seq: array that indicates which seq is active.
+ * @lock: lock for getting/setting struct parameters.
+ * @remain_of_submit_cs: total remaining number of CSs to submit for related QID.
+ * @remain_of_receive_cs: total remaining number of CSs to receive for related QID.
+ */
+struct submitted_seq_buf_params {
+	uint64_t *seq;
+	uint8_t buf_len;
+	uint8_t num_of_active_seqs;
+	bool *active_seq;
+	pthread_mutex_t lock;
+	uint32_t remain_of_submit_cs;
+	uint32_t remain_of_receive_cs;
+};
+
+/**
+ * struct merged_seq_info - parameters of CSs from several QIDs merged into multi CS array.
+ * @seq: CS seq number.
+ * @qid: QID of the seq.
+ * @inner_stream_idx: inner index of the seq inside the QID seq buffer.
+ */
+struct merged_seq_info {
+	uint64_t seq;
+	uint8_t qid;
+	uint8_t inner_stream_idx;
+};
+
+/**
+ * struct multi_cs_common_params - common parameters of all threads in the test.
+ * @seq_info: CS seq buffer for each QID.
+ * @stream_master_tbl: table of QIDs.
+ * @num_of_submit_threads: number of threads that submitting CSs.
+ * @num_of_wait_threads: number of threads that waiting for CSs completion.
+ * @fd: device file descriptor.
+ */
+struct multi_cs_common_params {
+	struct submitted_seq_buf_params *seq_info;
+	uint32_t *stream_master_tbl;
+	uint8_t num_of_submit_threads;
+	uint8_t num_of_wait_threads;
+	int fd;
+};
+
+/**
+ * struct multi_cs_submit_thread_params - parameters of threads that submit CSs.
+ * @common: common parameters for all threads.
+ * @id: thread id.
+ */
+struct multi_cs_submit_thread_params {
+	struct multi_cs_common_params *common;
+	uint8_t id;
+};
+
+/**
+ * struct multi_cs_submit_thread_params - parameters of threads that wait for CSs completion.
+ * @common: common parameters for all threads.
+ * @id: thread id.
+ * @start_qid: first QID which the thread waits on its CSs.
+ * @end_qid: last QID which the thread waits on its CSs.
+ */
+struct multi_cs_wait_thread_params {
+	struct multi_cs_common_params *common;
+	uint8_t id;
+	uint8_t start_qid;
+	uint8_t end_qid;
+};
+
+static int multi_cs_submit_thread(void *data)
+{
+	struct multi_cs_submit_thread_params *p =
+		(struct multi_cs_submit_thread_params *) data;
+	struct multi_cs_common_params *cp = p->common;
+	struct hltests_cs_chunk execute_arr[HL_WAIT_MULTI_CS_LIST_MAX_LEN];
+	uint8_t non_active_seq_idx;
+	struct submitted_seq_buf_params *si = &cp->seq_info[p->id];
+	uint32_t nop_cb_size[HL_WAIT_MULTI_CS_LIST_MAX_LEN] = {0};
+	void *nop_cb[HL_WAIT_MULTI_CS_LIST_MAX_LEN];
+	int i, rc, fd = cp->fd;
+	uint64_t temp_seq;
+
+	/*
+	 * N - size of CS buffer
+	 * M - remain number of CSs the thread need to send
+	 * active CS - already submitted CS that did not completed yet
+	 * non active CS - completed or yet to be submitted CS
+	 *
+	 * Submit thread description :
+	 *- Create N nop CBs
+	 *- Loop while (M > 0)
+	 *	- Loop while (number of active CS < N)
+	 *		- Find first available non active CS and submit it
+	 *		- Update active CS data structure
+	 *		- Decrement M
+	 */
+
+	for (i = 0; i < si->buf_len; i++) {
+		nop_cb[i] = hltests_create_cb(fd, 8, EXTERNAL, 0);
+		nop_cb_size[i] = hltests_add_nop_pkt(fd, nop_cb[i],
+				0, EB_FALSE, MB_FALSE);
+	}
+
+	while (true) {
+		pthread_mutex_lock(&si->lock);
+
+		non_active_seq_idx = 0;
+		while (si->num_of_active_seqs < si->buf_len) {
+			/* Find the next free seq index to insert a new one*/
+			while (si->active_seq[non_active_seq_idx]) {
+				non_active_seq_idx++;
+				assert_int_not_equal(non_active_seq_idx, si->buf_len);
+			}
+
+			execute_arr[0].cb_ptr = nop_cb[non_active_seq_idx];
+			execute_arr[0].cb_size = nop_cb_size[non_active_seq_idx];
+			execute_arr[0].queue_index = cp->stream_master_tbl[p->id];
+
+			rc = hltests_submit_cs_timeout(fd, NULL, 0, execute_arr, 1, 0,
+					30, &temp_seq);
+			assert_int_equal(rc, 0);
+
+			si->seq[non_active_seq_idx] = temp_seq;
+			si->num_of_active_seqs++;
+			si->active_seq[non_active_seq_idx] = true;
+			si->remain_of_submit_cs--;
+
+			if (si->remain_of_submit_cs == 0) {
+				pthread_mutex_unlock(&si->lock);
+				for (i = 0; i < si->buf_len; i++) {
+					rc = hltests_destroy_cb(fd, nop_cb[i]);
+					assert_int_equal(rc, 0);
+				}
+				return 0;
+			}
+		}
+		pthread_mutex_unlock(&si->lock);
+
+	}
+
+	return 0;
+}
+
+static int multi_cs_wait_thread(void *data)
+{
+	struct multi_cs_wait_thread_params *p =
+		(struct multi_cs_wait_thread_params *) data;
+	struct multi_cs_common_params *cp = p->common;
+	uint64_t seq[HL_WAIT_MULTI_CS_LIST_MAX_LEN];
+	struct hlthunk_wait_multi_cs_in mcs_in;
+	struct hlthunk_wait_multi_cs_out mcs_out;
+	struct merged_seq_info info[HL_WAIT_MULTI_CS_LIST_MAX_LEN];
+	struct submitted_seq_buf_params *si;
+	int i, j, seq_idx, rc, fd = cp->fd;
+	int64_t remain_cs;
+
+	/*
+	 * remain_cs - remain number of CSs to wait for
+	 *
+	 * Wait thread description :
+	 *
+	 *- remain_cs = remain sum of all CSs from related QIDs
+	 *- Loop while (remain_cs > 0)
+	 *	- Loop on relevant QIDs
+	 *		- Loop on QID CS buffer
+	 *			- if CS is active, add it to multi CS wait arr
+	 *	- Wait for multi CS
+	 *	- Loop on all completed CSs
+	 *		- Update Cs's related buffer
+	 *		- Decrement  remain_cs
+	 */
+	mcs_in.seq = seq;
+	mcs_in.timeout_us = WAIT_FOR_CS_DEFAULT_TIMEOUT;
+	remain_cs = 0;
+
+	for (i = p->start_qid; i <= p->end_qid; i++)
+		remain_cs += cp->seq_info[i].remain_of_receive_cs;
+
+	while (remain_cs) {
+		/* Merge seq vectors from relevant streams to one seq vector*/
+		seq_idx = 0;
+		for (i = p->start_qid; i <= p->end_qid; i++) {
+			pthread_mutex_lock(&cp->seq_info[i].lock);
+			for (j = 0; j < cp->seq_info[i].buf_len; j++) {
+				if (cp->seq_info[i].active_seq[j]) {
+					seq[seq_idx] = cp->seq_info[i].seq[j];
+					info[seq_idx].seq = seq[seq_idx];
+					info[seq_idx].qid = i;
+					info[seq_idx].inner_stream_idx = j;
+					seq_idx++;
+				}
+			}
+			pthread_mutex_unlock(&cp->seq_info[i].lock);
+		}
+		/* In case no available active CS*/
+		if (seq_idx == 0)
+			continue;
+
+		mcs_in.seq_len = seq_idx;
+		rc = hlthunk_wait_for_multi_cs(fd, &mcs_in, &mcs_out);
+		assert_int_equal(rc, 0);
+
+		i = 0;
+		while (mcs_out.seq_set) {
+			if (mcs_out.seq_set & 0x1) {
+				si = &cp->seq_info[info[i].qid];
+				pthread_mutex_lock(&si->lock);
+				assert_int_not_equal(si->num_of_active_seqs, 0);
+
+				remain_cs--;
+				si->num_of_active_seqs--;
+				si->active_seq[info[i].inner_stream_idx] = false;
+				si->remain_of_receive_cs--;
+				pthread_mutex_unlock(&si->lock);
+			}
+			mcs_out.seq_set >>= 1;
+			i++;
+		}
+		/* Check that remain_cs is not negative*/
+		assert_in_range(remain_cs, 0, SIZE_MAX);
+	}
+
+	return 0;
+}
+
+
+/* Using wrappers for threads since cmooka assert macros must be used in int returning function */
+static void *multi_cs_submit_thread_wrap(void *data)
+{
+	multi_cs_submit_thread(data);
+
+	return data;
+}
+
+static void *multi_cs_wait_thread_wrap(void *data)
+{
+	multi_cs_wait_thread(data);
+
+	return data;
+}
+
+static int multi_cs_multi_thread_init(int fd, struct multi_cs_common_params *cp)
+{
+	int i, j, rc;
+	uint32_t divider = 1;
+
+	cp->fd = fd;
+	cp->num_of_submit_threads = hltests_get_stream_master_qid_arr(fd, &cp->stream_master_tbl);
+	cp->num_of_wait_threads = NUM_OF_WAIT_THREADS;
+	cp->seq_info = hlthunk_malloc(sizeof(struct submitted_seq_buf_params) *
+			cp->num_of_submit_threads);
+	assert_non_null(cp->seq_info);
+
+	for (i = 0; i < cp->num_of_submit_threads; i++) {
+		/*
+		 * Buffer length is the portion on each submit thread in a multi CS vector.
+		 * It also depends how many ,multi CS contexts we have hence we need to multiply
+		 * with it
+		 */
+		cp->seq_info[i].buf_len =
+				(HL_WAIT_MULTI_CS_LIST_MAX_LEN / cp->num_of_submit_threads) *
+				NUM_OF_WAIT_THREADS;
+		/* Test running time is longer in simulator, hence reducing iterations*/
+		cp->seq_info[i].remain_of_receive_cs = NUM_OF_CS_PER_QID / divider;
+		cp->seq_info[i].remain_of_submit_cs = NUM_OF_CS_PER_QID / divider;
+
+		cp->seq_info[i].seq =
+				hlthunk_malloc(sizeof(uint64_t) * cp->seq_info[i].buf_len);
+		assert_non_null(cp->seq_info[i].seq);
+		cp->seq_info[i].active_seq =
+				hlthunk_malloc(sizeof(uint64_t) * cp->seq_info[i].buf_len);
+		assert_non_null(cp->seq_info[i].active_seq);
+
+		/* Init buffer info to no active seqs */
+		for (j = 0; j < cp->seq_info[i].buf_len; j++)
+			cp->seq_info[i].active_seq[j] = false;
+		cp->seq_info[i].num_of_active_seqs = 0;
+		rc = pthread_mutex_init(&cp->seq_info[i].lock, NULL);
+		assert_int_equal(rc, 0);
+	}
+
+	return 0;
+}
+
+static void multi_cs_multi_thread_finish(struct multi_cs_common_params *cp)
+{
+	int i;
+
+	for (i = 0; i < cp->num_of_submit_threads; i++) {
+		hlthunk_free(cp->seq_info[i].seq);
+		hlthunk_free(cp->seq_info[i].active_seq);
+	}
+	hlthunk_free(cp->seq_info);
+}
+
+VOID test_wait_for_multi_cs_multi_thread(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct multi_cs_submit_thread_params s_params[MAX_NUM_SUBMIT_THREADS];
+	struct multi_cs_wait_thread_params w_params[NUM_OF_WAIT_THREADS];
+	pthread_t submit_thread_id[MAX_NUM_SUBMIT_THREADS], wait_thread_id[NUM_OF_WAIT_THREADS];
+	struct multi_cs_common_params cp;
+	int rc, i, fd = tests_state->fd;
+	void *retval;
+
+	if (!hltests_is_gaudi(fd)) {
+		printf("Test is supported only for Gaudi\n");
+		skip();
+	}
+
+	/*
+	 * Test Description:
+	 *
+	 * Wait threads retrieve CS's from related submit threads CS buffers
+	 * and perform multi CS wait.
+	 *
+	 * Submit threads taking care of submitting CS and filling buffers
+	 * as soon buffers not full.
+	 */
+
+	memset(&s_params, 0, sizeof(struct multi_cs_submit_thread_params) * MAX_NUM_SUBMIT_THREADS);
+	memset(&w_params, 0, sizeof(struct multi_cs_wait_thread_params) * NUM_OF_WAIT_THREADS);
+
+	multi_cs_multi_thread_init(fd, &cp);
+
+	/*
+	 * Since we have 2 wait threads, each wait thread is responsible for
+	 * one half of the submit threads
+	 */
+	w_params[0].start_qid = 0;
+	w_params[0].end_qid = cp.num_of_submit_threads/2 - 1;
+	w_params[1].start_qid = w_params[0].end_qid + 1;
+	w_params[1].end_qid = cp.num_of_submit_threads - 1;
+	for (i = 0; i < cp.num_of_wait_threads; i++) {
+		w_params[i].common = &cp;
+		w_params[i].id = i;
+		rc = pthread_create(&wait_thread_id[i], NULL,
+				multi_cs_wait_thread_wrap, &w_params[i]);
+
+		assert_int_equal(rc, 0);
+	}
+
+	for (i = 0; i < cp.num_of_submit_threads; i++) {
+		s_params[i].common = &cp;
+		s_params[i].id = i;
+		rc = pthread_create(&submit_thread_id[i], NULL,
+				multi_cs_submit_thread_wrap, &s_params[i]);
+
+		assert_int_equal(rc, 0);
+	}
+
+	for (i = 0; i < cp.num_of_submit_threads; i++) {
+		rc = pthread_join(submit_thread_id[i], &retval);
+		assert_int_equal(rc, 0);
+		assert_non_null(retval);
+	}
+
+	for (i = 0; i < cp.num_of_wait_threads; i++) {
+		rc = pthread_join(wait_thread_id[i], &retval);
+		assert_int_equal(rc, 0);
+		assert_non_null(retval);
+	}
+
+	multi_cs_multi_thread_finish(&cp);
+
+	END_TEST;
+}
+
 #ifndef HLTESTS_LIB_MODE
 
 const struct CMUnitTest cs_tests[] = {
@@ -2088,6 +2464,8 @@ const struct CMUnitTest cs_tests[] = {
 	cmocka_unit_test_setup(test_wait_for_multi_cs_complete,
 					hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_wait_for_multi_cs_poll,
+					hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_wait_for_multi_cs_multi_thread,
 					hltests_ensure_device_operational)
 };
 
