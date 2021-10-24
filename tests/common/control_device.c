@@ -308,8 +308,24 @@ VOID test_print_clk_throttling_reason(void **state)
 	rc = hlthunk_get_clk_throttle_info(fd, &info);
 	assert_int_equal(rc, 0);
 
-	printf("\nclk throttling bitmask: %u\n\n",
+	printf("\nCurrent clk throttling bitmask: %u\n\n",
 			info.clk_throttle_reason_bitmask);
+
+	if (info.clk_throttle_start_timestamp_us[HL_CLK_THROTTLE_TYPE_POWER])
+		printf("\nPower clk throttling Start: %lu us\n\n",
+			info.clk_throttle_start_timestamp_us[HL_CLK_THROTTLE_TYPE_POWER]);
+
+	if (info.clk_throttle_duration_ns[HL_CLK_THROTTLE_TYPE_POWER])
+		printf("\nPower clk throttling duration: %lu ns\n\n",
+			info.clk_throttle_duration_ns[HL_CLK_THROTTLE_TYPE_POWER]);
+
+	if (info.clk_throttle_start_timestamp_us[HL_CLK_THROTTLE_TYPE_THERMAL])
+		printf("\nThermal clk throttling Start: %lu us\n\n",
+			info.clk_throttle_start_timestamp_us[HL_CLK_THROTTLE_TYPE_THERMAL]);
+
+	if (info.clk_throttle_duration_ns[HL_CLK_THROTTLE_TYPE_THERMAL])
+		printf("\nThermal clk throttling duration: %lu ns\n\n",
+			info.clk_throttle_duration_ns[HL_CLK_THROTTLE_TYPE_THERMAL]);
 
 	END_TEST;
 }
