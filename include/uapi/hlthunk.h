@@ -238,6 +238,34 @@ struct hlthunk_wait_multi_cs_out {
 	uint8_t completed;
 };
 
+/* DRAM replaced rows related data structures */
+#define DRAM_ROW_REPLACE_MAX	32
+
+enum hlthunk_dram_row_replace_cause {
+	HLTHUNK_ROW_REPLACE_CAUSE_DOUBLE_ECC_ERR,
+	HLTHUNK_ROW_REPLACE_CAUSE_MULTI_SINGLE_ECC_ERR,
+};
+
+struct hlthunk_dram_row_info {
+	uint8_t dram_idx;
+	uint8_t pc;
+	uint8_t sid;
+	uint8_t bank_idx;
+	uint16_t row_addr;
+	uint8_t replaced_row_cause; /* enum hlthunk_dram_row_replace_cause */
+};
+
+/*
+ * struct hlthunk_dram_replaced_rows_info -
+ * @num_replaced_rows: number of replaced rows.
+ * @replaced_rows: replaced rows info.
+ */
+struct hlthunk_dram_replaced_rows_info {
+	uint16_t num_replaced_rows;
+	struct hlthunk_dram_row_info replaced_rows[DRAM_ROW_REPLACE_MAX];
+	uint8_t reserved[6];
+};
+
 struct hlthunk_functions_pointers {
 	/*
 	 * Functions that will be wrapped with profiler code to enable
@@ -304,6 +332,10 @@ struct hlthunk_functions_pointers {
 					uint32_t interrupt_id,
 					uint64_t timeout_us,
 					uint32_t *status);
+	int (*fp_hlthunk_device_memory_export_dmabuf_fd)(int fd,
+							uint64_t handle,
+							uint64_t size,
+							uint32_t flags);
 	int (*fp_hlthunk_command_submission_timeout)(int fd,
 						struct hlthunk_cs_in *in,
 						struct hlthunk_cs_out *out,
@@ -345,10 +377,9 @@ struct hlthunk_functions_pointers {
 						uint64_t hint_addr,
 						uint64_t host_size,
 						uint32_t flags);
-	int (*fp_hlthunk_device_memory_export_dmabuf_fd)(int fd,
-                                                        uint64_t handle,
-                                                        uint64_t size,
-                                                        uint32_t flags);
+	int (*fp_get_dram_replaced_rows_info)(int fd,
+					struct hlthunk_dram_replaced_rows_info *info);
+	int (*fp_get_dram_pending_rows_info)(int fd, uint32_t *out);
 };
 
 struct hlthunk_debugfs {
@@ -1199,6 +1230,24 @@ hlthunk_public int hlthunk_wait_for_reserved_encaps_signals(int fd,
 hlthunk_public int hlthunk_wait_for_reserved_encaps_collective_signals(int fd,
 					struct hlthunk_wait_in *in,
 					struct hlthunk_wait_out *out);
+
+/**
+ * This function retrieves the dram replaced rows info.
+ * @param fd file descriptor handle of habanalabs main device
+ * @param info pointer to memory, where to fill the replaced rows info
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_get_dram_replaced_rows_info(int fd,
+			struct hlthunk_dram_replaced_rows_info *info);
+
+/**
+ * This function retrieves the dram pending rows number.
+ * @param fd file descriptor handle of habanalabs main device
+ * @param out pointer to memory, where to fill the pending rows number
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_get_dram_pending_rows_info(int fd, uint32_t *out);
+
 #ifdef __cplusplus
 }   //extern "C"
 #endif

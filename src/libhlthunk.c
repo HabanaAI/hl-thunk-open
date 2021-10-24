@@ -1102,6 +1102,56 @@ hlthunk_public int hlthunk_get_power_info(int fd,
 	return 0;
 }
 
+static int _hlthunk_get_dram_replaced_rows_info(int fd,
+			struct hlthunk_dram_replaced_rows_info *info)
+{
+	struct hlthunk_dram_replaced_rows_info repl_rows_info;
+	struct hl_info_args args;
+	int rc;
+
+	if (!info)
+		return -EINVAL;
+
+	memset(&args, 0, sizeof(args));
+	memset(&repl_rows_info, 0, sizeof(repl_rows_info));
+
+	args.op = HL_INFO_DRAM_REPLACED_ROWS;
+	args.return_pointer = (__u64) (uintptr_t) &repl_rows_info;
+	args.return_size = sizeof(repl_rows_info);
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	if (rc)
+		return rc;
+
+	memcpy(info, &repl_rows_info, sizeof(*info));
+
+	return 0;
+}
+
+static int _hlthunk_get_dram_pending_rows_info(int fd, uint32_t *out)
+{
+	uint32_t pend_rows_num = 0;
+	struct hl_info_args args;
+	int rc;
+
+	if (!out)
+		return -EINVAL;
+
+	memset(&args, 0, sizeof(args));
+
+	args.op = HL_INFO_DRAM_PENDING_ROWS;
+	args.return_pointer = (__u64) (uintptr_t) &pend_rows_num;
+	args.return_size = sizeof(pend_rows_num);
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	if (rc)
+		return rc;
+
+	*out = pend_rows_num;
+
+	return 0;
+}
+
 hlthunk_public int hlthunk_request_command_buffer(int fd, uint32_t cb_size,
 							uint64_t *cb_handle)
 {
@@ -2298,4 +2348,26 @@ int hlthunk_wait_for_reserved_encaps_collective_signals(int fd,
 
 	return (*fp->fp_hlthunk_wait_for_collective_reserved_encap_sig)(
 							fd, in, out);
+}
+
+hlthunk_public int hlthunk_get_dram_replaced_rows_info_original(int fd,
+				struct hlthunk_dram_replaced_rows_info *out)
+{
+	return _hlthunk_get_dram_replaced_rows_info(fd, out);
+}
+
+hlthunk_public int hlthunk_get_dram_replaced_rows_info(int fd,
+				struct hlthunk_dram_replaced_rows_info *out)
+{
+	return (*functions_pointers_table->fp_get_dram_replaced_rows_info)(fd, out);
+}
+
+hlthunk_public int hlthunk_get_dram_pending_rows_info_original(int fd, uint32_t *out)
+{
+	return _hlthunk_get_dram_pending_rows_info(fd, out);
+}
+
+hlthunk_public int hlthunk_get_dram_pending_rows_info(int fd, uint32_t *out)
+{
+	return (*functions_pointers_table->fp_get_dram_pending_rows_info)(fd, out);
 }
