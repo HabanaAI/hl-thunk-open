@@ -2020,13 +2020,17 @@ hlthunk_public int hlthunk_debugfs_open(int fd,
 
 	size = pread(debugfs->clk_gate_fd,
 		     debugfs->clk_gate_val, sizeof(debugfs->clk_gate_val), 0);
-	if (size < 0)
-		return -errno;
+	if (size < 0) {
+		rc = -EIO;
+		goto err_exit;
+	}
 
 	size = write(debugfs->clk_gate_fd, clk_gate_str,
 			strlen(clk_gate_str) + 1);
-	if (size < 0)
-		return -errno;
+	if (size < 0) {
+		rc = -EIO;
+		goto err_exit;
+	}
 
 	hlthunk_free(path);
 	return 0;
