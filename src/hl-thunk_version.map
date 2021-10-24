@@ -113,3 +113,14 @@ HLTNK_1.6 {
 
 	hlthunk_wait_for_interrupt_v1_6;
 } HLTNK_1.4;
+
+HLTNK_1.7 {
+	global:
+
+	hlthunk_get_clk_throttle_info;
+
+	local:
+
+	hlthunk_get_clk_throttle_info_1.0;
+	hlthunk_get_clk_throttle_info_1.7;
+} HLTNK_1.6;

@@ -128,11 +128,14 @@ struct hlthunk_pci_counters_info {
 	uint32_t replay_cnt;
 };
 
-#define HLTHUNK_CLK_THROTTLE_POWER	0x1
-#define HLTHUNK_CLK_THROTTLE_THERMAL	0x2
+/* clk_throttling_reason masks */
+#define HLTHUNK_CLK_THROTTLE_POWER	(1 << HL_CLK_THROTTLE_TYPE_POWER)
+#define HLTHUNK_CLK_THROTTLE_THERMAL	(1 << HL_CLK_THROTTLE_TYPE_THERMAL)
 
 struct hlthunk_clk_throttle_info {
 	uint32_t clk_throttle_reason_bitmask;
+	uint64_t clk_throttle_start_timestamp_us[HL_CLK_THROTTLE_TYPE_MAX];
+	uint64_t clk_throttle_duration_ns[HL_CLK_THROTTLE_TYPE_MAX];
 };
 
 struct hlthunk_energy_info {

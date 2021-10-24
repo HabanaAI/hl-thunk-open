@@ -991,31 +991,64 @@ hlthunk_public int hlthunk_get_pci_counters_info(int fd,
 	return 0;
 }
 
-hlthunk_public int hlthunk_get_clk_throttle_info(int fd,
-				struct hlthunk_clk_throttle_info *info)
+static int get_clk_throttle_info(int fd,
+			struct hlthunk_clk_throttle_info *info,
+			struct hl_info_clk_throttle *clk_throttle)
 {
 	struct hl_info_args args;
-	struct hl_info_clk_throttle clk_throttle;
 	int rc;
 
 	if (!info)
 		return -EINVAL;
 
 	memset(&args, 0, sizeof(args));
-	memset(&clk_throttle, 0, sizeof(clk_throttle));
+	memset(clk_throttle, 0, sizeof(*clk_throttle));
 
 	args.op = HL_INFO_CLK_THROTTLE_REASON;
-	args.return_pointer = (__u64) (uintptr_t) &clk_throttle;
-	args.return_size = sizeof(clk_throttle);
+	args.return_pointer = (__u64) (uintptr_t) clk_throttle;
+	args.return_size = sizeof(*clk_throttle);
 
 	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
 	if (rc)
 		return rc;
 
-	info->clk_throttle_reason_bitmask = clk_throttle.clk_throttling_reason;
+	info->clk_throttle_reason_bitmask = clk_throttle->clk_throttling_reason;
 
 	return 0;
 }
+
+lib_compat_public __vsym int hlthunk_get_clk_throttle_info_v1_0(int fd,
+				struct hlthunk_clk_throttle_info *info)
+{
+	struct hl_info_clk_throttle clk_throttle;
+
+	return get_clk_throttle_info(fd, info, &clk_throttle);
+}
+VERSION_SYMBOL(hlthunk_get_clk_throttle_info, _v1_0, 1.0);
+
+lib_compat_public int hlthunk_get_clk_throttle_info_v1_7(int fd,
+				struct hlthunk_clk_throttle_info *info)
+{
+	struct hl_info_clk_throttle clk_throttle;
+	int i, rc;
+
+	rc = get_clk_throttle_info(fd, info, &clk_throttle);
+	if (rc)
+		return rc;
+
+	for (i = 0 ; i < HL_CLK_THROTTLE_TYPE_MAX ; i++) {
+		info->clk_throttle_start_timestamp_us[i] =
+				clk_throttle.clk_throttling_timestamp_us[i];
+		info->clk_throttle_duration_ns[i] =
+				clk_throttle.clk_throttling_duration_ns[i];
+	}
+
+	return 0;
+}
+BIND_DEFAULT_SYMBOL(hlthunk_get_clk_throttle_info, _v1_7, 1.7);
+MAP_STATIC_SYMBOL(lib_compat_public int hlthunk_get_clk_throttle_info(int fd,
+					struct hlthunk_clk_throttle_info *info),
+		hlthunk_get_clk_throttle_info_v1_7);
 
 hlthunk_public int hlthunk_get_total_energy_consumption_info(int fd,
 			struct hlthunk_energy_info *info)
