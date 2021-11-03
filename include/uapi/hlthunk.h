@@ -38,6 +38,12 @@ enum hlthunk_device_name {
 	HLTHUNK_DEVICE_MAX
 };
 
+enum hlthunk_event_record_id {
+	HLTHUNK_OPEN_DEV,
+	HLTHUNK_CS_TIMEOUT,
+	HLTHUNK_RAZWI_EVENT
+};
+
 /**
  * struct hlthunk_hw_ip_info - hardware information on various IPs in the ASIC
  * @sram_base_address: The first SRAM physical base address that is free to be
@@ -264,6 +270,50 @@ struct hlthunk_dram_replaced_rows_info {
 	uint16_t num_replaced_rows;
 	struct hlthunk_dram_row_info replaced_rows[DRAM_ROW_REPLACE_MAX];
 	uint8_t reserved[6];
+};
+
+/**
+ * struct hlthunk_event_record_open_dev_time - timestamp of last time device was opened and
+ *                                             CS timeout or razwi error occurred.
+ * @timestamp: timestamp of device open.
+ */
+struct hlthunk_event_record_open_dev_time {
+	int64_t timestamp;
+};
+
+/**
+ * struct hlthunk_event_record_cs_timeout - last CS timeout information.
+ * @timestamp: timestamp when last CS timeout event occurred.
+ * @seq: sequence number of last CS timeout event.
+ */
+struct hlthunk_event_record_cs_timeout {
+	int64_t timestamp;
+	uint64_t seq;
+};
+
+#define HLTHUNK_RAZWI_PAGE_FAULT 0
+#define HLTHUNK_RAZWI_MMU_ACCESS_ERROR 1
+
+/**
+ * struct hlthunk_info_razwi_event - razwi information.
+ * @timestamp: timestamp of razwi.
+ * @addr: address which accessing it caused razwi.
+ * @engine_id_1: engine id of the razwi initiator, if it was initiated by engine that does not
+ *               have engine id it will be set to U16_MAX.
+ * @engine_id_2: second engine id of razwi initiator. Might happen that razwi have 2 possible
+ *               engines which one them caused the razwi. In that case, it will contain the
+ *               second possible engine id, otherwise it will be set to U16_MAX.
+ * @no_engine_id: if razwi initiator does not have engine id, this field will be set to 1,
+ *                otherwise 0.
+ * @error_type: cause of razwi, page fault or access error, otherwise it will be set to U8_MAX.
+ */
+struct hlthunk_event_record_razwi_event {
+	int64_t timestamp;
+	uint64_t addr;
+	uint16_t engine_id_1;
+	uint16_t engine_id_2;
+	uint8_t no_engine_id;
+	uint8_t error_type;
 };
 
 struct hlthunk_functions_pointers {
@@ -1051,6 +1101,16 @@ hlthunk_public int hlthunk_get_hw_block(int fd, uint64_t block_address,
  * @return 0 for success, negative value for failure
  */
 hlthunk_public int hlthunk_debug(int fd, struct hl_debug_args *debug);
+
+/**
+ * This function retrieves information of recorded events.
+ * @param fd file descriptor of the device that is used by the application.
+ * @param event_id event id to retrieve its data.
+ * @param buf buffer that holds retrieved data of requested event id.
+ * @return 0 if success. Non-zero for any error.
+ */
+hlthunk_public int hlthunk_get_event_record(int fd,
+		enum hlthunk_event_record_id event_id, void *buf);
 
 hlthunk_public void *hlthunk_malloc(int size);
 hlthunk_public void hlthunk_free(void *pt);

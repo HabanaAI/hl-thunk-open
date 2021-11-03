@@ -1976,6 +1976,73 @@ hlthunk_public int hlthunk_debug(int fd, struct hl_debug_args *debug)
 	return hlthunk_ioctl(fd, HL_IOCTL_DEBUG, debug);
 }
 
+hlthunk_public int hlthunk_get_event_record(int fd,
+		enum hlthunk_event_record_id event_id, void *buf)
+{
+	struct hlthunk_event_record_open_dev_time *open_dev_time_buf = buf;
+	struct hlthunk_event_record_cs_timeout *cs_timeout_buf = buf;
+	struct hlthunk_event_record_razwi_event *razwi_buf = buf;
+	struct hl_info_last_err_open_dev_time open_dev_time;
+	struct hl_info_cs_timeout_event cs_timeout;
+	struct hl_info_razwi_event razwi;
+	struct hl_info_args args;
+	int rc;
+
+	if (!buf)
+		return -EINVAL;
+
+	memset(&args, 0, sizeof(args));
+
+	switch (event_id) {
+	case HLTHUNK_OPEN_DEV:
+		memset(&open_dev_time, 0, sizeof(open_dev_time));
+		args.op = HL_INFO_LAST_ERR_OPEN_DEV_TIME;
+		args.return_pointer = (__u64) (uintptr_t) &open_dev_time;
+		args.return_size = sizeof(open_dev_time);
+		break;
+	case HLTHUNK_CS_TIMEOUT:
+		memset(&cs_timeout, 0, sizeof(cs_timeout));
+		args.op = HL_INFO_CS_TIMEOUT_EVENT;
+		args.return_pointer = (__u64) (uintptr_t) &cs_timeout;
+		args.return_size = sizeof(cs_timeout);
+		break;
+	case HLTHUNK_RAZWI_EVENT:
+		memset(&razwi, 0, sizeof(razwi));
+		args.op = HL_INFO_RAZWI_EVENT;
+		args.return_pointer = (__u64) (uintptr_t) &razwi;
+		args.return_size = sizeof(razwi);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	if (rc)
+		return rc;
+
+	switch (event_id) {
+	case HLTHUNK_OPEN_DEV:
+		open_dev_time_buf->timestamp = open_dev_time.timestamp;
+		break;
+	case HLTHUNK_CS_TIMEOUT:
+		cs_timeout_buf->timestamp = cs_timeout.timestamp;
+		cs_timeout_buf->seq = cs_timeout.seq;
+		break;
+	case HLTHUNK_RAZWI_EVENT:
+		razwi_buf->timestamp = razwi.timestamp;
+		razwi_buf->addr = razwi.addr;
+		razwi_buf->engine_id_1 = razwi.engine_id_1;
+		razwi_buf->engine_id_2 = razwi.engine_id_2;
+		razwi_buf->no_engine_id = razwi.no_engine_id;
+		razwi_buf->error_type = razwi.error_type;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 hlthunk_public char *hlthunk_get_version(void)
 {
 	char *version;

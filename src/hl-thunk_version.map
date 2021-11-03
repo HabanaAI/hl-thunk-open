@@ -120,6 +120,7 @@ HLTNK_1.7 {
 	hlthunk_get_clk_throttle_info;
 	hlthunk_get_hbm_replaced_rows_info;
 	hlthunk_get_hbm_pending_rows_info;
+	hlthunk_get_event_record;
 
 	local:
 
