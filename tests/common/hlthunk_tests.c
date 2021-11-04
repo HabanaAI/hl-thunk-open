@@ -2188,6 +2188,11 @@ VOID hltests_dma_dram_frag_mem_test(void **state, uint64_t size)
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
+	if (!hw_ip.dram_enabled) {
+		printf("DRAM is disabled so skipping test\n");
+		skip();
+	}
+
 	page_num = size / hw_ip.dram_page_size;
 	assert_int_not_equal(page_num, 0);
 	frag_arr_size = page_num * FRAG_MEM_MULT;
@@ -2239,6 +2244,12 @@ VOID hltests_dma_dram_high_mem_test(void **state, uint64_t size)
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
+
+	if (!hw_ip.dram_enabled) {
+		printf("DRAM is disabled so skipping test\n");
+		skip();
+	}
+
 	alloc_size = hw_ip.dram_size / 2;
 	device_addr = hltests_allocate_device_mem(fd, alloc_size,
 								NOT_CONTIGUOUS);
