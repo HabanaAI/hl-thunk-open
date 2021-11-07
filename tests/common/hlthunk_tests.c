@@ -814,11 +814,11 @@ int hltests_setup(void **state)
 		goto free_state;
 	}
 
-	*state = tests_state;
-
 	if (!hltests_is_legacy_mode_enabled())
 		snprintf(build_path, BUILD_PATH_MAX_LENGTH - 1,
 					"%s", HLTHUNK_BUILD_PATH);
+
+	*state = tests_state;
 
 	return 0;
 
