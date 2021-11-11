@@ -19,6 +19,7 @@ enum shim_api_type {
 	SHIM_API_TENSOR_FLOW,
 	SHIM_API_MOCK_CPP,
 	SHIM_API_MOCK_C,
+	SHIM_API_SCAL,
 	SHIM_API_MAX_TYPE, // must be last
 };
 
