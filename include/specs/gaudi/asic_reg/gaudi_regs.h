@@ -23,7 +23,6 @@
 #include "mme0_ctrl_regs.h"
 #include "mme2_qm_regs.h"
 #include "mme2_ctrl_regs.h"
-#include "mme2_qm_regs.h"
 #include "tpc0_qm_regs.h"
 #include "tpc1_qm_regs.h"
 #include "tpc2_qm_regs.h"
