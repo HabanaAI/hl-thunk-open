@@ -31,7 +31,11 @@ static VOID measure_cs_nop(struct hltests_state *tests_state,
 	double time_diff;
 	uint64_t seq = 0;
 
-	loop_cnt = 500000;
+	if (hltests_is_legacy_mode_enabled(fd))
+		loop_cnt = 500000;
+	else
+		loop_cnt = 32000;
+
 	wait_after_cs_cnt = wait_after_submit_cnt;
 
 	clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
@@ -143,6 +147,10 @@ VOID test_and_measure_wait_after_submit_cs_nop(void **state)
 
 	if (hltests_is_simulator(fd) || hltests_is_pldm(fd))
 		skip();
+
+	if (!hltests_is_legacy_mode_enabled(fd) && !hltests_get_parser_run_disabled_tests())
+		skip();
+
 
 	END_TEST_FUNC(submit_cs_nop(state, 1, 1));
 }
