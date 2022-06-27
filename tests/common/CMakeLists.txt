@@ -24,6 +24,7 @@ set(COMMON_UNIT_TESTS
     error_injection
     root_debug
     debugfs
+    cpucp
 )
 
 foreach(_UNIT_TEST ${COMMON_UNIT_TESTS})

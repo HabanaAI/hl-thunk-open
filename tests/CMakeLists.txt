@@ -28,8 +28,8 @@ if (HLTESTS_LIB_MODE)
     set(HLTHUNK_TESTS_LINK_LIBRARIES
         ${HLTHUNK_TARGET})
 
-    file(GLOB SRC common/*.c gaudi/*.c goya/*.c inih/*.c
-	mersenne-twister/*.c argparse/*.c) # compile all files with *.c suffix
+    file(GLOB SRC common/*.c gaudi/*.c gaudi2/*.c goya/*.c
+	inih/*.c mersenne-twister/*.c argparse/*.c) # compile all files with *.c suffix
 
     exec_program(
         "git"
@@ -59,6 +59,9 @@ if (HLTESTS_LIB_MODE)
 
     target_link_libraries(${HLTHUNK_TESTS_LIBRARY}-static ${HLTHUNK_TESTS_LINK_LIBRARIES})
 
+    # Copy executable files to a "bin/lib_mode" sub-directory
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/lib_mode")
+
     add_subdirectory(demo)
 
 else ()
@@ -81,23 +84,28 @@ else ()
         ${HLTHUNK_TARGET})
 
     # create test library
-    add_library(${HLTHUNK_TESTS_LIBRARY}
+    add_library(${HLTHUNK_TESTS_LIBRARY}-static-internal
         STATIC
         common/hlthunk_tests.c
         goya/hlthunk_tests_goya.c
         gaudi/hlthunk_tests_gaudi.c
+        gaudi2/hlthunk_tests_gaudi2.c
         mersenne-twister/mersenne-twister.c
         argparse/argparse.c
         inih/ini.c)
 
-    target_link_libraries(${HLTHUNK_TESTS_LIBRARY} ${HLTHUNK_TESTS_LINK_LIBRARIES})
+    target_link_libraries(${HLTHUNK_TESTS_LIBRARY}-static-internal ${HLTHUNK_TESTS_LINK_LIBRARIES})
 
     set(TEST_TARGET_LIBRARIES
-        ${HLTHUNK_TESTS_LIBRARY}
+        ${HLTHUNK_TESTS_LIBRARY}-static-internal
         ${HLTHUNK_TESTS_LINK_LIBRARIES})
+
+    # Copy executable files to a "bin" sub-directory
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
     add_subdirectory(common)
     add_subdirectory(goya)
     add_subdirectory(gaudi)
+    add_subdirectory(gaudi2)
 
 endif ()

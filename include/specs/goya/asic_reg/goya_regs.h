@@ -36,6 +36,7 @@
 #include "tpc6_cmdq_regs.h"
 #include "tpc7_cmdq_regs.h"
 
+#define mmSYNC_MNGR_SOB_OBJ_0                                        0x112000
 #define mmSYNC_MNGR_MON_PAY_ADDRL_0                                  0x113000
 #define mmSYNC_MNGR_MON_PAY_ADDRH_0                                  0x113400
 #define mmSYNC_MNGR_MON_PAY_DATA_0                                   0x113800

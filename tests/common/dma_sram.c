@@ -23,10 +23,16 @@ VOID test_dma_entire_sram_random(void **state)
 	struct hlthunk_hw_ip_info hw_ip;
 	int rc;
 
+	if (hltests_is_pldm(tests_state->fd))
+		skip();
+
 	rc = hlthunk_get_hw_ip_info(tests_state->fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
-	END_TEST_FUNC(hltests_dma_test(state, false, hw_ip.sram_size));
+	if (!hw_ip.sram_size)
+		skip();
+
+	END_TEST_FUNC(hltests_dma_test(state, false, hw_ip.sram_size, 0));
 }
 
 DMA_TEST_INC_SRAM(test_dma_sram_size_1KB, state, 1 * 1024)
@@ -274,7 +280,7 @@ int main(int argc, const char **argv)
 {
 	int num_tests = sizeof(dma_sram_tests) / sizeof((dma_sram_tests)[0]);
 
-	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_DONT_CARE,
+	hltests_parser(argc, argv, usage, HLTEST_DEVICE_MASK_DONT_CARE,
 			dma_sram_tests, num_tests);
 
 	return hltests_run_group_tests("dma_sram", dma_sram_tests, num_tests,

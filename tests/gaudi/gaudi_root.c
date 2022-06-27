@@ -88,7 +88,7 @@ VOID activate_super_stress_dma_channels(void **state,
 			pkt_info.dma.src_addr = dma_ch_start_addr;
 			pkt_info.dma.dst_addr = dst_addr;
 			pkt_info.dma.size = dma_size;
-			pkt_info.dma.dma_dir = GOYA_DMA_DRAM_TO_DRAM;
+			pkt_info.dma.dma_dir = DMA_DIR_DRAM_TO_DRAM;
 
 			common_cb_buf_size[i] = hltests_add_dma_pkt(fd,
 							common_cb_buf[i],
@@ -139,7 +139,7 @@ VOID activate_super_stress_dma_channels(void **state,
 		pkt_info.dma.src_addr = cp_dma_cb_device_va[i];
 		pkt_info.dma.dst_addr = cp_dma_sram_addr;
 		pkt_info.dma.size = cp_dma_cb_size[i];
-		pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_SRAM;
+		pkt_info.dma.dma_dir = DMA_DIR_HOST_TO_SRAM;
 		restore_cb_size = hltests_add_dma_pkt(fd, restore_cb,
 							restore_cb_size,
 							&pkt_info);
@@ -150,7 +150,7 @@ VOID activate_super_stress_dma_channels(void **state,
 		pkt_info.dma.src_addr = common_cb_device_va[i];
 		pkt_info.dma.dst_addr = sram_base + i * cb_common_size;
 		pkt_info.dma.size = common_cb_buf_size[i];
-		pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_SRAM;
+		pkt_info.dma.dma_dir = DMA_DIR_HOST_TO_SRAM;
 		restore_cb_size = hltests_add_dma_pkt(fd, restore_cb,
 							restore_cb_size,
 							&pkt_info);
@@ -168,8 +168,11 @@ VOID activate_super_stress_dma_channels(void **state,
 		nop_cb_size = hltests_add_monitor_and_fence(fd, nop_cb,
 					nop_cb_size, &mon_and_fence_info);
 
+		memset(&pkt_info, 0, sizeof(pkt_info));
+		pkt_info.eb = EB_TRUE;
+		pkt_info.mb = MB_TRUE;
 		nop_cb_size = hltests_add_nop_pkt(fd, nop_cb, nop_cb_size,
-							EB_TRUE, MB_TRUE);
+							&pkt_info);
 	}
 
 	restore_arr[0].cb_ptr = restore_cb;
@@ -194,7 +197,7 @@ VOID activate_super_stress_dma_channels(void **state,
 	clock_gettime(CLOCK_MONOTONIC_RAW, &end);
 
 	all2all_perf_outcome =
-		&tests_state->perf_outcomes[DMA_PERF_ALL2ALL_SUPER_STRESS];
+		&tests_state->perf_outcomes[RESULTS_DMA_PERF_ALL2ALL_SUPER_STRESS];
 
 	/* We multiply the result by 2 because the read and write of the DMA
 	 * are both from DRAM
@@ -350,6 +353,10 @@ VOID test_dma_all2all_super_stress(void **state)
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
+
+	if (!hw_ip.sram_size)
+		skip();
+
 	assert_true(hw_ip.dram_enabled);
 	assert_true(hw_ip.dram_size > NUM_OF_INT_Q * 0x100000000ull);
 
@@ -383,7 +390,7 @@ VOID test_dma_all2all_super_stress(void **state)
 				EB_FALSE, MB_TRUE, data_buf_va,
 				dram_ch_start_address + j * host_size,
 				host_size,
-				GOYA_DMA_HOST_TO_DRAM);
+				DMA_DIR_HOST_TO_DRAM);
 		}
 	}
 
@@ -400,7 +407,8 @@ VOID test_dma_all2all_super_stress(void **state)
 
 const struct CMUnitTest gaudi_root_tests[] = {
 	cmocka_unit_test_setup(test_dma_all2all_super_stress,
-				hltests_ensure_device_operational)};
+				hltests_ensure_device_operational),
+};
 
 static const char *const usage[] = {
 	"gaudi_root [options]",
@@ -412,7 +420,7 @@ int main(int argc, const char **argv)
 	int num_tests = sizeof(gaudi_root_tests) /
 			sizeof((gaudi_root_tests)[0]);
 
-	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_GAUDI,
+	hltests_parser(argc, argv, usage, HLTEST_DEVICE_MASK_GAUDI_ALL,
 			gaudi_root_tests, num_tests);
 
 	if (access("/sys/kernel/debug", R_OK)) {

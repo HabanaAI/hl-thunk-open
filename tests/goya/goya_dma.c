@@ -58,13 +58,16 @@ VOID test_dma_4_queues_goya(void **state)
 	host_dst_device_va = hltests_get_device_va_for_host_ptr(fd, host_dst);
 
 	for (i = 0 ; i < 2 ; i++) {
-		dram_addr[i] = hltests_allocate_device_mem(fd, dma_size,
-								NOT_CONTIGUOUS);
+		dram_addr[i] = hltests_allocate_device_mem(fd, dma_size, 0, NOT_CONTIGUOUS);
 		assert_non_null(dram_addr[i]);
 	}
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
+
+	if (!hw_ip.sram_size)
+		skip();
+
 	assert_int_equal(hw_ip.dram_enabled, 1);
 	sram_addr = hw_ip.sram_base_address + 0x1000;
 
@@ -84,7 +87,7 @@ VOID test_dma_4_queues_goya(void **state)
 	pkt_info.dma.src_addr = host_src_device_va;
 	pkt_info.dma.dst_addr = (uint64_t) (uintptr_t) dram_addr[0];
 	pkt_info.dma.size = dma_size;
-	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_DRAM;
+	pkt_info.dma.dma_dir = DMA_DIR_HOST_TO_DRAM;
 	dma_cb_size[0] = hltests_add_dma_pkt(fd, dma_cb[0], dma_cb_size[0],
 					&pkt_info);
 
@@ -121,7 +124,7 @@ VOID test_dma_4_queues_goya(void **state)
 	pkt_info.dma.src_addr = (uint64_t) (uintptr_t) dram_addr[0];
 	pkt_info.dma.dst_addr = sram_addr;
 	pkt_info.dma.size = dma_size;
-	pkt_info.dma.dma_dir = GOYA_DMA_DRAM_TO_SRAM;
+	pkt_info.dma.dma_dir = DMA_DIR_DRAM_TO_SRAM;
 	dma_cb_size[1] = hltests_add_dma_pkt(fd, dma_cb[1], dma_cb_size[1],
 					&pkt_info);
 
@@ -158,7 +161,7 @@ VOID test_dma_4_queues_goya(void **state)
 	pkt_info.dma.src_addr = sram_addr;
 	pkt_info.dma.dst_addr = (uint64_t) (uintptr_t) dram_addr[1];
 	pkt_info.dma.size = dma_size;
-	pkt_info.dma.dma_dir = GOYA_DMA_SRAM_TO_DRAM;
+	pkt_info.dma.dma_dir = DMA_DIR_SRAM_TO_DRAM;
 	dma_cb_size[2] = hltests_add_dma_pkt(fd, dma_cb[2], dma_cb_size[2],
 					&pkt_info);
 
@@ -195,7 +198,7 @@ VOID test_dma_4_queues_goya(void **state)
 	pkt_info.dma.src_addr = (uint64_t) (uintptr_t) dram_addr[1];
 	pkt_info.dma.dst_addr = host_dst_device_va;
 	pkt_info.dma.size = dma_size;
-	pkt_info.dma.dma_dir = GOYA_DMA_DRAM_TO_HOST;
+	pkt_info.dma.dma_dir = DMA_DIR_DRAM_TO_HOST;
 	dma_cb_size[3] = hltests_add_dma_pkt(fd, dma_cb[3], dma_cb_size[3],
 					&pkt_info);
 
@@ -262,7 +265,7 @@ int main(int argc, const char **argv)
 {
 	int num_tests = sizeof(goya_dma_tests) / sizeof((goya_dma_tests)[0]);
 
-	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_GOYA, goya_dma_tests,
+	hltests_parser(argc, argv, usage, HLTEST_DEVICE_MASK_GOYA, goya_dma_tests,
 			num_tests);
 
 	return hltests_run_group_tests("goya_dma", goya_dma_tests, num_tests,

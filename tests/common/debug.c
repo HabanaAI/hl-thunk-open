@@ -67,7 +67,7 @@ VOID test_endless_memory_ioctl(void **state)
 }
 
 struct dma_custom_cfg {
-	enum hltests_goya_dma_direction dma_dir;
+	enum hltests_dma_direction dma_dir;
 	uint64_t src_addr;
 	uint64_t dst_addr;
 	uint64_t size;
@@ -193,17 +193,16 @@ VOID test_dma_custom(void **state)
 
 	dma_dir_down = cfg.dma_dir;
 	switch (cfg.dma_dir) {
-	case GOYA_DMA_HOST_TO_DRAM:
+	case DMA_DIR_HOST_TO_DRAM:
 		assert_int_equal(hw_ip.dram_enabled, 1);
-		dma_dir_up = GOYA_DMA_DRAM_TO_HOST;
-		device_ptr = hltests_allocate_device_mem(fd,
-						hw_ip.dram_size, CONTIGUOUS);
+		dma_dir_up = DMA_DIR_DRAM_TO_HOST;
+		device_ptr = hltests_allocate_device_mem(fd, hw_ip.dram_size, 0, CONTIGUOUS);
 		assert_non_null(device_ptr);
 		device_addr = (uint64_t) (uintptr_t) device_ptr;
 		device_addr += (cfg.dst_addr - hw_ip.dram_base_address);
 		break;
-	case GOYA_DMA_HOST_TO_SRAM:
-		dma_dir_up = GOYA_DMA_SRAM_TO_HOST;
+	case DMA_DIR_HOST_TO_SRAM:
+		dma_dir_up = DMA_DIR_SRAM_TO_HOST;
 		device_addr = cfg.dst_addr;
 		break;
 	default:
@@ -319,17 +318,14 @@ VOID test_dma_custom(void **state)
 VOID test_transfer_bigger_than_alloc(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	void *device_ptr, *src_ptr, *ptr;
-	struct hltests_pkt_info pkt_info;
+	void *device_ptr, *src_ptr;
 	uint64_t device_addr, host_src_addr;
 	uint64_t device_alloc_size = 2 * 1024 * 1024; /* 2MB */
 	uint64_t host_alloc_size = 8;
 	uint64_t transfer_size = 5000;
-	uint32_t offset = 0;
 	int fd = tests_state->fd;
 
-	device_ptr = hltests_allocate_device_mem(fd,
-				device_alloc_size, CONTIGUOUS);
+	device_ptr = hltests_allocate_device_mem(fd, device_alloc_size, 0, CONTIGUOUS);
 	assert_non_null(device_ptr);
 	device_addr = (uint64_t) (uintptr_t) device_ptr;
 
@@ -337,21 +333,9 @@ VOID test_transfer_bigger_than_alloc(void **state)
 	assert_non_null(src_ptr);
 	host_src_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
 
-	ptr = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
-	assert_non_null(ptr);
-
-	memset(&pkt_info, 0, sizeof(pkt_info));
-	pkt_info.eb = EB_FALSE;
-	pkt_info.mb = MB_FALSE;
-	pkt_info.dma.src_addr = host_src_addr;
-	pkt_info.dma.dst_addr = device_addr;
-	pkt_info.dma.size = transfer_size;
-	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_DRAM;
-	offset = hltests_add_dma_pkt(fd, ptr, offset, &pkt_info);
-
-	hltests_submit_and_wait_cs(fd, ptr, offset,
-				hltests_get_dma_down_qid(fd, STREAM0),
-				DESTROY_CB_FALSE, HL_WAIT_CS_STATUS_TIMEDOUT);
+	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0), EB_FALSE,
+			MB_FALSE, host_src_addr, device_addr, transfer_size,
+			DMA_DIR_HOST_TO_DRAM);
 
 	/* no need to clean up because the device is in reset */
 	END_TEST;
@@ -427,8 +411,7 @@ VOID test_map_custom(void **state)
 		assert_int_equal(hw_ip.dram_enabled, 1);
 
 	for (i = 0 ; i < cfg.dram_num_of_alloc ; i++) {
-		dram_addr = hltests_allocate_device_mem(fd, cfg.dram_size,
-								CONTIGUOUS);
+		dram_addr = hltests_allocate_device_mem(fd, cfg.dram_size, 0, CONTIGUOUS);
 		assert_non_null(dram_addr);
 	}
 
@@ -468,7 +451,7 @@ VOID test_loop_map_work_unmap(void **state)
 	cb = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(cb);
 
-	dram_ptr = hltests_allocate_device_mem(fd, total_size, CONTIGUOUS);
+	dram_ptr = hltests_allocate_device_mem(fd, total_size, 0, CONTIGUOUS);
 	assert_non_null(dram_ptr);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
@@ -476,7 +459,7 @@ VOID test_loop_map_work_unmap(void **state)
 	pkt_info.mb = MB_FALSE;
 	pkt_info.dma.dst_addr = (uint64_t) (uintptr_t) dram_ptr;
 	pkt_info.dma.size = total_size;
-	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_DRAM;
+	pkt_info.dma.dma_dir = DMA_DIR_HOST_TO_DRAM;
 
 	for (i = 0 ; i < 20000 ; i++) {
 		src_ptr = hltests_allocate_host_mem(fd, total_size, HUGE_MAP);
@@ -607,12 +590,12 @@ VOID test_page_miss(void **state)
 	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
 			EB_FALSE, MB_TRUE, host_src_addr,
 			(uint64_t) (uintptr_t) device_addr,
-			size, GOYA_DMA_HOST_TO_SRAM);
+			size, DMA_DIR_HOST_TO_SRAM);
 
 	/* DMA: device->host */
 	hltests_dma_transfer(fd, hltests_get_dma_up_qid(fd, STREAM0),
 				0, 1, (uint64_t) (uintptr_t) device_addr,
-				host_dst_addr, size, GOYA_DMA_SRAM_TO_HOST);
+				host_dst_addr, size, DMA_DIR_SRAM_TO_HOST);
 
 	/* Compare host memories */
 	rc = hltests_mem_compare(src_ptr, dst_ptr, size);
@@ -766,7 +749,7 @@ VOID test_scan_with_sm(void **state)
 	int rc, fd = tests_state->fd;
 	struct scan_with_sm_cfg cfg;
 	uint32_t cb_size, seq_val;
-	uint64_t cur_addr;
+	uint64_t cur_addr, qid;
 	void *cb;
 
 	if (!config_filename)
@@ -798,8 +781,10 @@ VOID test_scan_with_sm(void **state)
 
 	sob_id = hltests_get_first_avail_sob(fd);
 	mon_per_dcore = hltests_get_monitors_cnt_per_dcore(fd);
+	qid = hltests_get_dma_down_qid(fd, STREAM0);
 
 	memset(&clear_sob, 0, sizeof(clear_sob));
+	clear_sob.qid = qid;
 	clear_sob.eb = EB_TRUE;
 	clear_sob.mb = MB_TRUE;
 	clear_sob.write_to_sob.sob_id = sob_id;
@@ -812,6 +797,7 @@ VOID test_scan_with_sm(void **state)
 	mon_info.sob_val = 1;
 
 	memset(&write_to_sob, 0, sizeof(write_to_sob));
+	write_to_sob.qid = qid;
 	write_to_sob.eb = EB_TRUE;
 	write_to_sob.mb = MB_TRUE;
 	write_to_sob.write_to_sob.sob_id = sob_id;
@@ -841,8 +827,7 @@ VOID test_scan_with_sm(void **state)
 
 			cb_size = hltests_add_write_to_sob_pkt(fd, cb, cb_size, &write_to_sob);
 
-			hltests_submit_and_wait_cs(fd, cb, cb_size,
-						hltests_get_dma_down_qid(fd, STREAM0),
+			hltests_submit_and_wait_cs(fd, cb, cb_size, qid,
 						DESTROY_CB_FALSE, HL_WAIT_CS_STATUS_COMPLETED);
 			cb_size = 0;
 			mon_info.mon_id = hltests_get_first_avail_mon(fd);
@@ -889,7 +874,7 @@ int main(int argc, const char **argv)
 {
 	int num_tests = sizeof(debug_tests) / sizeof((debug_tests)[0]);
 
-	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_DONT_CARE, debug_tests,
+	hltests_parser(argc, argv, usage, HLTEST_DEVICE_MASK_DONT_CARE, debug_tests,
 			num_tests);
 
 	if (!hltests_get_parser_run_disabled_tests()) {

@@ -48,6 +48,9 @@ VOID test_qman_write_to_protected_register(void **state, bool is_tpc)
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
+	if (!hw_ip.sram_size)
+		skip();
+
 	if (is_tpc) {
 		/* Find first available TPC */
 		uint8_t tpc_id, tpc_cnt;
@@ -101,7 +104,7 @@ VOID test_qman_write_to_protected_register(void **state, bool is_tpc)
 	pkt_info.dma.src_addr = engine_cb_device_va;
 	pkt_info.dma.dst_addr = engine_cb_sram_addr;
 	pkt_info.dma.size = engine_cb_size;
-	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_SRAM;
+	pkt_info.dma.dma_dir = DMA_DIR_HOST_TO_SRAM;
 	restore_cb_size = hltests_add_dma_pkt(fd, restore_cb, restore_cb_size,
 					&pkt_info);
 
@@ -156,7 +159,7 @@ VOID test_qman_write_to_protected_register(void **state, bool is_tpc)
 	END_TEST;
 }
 
-VOID test_debugfs_sram_read_write(void **state)
+VOID test_goya_debugfs_sram_read_write(void **state)
 {
 	struct hltests_state *tests_state =
 					(struct hltests_state *) *state;
@@ -257,7 +260,7 @@ VOID test_write_to_mmTPC_PLL_CLK_RLX_0_from_qman(void **state)
 #ifndef HLTESTS_LIB_MODE
 
 const struct CMUnitTest goya_root_tests[] = {
-	cmocka_unit_test_setup(test_debugfs_sram_read_write,
+	cmocka_unit_test_setup(test_goya_debugfs_sram_read_write,
 					hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_write_to_cfg_space,
 					hltests_ensure_device_operational),
@@ -278,7 +281,7 @@ int main(int argc, const char **argv)
 {
 	int num_tests = sizeof(goya_root_tests) / sizeof((goya_root_tests)[0]);
 
-	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_GOYA, goya_root_tests,
+	hltests_parser(argc, argv, usage, HLTEST_DEVICE_MASK_GOYA, goya_root_tests,
 			num_tests);
 
 	if (access("/sys/kernel/debug", R_OK)) {

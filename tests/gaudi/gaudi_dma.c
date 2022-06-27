@@ -121,13 +121,19 @@ VOID test_gaudi_dma_all2all(void **state)
 		queue;
 	struct hltests_pkt_info pkt_info;
 	struct hltests_monitor_and_fence mon_and_fence_info;
-	enum hltests_goya_dma_direction dma_dir;
+	enum hltests_dma_direction dma_dir;
 	int rc, fd = tests_state->fd, i;
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
 
 	if (!hltests_get_parser_run_disabled_tests()) {
 		printf("Test is skipped because it is disabled by default\n");
+		skip();
+	}
+
+	/* This test can't run if mmu is disabled */
+	if (!tests_state->mmu) {
+		printf("Test is skipped. MMU must be enabled\n");
 		skip();
 	}
 
@@ -171,6 +177,10 @@ VOID test_gaudi_dma_all2all(void **state)
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
+
+	if (!hw_ip.sram_size)
+		skip();
+
 	assert_true(hw_ip.dram_enabled);
 
 	assert_true(ext_dma_size < hw_ip.dram_size);
@@ -188,7 +198,7 @@ VOID test_gaudi_dma_all2all(void **state)
 
 	for (i = 0 ; i < NUM_OF_INT_Q ; i++, queue += 4) {
 		int_dram_addr[i] = (uint64_t) hltests_allocate_device_mem(fd,
-						int_dma_size, NOT_CONTIGUOUS);
+						int_dma_size, 0, NOT_CONTIGUOUS);
 		assert_int_not_equal(int_dram_addr[i], 0);
 
 		sram_addr = sram_base + (NUM_OF_INT_Q + 1) * 0x1000 +
@@ -197,11 +207,11 @@ VOID test_gaudi_dma_all2all(void **state)
 		if (i & 1) {
 			src_addr = sram_addr;
 			dst_addr = int_dram_addr[i];
-			dma_dir = GOYA_DMA_SRAM_TO_DRAM;
+			dma_dir = DMA_DIR_SRAM_TO_DRAM;
 		} else {
 			src_addr = int_dram_addr[i];
 			dst_addr = sram_addr;
-			dma_dir = GOYA_DMA_DRAM_TO_SRAM;
+			dma_dir = DMA_DIR_DRAM_TO_SRAM;
 		}
 
 		common_cb_buf[i] = hltests_allocate_host_mem(fd,
@@ -275,7 +285,7 @@ VOID test_gaudi_dma_all2all(void **state)
 		pkt_info.dma.src_addr = cp_dma_cb_device_va[i];
 		pkt_info.dma.dst_addr = cp_dma_sram_addr;
 		pkt_info.dma.size = cp_dma_cb_size[i];
-		pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_SRAM;
+		pkt_info.dma.dma_dir = DMA_DIR_HOST_TO_SRAM;
 		restore_cb_size =
 				hltests_add_dma_pkt(fd, int_restore_cb,
 							restore_cb_size,
@@ -287,7 +297,7 @@ VOID test_gaudi_dma_all2all(void **state)
 		pkt_info.dma.src_addr = common_cb_device_va[i];
 		pkt_info.dma.dst_addr = sram_base + i * 0x1000;
 		pkt_info.dma.size = common_cb_buf_size[i];
-		pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_SRAM;
+		pkt_info.dma.dma_dir = DMA_DIR_HOST_TO_SRAM;
 		restore_cb_size =
 				hltests_add_dma_pkt(fd, int_restore_cb,
 							restore_cb_size,
@@ -306,8 +316,11 @@ VOID test_gaudi_dma_all2all(void **state)
 		nop_cb_size = hltests_add_monitor_and_fence(fd, nop_cb,
 					nop_cb_size, &mon_and_fence_info);
 
+		memset(&pkt_info, 0, sizeof(pkt_info));
+		pkt_info.eb = EB_TRUE;
+		pkt_info.mb = MB_TRUE;
 		nop_cb_size = hltests_add_nop_pkt(fd, nop_cb, nop_cb_size,
-							EB_TRUE, MB_TRUE);
+							&pkt_info);
 	}
 
 	int_restore_arr[0].cb_ptr = int_restore_cb;
@@ -356,7 +369,7 @@ VOID test_gaudi_dma_all2all(void **state)
 	memset(ext_buf[1], 0, ext_dma_size);
 
 	ext_dram_addr = (uint64_t) hltests_allocate_device_mem(fd,
-						ext_dma_size, NOT_CONTIGUOUS);
+						ext_dma_size, 0, NOT_CONTIGUOUS);
 	assert_int_not_equal(ext_dram_addr, 0);
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
@@ -364,7 +377,7 @@ VOID test_gaudi_dma_all2all(void **state)
 	pkt_info.dma.src_addr = ext_buf_va[0];
 	pkt_info.dma.dst_addr = ext_dram_addr;
 	pkt_info.dma.size = ext_dma_size;
-	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_DRAM;
+	pkt_info.dma.dma_dir = DMA_DIR_HOST_TO_DRAM;
 	ext_dma_cb_size[0] = hltests_add_dma_pkt(fd, ext_dma_cb[0],
 						ext_dma_cb_size[0], &pkt_info);
 
@@ -395,7 +408,7 @@ VOID test_gaudi_dma_all2all(void **state)
 	pkt_info.dma.src_addr = ext_dram_addr;
 	pkt_info.dma.dst_addr = ext_buf_va[1];
 	pkt_info.dma.size = ext_dma_size;
-	pkt_info.dma.dma_dir = GOYA_DMA_DRAM_TO_HOST;
+	pkt_info.dma.dma_dir = DMA_DIR_DRAM_TO_HOST;
 	ext_dma_cb_size[1] = hltests_add_dma_pkt(fd, ext_dma_cb[1],
 						ext_dma_cb_size[1], &pkt_info);
 
@@ -491,11 +504,6 @@ VOID test_strided_dma(void **state)
 		total_dma_size = num_of_strides * stride_size;
 	int rc, fd = tests_state->fd, i, j, test_failed = 0;
 	struct timespec begin, end;
-
-	if (!hltests_is_gaudi(fd)) {
-		printf("Test is skipped because device is not GAUDI\n");
-		skip();
-	}
 
 	/* In case test_strided_dma() fails, we want to rerun it once again.
 	 * We, therefore, allow a MAX of 2nd level recursive depth, otherwise -
@@ -873,8 +881,8 @@ int main(int argc, const char **argv)
 {
 	int num_tests = sizeof(gaudi_dma_tests) / sizeof((gaudi_dma_tests)[0]);
 
-	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_GAUDI, gaudi_dma_tests,
-			num_tests);
+	hltests_parser(argc, argv, usage, HLTEST_DEVICE_MASK_GAUDI_ALL,
+			gaudi_dma_tests, num_tests);
 
 	return hltests_run_group_tests("gaudi_dma", gaudi_dma_tests, num_tests,
 					hltests_setup, hltests_teardown);

@@ -9,6 +9,7 @@
 #include "goya/goya.h"
 #include "goya/goya_packets.h"
 #include "goya/asic_reg/goya_regs.h"
+#include "goya/goya_async_events.h"
 
 #include <endian.h>
 #include <errno.h>
@@ -18,21 +19,28 @@
 #define mmSYNC_MNGR_MON_STATUS_0                                     0x114000
 #define mmSYNC_MNGR_MON_STATUS_255                                   0x1143FC
 
-static uint32_t goya_add_nop_pkt(void *buffer, uint32_t buf_off, bool eb,
-					bool mb)
+static uint32_t goya_add_nop_pkt(void *buffer, uint32_t buf_off,
+					struct hltests_pkt_info *pkt_info)
 {
 	struct packet_nop packet;
 
 	memset(&packet, 0, sizeof(packet));
 	packet.opcode = PACKET_NOP;
-	packet.eng_barrier = eb;
-	packet.msg_barrier = mb;
+	packet.eng_barrier = pkt_info->eb;
+	packet.msg_barrier = pkt_info->mb;
 	packet.reg_barrier = 1;
 
 	packet.ctl = htole32(packet.ctl);
 
 	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
 						sizeof(packet));
+}
+
+static uint32_t goya_add_msg_barrier_pkt(void *buffer, uint32_t buf_off,
+		struct hltests_pkt_info *pkt_info)
+{
+	/* Not supported in Goya */
+	return buf_off;
 }
 
 static uint32_t goya_add_wreg32_pkt(void *buffer, uint32_t buf_off,
@@ -220,13 +228,19 @@ static uint32_t goya_add_cp_dma_pkt(void *buffer, uint32_t buf_off,
 						sizeof(packet));
 }
 
+static uint32_t goya_add_cb_list_pkt(void *buffer, uint32_t buf_off,
+					struct hltests_pkt_info *pkt_info)
+{
+	return 0;
+}
+
 static uint32_t goya_add_load_and_exe_pkt(void *buffer, uint32_t buf_off,
 					struct hltests_pkt_info *pkt_info)
 {
 	return 0;
 }
 
-static uint64_t goya_get_fence_addr(uint32_t qid, bool cmdq_fence)
+static uint64_t goya_get_fence_addr(int fd, uint32_t qid, bool cmdq_fence)
 {
 	uint64_t fence_addr = 0;
 
@@ -380,7 +394,7 @@ out:
 	return buf_off;
 }
 
-static uint32_t goya_add_monitor_and_fence(
+static uint32_t goya_add_monitor_and_fence(int fd,
 			enum hltests_dcore_separation_mode dcore_sep_mode,
 			void *buffer, uint32_t buf_off,
 			struct hltests_monitor_and_fence *mon_and_fence_info)
@@ -394,7 +408,7 @@ static uint32_t goya_add_monitor_and_fence(
 	if (mon_and_fence_info->mon_address)
 		address = mon_and_fence_info->mon_address;
 	else
-		address = goya_get_fence_addr(mon_and_fence_info->queue_id, cmdq_fence);
+		address = goya_get_fence_addr(fd, mon_and_fence_info->queue_id, cmdq_fence);
 
 	mon_info.mon_address = address;
 	mon_info.sob_val = mon_and_fence_info->sob_val;
@@ -424,21 +438,27 @@ static uint32_t goya_add_arb_en_pkt(void *buffer, uint32_t buf_off,
 	return buf_off;
 }
 
-static uint32_t goya_get_dma_down_qid(
+static uint32_t goya_add_cq_config_pkt(void *buffer, uint32_t buf_off,
+					struct hltests_cq_config *cq_config)
+{
+	return buf_off;
+}
+
+static uint32_t goya_get_dma_down_qid(int fd,
 			enum hltests_dcore_separation_mode dcore_sep_mode,
 			enum hltests_stream_id stream)
 {
 	return GOYA_QUEUE_ID_DMA_1;
 }
 
-static uint32_t goya_get_dma_up_qid(
+static uint32_t goya_get_dma_up_qid(int fd,
 			enum hltests_dcore_separation_mode dcore_sep_mode,
 			enum hltests_stream_id stream)
 {
 	return GOYA_QUEUE_ID_DMA_2;
 }
 
-static uint32_t goya_get_ddma_qid(
+static uint32_t goya_get_ddma_qid(int fd,
 			enum hltests_dcore_separation_mode dcore_sep_mode,
 			int ch,
 			enum hltests_stream_id stream)
@@ -446,13 +466,13 @@ static uint32_t goya_get_ddma_qid(
 	return GOYA_QUEUE_ID_DMA_3 + ch;
 }
 
-static uint8_t goya_get_ddma_cnt(
+static uint8_t goya_get_ddma_cnt(int fd,
 			enum hltests_dcore_separation_mode dcore_sep_mode)
 {
 	return 2;
 }
 
-static uint32_t goya_get_tpc_qid(
+static uint32_t goya_get_tpc_qid(int fd,
 			enum hltests_dcore_separation_mode dcore_sep_mode,
 			uint8_t tpc_id,	enum hltests_stream_id stream)
 {
@@ -466,36 +486,57 @@ static uint32_t goya_get_mme_qid(
 	return GOYA_QUEUE_ID_MME;
 }
 
-static uint8_t goya_get_tpc_cnt(
+static uint8_t goya_get_tpc_cnt(int fd,
 			enum hltests_dcore_separation_mode dcore_sep_mode)
 {
 	return TPC_MAX_NUM;
 }
 
-static uint8_t goya_get_mme_cnt(
-			enum hltests_dcore_separation_mode dcore_sep_mode)
+static uint8_t goya_get_mme_cnt(int fd,
+			enum hltests_dcore_separation_mode dcore_sep_mode,
+			bool master_slave_mode)
 {
 	return MME_MAX_NUM;
 }
 
-static uint16_t goya_get_first_avail_sob(
-			enum hltests_dcore_separation_mode dcore_sep_mode)
+static uint16_t goya_get_first_avail_sob(int fd)
+{
+	struct hlthunk_sync_manager_info info = {0};
+
+	hlthunk_get_sync_manager_info(fd, 0, &info);
+
+	return info.first_available_sync_object;
+}
+
+static uint16_t goya_get_first_avail_mon(int fd)
+{
+	struct hlthunk_sync_manager_info info = {0};
+
+	hlthunk_get_sync_manager_info(fd, 0, &info);
+
+	return info.first_available_sync_object;
+}
+
+static uint16_t goya_get_first_avail_cq(int fd)
+{
+	struct hlthunk_sync_manager_info info = {0};
+
+	hlthunk_get_sync_manager_info(fd, 0, &info);
+
+	return info.first_available_cq;
+}
+
+static uint64_t goya_get_sob_base_addr(int fd)
+{
+	return CFG_BASE + mmSYNC_MNGR_SOB_OBJ_0;
+}
+
+static int goya_asic_priv_init(struct hltests_device *hdev)
 {
 	return 0;
 }
 
-static uint16_t goya_get_first_avail_mon(
-			enum hltests_dcore_separation_mode dcore_sep_mode)
-{
-	return 0;
-}
-
-static int goya_dram_pool_init(struct hltests_device *hdev)
-{
-	return 0;
-}
-
-static void goya_dram_pool_fini(struct hltests_device *hdev)
+static void goya_asic_priv_fini(struct hltests_device *hdev)
 {
 
 }
@@ -525,6 +566,17 @@ int goya_submit_cs(int fd, struct hltests_cs_chunk *restore_arr,
 int goya_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us)
 {
 	return hltests_wait_for_legacy_cs(fd, seq, timeout_us);
+}
+
+static int goya_wait_for_cs_until_not_busy(int fd, uint64_t seq)
+{
+	int status;
+
+	do {
+		status = goya_wait_for_cs(fd, seq, WAIT_FOR_CS_DEFAULT_TIMEOUT);
+	} while (status == HL_WAIT_CS_STATUS_BUSY);
+
+	return status;
 }
 
 static int goya_get_max_pll_idx(void)
@@ -599,6 +651,11 @@ static const char *goya_stringify_pll_type(uint32_t pll_idx, uint8_t type_idx)
 	}
 }
 
+uint64_t goya_get_dram_va_hint_mask(void)
+{
+	return ULONG_MAX;
+}
+
 uint64_t goya_get_dram_va_reserved_addr_start(void)
 {
 	return 0;
@@ -619,12 +676,43 @@ static int goya_get_stream_master_qid_arr(uint32_t **qid_arr)
 	return -1;
 }
 
+static int goya_get_async_event_id(enum hltests_async_event_id hltests_event_id,
+					uint32_t *asic_event_id)
+{
+	switch (hltests_event_id) {
+	case FIX_POWER_ENV_S:
+		*asic_event_id = GOYA_ASYNC_EVENT_ID_FIX_POWER_ENV_S;
+		break;
+
+	case FIX_POWER_ENV_E:
+		*asic_event_id = GOYA_ASYNC_EVENT_ID_FIX_POWER_ENV_E;
+		break;
+
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static uint32_t goya_get_cq_patch_size(uint32_t qid)
+{
+	return 0;
+}
+
+static uint32_t goya_get_max_pkt_size(int fd, bool mb, bool eb, uint32_t qid)
+{
+	return sizeof(struct packet_lin_dma);
+}
+
 static const struct hltests_asic_funcs goya_funcs = {
 	.add_arb_en_pkt = goya_add_arb_en_pkt,
+	.add_cq_config_pkt = goya_add_cq_config_pkt,
 	.add_monitor_and_fence = goya_add_monitor_and_fence,
 	.add_monitor = goya_add_monitor,
 	.get_fence_addr = goya_get_fence_addr,
 	.add_nop_pkt = goya_add_nop_pkt,
+	.add_msg_barrier_pkt = goya_add_msg_barrier_pkt,
 	.add_wreg32_pkt = goya_add_wreg32_pkt,
 	.add_arb_point_pkt = goya_add_arb_point_pkt,
 	.add_msg_long_pkt = goya_add_msg_long_pkt,
@@ -634,6 +722,7 @@ static const struct hltests_asic_funcs goya_funcs = {
 	.add_fence_pkt = goya_add_fence_pkt,
 	.add_dma_pkt = goya_add_dma_pkt,
 	.add_cp_dma_pkt = goya_add_cp_dma_pkt,
+	.add_cb_list_pkt = goya_add_cb_list_pkt,
 	.add_load_and_exe_pkt = goya_add_load_and_exe_pkt,
 	.get_dma_down_qid = goya_get_dma_down_qid,
 	.get_dma_up_qid = goya_get_dma_up_qid,
@@ -645,15 +734,19 @@ static const struct hltests_asic_funcs goya_funcs = {
 	.get_mme_cnt = goya_get_mme_cnt,
 	.get_first_avail_sob = goya_get_first_avail_sob,
 	.get_first_avail_mon = goya_get_first_avail_mon,
-	.dram_pool_init = goya_dram_pool_init,
-	.dram_pool_fini = goya_dram_pool_fini,
+	.get_first_avail_cq = goya_get_first_avail_cq,
+	.get_sob_base_addr = goya_get_sob_base_addr,
+	.asic_priv_init = goya_asic_priv_init,
+	.asic_priv_fini = goya_asic_priv_fini,
 	.dram_pool_alloc = goya_dram_pool_alloc,
 	.dram_pool_free = goya_dram_pool_free,
 	.submit_cs = goya_submit_cs,
 	.wait_for_cs = goya_wait_for_cs,
+	.wait_for_cs_until_not_busy = goya_wait_for_cs_until_not_busy,
 	.get_max_pll_idx = goya_get_max_pll_idx,
 	.stringify_pll_idx = goya_stringify_pll_idx,
 	.stringify_pll_type = goya_stringify_pll_type,
+	.get_dram_va_hint_mask = goya_get_dram_va_hint_mask,
 	.get_dram_va_reserved_addr_start = goya_get_dram_va_reserved_addr_start,
 	.get_sob_id = goya_get_sob_id,
 	.get_mon_cnt_per_dcore = goya_get_mon_cnt_per_dcore,

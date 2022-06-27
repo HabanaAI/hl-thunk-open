@@ -16,6 +16,7 @@ extern "C" {
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #define hlthunk_public  __attribute__((visibility("default")))
 
@@ -35,13 +36,17 @@ enum hlthunk_device_name {
 	HLTHUNK_DEVICE_GAUDI,
 	HLTHUNK_DEVICE_INVALID,
 	HLTHUNK_DEVICE_DONT_CARE,
+	HLTHUNK_DEVICE_GAUDI2,
+	HLTHUNK_DEVICE_PLACEHOLDER2,
+	HLTHUNK_DEVICE_PLACEHOLDER3,
 	HLTHUNK_DEVICE_MAX
 };
 
 enum hlthunk_event_record_id {
 	HLTHUNK_OPEN_DEV,
 	HLTHUNK_CS_TIMEOUT,
-	HLTHUNK_RAZWI_EVENT
+	HLTHUNK_RAZWI_EVENT,
+	HLTHUNK_UNDEFINED_OPCODE
 };
 
 /**
@@ -70,11 +75,22 @@ enum hlthunk_event_record_id {
  * @module_id: Module ID of the ASIC for mezzanine cards in servers
  *             (From OCP spec).
  * @card_name: The card name as passed by the f/w.
+ * @decoder_enabled_mask: Bit-mask that represents which decoders are enabled.
+ * @mme_master_slave_mode: Indicate whether the MME is working in master/slave
+ *                         configuration. Relevant for Greco and later.
+ * @tpc_enabled_mask_ext: Bit-mask that represents which TPCs are enabled.
+ *                        Relevant for Greco and later.
  * @dram_page_size: The DRAM physical page size.
  * @first_available_interrupt_id: The first available interrupt ID for the user
  *                                to be used when it works with user interrupts.
+ *                                Relevant for Gaudi2 and later.
+ * @edma_enabled_mask: Bit-mask that represents which EDMAs are enabled.
+ *                     Relevant for Gaudi2 and later.
  * @server_type: Server type that the Gaudi ASIC is currently installed in.
  *               The value is according to enum hl_server_type
+ * @number_of_user_interrupts: The number of interrupts that are available to the userspace
+ *                             application to use. Relevant for Gaudi2 and later.
+ * @device_mem_alloc_default_page_size: default page size used in device memory allocation.
  */
 struct hlthunk_hw_ip_info {
 	uint64_t sram_base_address;
@@ -82,20 +98,26 @@ struct hlthunk_hw_ip_info {
 	uint64_t dram_size;
 	uint32_t sram_size;
 	uint32_t num_of_events;
-	uint32_t device_id; /* PCI Device ID */
+	uint32_t device_id;
 	uint32_t cpld_version;
 	uint32_t psoc_pci_pll_nr;
 	uint32_t psoc_pci_pll_nf;
 	uint32_t psoc_pci_pll_od;
 	uint32_t psoc_pci_pll_div_factor;
-	uint8_t tpc_enabled_mask;
+	uint16_t tpc_enabled_mask;
 	uint8_t dram_enabled;
 	uint8_t cpucp_version[HL_INFO_VERSION_MAX_LEN];
 	uint32_t module_id;
 	uint8_t card_name[HL_INFO_CARD_NAME_MAX_LEN];
+	uint32_t decoder_enabled_mask;
+	uint8_t mme_master_slave_mode;
+	uint64_t tpc_enabled_mask_ext;
 	uint64_t dram_page_size;
 	uint16_t first_available_interrupt_id;
+	uint32_t edma_enabled_mask;
 	uint16_t server_type;
+	uint16_t number_of_user_interrupts;
+	uint64_t device_mem_alloc_default_page_size;
 };
 
 struct hlthunk_dram_usage_info {
@@ -126,6 +148,8 @@ struct hlthunk_time_sync_info {
 struct hlthunk_sync_manager_info {
 	uint32_t first_available_sync_object;
 	uint32_t first_available_monitor;
+	uint32_t first_available_cq;
+	uint32_t reserved;
 };
 
 struct hlthunk_pci_counters_info {
@@ -163,6 +187,7 @@ struct hlthunk_cs_in {
 struct hlthunk_cs_out {
 	uint64_t seq;
 	uint32_t status;
+	uint16_t sob_count_before_submission;
 };
 
 struct hlthunk_signal_in {
@@ -175,6 +200,8 @@ struct hlthunk_signal_in {
 struct hlthunk_signal_out {
 	uint64_t seq;
 	uint32_t status;
+	uint32_t sob_base_addr_offset;
+	uint16_t sob_count_before_submission;
 };
 
 struct hlthunk_sig_res_in {
@@ -193,7 +220,7 @@ struct hlthunk_sig_res_out {
 	uint32_t status;
 };
 
-struct hlthunk_wait_for_signal {
+struct hlthunk_wait_for_signal_data {
 	union {
 		uint64_t *signal_seq_arr;
 		uint64_t encaps_signal_seq;
@@ -221,6 +248,8 @@ struct hlthunk_wait_out {
 struct hlthunk_open_stats_info {
 	uint64_t open_counter;
 	uint64_t last_open_period_ms;
+	uint8_t is_compute_ctx_active;
+	uint8_t compute_ctx_in_release;
 };
 
 struct hlthunk_hw_asic_status {
@@ -259,6 +288,7 @@ struct hlthunk_dram_row_info {
 	uint8_t bank_idx;
 	uint16_t row_addr;
 	uint8_t replaced_row_cause; /* enum hlthunk_dram_row_replace_cause */
+	uint8_t pad;
 };
 
 /*
@@ -268,8 +298,8 @@ struct hlthunk_dram_row_info {
  */
 struct hlthunk_dram_replaced_rows_info {
 	uint16_t num_replaced_rows;
+	uint8_t pad[6];
 	struct hlthunk_dram_row_info replaced_rows[DRAM_ROW_REPLACE_MAX];
-	uint8_t reserved[6];
 };
 
 /**
@@ -316,6 +346,69 @@ struct hlthunk_event_record_razwi_event {
 	uint8_t error_type;
 };
 
+/**
+ * struct hlthunk_event_record_undefined_opcode - info about last undefined opcode error
+ * @timestamp: timestamp of the undefined opcode error
+ * @cb_addr_streams: CB addresses (per stream) that are currently exists in the PQ
+ *                   entiers. In case all streams array entries are
+ *                   filled with values, it means the execution was in Lower-CP.
+ * @cq_addr: the address of the current handled command buffer
+ * @cq_size: the size of the current handled command buffer
+ * @cb_addr_streams_len: num of streams - actual len of cb_addr_streams array.
+ *                       should be equal to 1 incase of undefined opcode
+ *                       in Upper-CP (specific stream) and equal to 4 incase
+ *                       of undefined opcode in Lower-CP.
+ * @engine_id: engine-id that the error occurred on
+ * @stream_id: the stream id the error occurred on. In case the stream equals to
+ *             MAX_QMAN_STREAMS_INFO it means the error occurred on a Lower-CP.
+ */
+struct hlthunk_event_record_undefined_opcode {
+	int64_t  timestamp;
+	uint64_t cb_addr_streams[MAX_QMAN_STREAMS_INFO][OPCODE_INFO_MAX_ADDR_SIZE];
+	uint64_t cq_addr;
+	uint32_t cq_size;
+	uint32_t cb_addr_streams_len;
+	uint32_t engine_id;
+	uint32_t stream_id;
+};
+
+#define TPM_PCR_DATA_BUF_SZ	256
+#define TPM_PCR_QUOTE_BUF_SZ	510		/* (512 - 2) 2 bytes used for size */
+#define TPM_SIGNATURE_BUF_SZ	255		/* (256 - 1) 1 byte used for size */
+#define TPM_PUB_DATA_BUF_SZ	510		/* (512 - 2) 2 bytes used for size */
+#define TPM_CERTIFICATE_BUF_SZ	2046	/* (2048 - 2) 2 bytes used for size */
+
+/**
+ * struct hl_info_tpm - attestation data of the boot from the TPM
+ * @nonce: number only used once. random number provided by host. this also passed to the quote
+ *         command as a qualifying data.
+ * @pcr_quote_len: length of the attestation quote data in bytes
+ * @pub_data_len: length of the public data in bytes
+ * @certificate_len: length of the certificate in bytes
+ * @pcr_num_reg: number of PCR registers in the pcr_data array
+ * @pcr_reg_len: length of each PCR register in the pcr_data array in bytes
+ * @quote_sig_len: length of the attestation signature in bytes
+ * @pcr_data: raw values of the PCR registers from the TPM
+ * @pcr_quote: attestation data structure (TPM2B_ATTEST) from the TPM
+ * @public_data: public key and certificate info from the TPM (outPublic + name + qualifiedName)
+ * @certificate: certificate for the attestation data, read from the TPM NV mem
+ * @quote_sig: signature structure (TPMT_SIGNATURE) of the attestation data
+ */
+struct hlthunk_tpm_info {
+	uint32_t nonce;
+	uint16_t pcr_quote_len;
+	uint16_t pub_data_len;
+	uint16_t certificate_len;
+	uint8_t pcr_num_reg;
+	uint8_t pcr_reg_len;
+	uint8_t quote_sig_len;
+	uint8_t pcr_data[TPM_PCR_DATA_BUF_SZ];
+	uint8_t pcr_quote[TPM_PCR_QUOTE_BUF_SZ];
+	uint8_t public_data[TPM_PUB_DATA_BUF_SZ];
+	uint8_t certificate[TPM_CERTIFICATE_BUF_SZ];
+	uint8_t quote_sig[TPM_SIGNATURE_BUF_SZ];
+};
+
 struct hlthunk_functions_pointers {
 	/*
 	 * Functions that will be wrapped with profiler code to enable
@@ -333,7 +426,7 @@ struct hlthunk_functions_pointers {
 						uint64_t *num_entries);
 
 	/* Function for the profiler to use */
-	uint64_t (*fp_hlthunk_device_memory_alloc)(int fd, uint64_t size,
+	uint64_t (*fp_hlthunk_device_memory_alloc)(int fd, uint64_t size, uint64_t page_size,
 						bool contiguous, bool shared);
 	int (*fp_hlthunk_device_memory_free)(int fd, uint64_t handle);
 	uint64_t (*fp_hlthunk_device_memory_map)(int fd, uint64_t handle,
@@ -352,7 +445,7 @@ struct hlthunk_functions_pointers {
 	int (*fp_hlthunk_get_pci_bus_id_from_fd)(int fd, char *pci_bus_id,
 							int len);
 	int (*fp_hlthunk_get_device_index_from_pci_bus_id)(const char *busid);
-	void* (*fp_hlthunk_malloc)(int size);
+	void* (*fp_hlthunk_malloc)(size_t size);
 	void (*fp_hlthunk_free)(void *pt);
 	int (*fp_hlthunk_signal_submission)(int fd,
 					struct hlthunk_signal_in *in,
@@ -369,6 +462,9 @@ struct hlthunk_functions_pointers {
 	int (*fp_hlthunk_wait_for_collective_sig)(int fd,
 					struct hlthunk_wait_in *in,
 					struct hlthunk_wait_out *out);
+	int (*fp_hlthunk_deprecated_func1)(int fd, uint64_t seq,
+					uint64_t timeout_us, uint32_t *status,
+					uint64_t *timestamp);
 	int (*fp_hlthunk_get_cb_usage_count)(int fd, uint64_t cb_handle,
 						uint32_t *usage_cnt);
 	int (*fp_hlthunk_staged_command_submission)(int fd, uint64_t sequence,
@@ -430,6 +526,29 @@ struct hlthunk_functions_pointers {
 	int (*fp_get_dram_replaced_rows_info)(int fd,
 					struct hlthunk_dram_replaced_rows_info *info);
 	int (*fp_get_dram_pending_rows_info)(int fd, uint32_t *out);
+	int (*fp_DEPRECATED1)(int fd, void *addr, uint64_t target_value, uint32_t engine_id,
+				uint64_t timeout_us, uint32_t *status, uint64_t *timestamp);
+	int (*fp_hlthunk_wait_for_interrupt_by_handle)(int fd,
+					uint64_t cq_counters_handle,
+					uint64_t cq_counters_offset,
+					uint64_t target_value,
+					uint32_t interrupt_id,
+					uint64_t timeout_us,
+					uint32_t *status);
+	int (*fp_hlthunk_get_mapped_cb_device_va_by_handle)(int fd,
+						uint64_t cb_handle,
+						uint64_t *device_va);
+	int (*fp_hlthunk_get_pll_frequency)(int fd, uint32_t index,
+					struct hlthunk_pll_frequency_info *frequency);
+	int (*fp_hlthunk_register_timestamp_interrupt)(int fd, uint32_t interrupt_id,
+					uint64_t cq_counters_handle,
+					uint64_t cq_counters_offset,
+					uint64_t target_value,
+					uint64_t timestamp_handle,
+					uint64_t timestamp_offset);
+	int (*fp_hlthunk_allocate_timestamp_elements)(int fd,
+					uint32_t num_elements,
+					uint64_t *handle);
 };
 
 struct hlthunk_debugfs {
@@ -473,6 +592,17 @@ hlthunk_public int hlthunk_open_by_module_id(uint32_t module_id);
  * @return file descriptor handle or negative value in case of error
  */
 hlthunk_public int hlthunk_open_control(int dev_id, const char *busid);
+
+/**
+ * This function opens the habanalabs control device according to specified busid,
+ * or according to the device name, if busid is NULL. If busid is specified but
+ * the device can't be opened, the function fails.
+ * @param device_name name of the device that the user wants to open
+ * @param busid pci address of the device on the host pci bus
+ * @return file descriptor handle or negative value in case of error
+ */
+hlthunk_public int hlthunk_open_control_by_name(enum hlthunk_device_name device_name,
+					const char *busid);
 
 /**
  * This function closes an open file descriptor
@@ -530,7 +660,7 @@ hlthunk_public int hlthunk_get_hw_ip_info(int fd,
 					struct hlthunk_hw_ip_info *hw_ip);
 
 /**
- * This function retrieves statstics info on device open operations
+ * This function retrieves statistics info on device open operations
  * @param fd file descriptor handle of habanalabs main or control device
  * @param open_stats info pointer to open stats structure
  * @return 0 for success, negative value for failure
@@ -682,7 +812,7 @@ hlthunk_public int hlthunk_get_pci_counters_info(int fd,
 					struct hlthunk_pci_counters_info *info);
 
 /**
- * This function retrieves the device's clock throttling inforamtion
+ * This function retrieves the device's clock throttling information
  * @param fd file descriptor handle of habanalabs main device
  * @param info pointer to memory that will be filled by the function with the
  * clock throttling information
@@ -728,6 +858,16 @@ hlthunk_public int hlthunk_get_info(int fd, struct hl_info_args *info);
  */
 hlthunk_public int hlthunk_request_command_buffer(int fd, uint32_t cb_size,
 							uint64_t *cb_handle);
+/**
+ * This function creates a command buffer for a specific device and maps it to
+ * the device's MMU
+ * @param fd file descriptor handle of habanalabs main device
+ * @param cb_size size of command buffer
+ * @param cb_handle pointer to uint64_t to store the command buffer handle
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_request_mapped_command_buffer(int fd,
+					uint32_t cb_size, uint64_t *cb_handle);
 
 /**
  * This function destroys a command buffer for a specific device
@@ -880,6 +1020,29 @@ hlthunk_public int hlthunk_wait_for_interrupt(int fd, void *addr,
 					uint32_t *status);
 
 /**
+ * This function waits until an interrupt occurs and target value is greater or
+ * equal than the content of a given user address
+ * @param fd file descriptor handle of habanalabs main device
+ * @param cq_counters_handle cb handle of the cq counters
+ * @param cq_counters_offset offset from the cq_counters_handle
+ * @param target_value target value for comparison
+ * @param interrupt_id interrupt id to wait for, set to all 1s in order to
+ * register to all user interrupts
+ * @param timeout_us absolute timeout to wait in microseconds. If the timeout
+ * value is 0, the driver won't sleep at all. It will perform the comparison
+ * without waiting for the interrupt to expire and will return immediately
+ * @param status pointer to uint32_t to store the wait status
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_wait_for_interrupt_by_handle(int fd,
+					uint64_t cq_counters_handle,
+					uint64_t cq_counters_offset,
+					uint64_t target_value,
+					uint32_t interrupt_id,
+					uint64_t timeout_us,
+					uint32_t *status);
+
+/**
  * This wait registers to get a timestamp when
  * an interrupt occurs and target value is greater or equal
  * than the content of a given user address.
@@ -897,7 +1060,36 @@ hlthunk_public int hlthunk_wait_for_interrupt(int fd, void *addr,
  * 0, the interrupt wasn't triggered yet (CQ target wasn't reached).
  * @return 0 for success, negative value for failure
  */
-hlthunk_public int hlthunk_wait_for_interrupt_with_timestamp(int fd, void *addr,
+hlthunk_public int hlthunk_wait_for_interrupt_with_timestamp(int fd,
+					void *addr,
+					uint64_t target_value,
+					uint32_t interrupt_id,
+					uint64_t timeout_us,
+					uint32_t *status,
+					uint64_t *timestamp);
+
+/**
+ * This wait registers to get a timestamp when
+ * an interrupt occurs and target value is greater or equal
+ * than the content of a given user address.
+ * timestamp 0 means that the interrupt didn't occur yet (target wasn't reached).
+ * @param fd file descriptor handle of habanalabs main device
+ * @param cq_counters_handle cb handle of the cq counters
+ * @param cq_counters_offset offset from the cq_counters_handle
+ * @param target_value target value for comparison
+ * @param interrupt_id interrupt id to wait for, set to all 1s in order to
+ * register to all user interrupts
+ * @param timeout_us absolute timeout to wait in microseconds. If the timeout
+ * value is 0, the driver won't sleep at all. It will perform the comparison
+ * without waiting for the interrupt to expire and will return immediately
+ * @param status pointer to uint32_t to store the wait status
+ * @param timestamp system timestamp in nanoseconds at time of interrupt.
+ * 0, the interrupt wasn't triggered yet (CQ target wasn't reached).
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_wait_for_interrupt_by_handle_with_timestamp(int fd,
+					uint64_t cq_counters_handle,
+					uint64_t cq_counters_offset,
 					uint64_t target_value,
 					uint32_t interrupt_id,
 					uint64_t timeout_us,
@@ -985,16 +1177,28 @@ hlthunk_public int hlthunk_wait_for_collective_signal_timeout(int fd,
 					uint32_t timeout);
 
 /**
+ * This function set supported device memory allocation page orders
+ * @param fd file descriptor of the device on which to perform the query
+ * @param page_order_bitmask bitmask of supported allocation page orders
+ * @return 0 on success, otherwise non 0 error code.
+ *
+ * note that on ASICs that does not support multiple page sizes of device memory the
+ * function will set page_order_bitmask to be 0.
+ */
+hlthunk_public int hlthunk_get_dev_memalloc_page_orders(int fd, uint64_t *page_order_bitmask);
+
+/**
  * This function allocates DRAM memory on the device
  * @param fd file descriptor of the device on which to allocate the memory
  * @param size how much memory to allocate
+ * @param page_size what page size to use in the allocation. 0 means using the default size.
  * @param contiguous whether the memory area will be physically contiguous
  * @param shared whether this memory can be shared with other user processes
  * on the device
  * @return opaque handle representing the memory allocation. 0 is returned
  * upon failure
  */
-hlthunk_public uint64_t hlthunk_device_memory_alloc(int fd, uint64_t size,
+hlthunk_public uint64_t hlthunk_device_memory_alloc(int fd, uint64_t size, uint64_t page_size,
 						bool contiguous, bool shared);
 
 /**
@@ -1112,7 +1316,7 @@ hlthunk_public int hlthunk_debug(int fd, struct hl_debug_args *debug);
 hlthunk_public int hlthunk_get_event_record(int fd,
 		enum hlthunk_event_record_id event_id, void *buf);
 
-hlthunk_public void *hlthunk_malloc(int size);
+hlthunk_public void *hlthunk_malloc(size_t size);
 hlthunk_public void hlthunk_free(void *pt);
 
 /**
@@ -1172,7 +1376,8 @@ hlthunk_public int hlthunk_profiler_get_trace(int fd, void *buffer,
 
 /**
  * This function destroys profiler instance if it existed
- * As long as env var HABANA_PROFILE=1, the profiler will reinitialize
+ * As long as env var HABANA_PROFILE=1
+ * or HABANA_PROFILE=<template_name>, the profiler will reinitialize
  * on the next hlthunk_open call
  */
 hlthunk_public void hlthunk_profiler_destroy(void);
@@ -1308,6 +1513,114 @@ hlthunk_public int hlthunk_get_dram_replaced_rows_info(int fd,
  */
 hlthunk_public int hlthunk_get_dram_pending_rows_info(int fd, uint32_t *out);
 
+/**
+ * This function retrieve the device va of a command buffer previously allocated
+ * in host kernel memory.
+ * Note that the buffer should be created with CB_TYPE_KERNEL_MAPPED flag.
+ * @param fd file descriptor handle of habanalabs main device
+ * @param cb_handle command buffer handle
+ * @param device_va device va address of the allocated cb
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_get_mapped_cb_device_va_by_handle(int fd,
+							uint64_t cb_handle,
+							uint64_t *device_va);
+
+/**
+ * This function registers a timestamp event of a specific user interrupt id.
+ * when interrupt occurred the driver will compare the CQ pi value with the
+ * target value, and if CQ reached that value it'll write the timestamp
+ * into the specified timestamp offset.
+ * - If the timestamp record is already registered for interrupt, that has not
+ * been expired yet, it will be unregistered first before being registered
+ * again on the new interrupt.
+ * - As part of the call, the timestamp handle will be set atomically to TS_NOT_EXP_VAL.
+ * The value is then overridden only after the cq counter reaches its target value.
+ * users can wait until the timestamp entry is different than TS_NOT_EXP_VAL
+ * to conclude that the target value has been reached.
+ * - When there are other pending events waiting for the selected interrupt ID,
+ * the caller must ensure that the CQ entry (cq_counters_handle + cq_counters_offset)
+ * is not registered on other interrupt ID.
+ * In other words, each CQ entry can be set at most by a single interrupt ID.
+ * Note that if the counter current value has already reach the target value, the call
+ * will not wait for the interrupt to set the timestamp, and instead set the
+ * timestamp value immediately.
+ *
+ * @param fd file descriptor handle of habanalabs main device
+ * @param interrupt_id interrupt id to register for
+ * @param cq_counters_handle a cb which have the CQs counters value
+ * @param cq_counters_offset offset in the CQs counters cb
+ * @param target_value target value for comparison
+ * @param timestamps_handle buffer handle of timestamps
+ * @param timestamps_offset offset in the timestamps buffer
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_register_timestamp_interrupt(int fd, uint32_t interrupt_id,
+					uint64_t cq_counters_handle,
+					uint64_t cq_counters_offset,
+					uint64_t target_value,
+					uint64_t timestamps_handle,
+					uint64_t timestamps_offset);
+
+/**
+ * This function allocate buffer in host kernel memory for timestamps events pool.
+ * the driver will allocate enough space to store all timestamps data needed
+ * by the driver to register/unregister timestamp events
+ * This is needed due to a requirement, that driver cannot fail on out-of-memory
+ * at event registration phase.
+ * Note that each element has the size of uint64_t.
+ * The memory will be freed when the user closes the file descriptor(ctx close)
+ * @param fd file descriptor handle of habanalabs main device
+ * @param elements_num number of timestamps elements, each element is uint64_t size.
+ * @param handle buffer handle output
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_allocate_timestamp_elements(int fd,
+					uint32_t elements_num,
+					uint64_t *handle);
+
+/**
+ * This function creates a notifier object that allows the user
+ * to receive async notification events, from the Kernel driver.
+ * @param fd file descriptor handle of habanalabs main device
+ * @return notifier handle for success, a negative value for failure
+ */
+hlthunk_public int hlthunk_notifier_create(int fd);
+
+/**
+ * This function releases a notifier object. it shall be invoked
+ * when the user is no longer needs to receive notification events
+ * from the Kernel driver.
+ * @param fd file descriptor handle of habanalabs main device
+ * @param handle of the notifier object
+ * @return 0 for success, a negative value for failure
+ */
+hlthunk_public int hlthunk_notifier_release(int fd, int handle);
+
+/**
+ * This function receives a notification event, that raises by the
+ * Kernel driver. The function may block until an event is
+ * received, or timeout expired. The function returns a bitmap value
+ * that indicates, which event has occurred. Each function invocation
+ * retrieves a new bitmap value, that indicates the last occurred events.
+ * @param fd file descriptor handle of habanalabs main device
+ * @param handle of the notifier object
+ * @param notifier_events bitmap pointer. Each bit indicates a specific event.
+ * @param notifier_cnt pointer to uint64_t, stores the notifier count.
+ *  zero - indicates no notification - timeout expired.
+ *  number greater from zero - indicates the notifications count since the last read.
+ * @param flags of function's operations. Not used for now.
+ * @param timeout in milliseconds. If the timeout value is 0, the function
+ *  will block until an event is received.
+ * @return 0 for success, a negative value for failure
+ */
+hlthunk_public int hlthunk_notifier_recv(int fd, int handle, uint64_t *notifier_events,
+						uint64_t *notifier_cnt, uint32_t flags,
+						uint32_t timeout);
+
+hlthunk_public int hlthunk_deprecated_func1(int fd, uint64_t seq,
+					uint64_t timeout_us, uint32_t *status,
+					uint64_t *timestamp);
 #ifdef __cplusplus
 }   //extern "C"
 #endif

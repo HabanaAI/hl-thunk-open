@@ -1,7 +1,5 @@
 # COPYRIGHT (c) 2021 Habanalabs Ltd. See COPYING.md file
 
-file(GLOB SRC *.c) # compile all files with *.c suffix
-
 include_directories(
         ${CMAKE_BINARY_DIR}
         ${CMAKE_SOURCE_DIR}/include
@@ -9,7 +7,7 @@ include_directories(
         ${CMAKE_SOURCE_DIR}/include/uapi
 )
 
-add_executable (demo ${SRC})
+add_executable (demo main.c)
 
 set(DEMO_LINK_LIBRARIES
     ${HLTHUNK_TARGET} ${HLTHUNK_TESTS_LIBRARY} ${HLTHUNK_ERR_INJECT_TARGET})

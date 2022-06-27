@@ -20,7 +20,9 @@
 #include <time.h>
 #include <inttypes.h>
 #include <sys/ioctl.h>
-#include <xmmintrin.h>
+#include <byteswap.h>
+#include <immintrin.h>
+
 
 #ifndef MAP_HUGE_2MB
 	#define MAP_HUGE_2MB    (21 << MAP_HUGE_SHIFT)
@@ -29,6 +31,24 @@
 #define FRAG_MEM_MULT 3
 
 #define BUILD_PATH_MAX_LENGTH	128
+
+#define CC_CMD_SIZE		20
+#define CC_QPC_SIZE		4000
+#define CC_POST_MSGS		3
+#define CC_SQ_MAX_ELEMENTS_NUM	64
+
+#define CC_BBR_VALID_BIT_BURST_SIZE	0
+#define CC_BBR_VALID_BIT_SQN		1
+#define CC_BBR_VALID_BIT_CONG_WIN	2
+#define CC_BBR_VALID_BIT_PACE_TIME	3
+
+#define CC_SWIFT_VALID_BIT_TARGET_DELAY	0
+#define CC_SWIFT_VALID_BIT_AI		1
+#define CC_SWIFT_VALID_BIT_BETA		2
+#define CC_SWIFT_VALID_BIT_MAX_MDF	3
+
+#define CC_MSG_TYPE_BBR			0
+#define CC_MSG_TYPE_SWIFT		1
 
 #ifndef HLTESTS_LIB_MODE
 struct hltests_thread_params {
@@ -41,11 +61,11 @@ struct hltests_thread_params {
 #endif
 
 static pthread_mutex_t table_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t debugfs_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_spinlock_t rand_lock;
 static khash_t(ptr) * dev_table;
 
-static enum hlthunk_device_name asic_name_for_testing =
-						HLTHUNK_DEVICE_DONT_CARE;
+static long asic_mask_for_testing = HLTEST_DEVICE_MASK_DONT_CARE;
 
 #ifndef HLTESTS_LIB_MODE
 static pthread_barrier_t barrier;
@@ -59,14 +79,25 @@ static const char *parser_pciaddr;
 static const char *config_filename;
 static int legacy_mode_enabled = 1;
 static uint32_t cur_seed;
-static char build_path[BUILD_PATH_MAX_LENGTH];
+static const char *build_path;
+static int enable_arc_log;
 
 char asic_names[HLTHUNK_DEVICE_MAX][20] = {
 	"Goya",
 	"Placeholder1",
 	"Gaudi",
 	"Invalid",
-	"Don't care"
+	"Don't care",
+	"Gaudi2"
+};
+
+/* translate device name (enum) to device mask */
+unsigned long device_enum_to_device_mask[HLTHUNK_DEVICE_MAX] = {
+	[HLTHUNK_DEVICE_INVALID] = HLTEST_DEVICE_MASK_INVALID,
+	[HLTHUNK_DEVICE_GOYA] = HLTEST_DEVICE_MASK_GOYA,
+	[HLTHUNK_DEVICE_GAUDI] = HLTEST_DEVICE_MASK_GAUDI,
+	[HLTHUNK_DEVICE_GAUDI2] = HLTEST_DEVICE_MASK_GAUDI2,
+	[HLTHUNK_DEVICE_DONT_CARE] = HLTEST_DEVICE_MASK_DONT_CARE,
 };
 
 struct hltests_device *get_hdev_from_fd(int fd)
@@ -298,6 +329,22 @@ out:
 }
 #endif
 
+static bool hltests_is_asic_type_valid(enum hlthunk_device_name actual_asic_type)
+{
+	unsigned long actual_asic_mask;
+
+	actual_asic_mask = device_enum_to_device_mask[actual_asic_type];
+	if (!(asic_mask_for_testing & actual_asic_mask)) {
+		printf("Expected device mask %#lx but detected device %s (%#lx)\n",
+				asic_mask_for_testing,
+				asic_names[actual_asic_type],
+				actual_asic_mask);
+		return false;
+	}
+
+	return true;
+}
+
 int hltests_control_dev_open(const char *busid)
 {
 	enum hlthunk_device_name actual_asic_type;
@@ -305,9 +352,8 @@ int hltests_control_dev_open(const char *busid)
 	int fd, rc;
 	khint_t k;
 
-	if (asic_name_for_testing == HLTHUNK_DEVICE_INVALID) {
-		printf("Expected ASIC name is %s!!!\n",
-			asic_names[asic_name_for_testing]);
+	if (!asic_mask_for_testing) {
+		printf("Expecting invalid ASIC!!!\n");
 		printf("Something is very wrong, exiting...\n");
 		rc = -EINVAL;
 		goto out;
@@ -320,12 +366,7 @@ int hltests_control_dev_open(const char *busid)
 		goto out;
 
 	actual_asic_type = hlthunk_get_device_name_from_fd(fd);
-	if ((asic_name_for_testing != HLTHUNK_DEVICE_DONT_CARE) &&
-			(asic_name_for_testing != actual_asic_type)) {
-
-		printf("Expected to run on device %s but detected device %s\n",
-				asic_names[asic_name_for_testing],
-				asic_names[actual_asic_type]);
+	if (!hltests_is_asic_type_valid(actual_asic_type)) {
 		rc = -EINVAL;
 		hlthunk_close(fd);
 		pthread_mutex_unlock(&table_lock);
@@ -360,6 +401,9 @@ int hltests_control_dev_open(const char *busid)
 		break;
 	case HLTHUNK_DEVICE_GAUDI:
 		gaudi_tests_set_asic_funcs(hdev);
+		break;
+	case HLTHUNK_DEVICE_GAUDI2:
+		gaudi2_tests_set_asic_funcs(hdev);
 		break;
 	default:
 		printf("Invalid device type 0x%x\n", hdev->device_id);
@@ -417,9 +461,8 @@ int hltests_open(const char *busid)
 	int fd, rc;
 	khint_t k;
 
-	if (asic_name_for_testing == HLTHUNK_DEVICE_INVALID) {
-		printf("Expected ASIC name is %s!!!\n",
-			asic_names[asic_name_for_testing]);
+	if (!asic_mask_for_testing) {
+		printf("Expecting invalid ASIC!!!\n");
 		printf("Something is very wrong, exiting...\n");
 		rc = -EINVAL;
 		goto out;
@@ -427,22 +470,23 @@ int hltests_open(const char *busid)
 
 	pthread_mutex_lock(&table_lock);
 
-	rc = fd = hlthunk_open(HLTHUNK_DEVICE_DONT_CARE, busid);
+	/* Open control device first in order to compare against asic_mask_for_testing */
+	rc = fd = hlthunk_open_control_by_name(HLTHUNK_DEVICE_DONT_CARE, busid);
 	if (fd < 0)
 		goto out;
 
 	actual_asic_type = hlthunk_get_device_name_from_fd(fd);
-	if ((asic_name_for_testing != HLTHUNK_DEVICE_DONT_CARE) &&
-			(asic_name_for_testing != actual_asic_type)) {
-
-		printf("Expected to run on device %s but detected device %s\n",
-				asic_names[asic_name_for_testing],
-				asic_names[actual_asic_type]);
+	if (!hltests_is_asic_type_valid(actual_asic_type)) {
 		rc = -EINVAL;
 		hlthunk_close(fd);
 		pthread_mutex_unlock(&table_lock);
 		exit(0);
 	}
+	hlthunk_close(fd);
+
+	rc = fd = hlthunk_open(HLTHUNK_DEVICE_DONT_CARE, busid);
+	if (fd < 0)
+		goto out;
 
 	k = kh_get(ptr, dev_table, fd);
 	if (k != kh_end(dev_table)) {
@@ -473,17 +517,22 @@ int hltests_open(const char *busid)
 	case HLTHUNK_DEVICE_GAUDI:
 		gaudi_tests_set_asic_funcs(hdev);
 		break;
+	case HLTHUNK_DEVICE_GAUDI2:
+		gaudi2_tests_set_asic_funcs(hdev);
+		break;
 	default:
 		printf("Invalid device type 0x%x\n", hdev->device_id);
 		rc = -ENXIO;
 		goto remove_device;
 	}
 
-	hdev->asic_funcs->dram_pool_init(hdev);
+	rc = hdev->asic_funcs->asic_priv_init(hdev);
+	if (rc)
+		goto remove_device;
 
 	rc = create_mem_maps(hdev);
 	if (rc)
-		goto remove_device;
+		goto destroy_asic_priv;
 
 	rc = create_cb_map(hdev);
 	if (rc)
@@ -494,6 +543,8 @@ int hltests_open(const char *busid)
 
 destroy_mem_maps:
 	destroy_mem_maps(hdev);
+destroy_asic_priv:
+	hdev->asic_funcs->asic_priv_fini(hdev);
 remove_device:
 	kh_del(ptr, dev_table, k);
 	hlthunk_free(hdev);
@@ -524,11 +575,11 @@ int hltests_close(int fd)
 		return 0;
 	}
 
-	hdev->asic_funcs->dram_pool_fini(hdev);
-
-	destroy_mem_maps(hdev);
+	hdev->asic_funcs->asic_priv_fini(hdev);
 
 	destroy_cb_map(hdev);
+
+	destroy_mem_maps(hdev);
 
 	hlthunk_close(hdev->fd);
 
@@ -540,13 +591,13 @@ int hltests_close(int fd)
 	return 0;
 }
 
-void *hltests_cb_mmap(int fd, size_t length, off_t offset)
+void *hltests_mmap(int fd, size_t length, off_t offset)
 {
 	return mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd,
 			offset);
 }
 
-int hltests_cb_munmap(void *addr, size_t length)
+int hltests_munmap(void *addr, size_t length)
 {
 	return munmap(addr, length);
 }
@@ -658,6 +709,8 @@ uint32_t hltests_debugfs_read(int addr_fd, int data_fd, uint64_t full_address)
 
 	sprintf(addr_str, "0x%lx", full_address);
 
+	pthread_mutex_lock(&debugfs_lock);
+
 	size = write(addr_fd, addr_str, strlen(addr_str) + 1);
 	if (size < 0)
 		printf("Failed to write to debugfs address fd [rc %zd]\n",
@@ -666,6 +719,8 @@ uint32_t hltests_debugfs_read(int addr_fd, int data_fd, uint64_t full_address)
 	size = pread(data_fd, value, sizeof(value), 0);
 	if (size < 0)
 		printf("Failed to read from debugfs data fd [rc %zd]\n", size);
+
+	pthread_mutex_unlock(&debugfs_lock);
 
 	return strtoul(value, NULL, 16);
 }
@@ -679,6 +734,8 @@ void hltests_debugfs_write(int addr_fd, int data_fd, uint64_t full_address,
 	sprintf(addr_str, "0x%lx", full_address);
 	sprintf(val_str, "0x%x", val);
 
+	pthread_mutex_lock(&debugfs_lock);
+
 	size = write(addr_fd, addr_str, strlen(addr_str) + 1);
 	if (size < 0)
 		printf("Failed to write to debugfs address fd [rc %zd]\n",
@@ -687,6 +744,8 @@ void hltests_debugfs_write(int addr_fd, int data_fd, uint64_t full_address,
 	size = write(data_fd, val_str, strlen(val_str) + 1);
 	if (size < 0)
 		printf("Failed to write to debugfs data fd [rc %zd]\n", size);
+
+	pthread_mutex_unlock(&debugfs_lock);
 }
 
 uint64_t hltests_debugfs_read64(int addr_fd, int data_fd, uint64_t full_address)
@@ -696,6 +755,8 @@ uint64_t hltests_debugfs_read64(int addr_fd, int data_fd, uint64_t full_address)
 
 	sprintf(addr_str, "0x%lx", full_address);
 
+	pthread_mutex_lock(&debugfs_lock);
+
 	size = write(addr_fd, addr_str, strlen(addr_str) + 1);
 	if (size < 0)
 		printf("Failed to write64 to debugfs address fd [rc %zd]\n",
@@ -704,6 +765,8 @@ uint64_t hltests_debugfs_read64(int addr_fd, int data_fd, uint64_t full_address)
 	size = pread(data_fd, value, sizeof(value), 0);
 	if (size < 0)
 		printf("Failed to read from debugfs data fd [rc %zd]\n", size);
+
+	pthread_mutex_unlock(&debugfs_lock);
 
 	return strtoul(value, NULL, 16);
 }
@@ -717,6 +780,8 @@ void hltests_debugfs_write64(int addr_fd, int data_fd, uint64_t full_address,
 	sprintf(addr_str, "0x%lx", full_address);
 	sprintf(val_str, "0x%lx", val);
 
+	pthread_mutex_lock(&debugfs_lock);
+
 	size = write(addr_fd, addr_str, strlen(addr_str) + 1);
 	if (size < 0)
 		printf("Failed to write to debugfs address fd [rc %zd]\n",
@@ -725,6 +790,8 @@ void hltests_debugfs_write64(int addr_fd, int data_fd, uint64_t full_address,
 	size = write(data_fd, val_str, strlen(val_str) + 1);
 	if (size < 0)
 		printf("Failed to write to debugfs data fd [rc %zd]\n", size);
+
+	pthread_mutex_unlock(&debugfs_lock);
 }
 
 static struct hltests_state *hltests_alloc_state(void)
@@ -798,9 +865,26 @@ int hltests_control_dev_teardown(void **state)
 	return 0;
 }
 
+uint64_t hltests_get_total_avail_device_mem(int fd)
+{
+	struct hlthunk_hw_ip_info hw_ip;
+	int rc;
+
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+
+	return hw_ip.dram_size;
+}
+
+int hltests_setup_user_engines(struct hltests_state *tests_state)
+{
+	return 0;
+}
+
 int hltests_setup(void **state)
 {
 	struct hltests_state *tests_state;
+	struct hltests_device *hdev;
 	int rc, fd;
 
 	tests_state = hltests_alloc_state();
@@ -814,27 +898,47 @@ int hltests_setup(void **state)
 		goto free_state;
 	}
 
-	if (!hltests_is_legacy_mode_enabled())
-		snprintf(build_path, BUILD_PATH_MAX_LENGTH - 1,
-					"%s", HLTHUNK_BUILD_PATH);
+	hdev = get_hdev_from_fd(fd);
+	if (!hdev) {
+		printf("Failed to get hdev from file descriptor %d\n", fd);
+		rc = -ENODEV;
+		goto close_fd;
+	}
+
+	tests_state->mme = 1;
+	tests_state->mmu = 1;
+	tests_state->security = 1;
+
+	rc = hltests_setup_user_engines(tests_state);
+	if (rc)
+		goto close_fd;
 
 	*state = tests_state;
 
 	return 0;
 
+close_fd:
+	if (hltests_close(fd))
+		printf("Problem in closing FD, ignoring...\n");
 free_state:
 	hlthunk_free(tests_state);
 
 	return rc;
 }
 
+int hltests_teardown_user_engines(struct hltests_state *tests_state)
+{
+	return 0;
+}
+
 int hltests_teardown(void **state)
 {
-	struct hltests_state *tests_state =
-					(struct hltests_state *) *state;
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
 
 	if (!tests_state)
 		return -EINVAL;
+
+	hltests_teardown_user_engines(tests_state);
 
 	if (hltests_close(tests_state->fd))
 		printf("Problem in closing FD, ignoring...\n");
@@ -892,9 +996,8 @@ int hltests_root_debug_setup(void **state)
 
 	*state = tests_state;
 
-	if (asic_name_for_testing == HLTHUNK_DEVICE_INVALID) {
-		printf("Expected ASIC name is %s!!!\n",
-			asic_names[asic_name_for_testing]);
+	if (!asic_mask_for_testing) {
+		printf("Expecting invalid ASIC!!!\n");
 		printf("Something is very wrong, exiting...\n");
 		return -EINVAL;
 	}
@@ -915,11 +1018,7 @@ int hltests_root_debug_setup(void **state)
 	tests_state->asic_type = hlthunk_get_device_name_from_fd(control_fd);
 	hlthunk_close(control_fd);
 
-	if (asic_name_for_testing != HLTHUNK_DEVICE_DONT_CARE &&
-			asic_name_for_testing != tests_state->asic_type) {
-		printf("Expected to run on device %s but detected device %s\n",
-			asic_names[asic_name_for_testing],
-			asic_names[tests_state->asic_type]);
+	if (!hltests_is_asic_type_valid(tests_state->asic_type)) {
 		hlthunk_free(*state);
 		exit(0);
 	}
@@ -1065,7 +1164,7 @@ int hltests_map_host_mem(int fd, struct hltests_memory *mem)
  * This function unmaps the host memory previously mapped by
  * hltests_map_host_mem.
  * @param mem pointer to the hltests_memory structure
- * @param fd file descriptor of the device to which the memory was mapeped
+ * @param fd file descriptor of the device to which the memory was mapped
  * @return 0 for success, negative value for failure
  */
 int hltests_unmap_host_mem(int fd, struct hltests_memory *mem)
@@ -1082,12 +1181,30 @@ int hltests_unmap_host_mem(int fd, struct hltests_memory *mem)
  * @param fd file descriptor of the device to which the function will map
  *           the memory
  * @param size how much memory to allocate
- * @param align desired alignment in bytes, 0 meaning unaligned
  * @param huge whether to use huge pages for the memory allocation
+ * @param align desired alignment in bytes, 0 meaning unaligned
  * @return pointer to the host memory. NULL is returned upon failure
  */
-void *hltests_allocate_host_mem_aligned(int fd, uint64_t size, uint64_t align,
-				enum hltests_huge huge)
+void *hltests_allocate_host_mem_aligned(int fd, uint64_t size,
+				enum hltests_huge huge, uint64_t align)
+{
+	return hltests_allocate_host_mem_aligned_flags(fd, size, huge, align, 0);
+}
+
+/**
+ * This function allocates memory on the host, aligned as specified, and will
+ * map it to the device virtual address space, allowing to pass custom memory
+ * map flags alongside.
+ * @param fd file descriptor of the device to which the function will map
+ *           the memory
+ * @param size how much memory to allocate
+ * @param huge whether to use huge pages for the memory allocation
+ * @param align desired alignment in bytes, 0 meaning unaligned
+ * @param flags memory map flags
+ * @return pointer to the host memory. NULL is returned upon failure
+ */
+void *hltests_allocate_host_mem_aligned_flags(int fd, uint64_t size,
+			enum hltests_huge huge, uint64_t align, uint32_t flags)
 {
 	struct hltests_device *hdev;
 	struct hltests_memory *mem;
@@ -1123,8 +1240,8 @@ void *hltests_allocate_host_mem_aligned(int fd, uint64_t size, uint64_t align,
 		goto free_mem_struct;
 	}
 
-	mem->device_virt_addr = hlthunk_host_memory_map(fd, mem->host_ptr, 0,
-							size);
+	mem->device_virt_addr = hlthunk_host_memory_map_flags(fd, mem->host_ptr, 0,
+							size, flags);
 
 	if (!mem->device_virt_addr) {
 		printf("Failed to map host memory to device\n");
@@ -1161,7 +1278,7 @@ free_mem_struct:
  */
 void *hltests_allocate_host_mem(int fd, uint64_t size, enum hltests_huge huge)
 {
-	return hltests_allocate_host_mem_aligned(fd, size, 0, huge);
+	return hltests_allocate_host_mem_aligned(fd, size, huge, 0);
 }
 
 /**
@@ -1170,11 +1287,12 @@ void *hltests_allocate_host_mem(int fd, uint64_t size, enum hltests_huge huge)
  * @param fd file descriptor of the device to which the function will map
  *           the memory
  * @param size how much memory to allocate
+ * @param page_size what page size to use. 0 means use default page size
  * @param contiguous whether the memory area will be physically contiguous
  * @return pointer to the device memory. This pointer can NOT be dereferenced
  * directly from the host. NULL is returned upon failure
  */
-void *hltests_allocate_device_mem(int fd, uint64_t size,
+void *hltests_allocate_device_mem(int fd, uint64_t size, uint64_t page_size,
 				enum hltests_contiguous contiguous)
 {
 	const struct hltests_asic_funcs *asic;
@@ -1197,11 +1315,13 @@ void *hltests_allocate_device_mem(int fd, uint64_t size,
 	mem->size = size;
 	mem->is_pool = true;
 
-	rc = asic->dram_pool_alloc(hdev, size, &mem->device_virt_addr);
+	if (!asic->dram_pool_alloc(hdev, size, &mem->device_virt_addr))
+		goto memory_allocated;
 
-	if (rc) {
-		mem->is_pool = false;
-		mem->device_handle = hlthunk_device_memory_alloc(fd, size,
+	mem->is_pool = false;
+
+	if (!hdev->sim_dram_on_host) {
+		mem->device_handle = hlthunk_device_memory_alloc(fd, size, page_size,
 								contiguous,
 								false);
 
@@ -1219,8 +1339,25 @@ void *hltests_allocate_device_mem(int fd, uint64_t size,
 			printf("Failed to map device memory allocation\n");
 			goto free_allocation;
 		}
+	} else {
+		mem->host_ptr = malloc(size);
+
+		if (!mem->host_ptr) {
+			printf("Failed to allocate %lu bytes of host memory\n",
+				size);
+			goto free_mem_struct;
+		}
+
+		mem->device_virt_addr = hlthunk_host_memory_map(fd,
+							mem->host_ptr, 0, size);
+
+		if (!mem->device_virt_addr) {
+			printf("Failed to map host memory to device\n");
+			goto free_allocation;
+		}
 	}
 
+memory_allocated:
 	pthread_mutex_lock(&hdev->mem_table_device_lock);
 
 	k = kh_put(ptr64, hdev->mem_table_device, mem->device_virt_addr, &rc);
@@ -1231,7 +1368,10 @@ void *hltests_allocate_device_mem(int fd, uint64_t size,
 	return (void *) mem->device_virt_addr;
 
 free_allocation:
-	hlthunk_device_memory_free(fd, mem->device_handle);
+	if (!hdev->sim_dram_on_host)
+		hlthunk_device_memory_free(fd, mem->device_handle);
+	else
+		free(mem->host_ptr);
 free_mem_struct:
 	hlthunk_free(mem);
 	return NULL;
@@ -1324,11 +1464,14 @@ int hltests_free_device_mem(int fd, void *vaddr)
 	} else {
 		rc = hlthunk_memory_unmap(fd, mem->device_virt_addr);
 		if (rc) {
-			printf("Failed to unmap device memory\n");
+			printf("Failed to unmap memory\n");
 			return rc;
 		}
 
-		hlthunk_device_memory_free(fd, mem->device_handle);
+		if (!hdev->sim_dram_on_host)
+			hlthunk_device_memory_free(fd, mem->device_handle);
+		else
+			free(mem->host_ptr);
 	}
 
 	hlthunk_free(mem);
@@ -1370,24 +1513,58 @@ uint64_t hltests_get_device_va_for_host_ptr(int fd, void *vaddr)
 }
 
 /**
+ * This function retrieves the device memory handle by virtual address in the
+ * device address space
+ * @param fd file descriptor of the device that the host memory is mapped to
+ * @param device_va virtual address in the device VA space
+ * @return opaque handle representing the device memory allocation. 0 for
+ * failure
+ */
+uint64_t hltests_get_device_handle_for_device_va(int fd, void *device_va)
+{
+	struct hltests_device *hdev;
+	struct hltests_memory *mem;
+	khint_t k;
+
+	hdev = get_hdev_from_fd(fd);
+	if (!hdev)
+		return 0;
+
+	pthread_mutex_lock(&hdev->mem_table_device_lock);
+
+	k = kh_get(ptr64, hdev->mem_table_device, (uintptr_t) device_va);
+	if (k == kh_end(hdev->mem_table_device)) {
+		pthread_mutex_unlock(&hdev->mem_table_device_lock);
+		return 0;
+	}
+
+	mem = kh_val(hdev->mem_table_device, k);
+
+	pthread_mutex_unlock(&hdev->mem_table_device_lock);
+
+	return mem->device_handle;
+}
+
+/**
  * This function creates a command buffer for a specific device. It also
  * supports creating internal command buffer, which is basically a block of
  * memory on the host which is DMA'd into the device memory
  * @param fd file descriptor of the device
  * @param cb_size the size of the command buffer
- * @param is_external true if CB is for external queue, false otherwise
+ * @param cb_type the type of the command buffer
  * @cb_internal_sram_address the address in the sram that the internal CB will
  *                           be executed from by the CS. If this parameter is
  *                           0, the CB will be located on the host
  * @return virtual address of the CB in the user process VA space, or NULL for
  *         failure
  */
-void *hltests_create_cb(int fd, uint32_t cb_size,
-				enum hltests_is_external is_external,
-				uint64_t cb_internal_sram_address)
+void *hltests_create_cb(int fd, uint32_t cb_size, enum hltests_cb_type cb_type,
+			uint64_t cb_internal_sram_address)
 {
 	struct hltests_device *hdev;
 	struct hltests_cb *cb;
+	uint64_t align;
+	uint32_t suffix_size = 0;
 	int rc;
 	khint_t k;
 
@@ -1399,20 +1576,27 @@ void *hltests_create_cb(int fd, uint32_t cb_size,
 	if (!cb)
 		return NULL;
 
-	cb->cb_size = cb_size;
-	cb->external = is_external;
-
-	if (is_external) {
-		rc = hlthunk_request_command_buffer(fd, cb->cb_size,
-							&cb->cb_handle);
-		if (rc)
-			goto free_cb;
-
-		cb->ptr = hltests_cb_mmap(fd, cb->cb_size, cb->cb_handle);
-		if (cb->ptr == MAP_FAILED)
-			goto destroy_cb;
+	if (hltests_is_legacy_mode_enabled(fd)) {
+		cb->cb_size = cb_size;
 	} else {
-		cb->ptr = hltests_allocate_host_mem_aligned(fd, cb->cb_size, 0, NOT_HUGE_MAP);
+		suffix_size = hdev->asic_funcs->get_arc_cb_suffix_size();
+		cb->cb_size = ALIGN_UP((cb_size + suffix_size), 64);
+	}
+
+	cb->cb_type = cb_type;
+
+	align = hltests_is_legacy_mode_enabled(fd) ? 0 : 8;
+
+	/* For external queues, request the kernel driver to allocate a CB only
+	 * if the ASIC is Goya/Gaudi OR if MMU is disabled.
+	 */
+	if (cb->cb_type == CB_TYPE_KERNEL &&
+			!(hltests_is_goya(fd) || hltests_is_gaudi(fd)))
+		cb->cb_type = CB_TYPE_USER;
+
+	switch (cb->cb_type) {
+	case CB_TYPE_USER:
+		cb->ptr = hltests_allocate_host_mem_aligned(fd, cb->cb_size, NOT_HUGE_MAP, align);
 		if (!cb->ptr)
 			goto free_cb;
 
@@ -1421,6 +1605,29 @@ void *hltests_create_cb(int fd, uint32_t cb_size,
 		else
 			cb->cb_handle =
 				hltests_get_device_va_for_host_ptr(fd, cb->ptr);
+
+		break;
+
+	case CB_TYPE_KERNEL:
+	case CB_TYPE_KERNEL_MAPPED:
+		if (cb->cb_type == CB_TYPE_KERNEL)
+			rc = hlthunk_request_command_buffer(fd, cb->cb_size,
+								&cb->cb_handle);
+		else
+			rc = hlthunk_request_mapped_command_buffer(fd,
+						cb->cb_size, &cb->cb_handle);
+		if (rc)
+			goto free_cb;
+
+		cb->ptr = hltests_mmap(fd, cb->cb_size, cb->cb_handle);
+		if (cb->ptr == MAP_FAILED)
+			goto destroy_cb;
+
+		break;
+
+	default:
+		printf("Invalid CB type %d\n", cb->cb_type);
+		goto free_cb;
 	}
 
 	pthread_mutex_lock(&hdev->cb_table_lock);
@@ -1462,8 +1669,9 @@ int hltests_destroy_cb(int fd, void *ptr)
 
 	pthread_mutex_unlock(&hdev->cb_table_lock);
 
-	if (cb->external) {
-		hltests_cb_munmap(cb->ptr, cb->cb_size);
+	if (cb->cb_type == CB_TYPE_KERNEL ||
+			cb->cb_type == CB_TYPE_KERNEL_MAPPED) {
+		hltests_munmap(cb->ptr, cb->cb_size);
 		hlthunk_destroy_command_buffer(fd, cb->cb_handle);
 	} else {
 		hltests_free_host_mem(fd, cb->ptr);
@@ -1482,11 +1690,39 @@ uint32_t hltests_add_packet_to_cb(void *ptr, uint32_t offset, void *pkt,
 	return offset + pkt_size;
 }
 
+int hltests_get_cb_usage_count(int fd, void *ptr, uint32_t *usage_cnt)
+{
+	struct hltests_device *hdev;
+	struct hltests_cb *cb;
+	khint_t k;
+
+	hdev = get_hdev_from_fd(fd);
+	if (!hdev)
+		return -ENODEV;
+
+	pthread_mutex_lock(&hdev->cb_table_lock);
+
+	k = kh_get(ptr64, hdev->cb_table, (uint64_t) (uintptr_t) ptr);
+	if (k == kh_end(hdev->cb_table)) {
+		pthread_mutex_unlock(&hdev->cb_table_lock);
+		return -EINVAL;
+	}
+
+	cb = kh_val(hdev->cb_table, k);
+
+	pthread_mutex_unlock(&hdev->cb_table_lock);
+
+	if (cb->cb_type == CB_TYPE_USER)
+		return -EINVAL;
+
+	return hlthunk_get_cb_usage_count(fd, cb->cb_handle, usage_cnt);
+}
+
 int hltests_fill_cs_chunk(struct hltests_device *hdev,
 			struct hl_cs_chunk *chunk, void *cb_ptr,
 			uint32_t cb_size, uint32_t queue_index)
 {
-	struct hltests_cb *cb;
+	struct hltests_cb *cb = NULL;
 	khint_t k;
 
 	pthread_mutex_lock(&hdev->cb_table_lock);
@@ -1509,6 +1745,8 @@ int hltests_fill_cs_chunk(struct hltests_device *hdev,
 out:
 	chunk->queue_index = queue_index;
 	chunk->cb_size = cb_size;
+	if (!cb || cb->cb_type == CB_TYPE_USER)
+		chunk->cs_chunk_flags |= HL_CS_CHUNK_FLAGS_USER_ALLOC_CB;
 
 	return 0;
 }
@@ -1635,14 +1873,14 @@ int hltests_submit_cs_timeout(int fd,
 		struct hltests_cs_chunk *execute_arr,
 		uint32_t execute_arr_size,
 		uint32_t flags,
-		uint32_t timeout,
+		uint32_t timeout_sec,
 		uint64_t *seq)
 {
 	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
 
 	return asic->submit_cs(fd, restore_arr, restore_arr_size, execute_arr,
-					execute_arr_size, flags, timeout, seq);
+					execute_arr_size, flags, timeout_sec, seq);
 }
 
 int hltests_submit_staged_cs(int fd,
@@ -1747,6 +1985,18 @@ int hltests_wait_for_legacy_cs(int fd, uint64_t seq, uint64_t timeout_us)
 	return status;
 }
 
+int hltests_wait_for_legacy_cs_until_not_busy(int fd, uint64_t seq)
+{
+	int status;
+
+	do {
+		status = hltests_wait_for_legacy_cs(fd, seq,
+					WAIT_FOR_CS_DEFAULT_TIMEOUT);
+	} while (status == HL_WAIT_CS_STATUS_BUSY);
+
+	return status;
+}
+
 int hltests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us)
 {
 	const struct hltests_asic_funcs *asic =
@@ -1757,23 +2007,162 @@ int hltests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us)
 
 int hltests_wait_for_cs_until_not_busy(int fd, uint64_t seq)
 {
+	const struct hltests_asic_funcs *asic =
+				get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->wait_for_cs_until_not_busy(fd, seq);
+}
+
+int hltests_wait_for_interrupt(int fd, void *addr, uint32_t target_value,
+				uint32_t interrupt_id, uint64_t timeout_us)
+{
+	uint32_t status;
+	int rc;
+
+	rc = hlthunk_wait_for_interrupt(fd, addr, target_value, interrupt_id,
+					timeout_us, &status);
+	if (rc && errno != ETIMEDOUT && errno != EIO)
+		return rc;
+
+	return status;
+}
+
+int hltests_wait_for_interrupt_until_not_busy(int fd, void *addr,
+				uint32_t target_value, uint32_t interrupt_id)
+{
 	int status;
 
 	do {
-		status = hltests_wait_for_cs(fd, seq,
-					WAIT_FOR_CS_DEFAULT_TIMEOUT);
+		status = hltests_wait_for_interrupt(fd, addr, target_value,
+				interrupt_id, WAIT_FOR_CS_DEFAULT_TIMEOUT);
 	} while (status == HL_WAIT_CS_STATUS_BUSY);
 
 	return status;
 }
 
+int hltests_wait_for_interrupt_by_handle(int fd, uint64_t cq_counters_handle,
+				uint64_t cq_counters_offset, uint32_t target_value,
+				uint32_t interrupt_id, uint64_t timeout_us)
+{
+	uint32_t status;
+	int rc;
+
+	rc = hlthunk_wait_for_interrupt_by_handle(fd, cq_counters_handle, cq_counters_offset,
+					target_value, interrupt_id,
+					timeout_us, &status);
+	if (rc && errno != ETIMEDOUT && errno != EIO)
+		return rc;
+
+	return status;
+}
+
+int hltests_wait_for_interrupt_by_handle_until_not_busy(int fd, uint64_t cq_counters_handle,
+				uint64_t cq_counters_offset,
+				uint32_t target_value, uint32_t interrupt_id)
+{
+	int status;
+
+	do {
+		status = hltests_wait_for_interrupt_by_handle(fd, cq_counters_handle,
+				cq_counters_offset,
+				target_value,
+				interrupt_id, WAIT_FOR_CS_DEFAULT_TIMEOUT);
+	} while (status == HL_WAIT_CS_STATUS_BUSY);
+
+	return status;
+}
+
+/**
+ * This function submits a single command buffer for a specific queue, and
+ * waits for it.
+ * @param fd file descriptor of the device
+ * @param cb_ptr a pointer to the command buffer
+ * @param cb_size the size of the command buffer
+ * @param queue_index the allocated queue for the command submission
+ * @param destroy_cb true if CB should be destroyed, false otherwise
+ * @param expected_val expected status of current CS (e.g., COMPLETED, BUSY, etc.)
+ * @return -1 on failure, 0 on success
+ */
+int hltests_submit_and_wait_cs(int fd, void *cb_ptr, uint32_t cb_size,
+				uint32_t queue_index,
+				enum hltests_destroy_cb destroy_cb,
+				int expected_val)
+{
+	struct hltests_cs_chunk execute_arr[1];
+	uint64_t seq = 0;
+	int rc;
+
+	execute_arr[0].cb_ptr = cb_ptr;
+	execute_arr[0].cb_size = cb_size;
+	execute_arr[0].queue_index = queue_index;
+
+	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, 0, &seq);
+	assert_int_equal(rc, 0);
+
+	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
+	assert_int_equal(rc, expected_val);
+
+	if (destroy_cb) {
+		rc = hltests_destroy_cb(fd, cb_ptr);
+		assert_int_equal(rc, 0);
+	}
+
+	return 0;
+}
+
+/**
+ * This function submits a single command buffer for a specific queue, and
+ * waits for it.
+ * @param fd file descriptor of the device
+ * @param cb_ptr a pointer to the command buffer
+ * @param cb_size the size of the command buffer
+ * @param queue_index the allocated queue for the command submission
+ * @param destroy_cb true if CB should be destroyed, false otherwise
+ * @return -1 on failure, 0 on success
+ */
+int hltests_submit_and_wait_legacy_cs(int fd, void *cb_ptr, uint32_t cb_size,
+				uint32_t queue_index,
+				enum hltests_destroy_cb destroy_cb,
+				int expected_val)
+{
+	struct hltests_cs_chunk execute_arr[1];
+	uint64_t seq = 0;
+	int rc;
+
+	execute_arr[0].cb_ptr = cb_ptr;
+	execute_arr[0].cb_size = cb_size;
+	execute_arr[0].queue_index = queue_index;
+
+	rc = hltests_submit_legacy_cs(fd, NULL, 0, execute_arr, 1, 0, 0, &seq);
+	assert_int_equal(rc, 0);
+
+	rc = hltests_wait_for_legacy_cs_until_not_busy(fd, seq);
+	assert_int_equal(rc, expected_val);
+
+	if (destroy_cb) {
+		rc = hltests_destroy_cb(fd, cb_ptr);
+		assert_int_equal(rc, 0);
+	}
+
+	return 0;
+}
+
 uint32_t hltests_add_nop_pkt(int fd, void *buffer, uint32_t buf_off,
-				enum hltests_eb eb, enum hltests_mb mb)
+				struct hltests_pkt_info *pkt_info)
 {
 	const struct hltests_asic_funcs *asic =
 			get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->add_nop_pkt(buffer, buf_off, eb, mb);
+	return asic->add_nop_pkt(buffer, buf_off, pkt_info);
+}
+
+uint32_t hltests_add_msg_barrier_pkt(int fd, void *buffer, uint32_t buf_off,
+				struct hltests_pkt_info *pkt_info)
+{
+	const struct hltests_asic_funcs *asic =
+			get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->add_msg_barrier_pkt(buffer, buf_off, pkt_info);
 }
 
 uint32_t hltests_add_wreg32_pkt(int fd, void *buffer, uint32_t buf_off,
@@ -1858,6 +2247,15 @@ uint32_t hltests_add_cp_dma_pkt(int fd, void *buffer, uint32_t buf_off,
 	return asic->add_cp_dma_pkt(buffer, buf_off, pkt_info);
 }
 
+uint32_t hltests_add_cb_list_pkt(int fd, void *buffer, uint32_t buf_off,
+					struct hltests_pkt_info *pkt_info)
+{
+	const struct hltests_asic_funcs *asic =
+			get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->add_cb_list_pkt(buffer, buf_off, pkt_info);
+}
+
 uint32_t hltests_add_load_and_exe_pkt(int fd, void *buffer, uint32_t buf_off,
 					struct hltests_pkt_info *pkt_info)
 {
@@ -1873,7 +2271,7 @@ uint32_t hltests_add_monitor_and_fence(int fd, void *buffer, uint32_t buf_off,
 	const struct hltests_asic_funcs *asic =
 			get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->add_monitor_and_fence(DCORE_MODE_FULL_CHIP, buffer,
+	return asic->add_monitor_and_fence(fd, DCORE_MODE_FULL_CHIP, buffer,
 					buf_off, mon_and_fence_info);
 }
 
@@ -1891,7 +2289,7 @@ uint64_t hltests_get_fence_addr(int fd, uint32_t qid, bool cmdq_fence)
 	const struct hltests_asic_funcs *asic =
 			get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->get_fence_addr(qid, cmdq_fence);
+	return asic->get_fence_addr(fd, qid, cmdq_fence);
 }
 
 uint32_t hltests_add_arb_en_pkt(int fd, void *buffer, uint32_t buf_off,
@@ -1906,12 +2304,21 @@ uint32_t hltests_add_arb_en_pkt(int fd, void *buffer, uint32_t buf_off,
 			arb_info, queue_id, enable);
 }
 
+uint32_t hltests_add_cq_config_pkt(int fd, void *buffer, uint32_t buf_off,
+		struct hltests_cq_config *cq_config)
+{
+	const struct hltests_asic_funcs *asic =
+			get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->add_cq_config_pkt(buffer, buf_off, cq_config);
+}
+
 uint32_t hltests_get_dma_down_qid(int fd, enum hltests_stream_id stream)
 {
 	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->get_dma_down_qid(DCORE_MODE_FULL_CHIP, stream);
+	return asic->get_dma_down_qid(fd, DCORE_MODE_FULL_CHIP, stream);
 }
 
 uint32_t hltests_get_dma_up_qid(int fd, enum hltests_stream_id stream)
@@ -1919,7 +2326,7 @@ uint32_t hltests_get_dma_up_qid(int fd, enum hltests_stream_id stream)
 	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->get_dma_up_qid(DCORE_MODE_FULL_CHIP, stream);
+	return asic->get_dma_up_qid(fd, DCORE_MODE_FULL_CHIP, stream);
 }
 
 uint32_t hltests_get_ddma_qid(int fd, int dma_ch, enum hltests_stream_id stream)
@@ -1927,7 +2334,7 @@ uint32_t hltests_get_ddma_qid(int fd, int dma_ch, enum hltests_stream_id stream)
 	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->get_ddma_qid(DCORE_MODE_FULL_CHIP, dma_ch,	stream);
+	return asic->get_ddma_qid(fd, DCORE_MODE_FULL_CHIP, dma_ch, stream);
 }
 
 uint8_t hltests_get_ddma_cnt(int fd)
@@ -1935,16 +2342,15 @@ uint8_t hltests_get_ddma_cnt(int fd)
 	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->get_ddma_cnt(DCORE_MODE_FULL_CHIP);
+	return asic->get_ddma_cnt(fd, DCORE_MODE_FULL_CHIP);
 }
 
 uint32_t hltests_get_tpc_qid(int fd, uint8_t tpc_id,
 				enum hltests_stream_id stream)
 {
-	const struct hltests_asic_funcs *asic =
-				get_hdev_from_fd(fd)->asic_funcs;
+	const struct hltests_asic_funcs *asic = get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->get_tpc_qid(DCORE_MODE_FULL_CHIP, tpc_id, stream);
+	return asic->get_tpc_qid(fd, DCORE_MODE_FULL_CHIP, tpc_id, stream);
 }
 
 uint32_t hltests_get_mme_qid(int fd, uint8_t mme_id,
@@ -1958,18 +2364,16 @@ uint32_t hltests_get_mme_qid(int fd, uint8_t mme_id,
 
 uint8_t hltests_get_tpc_cnt(int fd)
 {
-	const struct hltests_asic_funcs *asic =
-				get_hdev_from_fd(fd)->asic_funcs;
+	const struct hltests_asic_funcs *asic = get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->get_tpc_cnt(DCORE_MODE_FULL_CHIP);
+	return asic->get_tpc_cnt(fd, DCORE_MODE_FULL_CHIP);
 }
 
-uint8_t hltests_get_mme_cnt(int fd)
+uint8_t hltests_get_mme_cnt(int fd, bool master_slave_mode)
 {
-	const struct hltests_asic_funcs *asic =
-				get_hdev_from_fd(fd)->asic_funcs;
+	const struct hltests_asic_funcs *asic = get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->get_mme_cnt(DCORE_MODE_FULL_CHIP);
+	return asic->get_mme_cnt(fd, DCORE_MODE_FULL_CHIP, master_slave_mode);
 }
 
 uint16_t hltests_get_first_avail_sob(int fd)
@@ -1977,7 +2381,7 @@ uint16_t hltests_get_first_avail_sob(int fd)
 	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->get_first_avail_sob(DCORE_MODE_FULL_CHIP);
+	return asic->get_first_avail_sob(fd);
 }
 
 uint16_t hltests_get_first_avail_mon(int fd)
@@ -1985,24 +2389,41 @@ uint16_t hltests_get_first_avail_mon(int fd)
 	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->get_first_avail_mon(DCORE_MODE_FULL_CHIP);
+	return asic->get_first_avail_mon(fd);
 }
 
-uint16_t hltests_get_first_avail_interrupt(int fd)
-{
-	struct hlthunk_hw_ip_info hw_ip = {};
-
-	hlthunk_get_hw_ip_info(fd, &hw_ip);
-
-	return hw_ip.first_available_interrupt_id;
-}
-
-uint32_t hltests_get_sob_id(int fd, uint32_t base_addr_off)
+uint16_t hltests_get_first_avail_cq(int fd)
 {
 	const struct hltests_asic_funcs *asic =
 				get_hdev_from_fd(fd)->asic_funcs;
 
-	return asic->get_sob_id(base_addr_off);
+	return asic->get_first_avail_cq(fd);
+}
+
+uint16_t hltests_get_first_avail_interrupt(int fd)
+{
+	struct hltests_device *hdev = get_hdev_from_fd(fd);
+	struct hlthunk_hw_ip_info hw_ip = {};
+
+	hlthunk_get_hw_ip_info(fd, &hw_ip);
+
+	return hw_ip.first_available_interrupt_id + hdev->counters.reserved_interrupts;
+}
+
+uint64_t hltests_get_sob_base_addr(int fd)
+{
+	const struct hltests_asic_funcs *asic =
+				get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->get_sob_base_addr(fd);
+}
+
+uint64_t hltests_get_lbw_base_addr(int fd)
+{
+	const struct hltests_asic_funcs *asic =
+				get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->get_lbw_base_addr(fd);
 }
 
 uint16_t hltests_get_monitors_cnt_per_dcore(int fd)
@@ -2081,6 +2502,96 @@ void hltests_fill_seq_values(void *ptr, uint32_t size)
 	}
 }
 
+static void hltests_endian_swap_16_values(void *ptr, uint32_t size)
+{
+	uint32_t i, rounddown_aligned_size, remainder;
+	uint16_t *p = ptr;
+
+	rounddown_aligned_size = size & ~(sizeof(uint16_t) - 1);
+	remainder = size - rounddown_aligned_size;
+
+	for (i = 0 ; i < rounddown_aligned_size ; i += sizeof(uint16_t), p++)
+		*p = bswap_16(*p);
+
+	if (!remainder)
+		return;
+
+	/* There can be a remainder of only one byte */
+	*((uint8_t *) p) = 0;
+}
+
+static void hltests_endian_swap_32_values(void *ptr, uint32_t size)
+{
+	uint32_t i, rounddown_aligned_size, remainder;
+	uint32_t *p = ptr, tmp;
+
+	rounddown_aligned_size = size & ~(sizeof(uint32_t) - 1);
+	remainder = size - rounddown_aligned_size;
+
+	for (i = 0 ; i < rounddown_aligned_size ; i += sizeof(uint32_t), p++)
+		*p = bswap_32(*p);
+
+	if (!remainder)
+		return;
+
+	tmp = 0;
+	for (i = 0 ; i < remainder ; i++)
+		tmp |= ((uint32_t) ((uint8_t *) p)[i]) << (i * 8);
+
+	tmp = bswap_32(tmp);
+	for (i = 0 ; i < remainder ; i++)
+		((uint8_t *) p)[i] = ((uint8_t *) &tmp)[i];
+}
+
+static void hltests_endian_swap_64_values(void *ptr, uint32_t size)
+{
+	uint32_t i, rounddown_aligned_size, remainder;
+	uint64_t *p = ptr, tmp;
+
+	rounddown_aligned_size = size & ~(sizeof(uint64_t) - 1);
+	remainder = size - rounddown_aligned_size;
+
+	for (i = 0 ; i < rounddown_aligned_size ; i += sizeof(uint64_t), p++)
+		*p = bswap_64(*p);
+
+	if (!remainder)
+		return;
+
+	tmp = 0;
+	for (i = 0 ; i < remainder ; i++)
+		tmp |= ((uint64_t) ((uint8_t *) p)[i]) << (i * 8);
+
+	tmp = bswap_64(tmp);
+	for (i = 0 ; i < remainder ; i++)
+		((uint8_t *) p)[i] = ((uint8_t *) &tmp)[i];
+}
+
+static uint64_t hltests_get_dram_va_hint_mask(int fd)
+{
+	const struct hltests_asic_funcs *asic =
+				get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->get_dram_va_hint_mask();
+}
+
+void hltests_endian_swap_values(void *ptr, uint32_t size,
+				enum hltests_endian_swap endian_swap)
+{
+	switch (endian_swap) {
+	case ENDIAN_SWAP_16:
+		hltests_endian_swap_16_values(ptr, size);
+		break;
+	case ENDIAN_SWAP_32:
+		hltests_endian_swap_32_values(ptr, size);
+		break;
+	case ENDIAN_SWAP_64:
+		hltests_endian_swap_64_values(ptr, size);
+		break;
+	default:
+		break;
+	}
+}
+
 int hltests_mem_compare_with_stop(void *ptr1, void *ptr2, uint64_t size,
 					bool stop_on_err)
 {
@@ -2129,7 +2640,7 @@ int hltests_dma_transfer(int fd, uint32_t queue_index, enum hltests_eb eb,
 				enum hltests_mb mb,
 				uint64_t src_addr, uint64_t dst_addr,
 				uint32_t size,
-				enum hltests_goya_dma_direction dma_dir)
+				enum hltests_dma_direction dma_dir)
 {
 	uint32_t offset = 0;
 	void *ptr;
@@ -2139,6 +2650,7 @@ int hltests_dma_transfer(int fd, uint32_t queue_index, enum hltests_eb eb,
 	assert_non_null(ptr);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.qid = queue_index;
 	pkt_info.eb = eb;
 	pkt_info.mb = mb;
 	pkt_info.dma.src_addr = src_addr;
@@ -2152,7 +2664,7 @@ int hltests_dma_transfer(int fd, uint32_t queue_index, enum hltests_eb eb,
 }
 
 int hltests_zero_device_memory(int fd, uint64_t dst_addr, uint32_t size,
-				enum hltests_goya_dma_direction dma_dir)
+				enum hltests_dma_direction dma_dir)
 {
 	uint64_t host_src_addr;
 	void *src_ptr;
@@ -2172,13 +2684,40 @@ int hltests_zero_device_memory(int fd, uint64_t dst_addr, uint32_t size,
 	return 0;
 }
 
+int hltests_dma_transfer_legacy(int fd, uint32_t queue_index,
+				enum hltests_eb eb, enum hltests_mb mb,
+				uint64_t src_addr, uint64_t dst_addr,
+				uint32_t size,
+				enum hltests_dma_direction dma_dir)
+{
+	uint32_t offset = 0;
+	void *ptr;
+	struct hltests_pkt_info pkt_info;
+
+	ptr = hltests_create_cb(fd, 0x1000, EXTERNAL, 0);
+	assert_non_null(ptr);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = eb;
+	pkt_info.mb = mb;
+	pkt_info.dma.src_addr = src_addr;
+	pkt_info.dma.dst_addr = dst_addr;
+	pkt_info.dma.size = size;
+	pkt_info.dma.dma_dir = dma_dir;
+	offset = hltests_add_dma_pkt(fd, ptr, offset, &pkt_info);
+
+	return hltests_submit_and_wait_legacy_cs(fd, ptr, offset, queue_index,
+				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
+}
+
 VOID hltests_dma_dram_frag_mem_test(void **state, uint64_t size)
 {
-	void **frag_arr;
-	struct hlthunk_hw_ip_info hw_ip;
-	uint32_t i, frag_arr_size, page_num, rand;
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	uint32_t i, frag_arr_size, page_num, rand;
+	struct hlthunk_hw_ip_info hw_ip;
 	int rc, fd = tests_state->fd;
+	uint64_t used_page_size;
+	void **frag_arr;
 
 	/* Create fragmented device physical memory.
 	 * Allocate FRAG_MEM_MULT times more memory in advance and free randomly
@@ -2186,23 +2725,45 @@ VOID hltests_dma_dram_frag_mem_test(void **state, uint64_t size)
 	 * fragmentation.
 	 */
 
+	if (hltests_is_pldm(fd) && size > PLDM_MAX_DMA_SIZE_FOR_TESTING)
+		skip();
+
+	if (hltests_is_simulator(fd) && size > SZ_512M)
+		skip();
+
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
+
 	if (!hw_ip.dram_enabled) {
 		printf("DRAM is disabled so skipping test\n");
 		skip();
 	}
 
-	page_num = size / hw_ip.dram_page_size;
+	if (hltests_is_simulator(fd) &&
+			(FRAG_MEM_MULT * size) > hw_ip.dram_size) {
+		printf(
+			"SIM's DRAM (%lu[B]) is smaller than required allocation (%lu[B]) so skipping test\n",
+			hw_ip.dram_size, FRAG_MEM_MULT * size);
+		skip();
+	}
+
+	/*
+	 * since in this test the device memory is allocated using the default page size
+	 * we need to use it to calc number of pages
+	 */
+	used_page_size = hw_ip.device_mem_alloc_default_page_size;
+	if (size < used_page_size) {
+		printf("page size %#lx is greater than memory chunk %#lx\n", used_page_size, size);
+		skip();
+	}
+	page_num = size / used_page_size;
 	assert_int_not_equal(page_num, 0);
 	frag_arr_size = page_num * FRAG_MEM_MULT;
 	frag_arr = hlthunk_malloc(frag_arr_size * sizeof(*frag_arr));
 	assert_non_null(frag_arr);
 
 	for (i = 0; i < frag_arr_size; i++) {
-		frag_arr[i] = hltests_allocate_device_mem(fd,
-					hw_ip.dram_page_size,
-					NOT_CONTIGUOUS);
+		frag_arr[i] = hltests_allocate_device_mem(fd, used_page_size, 0, NOT_CONTIGUOUS);
 		assert_non_null(frag_arr[i]);
 	}
 
@@ -2217,7 +2778,7 @@ VOID hltests_dma_dram_frag_mem_test(void **state, uint64_t size)
 		i++;
 	}
 
-	hltests_dma_test(state, true, size);
+	hltests_dma_test(state, true, size, 0);
 
 	for (i = 0; i < frag_arr_size; i++) {
 		if (!frag_arr[i])
@@ -2242,6 +2803,12 @@ VOID hltests_dma_dram_high_mem_test(void **state, uint64_t size)
 	 * will begin from high memory address
 	 */
 
+	if (hltests_is_pldm(fd) && size > PLDM_MAX_DMA_SIZE_FOR_TESTING)
+		skip();
+
+	if (hltests_is_simulator(fd) && size > SZ_512M)
+		skip();
+
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
@@ -2251,11 +2818,18 @@ VOID hltests_dma_dram_high_mem_test(void **state, uint64_t size)
 	}
 
 	alloc_size = hw_ip.dram_size / 2;
-	device_addr = hltests_allocate_device_mem(fd, alloc_size,
-								NOT_CONTIGUOUS);
+
+	if (hltests_is_simulator(fd) && size > alloc_size) {
+		printf(
+			"SIM's DRAM (%lu[B]) is smaller than required allocation (%lu[B]) so skipping test\n",
+			alloc_size, size);
+		skip();
+	}
+
+	device_addr = hltests_allocate_device_mem(fd, alloc_size, 0, NOT_CONTIGUOUS);
 	assert_non_null(device_addr);
 
-	hltests_dma_test(state, true, size);
+	hltests_dma_test(state, true, size, 0);
 
 	rc = hltests_free_device_mem(fd, device_addr);
 	assert_int_equal(rc, 0);
@@ -2263,7 +2837,8 @@ VOID hltests_dma_dram_high_mem_test(void **state, uint64_t size)
 	END_TEST;
 }
 
-VOID hltests_dma_test(void **state, bool is_ddr, uint64_t size)
+VOID hltests_dma_test_flags(void **state, bool is_ddr, uint64_t size,
+				uint64_t page_size, uint32_t flags)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_hw_ip_info hw_ip;
@@ -2273,39 +2848,54 @@ VOID hltests_dma_test(void **state, bool is_ddr, uint64_t size)
 	bool is_huge = !!((size > SZ_32K) && (size < SZ_1G));
 	int rc, fd = tests_state->fd;
 
+	if (hltests_is_pldm(fd) && (size > PLDM_MAX_DMA_SIZE_FOR_TESTING))
+		skip();
+
 	/* Sanity and memory allocation */
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
 	if (is_ddr) {
-		if (!hw_ip.dram_enabled) {
-			printf("DRAM is disabled so skipping test\n");
+		if (hltests_is_simulator(fd) && size > hw_ip.dram_size) {
+			printf(
+				"SIM's DRAM (%lu[B]) is smaller than required allocation (%lu[B]) so skipping test\n",
+				hw_ip.dram_size, size);
 			skip();
 		}
 
-		assert_in_range(size, 1, hw_ip.dram_size);
+		if (!hw_ip.dram_enabled) {
+			if (hltests_is_gaudi2(fd) && tests_state->mmu) {
+				printf("DRAM disabled, using DRAM on host\n");
+			} else {
+				printf("DRAM is disabled so skipping test\n");
+				skip();
+			}
+		} else {
+			assert_in_range(size, 1, hw_ip.dram_size);
+		}
 
-		device_addr = hltests_allocate_device_mem(fd, size,
-								NOT_CONTIGUOUS);
+		device_addr = hltests_allocate_device_mem(fd, size, page_size, NOT_CONTIGUOUS);
 		assert_non_null(device_addr);
 
-		dma_dir_down = GOYA_DMA_HOST_TO_DRAM;
-		dma_dir_up = GOYA_DMA_DRAM_TO_HOST;
+		dma_dir_down = DMA_DIR_HOST_TO_DRAM;
+		dma_dir_up = DMA_DIR_DRAM_TO_HOST;
 	} else {
 		if (size > hw_ip.sram_size)
 			skip();
 		device_addr = (void *) (uintptr_t) hw_ip.sram_base_address;
 
-		dma_dir_down = GOYA_DMA_HOST_TO_SRAM;
-		dma_dir_up = GOYA_DMA_SRAM_TO_HOST;
+		dma_dir_down = DMA_DIR_HOST_TO_SRAM;
+		dma_dir_up = DMA_DIR_SRAM_TO_HOST;
 	}
 
-	src_ptr = hltests_allocate_host_mem(fd, size, is_huge);
+	src_ptr = hltests_allocate_host_mem_aligned_flags(fd, size, is_huge, 0,
+								flags);
 	assert_non_null(src_ptr);
 	hltests_fill_rand_values(src_ptr, size);
 	host_src_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
 
-	dst_ptr = hltests_allocate_host_mem(fd, size, is_huge);
+	dst_ptr = hltests_allocate_host_mem_aligned_flags(fd, size, is_huge, 0,
+								flags);
 	assert_non_null(dst_ptr);
 	memset(dst_ptr, 0, size);
 	host_dst_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
@@ -2339,41 +2929,250 @@ VOID hltests_dma_test(void **state, bool is_ddr, uint64_t size)
 	END_TEST;
 }
 
-/**
- * This function submits a single command buffer for a specific queue, and
- * waits for it.
- * @param fd file descriptor of the device
- * @param cb_ptr a pointer to the command buffer
- * @param cb_size the size of the command buffer
- * @param queue_index the allocated queue for the command submission
- * @param destroy_cb true if CB should be destroyed, false otherwise
- * @return void
- */
-int hltests_submit_and_wait_cs(int fd, void *cb_ptr, uint32_t cb_size,
-				uint32_t queue_index,
-				enum hltests_destroy_cb destroy_cb,
-				int expected_val)
+VOID hltests_dma_test(void **state, bool is_ddr, uint64_t size, uint64_t page_size)
 {
-	struct hltests_cs_chunk execute_arr[1];
-	uint64_t seq = 0;
-	int rc;
+	END_TEST_FUNC(hltests_dma_test_flags(state, is_ddr, size, page_size, 0));
+}
 
-	execute_arr[0].cb_ptr = cb_ptr;
-	execute_arr[0].cb_size = cb_size;
-	execute_arr[0].queue_index = queue_index;
+static int build_page_size_array(uint64_t **page_size_arr, uint8_t *arr_size, uint64_t bitmask)
+{
+	int i, set_idx, elem = __builtin_popcountll(bitmask);
 
-	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, 0, &seq);
+	*page_size_arr = hlthunk_malloc(elem * sizeof(uint64_t));
+	if (*page_size_arr == NULL)
+		return -ENOMEM;
+
+	for (i = 0; i < elem; i++) {
+		set_idx = __builtin_ffsll(bitmask) - 1;
+		(*page_size_arr)[i] = (1ULL << set_idx);
+		bitmask &= ~(*page_size_arr)[i];
+	}
+
+	*arr_size = elem;
+	return 0;
+}
+
+static inline void destroy_page_size_array(uint64_t *page_size_arr)
+{
+	hlthunk_free(page_size_arr);
+}
+
+/**
+ * This test allocates device memory until all the memory was allocated.
+ * @param state contains the open file descriptor.
+ * @param page_size page size to use (0 means use default page size).
+ * @param contiguous indicates if the allocated device memory should be
+ *        contiguous or not.
+ * @param mix_alloc if true use mixed allocations, otherwise use single page size.
+ *
+ * Note:
+ * - When test is running with mixed allocation, each iteration different page size
+ *   is chosen (round robin). in this case chunk size equals the page size.
+ *   In this case it is expected that we will not be able to allocate the whole memory
+ *   (because of memory fragmentation)
+ * - Otherwise (not mixed allocation) the test is affected by the page size:
+ *     # When the device dram_page_size is a power of 2 the allocated chunks are 0.5GB
+ *       (because the driver reserves the first 0.5GB and we have multiples of 1GB of
+ *       memory).
+ *     # When the device dram_page_size is not  a power of 2, the allocated memory
+ *       chunks will have the same size as the dram_page_size. This may leave some
+ *       memory residues which will not be used by the test.
+ *    In the above cases we expect to allocate the whole memory.
+ */
+VOID hltests_allocate_device_mem_until_full(void **state, uint32_t page_size,
+					enum hltests_contiguous contigouos, bool mix_alloc)
+{
+	uint64_t total_size, num_of_chunks, i, j, page_order_bitmask, *page_size_arr, total_alloc;
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	uint32_t chunk_size, used_page_size;
+	struct hlthunk_hw_ip_info hw_ip;
+	int rc, fd = tests_state->fd;
+	uint8_t page_size_arr_size;
+	void **device_addr;
+	bool error = false;
+
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
-	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
-	assert_int_equal(rc, expected_val);
+	if (!hw_ip.dram_enabled) {
+		printf("DRAM is disabled so skipping test\n");
+		skip();
+	}
 
-	if (destroy_cb) {
-		rc = hltests_destroy_cb(fd, cb_ptr);
+	/* initialize to avoid compiler warnings */
+	page_size_arr = NULL;
+	page_size_arr_size = 0;
+
+	/*
+	 * store explicitly what page size we are using for calculations
+	 * (as page_size=0 means default)
+	 */
+	used_page_size = page_size ? page_size : hw_ip.device_mem_alloc_default_page_size;
+
+	if (mix_alloc) {
+		/* check whether mixed allocation is supported */
+		rc = hlthunk_get_dev_memalloc_page_orders(fd, &page_order_bitmask);
+		assert_int_equal(rc, 0);
+
+		if (!page_order_bitmask) {
+			printf("Multiple page sizes is not supported\n");
+			skip();
+		}
+	}
+
+	total_size = hltests_get_total_avail_device_mem(fd);
+	if (mix_alloc) {
+		rc = build_page_size_array(&page_size_arr, &page_size_arr_size, page_order_bitmask);
+		assert_int_equal(rc, 0);
+		/* we divide by page_size_arr_size later, so it mustn't be 0 */
+		assert_int_not_equal(page_size_arr_size, 0);
+		/* we set check size to the minimal page size so we'll "give a chance" to
+		 * maximum number of allocations
+		 */
+		chunk_size = page_size_arr[0];
+	} else if ((hw_ip.dram_page_size == 0) || IS_POWER_OF_TWO(used_page_size)) {
+		chunk_size = hltests_is_simulator(fd) ? SZ_32M : SZ_512M;
+		/* handle devices with dram_page_size > 32M */
+		chunk_size = (chunk_size > used_page_size) ? chunk_size : used_page_size;
+	} else {
+		chunk_size = used_page_size;
+	}
+
+	num_of_chunks = total_size / chunk_size;
+	assert_int_not_equal(num_of_chunks, 0);
+
+	device_addr = hlthunk_malloc(num_of_chunks * sizeof(void *));
+	assert_non_null(device_addr);
+
+	total_alloc = 0;
+	for (i = 0 ; i < num_of_chunks ; i++) {
+		/* fix mixed allocation page size is modified each time */
+		if (mix_alloc) {
+			chunk_size = page_size_arr[i % page_size_arr_size];
+			page_size = chunk_size;
+		}
+		device_addr[i] = hltests_allocate_device_mem(fd, chunk_size, page_size, contigouos);
+		if (!device_addr[i])
+			break;
+		total_alloc += chunk_size;
+	}
+
+	/* failure criteria */
+	if (mix_alloc) {
+		/*
+		 * we expect to be able to allocate to at least number of highest order
+		 * pages that can fill the memory
+		 */
+		uint64_t min_chunks = total_size / page_size_arr[page_size_arr_size - 1];
+
+		if (i < min_chunks)
+			error = true;
+	} else if (i < num_of_chunks) {
+		error = true;
+	}
+
+	if (error || mix_alloc)
+		printf("Was able to allocate %luMB out of %luMB\n",
+				total_alloc / SZ_1M, total_size / SZ_1M);
+
+
+	for (j = 0 ; j < i ; j++) {
+		rc = hltests_free_device_mem(fd, device_addr[j]);
 		assert_int_equal(rc, 0);
 	}
 
-	return 0;
+	hlthunk_free(device_addr);
+	if (mix_alloc)
+		destroy_page_size_array(page_size_arr);
+
+	if (error)
+		fail();
+
+	END_TEST;
+}
+
+int hltests_mmu_hint_address(int fd, uint64_t page_size, uint64_t ref_addr,
+			     enum range_type type, bool page_aligned)
+{
+	uint64_t hint_addr, device_map_addr, device_map_addr_late,
+		 device_handle = 0, buf_size = SZ_16K, page_off = 0;
+	void *host_ptr = NULL;
+	bool is_huge = false;
+	int rc = 0, ret;
+
+	/* By default, set hint address to be page aligned */
+	hint_addr = (ref_addr & ~hltests_get_dram_va_hint_mask(fd)) +
+			ROUND_UP(ref_addr & hltests_get_dram_va_hint_mask(fd),
+					page_size);
+	if (!page_aligned) {
+		/* Set hint address to be non page aligned */
+		hint_addr += page_size - 1;
+	}
+
+	if (type == HOST_ADDR) {
+		is_huge = (page_size == SZ_2M);
+
+		if (is_huge)
+			host_ptr = allocate_huge_mem(buf_size);
+		else
+			host_ptr = hlthunk_malloc(buf_size);
+
+		assert_non_null(host_ptr);
+
+		/* In case of a regular page size, we expect a mapped address
+		 * with the same offset as the host address, hence we need to
+		 * save it for future comparison with the hint address.
+		 */
+		page_off = ((uint64_t) host_ptr) & (page_size - 1);
+		device_map_addr = hlthunk_host_memory_map(fd, host_ptr,
+							  hint_addr, buf_size);
+	} else {
+		device_handle = hlthunk_device_memory_alloc(fd, buf_size, 0,
+							    NOT_CONTIGUOUS,
+							    false);
+		assert_non_null(device_handle);
+
+		device_map_addr = hlthunk_device_memory_map(fd, device_handle,
+							    hint_addr);
+	}
+
+	/* The expected behavior is that if hint address is page aligned, it
+	 * should be equal to the device mapped address - otherwise not.
+	 */
+	if ((device_map_addr == hint_addr + page_off) ^ page_aligned) {
+		printf("Unexpected result: MMU type %s, page_aligned %u, "
+		       "page_off 0x%lx, is_huge %u, ref_addr 0x%lx, "
+		       "page_size 0x%lx, hint address 0x%lx, "
+		       "device_map_addr 0x%lx\n",
+		       type == HOST_ADDR ? "PMMU" : "DMMU", page_aligned,
+		       page_off, is_huge, ref_addr, page_size, hint_addr,
+		       device_map_addr);
+		rc = -1;
+	}
+
+	if (type == HOST_ADDR) {
+		/* Now when the address is in use, using it as hint will not
+		 * work. Validate we get a failure when hint is forced.
+		 */
+		device_map_addr_late = hlthunk_host_memory_map_flags(
+			fd, host_ptr, hint_addr, buf_size, HL_MEM_FORCE_HINT);
+		assert_null(device_map_addr_late);
+	}
+
+	ret = hlthunk_memory_unmap(fd, device_map_addr);
+	assert_int_equal(ret, 0);
+
+	if (type == HOST_ADDR) {
+		if (is_huge)
+			munmap(host_ptr, buf_size);
+		else
+			hlthunk_free(host_ptr);
+	} else {
+		ret = hlthunk_device_memory_free(fd, device_handle);
+		assert_int_equal(ret, 0);
+	}
+
+	return rc;
 }
 
 static bool is_dev_idle_and_operational(int fd)
@@ -2382,6 +3181,7 @@ static bool is_dev_idle_and_operational(int fd)
 	bool is_idle;
 
 	is_idle = hlthunk_is_device_idle(fd);
+
 	dev_status = hlthunk_get_device_status_info(fd);
 
 	return (is_idle && dev_status == HL_DEVICE_STATUS_OPERATIONAL);
@@ -2396,8 +3196,7 @@ int hltests_ensure_device_operational(void **state)
 	if (is_dev_idle_and_operational(fd))
 		return 0;
 
-	/* default CS timeout in driver */
-	timeout_locked = 30;
+	timeout_locked = 30000;
 
 	for (i = 0 ; i <= timeout_locked ; i++) {
 		sleep(1);
@@ -2518,8 +3317,8 @@ void hltests_mem_pool_free(void *data, uint64_t addr, uint64_t size)
 	pthread_mutex_unlock(&mem_pool->lock);
 }
 
-void hltests_parser(int argc, const char **argv, const char * const* usage,
-			enum hlthunk_device_name expected_device
+void hltests_parser(int argc, const char **argv, const char * const *usage,
+			unsigned long expected_device_mask
 #ifndef HLTESTS_LIB_MODE
 			, const struct CMUnitTest * const tests, int num_tests
 #endif
@@ -2538,19 +3337,17 @@ void hltests_parser(int argc, const char **argv, const char * const* usage,
 		OPT_GROUP("Basic options"),
 #ifndef HLTESTS_LIB_MODE
 		OPT_BOOLEAN('l', "list", &list, "list tests"),
-		OPT_BOOLEAN('d', "disabled", &run_disabled_tests,
-			"run disabled tests"),
+		OPT_BOOLEAN('d', "disabled", &run_disabled_tests, "run disabled tests"),
 		OPT_STRING('s', "test", &test, "name of specific test to run"),
 		OPT_INTEGER('n', "ndevices", &num_devices, "number of devices"),
 #endif
 		OPT_BOOLEAN('v', "verbose", &verbose_enabled, "enable verbose"),
-		OPT_STRING('p', "pciaddr", &parser_pciaddr,
-			"pci address of device"),
-		OPT_STRING('c', "config", &config_filename,
-			"config filename for test(s)"),
+		OPT_STRING('p', "pciaddr", &parser_pciaddr, "pci address of device"),
+		OPT_STRING('c', "config", &config_filename, "config filename for test(s)"),
 		OPT_BOOLEAN('f', "prof", &prof, "enable profiling for test(s)"),
-		OPT_INTEGER('m', "mode", &legacy_mode_enabled,
-							"Legacy mode enabled"),
+		OPT_INTEGER('m', "mode", &legacy_mode_enabled, "Legacy mode enabled"),
+		OPT_STRING('b', "build_path", &build_path, "Path to build directory"),
+		OPT_BOOLEAN('a', "arc-log", &enable_arc_log, "enable login for arcs"),
 		OPT_END(),
 	};
 
@@ -2575,7 +3372,7 @@ void hltests_parser(int argc, const char **argv, const char * const* usage,
 	if (prof)
 		putenv("HABANA_PROFILE=1");
 
-	asic_name_for_testing = expected_device;
+	asic_mask_for_testing = expected_device_mask;
 
 #ifndef HLTESTS_LIB_MODE
 	/*
@@ -2588,6 +3385,11 @@ void hltests_parser(int argc, const char **argv, const char * const* usage,
 		exit(-1);
 	}
 #endif
+}
+
+uint32_t hltests_get_parser_enable_arc_log(void)
+{
+	return enable_arc_log;
 }
 
 const char *hltests_get_parser_pciaddr(void)
@@ -2619,14 +3421,22 @@ uint32_t hltests_get_cur_seed(void)
 	return cur_seed;
 }
 
-char *hltests_get_build_path(void)
+const char *hltests_get_build_path(void)
 {
 	return build_path;
 }
 
-bool hltests_is_legacy_mode_enabled(void)
+bool hltests_is_legacy_mode_enabled(int fd)
 {
+	if (hltests_is_goya(fd) || hltests_is_gaudi(fd))
+		return true;
+
 	return !!legacy_mode_enabled;
+}
+
+bool hltests_is_simulator(int fd)
+{
+	return false;
 }
 
 bool hltests_is_goya(int fd)
@@ -2636,7 +3446,23 @@ bool hltests_is_goya(int fd)
 
 bool hltests_is_gaudi(int fd)
 {
-	return (hlthunk_get_device_name_from_fd(fd) == HLTHUNK_DEVICE_GAUDI);
+	enum hlthunk_device_name device;
+
+	device = hlthunk_get_device_name_from_fd(fd);
+	if (device == HLTHUNK_DEVICE_GAUDI)
+		return true;
+
+	return false;
+}
+
+bool hltests_is_gaudi2(int fd)
+{
+	return (hlthunk_get_device_name_from_fd(fd) == HLTHUNK_DEVICE_GAUDI2);
+}
+
+bool hltests_is_pldm(int fd)
+{
+	return false;
 }
 
 VOID test_sm_pingpong_common_cp(void **state, bool is_tpc,
@@ -2647,16 +3473,16 @@ VOID test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	struct hltests_cs_chunk restore_arr[1], execute_arr[3];
 	struct hltests_pkt_info pkt_info;
 	struct hltests_monitor_and_fence mon_and_fence_info;
-	void *host_src, *host_dst, *engine_common_cb, *engine_upper_cb,
+	void *host_src, *host_dst, *engine_common_cb, *engine_upper_cb = NULL,
 		*restore_cb, *dmadown_cb, *dmaup_cb;
 	uint64_t seq = 0, host_src_device_va, host_dst_device_va,
 		device_data_addr,
-		engine_common_cb_sram_addr, engine_common_cb_device_va,
-		engine_upper_cb_sram_addr, engine_upper_cb_device_va;
+		engine_common_cb_sram_addr, engine_common_cb_device_va = 0,
+		engine_upper_cb_sram_addr = 0, engine_upper_cb_device_va = 0;
 	uint32_t engine_qid, dma_size, engine_common_cb_size,
-		engine_upper_cb_size, restore_cb_size, dmadown_cb_size,
+		engine_upper_cb_size = 0, restore_cb_size, dmadown_cb_size,
 		dmaup_cb_size;
-	uint16_t sob[2], mon[2];
+	uint16_t sob[2], mon[2], dma_down_qid, dma_up_qid;
 	int rc, fd = tests_state->fd;
 
 	/* Check conditions if CB is in the host */
@@ -2667,6 +3493,13 @@ VOID test_sm_pingpong_common_cp(void **state, bool is_tpc,
 						HLTHUNK_DEVICE_GOYA) {
 			printf(
 				"Test is skipped. Goya's common CP can't be in host\n");
+			skip();
+		}
+
+		/* This test can't run if mmu disabled */
+		if (!tests_state->mmu) {
+			printf(
+				"Test is skipped. MMU must be enabled\n");
 			skip();
 		}
 	}
@@ -2697,10 +3530,16 @@ VOID test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
+	if (!hw_ip.sram_size)
+		skip();
+
 	if (is_tpc)
 		engine_qid = hltests_get_tpc_qid(fd, engine_id, STREAM0);
 	else
 		engine_qid = hltests_get_mme_qid(fd, engine_id, STREAM0);
+
+	dma_down_qid = hltests_get_dma_down_qid(fd, STREAM0);
+	dma_up_qid = hltests_get_dma_up_qid(fd, STREAM0);
 
 	device_data_addr = hw_ip.sram_base_address + 0x1000;
 	engine_upper_cb_sram_addr = hw_ip.sram_base_address + 0x2000;
@@ -2726,11 +3565,15 @@ VOID test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	 * fetch it directly from the host, or we will download it to SRAM and
 	 * the ASIC will run it from there
 	 */
-	engine_common_cb = hltests_allocate_host_mem(fd, 0x1000, NOT_HUGE_MAP);
-	assert_non_null(engine_common_cb);
-	memset(engine_common_cb, 0, 0x1000);
-	engine_common_cb_device_va = hltests_get_device_va_for_host_ptr(fd,
-							engine_common_cb);
+	if (hltests_is_legacy_mode_enabled(fd)) {
+		engine_common_cb = hltests_allocate_host_mem(fd, 0x1000, NOT_HUGE_MAP);
+		assert_non_null(engine_common_cb);
+		memset(engine_common_cb, 0, 0x1000);
+		engine_common_cb_device_va = hltests_get_device_va_for_host_ptr(fd,
+								engine_common_cb);
+	} else {
+		engine_common_cb = hltests_create_cb(fd, 0x1000, EXTERNAL, 0);
+	}
 
 	engine_common_cb_size = 0;
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
@@ -2747,10 +3590,15 @@ VOID test_sm_pingpong_common_cp(void **state, bool is_tpc,
 							engine_common_cb_size,
 							&mon_and_fence_info);
 
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.qid = engine_qid;
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
 	engine_common_cb_size = hltests_add_nop_pkt(fd, engine_common_cb,
 							engine_common_cb_size,
-							EB_FALSE, MB_TRUE);
+							&pkt_info);
 	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.qid = engine_qid;
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_FALSE;
 	pkt_info.write_to_sob.sob_id = sob[0] + 1;
@@ -2762,23 +3610,25 @@ VOID test_sm_pingpong_common_cp(void **state, bool is_tpc,
 							&pkt_info);
 
 	/* Upper CB for engine: CP_DMA */
-	engine_upper_cb = hltests_create_cb(fd, SZ_4K, INTERNAL,
-						engine_upper_cb_sram_addr);
-	assert_non_null(engine_upper_cb);
-	engine_upper_cb_device_va =
-			hltests_get_device_va_for_host_ptr(fd, engine_upper_cb);
-	engine_upper_cb_size = 0;
+	if (hltests_is_legacy_mode_enabled(fd)) {
+		engine_upper_cb = hltests_create_cb(fd, SZ_4K, INTERNAL,
+							engine_upper_cb_sram_addr);
+		assert_non_null(engine_upper_cb);
+		engine_upper_cb_device_va =
+				hltests_get_device_va_for_host_ptr(fd, engine_upper_cb);
+		engine_upper_cb_size = 0;
 
-	pkt_info.eb = EB_FALSE;
-	pkt_info.mb = MB_FALSE;
-	if (common_cb_in_host)
-		pkt_info.cp_dma.src_addr = engine_common_cb_device_va;
-	else
-		pkt_info.cp_dma.src_addr = engine_common_cb_sram_addr;
-	pkt_info.cp_dma.size = engine_common_cb_size;
-	engine_upper_cb_size = hltests_add_cp_dma_pkt(fd, engine_upper_cb,
-						engine_upper_cb_size,
-						&pkt_info);
+		pkt_info.eb = EB_FALSE;
+		pkt_info.mb = MB_FALSE;
+		if (common_cb_in_host)
+			pkt_info.cp_dma.src_addr = engine_common_cb_device_va;
+		else
+			pkt_info.cp_dma.src_addr = engine_common_cb_sram_addr;
+		pkt_info.cp_dma.size = engine_common_cb_size;
+		engine_upper_cb_size = hltests_add_cp_dma_pkt(fd, engine_upper_cb,
+							engine_upper_cb_size,
+							&pkt_info);
+	}
 
 	hltests_clear_sobs(fd, 2);
 
@@ -2789,25 +3639,28 @@ VOID test_sm_pingpong_common_cp(void **state, bool is_tpc,
 
 	if (!common_cb_in_host) {
 		memset(&pkt_info, 0, sizeof(pkt_info));
+		pkt_info.qid = dma_down_qid;
 		pkt_info.eb = EB_FALSE;
 		pkt_info.mb = MB_TRUE;
 		pkt_info.dma.src_addr = engine_common_cb_device_va;
 		pkt_info.dma.dst_addr = engine_common_cb_sram_addr;
 		pkt_info.dma.size = engine_common_cb_size;
-		pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_SRAM;
+		pkt_info.dma.dma_dir = DMA_DIR_HOST_TO_SRAM;
 		restore_cb_size = hltests_add_dma_pkt(fd, restore_cb,
 						restore_cb_size, &pkt_info);
 	}
 
-	memset(&pkt_info, 0, sizeof(pkt_info));
-	pkt_info.eb = EB_FALSE;
-	pkt_info.mb = MB_TRUE;
-	pkt_info.dma.src_addr = engine_upper_cb_device_va;
-	pkt_info.dma.dst_addr = engine_upper_cb_sram_addr;
-	pkt_info.dma.size = engine_upper_cb_size;
-	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_SRAM;
-	restore_cb_size = hltests_add_dma_pkt(fd, restore_cb, restore_cb_size,
-						&pkt_info);
+	if (hltests_is_legacy_mode_enabled(fd)) {
+		memset(&pkt_info, 0, sizeof(pkt_info));
+		pkt_info.eb = EB_FALSE;
+		pkt_info.mb = MB_TRUE;
+		pkt_info.dma.src_addr = engine_upper_cb_device_va;
+		pkt_info.dma.dst_addr = engine_upper_cb_sram_addr;
+		pkt_info.dma.size = engine_upper_cb_size;
+		pkt_info.dma.dma_dir = DMA_DIR_HOST_TO_SRAM;
+		restore_cb_size = hltests_add_dma_pkt(fd, restore_cb, restore_cb_size,
+							&pkt_info);
+	}
 
 	/* CB for first DMA QMAN:
 	 * Transfer data from host to SRAM + signal SOB0.
@@ -2817,15 +3670,17 @@ VOID test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	dmadown_cb_size = 0;
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.qid = dma_down_qid;
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_FALSE;
 	pkt_info.dma.src_addr = host_src_device_va;
 	pkt_info.dma.dst_addr = device_data_addr;
 	pkt_info.dma.size = dma_size;
-	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_SRAM;
+	pkt_info.dma.dma_dir = DMA_DIR_HOST_TO_SRAM;
 	dmadown_cb_size = hltests_add_dma_pkt(fd, dmadown_cb, dmadown_cb_size,
 						&pkt_info);
 	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.qid = dma_down_qid;
 	pkt_info.eb = EB_TRUE;
 	pkt_info.mb = MB_FALSE;
 	pkt_info.write_to_sob.sob_id = sob[0];
@@ -2841,7 +3696,7 @@ VOID test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	assert_non_null(dmaup_cb);
 	dmaup_cb_size = 0;
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
-	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd, STREAM0);
+	mon_and_fence_info.queue_id = dma_up_qid;
 	mon_and_fence_info.cmdq_fence = false;
 	mon_and_fence_info.sob_id = sob[0] + 1;
 	mon_and_fence_info.mon_id = mon[0] + 1;
@@ -2853,34 +3708,37 @@ VOID test_sm_pingpong_common_cp(void **state, bool is_tpc,
 				dmaup_cb_size, &mon_and_fence_info);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.qid = dma_up_qid;
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_TRUE;
 	pkt_info.dma.src_addr = device_data_addr;
 	pkt_info.dma.dst_addr = host_dst_device_va;
 	pkt_info.dma.size = dma_size;
-	pkt_info.dma.dma_dir = GOYA_DMA_SRAM_TO_HOST;
+	pkt_info.dma.dma_dir = DMA_DIR_SRAM_TO_HOST;
 	dmaup_cb_size = hltests_add_dma_pkt(fd, dmaup_cb, dmaup_cb_size,
 								&pkt_info);
 
 	/* Submit CS and wait for completion */
 	restore_arr[0].cb_ptr = restore_cb;
 	restore_arr[0].cb_size = restore_cb_size;
-	restore_arr[0].queue_index = hltests_get_dma_down_qid(fd, STREAM0);
+	restore_arr[0].queue_index = dma_down_qid;
 
 	execute_arr[0].cb_ptr = dmadown_cb;
 	execute_arr[0].cb_size = dmadown_cb_size;
-	execute_arr[0].queue_index = hltests_get_dma_down_qid(fd, STREAM0);
+	execute_arr[0].queue_index = dma_down_qid;
 
-	execute_arr[1].cb_ptr = engine_upper_cb;
-	execute_arr[1].cb_size = engine_upper_cb_size;
+	execute_arr[1].cb_ptr = hltests_is_legacy_mode_enabled(fd) ?
+					engine_upper_cb : engine_common_cb;
+	execute_arr[1].cb_size = hltests_is_legacy_mode_enabled(fd) ?
+					engine_upper_cb_size : engine_common_cb_size;
 	execute_arr[1].queue_index = engine_qid;
 
 	execute_arr[2].cb_ptr = dmaup_cb;
 	execute_arr[2].cb_size = dmaup_cb_size;
-	execute_arr[2].queue_index = hltests_get_dma_up_qid(fd, STREAM0);
+	execute_arr[2].queue_index = dma_up_qid;
 
-	rc = hltests_submit_cs(fd, restore_arr, 1, execute_arr, 3,
-					HL_CS_FLAGS_FORCE_RESTORE, &seq);
+	rc = hltests_submit_cs(fd, restore_arr, restore_cb_size ? 1 : 0,
+				execute_arr, 3, HL_CS_FLAGS_FORCE_RESTORE, &seq);
 	assert_int_equal(rc, 0);
 
 	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
@@ -2891,8 +3749,11 @@ VOID test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	assert_int_equal(rc, 0);
 
 	/* Cleanup */
-	rc = hltests_destroy_cb(fd, engine_upper_cb);
-	assert_int_equal(rc, 0);
+	if (hltests_is_legacy_mode_enabled(fd)) {
+		rc = hltests_destroy_cb(fd, engine_upper_cb);
+		assert_int_equal(rc, 0);
+	}
+
 	rc = hltests_destroy_cb(fd, restore_cb);
 	assert_int_equal(rc, 0);
 	rc = hltests_destroy_cb(fd, dmadown_cb);
@@ -2900,8 +3761,12 @@ VOID test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	rc = hltests_destroy_cb(fd, dmaup_cb);
 	assert_int_equal(rc, 0);
 
-	rc = hltests_free_host_mem(fd, engine_common_cb);
+	if (hltests_is_legacy_mode_enabled(fd))
+		rc = hltests_free_host_mem(fd, engine_common_cb);
+	else
+		rc = hltests_destroy_cb(fd, engine_common_cb);
 	assert_int_equal(rc, 0);
+
 	rc = hltests_free_host_mem(fd, host_dst);
 	assert_int_equal(rc, 0);
 	rc = hltests_free_host_mem(fd, host_src);
@@ -2910,37 +3775,42 @@ VOID test_sm_pingpong_common_cp(void **state, bool is_tpc,
 	END_TEST;
 }
 
-int hltests_clear_sobs(int fd, uint16_t num_of_sobs)
+int hltests_clear_sobs_offset(int fd, uint16_t num_of_sobs, uint16_t offset)
 {
+	uint16_t first_sob = hltests_get_first_avail_sob(fd);
+	uint32_t cb_offset = 0, i, dma_qid;
 	struct hltests_pkt_info pkt_info;
 	void *cb;
-	uint32_t cb_offset = 0, i;
-	uint16_t first_sob = hltests_get_first_avail_sob(fd);
 
 	cb = hltests_create_cb(fd, HL_MAX_CB_SIZE, EXTERNAL, 0);
 	assert_non_null(cb);
 
+	dma_qid = hltests_get_dma_down_qid(fd, STREAM0);
+
 	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.qid = dma_qid;
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_FALSE;
 	pkt_info.write_to_sob.value = 0;
 	pkt_info.write_to_sob.mode = SOB_SET;
-	for (i = first_sob ; i < (first_sob + num_of_sobs - 1) ; i++) {
+	for (i = first_sob ; i < (first_sob + offset + num_of_sobs - 1) ; i++) {
 		pkt_info.write_to_sob.sob_id = i;
-		cb_offset = hltests_add_write_to_sob_pkt(fd, cb, cb_offset,
-								&pkt_info);
+		cb_offset = hltests_add_write_to_sob_pkt(fd, cb, cb_offset, &pkt_info);
 	}
-	/* only the last mb should be true */
-	pkt_info.mb = MB_TRUE;
+	/* Message Barrier should be true only in the last packet */
 	pkt_info.write_to_sob.sob_id = i;
+	pkt_info.mb = MB_TRUE;
 	cb_offset = hltests_add_write_to_sob_pkt(fd, cb, cb_offset, &pkt_info);
 
-	hltests_submit_and_wait_cs(fd, cb, cb_offset,
-		hltests_get_dma_down_qid(fd, STREAM0),
-		DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
+	hltests_submit_and_wait_cs(fd, cb, cb_offset, dma_qid,
+			DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
 
 	return 0;
+}
 
+void hltests_clear_sobs(int fd, uint16_t num_of_sobs)
+{
+	hltests_clear_sobs_offset(fd, num_of_sobs, 0);
 }
 
 void *hltests_map_hw_block(int fd, uint64_t block_addr, uint32_t *block_size)
@@ -2948,6 +3818,11 @@ void *hltests_map_hw_block(int fd, uint64_t block_addr, uint32_t *block_size)
 	uint64_t handle;
 	void *ptr;
 	int rc;
+
+	if (hltests_is_simulator(fd)) {
+		*block_size = 0;
+		return (void *) block_addr;
+	}
 
 	rc = hlthunk_get_hw_block(fd, block_addr, block_size, &handle);
 	if (rc) {
@@ -2971,19 +3846,48 @@ void *hltests_map_hw_block(int fd, uint64_t block_addr, uint32_t *block_size)
 
 int hltests_unmap_hw_block(int fd, void *host_addr, uint32_t block_size)
 {
+	if (hltests_is_simulator(fd))
+		return 0;
+
 	return munmap(host_addr, block_size);
 }
 
 int hltests_read_lbw_mem(int fd, void *dst, void *src, uint32_t size)
 {
-	memcpy(dst, src, size);
+	int num_of_regs, i;
+	uint32_t *d, *s;
+
+	/* LBW access must be aligned to 32 bits*/
+	if (size % sizeof(uint32_t) != 0)
+		return -EINVAL;
+
+	num_of_regs = size / sizeof(uint32_t);
+	d = dst;
+	s = src;
+
+	for (i = 0; i < num_of_regs; i++, d++, s++)
+		*d = *s;
+
 	return 0;
 }
 
 int hltests_write_lbw_mem(int fd, void *dst, void *src, uint32_t size)
 {
+	int num_of_regs, i;
+	uint32_t *d, *s;
+
+	/* LBW access must be aligned to 32 bits*/
+	if (size % sizeof(uint32_t) != 0)
+		return -EINVAL;
+
 	_mm_sfence();
-	memcpy(dst, src, size);
+	num_of_regs = size / sizeof(uint32_t);
+	d = dst;
+	s = src;
+
+	for (i = 0; i < num_of_regs; i++, d++, s++)
+		*d = *s;
+
 	return 0;
 }
 
@@ -2997,10 +3901,41 @@ int hltests_write_lbw_reg(int fd, void *dst, uint32_t value)
 	return hltests_write_lbw_mem(fd, dst, &value, sizeof(value));
 }
 
+/*
+ * hltests_get_default_cfg - Get device specific default test
+ * configuration parameters.
+ *
+ * @fd: Habanalabs device open file descriptor
+ * @cfg: Configuration structure specific to a device test.
+ * @id: Test for which default configuration is requested.
+ *
+ * Returns 0 on success and error on failure.
+ */
+int hltests_get_default_cfg(int fd, void *cfg, enum hltests_id id)
+{
+	const struct hltests_asic_funcs *asic_funcs =
+			get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic_funcs->get_default_cfg(cfg, id);
+}
+
 double get_timediff_sec(struct timespec *begin, struct timespec *end)
 {
 	return (end->tv_nsec - begin->tv_nsec) / 1000000000.0 +
 						(end->tv_sec  - begin->tv_sec);
+}
+
+uint32_t next_pow2(uint32_t v)
+{
+	v--;
+	v |= v >> 1;
+	v |= v >> 2;
+	v |= v >> 4;
+	v |= v >> 8;
+	v |= v >> 16;
+	v++;
+
+	return v;
 }
 
 double get_bw_gigabyte_per_sec(uint64_t bytes, struct timespec *begin,
@@ -3037,6 +3972,28 @@ const char *hltests_stringify_pll_type(int fd, uint32_t pll_idx,
 			get_hdev_from_fd(fd)->asic_funcs;
 
 	return asic->stringify_pll_type(pll_idx, type_idx);
+}
+
+int hltests_device_memory_export_dmabuf_fd(int fd, void *device_addr,
+						uint64_t size)
+{
+	struct hltests_device *hdev;
+	uint64_t device_handle;
+
+	hdev = get_hdev_from_fd(fd);
+	assert_non_null(hdev);
+
+	if (hltests_is_gaudi(fd)) {
+		device_handle = (uint64_t) (uintptr_t) device_addr;
+	} else {
+		device_handle =
+			hltests_get_device_handle_for_device_va(fd,
+								device_addr);
+		assert_int_not_equal(device_handle, 0);
+	}
+
+	return hlthunk_device_memory_export_dmabuf_fd(fd, device_handle, size,
+							O_RDWR | O_CLOEXEC);
 }
 
 int hltest_get_host_meminfo(struct hltest_host_meminfo *res)
@@ -3080,3 +4037,85 @@ int hltest_get_host_meminfo(struct hltest_host_meminfo *res)
 	fclose(fp);
 	return 0;
 }
+
+int hltests_get_async_event_id(int fd, enum hltests_async_event_id hl_tests_event_id,
+				uint32_t *asic_event_id)
+{
+	const struct hltests_asic_funcs *asic = get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->get_async_event_id(hl_tests_event_id, asic_event_id);
+}
+
+uint32_t hltests_get_cq_patch_size(int fd, uint32_t qid)
+{
+	const struct hltests_asic_funcs *asic = get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->get_cq_patch_size(qid);
+}
+
+uint32_t hltests_get_max_pkt_size(int fd, bool mb, bool eb, uint32_t qid)
+{
+	const struct hltests_asic_funcs *asic = get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->get_max_pkt_size(fd, mb, eb, qid);
+}
+
+uint32_t hltests_add_direct_write_cq_pkt(int fd, void *buffer, uint32_t buf_off,
+					struct hltests_direct_cq_write *pkt_info)
+{
+	const struct hltests_asic_funcs *asic =
+			get_hdev_from_fd(fd)->asic_funcs;
+
+	return asic->add_direct_write_cq_pkt(fd, buffer, buf_off, pkt_info);
+}
+
+static void *hltests_monitor_dma_thread(void *data)
+{
+	const struct hltests_asic_funcs *asic;
+	struct monitor_dma_test *params;
+
+	params = (struct monitor_dma_test *)data;
+	asic = get_hdev_from_fd(params->fd)->asic_funcs;
+
+	asic->monitor_dma_test_progress(params);
+
+	return data;
+}
+
+void hltests_monitor_dma_start(struct monitor_dma_test *params)
+{
+	const struct hltests_asic_funcs *asic = get_hdev_from_fd(params->fd)->asic_funcs;
+	int rc;
+
+	if (!asic->monitor_dma_test_progress)
+		return;
+
+	pthread_cond_init(&params->cond, NULL);
+	pthread_mutex_init(&params->mutex, NULL);
+
+	rc = pthread_create(&params->tid, NULL, hltests_monitor_dma_thread, params);
+	if (rc)
+		printf("DMA monitor pthread_create error: %d\n", rc);
+}
+
+void hltests_monitor_dma_stop(struct monitor_dma_test *params)
+{
+	const struct hltests_asic_funcs *asic = get_hdev_from_fd(params->fd)->asic_funcs;
+	int rc;
+
+	if (!asic->monitor_dma_test_progress)
+		return;
+
+	/* signal, by means of condition variable, to the mon thread to stop  */
+	pthread_mutex_lock(&params->mutex);
+	pthread_cond_signal(&params->cond);
+	pthread_mutex_unlock(&params->mutex);
+
+	pthread_mutex_destroy(&params->mutex);
+	pthread_cond_destroy(&params->cond);
+
+	rc = pthread_join(params->tid, NULL);
+	if (rc)
+		printf("DMA monitor thread join error: %d\n", rc);
+}
+

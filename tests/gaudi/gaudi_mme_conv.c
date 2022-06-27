@@ -1045,18 +1045,17 @@ static void dma_cb_prepare(int fd, void *dma_cb,
 				&mon_and_fence_info);
 
 	/* Add some delay */
-	dma_cb_offset = hltests_add_nop_pkt(fd, dma_cb, dma_cb_offset,
-							EB_TRUE, MB_TRUE);
-	dma_cb_offset = hltests_add_nop_pkt(fd, dma_cb, dma_cb_offset,
-							EB_TRUE, MB_TRUE);
-	dma_cb_offset = hltests_add_nop_pkt(fd, dma_cb, dma_cb_offset,
-							EB_TRUE, MB_TRUE);
-	dma_cb_offset = hltests_add_nop_pkt(fd, dma_cb, dma_cb_offset,
-							EB_TRUE, MB_TRUE);
-	dma_cb_offset = hltests_add_nop_pkt(fd, dma_cb, dma_cb_offset,
-							EB_TRUE, MB_TRUE);
-	dma_cb_offset = hltests_add_nop_pkt(fd, dma_cb, dma_cb_offset,
-							EB_TRUE, MB_TRUE);
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_TRUE;
+
+	dma_cb_offset = hltests_add_nop_pkt(fd, dma_cb, dma_cb_offset, &pkt_info);
+	dma_cb_offset = hltests_add_nop_pkt(fd, dma_cb, dma_cb_offset, &pkt_info);
+	dma_cb_offset = hltests_add_nop_pkt(fd, dma_cb, dma_cb_offset, &pkt_info);
+	dma_cb_offset = hltests_add_nop_pkt(fd, dma_cb, dma_cb_offset, &pkt_info);
+	dma_cb_offset = hltests_add_nop_pkt(fd, dma_cb, dma_cb_offset, &pkt_info);
+	dma_cb_offset = hltests_add_nop_pkt(fd, dma_cb, dma_cb_offset, &pkt_info);
+
 	/* DMA output to host */
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_TRUE;
@@ -1153,6 +1152,15 @@ VOID test_mme_basic_conv(void **state)
 		340
 	};
 
+	/*
+	 * This check is required (although the test suite already will run only Gaudi devices)
+	 * due to a bug (SW-74214). will be removed after resolution.
+	 */
+	if (!hltests_is_gaudi(fd)) {
+		printf("Test is skipped because device is not GAUDI\n");
+		skip();
+	}
+
 	in_size = sizeof(ifm_buffer);
 	wght_size = sizeof(weights_buffer);
 	output_size = sizeof(expected_out_buffer);
@@ -1205,6 +1213,9 @@ VOID test_mme_basic_conv(void **state)
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
+
+	if (!hw_ip.sram_size)
+		skip();
 
 	sram_base = hw_ip.sram_base_address;
 
@@ -1304,39 +1315,39 @@ VOID test_mme_basic_conv(void **state)
 			EB_FALSE, MB_TRUE, mme_master0_config_cb_device_va,
 			mme_master0_config_cb_sram,
 			mme_master0_config_cb_offset,
-			GOYA_DMA_HOST_TO_SRAM);
+			DMA_DIR_HOST_TO_SRAM);
 
 	hltests_dma_transfer(fd,
 			hltests_get_dma_down_qid(fd, STREAM0),
 			EB_FALSE, MB_TRUE, mme_master2_config_cb_device_va,
 			mme_master2_config_cb_sram,
 			mme_master2_config_cb_offset,
-			GOYA_DMA_HOST_TO_SRAM);
+			DMA_DIR_HOST_TO_SRAM);
 
 	hltests_dma_transfer(fd,
 			hltests_get_dma_down_qid(fd, STREAM0),
 			EB_FALSE, MB_TRUE, mme_master0_cb_device_va,
 			mme_master0_cb_sram, mme_master0_cb_offset,
-			GOYA_DMA_HOST_TO_SRAM);
+			DMA_DIR_HOST_TO_SRAM);
 
 	hltests_dma_transfer(fd,
 			hltests_get_dma_down_qid(fd, STREAM0),
 			EB_FALSE, MB_TRUE, mme_master2_cb_device_va,
 			mme_master2_cb_sram, mme_master2_cb_offset,
-			GOYA_DMA_HOST_TO_SRAM);
+			DMA_DIR_HOST_TO_SRAM);
 
 	/* Move inputs and weights to SRAM */
 	hltests_dma_transfer(fd,
 			hltests_get_dma_down_qid(fd, STREAM1),
 			EB_FALSE, MB_TRUE, host_src_inputs_device_va,
 			inputs_sram_addr, in_size,
-			GOYA_DMA_HOST_TO_SRAM);
+			DMA_DIR_HOST_TO_SRAM);
 
 	hltests_dma_transfer(fd,
 			hltests_get_dma_down_qid(fd, STREAM0),
 			EB_FALSE, MB_TRUE, host_src_weights_device_va,
 			weights_sram_addr, wght_size,
-			GOYA_DMA_HOST_TO_SRAM);
+			DMA_DIR_HOST_TO_SRAM);
 
 	/* Submit CS and wait */
 	execute_arr[0].cb_ptr = dma_cb;
@@ -1409,8 +1420,8 @@ int main(int argc, const char **argv)
 {
 	int num_tests = sizeof(gaudi_mme_tests) / sizeof((gaudi_mme_tests)[0]);
 
-	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_GAUDI, gaudi_mme_tests,
-			num_tests);
+	hltests_parser(argc, argv, usage, HLTEST_DEVICE_MASK_GAUDI_ALL,
+			gaudi_mme_tests, num_tests);
 
 	return hltests_run_group_tests("gaudi_mme", gaudi_mme_tests, num_tests,
 					hltests_setup, hltests_teardown);

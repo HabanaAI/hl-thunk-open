@@ -18,8 +18,7 @@
 #include <unistd.h>
 
 #define RANGE_PARAMS_NUM	7
-#define IS_RANGE_VALID(v) 	(v == 0x7F)
-#define BIT(sh)			((1) << (sh))
+#define IS_RANGE_VALID(v)	(v == 0x7F)
 #define RANGE_START_SHIFT	0
 #define RANGE_END_SHIFT		1
 #define RANGE_PRINT_SHIFT	2
@@ -28,7 +27,7 @@
 #define RANGE_DATA64_SHIFT	5
 #define RANGE_WR_THEN_RD_SHIFT	6
 
-typedef struct range_param {
+struct range_param {
 	uint64_t range_start_addr;
 	uint64_t range_end_addr;
 	uint32_t print_addr_freq;
@@ -37,10 +36,10 @@ typedef struct range_param {
 	uint32_t valid_mask;
 	bool	 data64;
 	bool	 write_then_read;
-}range_param;
+};
 
 struct lbw_scan_cfg {
-	range_param *ranges_block;
+	struct range_param *ranges_block;
 	uint64_t num_of_ranges;
 	uint32_t ranges_block_idx;
 	uint32_t range_config_params_count;
@@ -58,14 +57,14 @@ static int test_lbw_scan_parsing_handler(void *user, const char *section,
 
 		if (!cfg->ranges_block_allocated) {
 			cfg->ranges_block =
-			malloc(cfg->num_of_ranges * sizeof(range_param));
+			malloc(cfg->num_of_ranges * sizeof(struct range_param));
 			if (!cfg->ranges_block) {
 				printf("Faild to allocate memory\n");
 				return 0;
 			}
 
-			memset(cfg->ranges_block, 0 ,
-				cfg->num_of_ranges * sizeof(range_param));
+			memset(cfg->ranges_block, 0,
+				cfg->num_of_ranges * sizeof(struct range_param));
 			cfg->ranges_block_allocated = true;
 		}
 	} else if (MATCH("lbw_scan_test", "range_start")) {
@@ -73,7 +72,7 @@ static int test_lbw_scan_parsing_handler(void *user, const char *section,
 			cfg->range_config_params_count != RANGE_PARAMS_NUM) {
 			printf("Invalid range block config, fix config file\n");
 			return 0;
-		} else if (cfg->range_config_params_count){
+		} else if (cfg->range_config_params_count) {
 			/* parsing next range params */
 			cfg->range_config_params_count = 0;
 			cfg->ranges_block_idx++;
@@ -175,7 +174,7 @@ VOID test_lbw_scan(void **state)
 				cfg.ranges_block[i].reg_offset);
 	}
 
-	for( i = 0 ; i < cfg.num_of_ranges ; i++) {
+	for (i = 0 ; i < cfg.num_of_ranges ; i++) {
 		if (!IS_RANGE_VALID(cfg.ranges_block[i].valid_mask)) {
 			printf("Range num %u Invalid\n", i);
 			continue;
@@ -232,7 +231,7 @@ int main(int argc, const char **argv)
 {
 	int num_tests = sizeof(debug_tests) / sizeof((debug_tests)[0]);
 
-	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_DONT_CARE, debug_tests,
+	hltests_parser(argc, argv, usage, HLTEST_DEVICE_MASK_DONT_CARE, debug_tests,
 			num_tests);
 
 	if (access("/sys/kernel/debug", R_OK)) {

@@ -1,7 +1,8 @@
 .cproject
 .project
 .settings
-*.orig
 doxygen
 build/
 *.orig
+cscope*
+tags*

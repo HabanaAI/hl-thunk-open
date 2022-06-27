@@ -15,22 +15,22 @@
 #include <unistd.h>
 #include <time.h>
 
-#define MAX_DMA_CH 8
-#define LIN_DMA_PKT_SIZE 24
-#define MAX_NUM_LIN_DMA_PKTS_IN_EXTERNAL_CB (HL_MAX_CB_SIZE / LIN_DMA_PKT_SIZE)
+#define MAX_DMA_CH		8
 
-#define LIN_DMA_SIZE_FOR_HOST 0x1000	/* 4KB per LIN_DMA packet */
+#define LIN_DMA_SIZE_FOR_HOST	SZ_64K	/* 64KB per LIN_DMA packet */
 
 struct dma_perf_transfer {
 	uint64_t src_addr;
 	uint64_t dst_addr;
 	uint32_t size;
 	uint32_t queue_index;
-	enum hltests_goya_dma_direction dma_dir;
+	enum hltests_dma_direction dma_dir;
 };
 
 uint32_t calc_factor(uint32_t num_ch, uint32_t dram_size, uint32_t dma_size)
 {
+	assert_int_not_equal(dma_size, 0);
+
 	if (num_ch > 1)
 		return dram_size / ((num_ch - 1) * dma_size);
 	else
@@ -41,29 +41,42 @@ static double execute_host_bidirectional_transfer(int fd,
 				struct dma_perf_transfer *host_to_device,
 				struct dma_perf_transfer *device_to_host)
 {
+	uint64_t h2d_lindma_pkts, h2d_lindma_pkts_per_cb, i, j, d2h_lindma_pkts,
+								d2h_lindma_pkts_per_cb, seq = 0;
+	uint32_t max_num_lin_dma_pkts_in_external_cb, h2d_cb_offset = 0, d2h_cb_offset = 0;
+	int rc, h2d_num_of_cb = 1, d2h_num_of_cb = 1;
 	struct hltests_cs_chunk *execute_arr;
 	struct hltests_pkt_info pkt_info;
 	struct timespec begin, end;
 	void **h2d_cb, **d2h_cb;
-	int rc, h2d_num_of_cb = 1, d2h_num_of_cb = 1;
-	uint64_t h2d_lindma_pkts, h2d_lindma_pkts_per_cb, i, j,
-		d2h_lindma_pkts, d2h_lindma_pkts_per_cb, seq = 0;
-	uint32_t h2d_cb_offset = 0, d2h_cb_offset = 0;
 
-	h2d_lindma_pkts = 0x43F9B1000ull / host_to_device->size;
-	d2h_lindma_pkts = 0x4A817C000ull / device_to_host->size;
+	max_num_lin_dma_pkts_in_external_cb = HL_MAX_CB_SIZE /
+			hltests_get_max_pkt_size(fd, MB_FALSE, EB_FALSE,
+					host_to_device->queue_index);
+
+	/* we divide by max_num_lin_dma_pkts_in_external_cb later, so it mustn't be 0 */
+	assert_int_not_equal(max_num_lin_dma_pkts_in_external_cb, 0);
+
+	if (hltests_is_pldm(fd)) {
+		h2d_lindma_pkts = 1;
+		d2h_lindma_pkts = 1;
+	} else if (hltests_is_simulator(fd)) {
+		h2d_lindma_pkts = 5;
+		d2h_lindma_pkts = 5;
+	} else {
+		h2d_lindma_pkts = 0x43F9B1000ull / host_to_device->size;
+		d2h_lindma_pkts = 0x4A817C000ull / device_to_host->size;
+	}
 
 	h2d_lindma_pkts_per_cb = h2d_lindma_pkts;
 	h2d_num_of_cb = 1;
 
-	if (h2d_lindma_pkts > MAX_NUM_LIN_DMA_PKTS_IN_EXTERNAL_CB) {
-		h2d_lindma_pkts_per_cb = MAX_NUM_LIN_DMA_PKTS_IN_EXTERNAL_CB;
+	if (h2d_lindma_pkts > max_num_lin_dma_pkts_in_external_cb) {
+		h2d_lindma_pkts_per_cb = max_num_lin_dma_pkts_in_external_cb;
 
-		h2d_num_of_cb =
-			(h2d_lindma_pkts / h2d_lindma_pkts_per_cb) + 1;
+		h2d_num_of_cb = (h2d_lindma_pkts / h2d_lindma_pkts_per_cb) + 1;
 
-		h2d_lindma_pkts = h2d_num_of_cb *
-					h2d_lindma_pkts_per_cb;
+		h2d_lindma_pkts = h2d_num_of_cb * h2d_lindma_pkts_per_cb;
 	}
 
 	assert_in_range(h2d_num_of_cb, 1, HL_MAX_JOBS_PER_CS / 2);
@@ -71,14 +84,12 @@ static double execute_host_bidirectional_transfer(int fd,
 	d2h_lindma_pkts_per_cb = d2h_lindma_pkts;
 	d2h_num_of_cb = 1;
 
-	if (d2h_lindma_pkts > MAX_NUM_LIN_DMA_PKTS_IN_EXTERNAL_CB) {
-		d2h_lindma_pkts_per_cb = MAX_NUM_LIN_DMA_PKTS_IN_EXTERNAL_CB;
+	if (d2h_lindma_pkts > max_num_lin_dma_pkts_in_external_cb) {
+		d2h_lindma_pkts_per_cb = max_num_lin_dma_pkts_in_external_cb;
 
-		d2h_num_of_cb =
-			(d2h_lindma_pkts / d2h_lindma_pkts_per_cb) + 1;
+		d2h_num_of_cb = (d2h_lindma_pkts / d2h_lindma_pkts_per_cb) + 1;
 
-		d2h_lindma_pkts = d2h_num_of_cb *
-					d2h_lindma_pkts_per_cb;
+		d2h_lindma_pkts = d2h_num_of_cb * d2h_lindma_pkts_per_cb;
 	}
 
 
@@ -94,20 +105,31 @@ static double execute_host_bidirectional_transfer(int fd,
 	assert_non_null(d2h_cb);
 
 	for (i = 0 ; i < h2d_num_of_cb ; i++) {
-		uint64_t cb_size = h2d_lindma_pkts_per_cb * LIN_DMA_PKT_SIZE;
+		uint64_t cb_size = h2d_lindma_pkts_per_cb *
+				hltests_get_max_pkt_size(fd, MB_FALSE, EB_FALSE,
+						host_to_device->queue_index);
+
+		/* Add extra bytes for (optional) CQ configuration pkt/s */
+		cb_size += hltests_get_cq_patch_size(fd, host_to_device->queue_index);
 
 		h2d_cb[i] = hltests_create_cb(fd, cb_size, EXTERNAL, 0);
 		assert_non_null(h2d_cb[i]);
 	}
 
 	for (i = 0 ; i < d2h_num_of_cb ; i++) {
-		uint64_t cb_size = d2h_lindma_pkts_per_cb * LIN_DMA_PKT_SIZE;
+		uint64_t cb_size = d2h_lindma_pkts_per_cb *
+				hltests_get_max_pkt_size(fd, MB_FALSE, EB_FALSE,
+						device_to_host->queue_index);
+
+		/* Add extra bytes for (optional) CQ configuration pkt/s */
+		cb_size += hltests_get_cq_patch_size(fd, device_to_host->queue_index);
 
 		d2h_cb[i] = hltests_create_cb(fd, cb_size, EXTERNAL, 0);
 		assert_non_null(d2h_cb[i]);
 	}
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.qid = host_to_device->queue_index;
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_FALSE;
 	pkt_info.dma.src_addr = host_to_device->src_addr;
@@ -128,6 +150,7 @@ static double execute_host_bidirectional_transfer(int fd,
 	}
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.qid = device_to_host->queue_index;
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_FALSE;
 	pkt_info.dma.src_addr = device_to_host->src_addr;
@@ -141,18 +164,23 @@ static double execute_host_bidirectional_transfer(int fd,
 						d2h_cb_offset, &pkt_info);
 
 		execute_arr[h2d_num_of_cb + i].cb_ptr = d2h_cb[i];
-		execute_arr[h2d_num_of_cb + i].cb_size =
-							d2h_cb_offset;
-		execute_arr[h2d_num_of_cb + i].queue_index =
-					device_to_host->queue_index;
+		execute_arr[h2d_num_of_cb + i].cb_size = d2h_cb_offset;
+		execute_arr[h2d_num_of_cb + i].queue_index = device_to_host->queue_index;
 
 		d2h_cb_offset = 0;
 	}
 
 	clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
 
-	rc = hltests_submit_cs(fd, NULL, 0, execute_arr,
-				h2d_num_of_cb + d2h_num_of_cb, 0, &seq);
+	if (hltests_is_pldm(fd)) {
+		/* Write on device memory first to avoid ECC error on pldm */
+		hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
+					EB_FALSE, MB_TRUE, host_to_device->src_addr,
+					device_to_host->src_addr, device_to_host->size,
+					host_to_device->dma_dir);
+	}
+
+	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, h2d_num_of_cb + d2h_num_of_cb, 0, &seq);
 	assert_int_equal(rc, 0);
 
 	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
@@ -179,50 +207,67 @@ static double execute_host_bidirectional_transfer(int fd,
 			device_to_host->size * d2h_lindma_pkts, &begin, &end);
 }
 
-static double execute_host_transfer(int fd,
-				struct dma_perf_transfer *transfer)
+static double execute_host_transfer(int fd, struct dma_perf_transfer *transfer)
 {
+	uint32_t max_num_lin_dma_pkts_in_external_cb, num_of_cb_per_transfer, offset_cb1 = 0;
+	uint64_t num_of_lindma_pkts, num_of_lindma_pkts_per_cb, i, j, seq = 0;
 	struct hltests_cs_chunk *execute_arr;
 	struct hltests_pkt_info pkt_info;
-	uint64_t num_of_lindma_pkts, num_of_lindma_pkts_per_cb, i, j;
 	struct timespec begin, end;
-	void **cb1;
 	int rc, num_of_cb = 1;
-	uint64_t seq = 0;
-	uint32_t num_of_cb_per_transfer, offset_cb1 = 0;
+	void **cb1;
 
-	num_of_lindma_pkts = 0x400000000ull / transfer->size;
+	max_num_lin_dma_pkts_in_external_cb = HL_MAX_CB_SIZE /
+			hltests_get_max_pkt_size(fd, MB_FALSE, EB_FALSE,
+					transfer->queue_index);
+
+	/* we divide by max_num_lin_dma_pkts_in_external_cb later, so it mustn't be 0 */
+	assert_int_not_equal(max_num_lin_dma_pkts_in_external_cb, 0);
+
+	if ((hltests_is_pldm(fd) || hltests_is_simulator(fd)) &&
+			hltests_get_parser_run_disabled_tests())
+		num_of_lindma_pkts = 160;
+	else if (hltests_is_pldm(fd))
+		num_of_lindma_pkts = 1;
+	else if (hltests_is_simulator(fd))
+		num_of_lindma_pkts = 5;
+	else
+		num_of_lindma_pkts = 0x400000000ull / transfer->size;
+
 	num_of_lindma_pkts_per_cb = num_of_lindma_pkts;
 	num_of_cb_per_transfer = 1;
 
-	if (num_of_lindma_pkts > MAX_NUM_LIN_DMA_PKTS_IN_EXTERNAL_CB) {
-		num_of_lindma_pkts_per_cb = MAX_NUM_LIN_DMA_PKTS_IN_EXTERNAL_CB;
+	if (num_of_lindma_pkts > max_num_lin_dma_pkts_in_external_cb) {
+		num_of_lindma_pkts_per_cb = max_num_lin_dma_pkts_in_external_cb;
 
-		num_of_cb_per_transfer =
-			(num_of_lindma_pkts / num_of_lindma_pkts_per_cb) + 1;
+		num_of_cb_per_transfer = (num_of_lindma_pkts / num_of_lindma_pkts_per_cb) + 1;
 
-		num_of_lindma_pkts = num_of_cb_per_transfer *
-					num_of_lindma_pkts_per_cb;
+		num_of_lindma_pkts = num_of_cb_per_transfer * num_of_lindma_pkts_per_cb;
 	}
 
 	num_of_cb = num_of_cb_per_transfer;
 	assert_in_range(num_of_cb, 1, HL_MAX_JOBS_PER_CS);
 
-	execute_arr = hlthunk_malloc(sizeof(struct hltests_cs_chunk) *
-					num_of_cb);
+	execute_arr = hlthunk_malloc(sizeof(struct hltests_cs_chunk) * num_of_cb);
 	assert_non_null(execute_arr);
 
 	cb1 = hlthunk_malloc(sizeof(void *) * num_of_cb_per_transfer);
 	assert_non_null(cb1);
 
 	for (i = 0 ; i < num_of_cb_per_transfer ; i++) {
-		uint64_t cb_size = num_of_lindma_pkts_per_cb * LIN_DMA_PKT_SIZE;
+		uint64_t cb_size = num_of_lindma_pkts_per_cb *
+				hltests_get_max_pkt_size(fd, MB_FALSE, EB_FALSE,
+						transfer->queue_index);
+
+		/* Add extra bytes for (optional) CQ configuration pkt/s */
+		cb_size += hltests_get_cq_patch_size(fd, transfer->queue_index);
 
 		cb1[i] = hltests_create_cb(fd, cb_size, EXTERNAL, 0);
 		assert_non_null(cb1[i]);
 	}
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.qid = transfer->queue_index;
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_FALSE;
 	pkt_info.dma.src_addr = transfer->src_addr;
@@ -306,6 +351,10 @@ VOID test_host_sram_perf(void **state)
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
+
+	if (!hw_ip.sram_size)
+		skip();
+
 	assert_in_range(cfg.dma_size, 1, hw_ip.sram_size);
 
 	sram_addr = hw_ip.sram_base_address;
@@ -316,13 +365,13 @@ VOID test_host_sram_perf(void **state)
 	host_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
 
 	host_sram_perf_outcome =
-		&tests_state->perf_outcomes[DMA_PERF_HOST2SRAM];
+		&tests_state->perf_outcomes[RESULTS_DMA_PERF_HOST2SRAM];
 
 	transfer.queue_index = hltests_get_dma_down_qid(fd, STREAM0);
 	transfer.src_addr = host_addr;
 	transfer.dst_addr = sram_addr;
 	transfer.size = cfg.dma_size;
-	transfer.dma_dir = GOYA_DMA_HOST_TO_SRAM;
+	transfer.dma_dir = DMA_DIR_HOST_TO_SRAM;
 
 	*host_sram_perf_outcome = execute_host_transfer(fd, &transfer);
 
@@ -355,6 +404,10 @@ VOID test_sram_host_perf(void **state)
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
+
+	if (!hw_ip.sram_size)
+		skip();
+
 	assert_in_range(cfg.dma_size, 1, hw_ip.sram_size);
 
 	sram_addr = hw_ip.sram_base_address;
@@ -365,13 +418,13 @@ VOID test_sram_host_perf(void **state)
 	host_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
 
 	sram_host_perf_outcome =
-		&tests_state->perf_outcomes[DMA_PERF_SRAM2HOST];
+		&tests_state->perf_outcomes[RESULTS_DMA_PERF_SRAM2HOST];
 
 	transfer.queue_index = hltests_get_dma_up_qid(fd, STREAM0);
 	transfer.src_addr = sram_addr;
 	transfer.dst_addr = host_addr;
 	transfer.size = cfg.dma_size;
-	transfer.dma_dir = GOYA_DMA_SRAM_TO_HOST;
+	transfer.dma_dir = DMA_DIR_SRAM_TO_HOST;
 
 	*sram_host_perf_outcome = execute_host_transfer(fd, &transfer);
 
@@ -411,8 +464,7 @@ VOID test_host_dram_perf(void **state)
 	}
 
 	assert_in_range(cfg.dma_size, 1, hw_ip.dram_size);
-	dram_addr = hltests_allocate_device_mem(fd, cfg.dma_size,
-						NOT_CONTIGUOUS);
+	dram_addr = hltests_allocate_device_mem(fd, cfg.dma_size, 0, NOT_CONTIGUOUS);
 	assert_non_null(dram_addr);
 
 	src_ptr = hltests_allocate_host_mem(fd, cfg.dma_size, HUGE_MAP);
@@ -421,13 +473,13 @@ VOID test_host_dram_perf(void **state)
 	host_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
 
 	host_dram_perf_outcome =
-		&tests_state->perf_outcomes[DMA_PERF_HOST2DRAM];
+		&tests_state->perf_outcomes[RESULTS_DMA_PERF_HOST2DRAM];
 
 	transfer.queue_index = hltests_get_dma_down_qid(fd, STREAM0);
 	transfer.src_addr = host_addr;
 	transfer.dst_addr = (uint64_t) (uintptr_t) dram_addr;
 	transfer.size = cfg.dma_size;
-	transfer.dma_dir = GOYA_DMA_HOST_TO_DRAM;
+	transfer.dma_dir = DMA_DIR_HOST_TO_DRAM;
 
 	*host_dram_perf_outcome = execute_host_transfer(fd, &transfer);
 
@@ -468,8 +520,7 @@ VOID test_dram_host_perf(void **state)
 	}
 
 	assert_in_range(cfg.dma_size, 1, hw_ip.dram_size);
-	dram_addr = hltests_allocate_device_mem(fd, cfg.dma_size,
-						NOT_CONTIGUOUS);
+	dram_addr = hltests_allocate_device_mem(fd, cfg.dma_size, 0, NOT_CONTIGUOUS);
 	assert_non_null(dram_addr);
 
 	dst_ptr = hltests_allocate_host_mem(fd, cfg.dma_size, HUGE_MAP);
@@ -478,13 +529,13 @@ VOID test_dram_host_perf(void **state)
 	host_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
 
 	dram_host_perf_outcome =
-		&tests_state->perf_outcomes[DMA_PERF_DRAM2HOST];
+		&tests_state->perf_outcomes[RESULTS_DMA_PERF_DRAM2HOST];
 
 	transfer.queue_index = hltests_get_dma_up_qid(fd, STREAM0);
 	transfer.src_addr = (uint64_t) (uintptr_t) dram_addr;
 	transfer.dst_addr = host_addr;
 	transfer.size = cfg.dma_size;
-	transfer.dma_dir = GOYA_DMA_DRAM_TO_HOST;
+	transfer.dma_dir = DMA_DIR_DRAM_TO_HOST;
 
 	*dram_host_perf_outcome = execute_host_transfer(fd, &transfer);
 
@@ -502,11 +553,11 @@ static double indirect_perf_test(int fd, uint32_t num_of_dma_ch,
 	struct hltests_pkt_info pkt_info;
 	struct hltests_monitor_and_fence mon_and_fence_info;
 	struct hltests_monitor mon_info;
-	void *cp_dma_cb[MAX_DMA_CH], *cb, *lower_cb[MAX_DMA_CH];
-	uint64_t cp_dma_cb_device_va[MAX_DMA_CH],
-		lower_cb_device_va[MAX_DMA_CH], total_dma_size = 0;
+	void *cp_dma_cb[MAX_DMA_CH] = {}, *cb, *lower_cb[MAX_DMA_CH] = {};
+	uint64_t cp_dma_cb_device_va[MAX_DMA_CH] = {},
+		lower_cb_device_va[MAX_DMA_CH] = {}, total_dma_size = 0;
 	uint32_t cp_dma_cb_offset = 0, cb_offset = 0, lower_cb_offset = 0;
-	uint16_t sob0, mon0;
+	uint16_t sob0, mon0, qid;
 	int rc, i, ch;
 
 	struct timespec begin, end;
@@ -514,6 +565,10 @@ static double indirect_perf_test(int fd, uint32_t num_of_dma_ch,
 	uint64_t seq = 0;
 
 	for (ch = 0 ; ch < num_of_dma_ch ; ch++) {
+		cp_dma_cb[ch] = NULL;
+		lower_cb[ch] = NULL;
+		cp_dma_cb_device_va[ch] = 0;
+		lower_cb_device_va[ch] = 0;
 		transfer[ch].size = (transfer[ch].size - 0x80) & ~0x7F;
 		transfer[ch].src_addr =	(transfer[ch].src_addr + 0x7F) & ~0x7F;
 		transfer[ch].dst_addr =	(transfer[ch].dst_addr + 0x7F) & ~0x7F;
@@ -541,16 +596,23 @@ static double indirect_perf_test(int fd, uint32_t num_of_dma_ch,
 
 	/* Setup lower CB for internal DMA engine */
 	for (ch = 0 ; ch < num_of_dma_ch ; ch++) {
-		lower_cb[ch] = hltests_allocate_host_mem(fd,
-				(num_of_lindma_pkts + 10) * LIN_DMA_PKT_SIZE,
-				HUGE_MAP);
-		assert_non_null(lower_cb[ch]);
+		if (hltests_is_legacy_mode_enabled(fd)) {
+			lower_cb[ch] = hltests_allocate_host_mem(fd, num_of_lindma_pkts *
+					hltests_get_max_pkt_size(fd, MB_TRUE, EB_TRUE,
+							transfer->queue_index), HUGE_MAP);
+			assert_non_null(lower_cb[ch]);
 
-		lower_cb_device_va[ch] = hltests_get_device_va_for_host_ptr(fd,
-								lower_cb[ch]);
+			lower_cb_device_va[ch] = hltests_get_device_va_for_host_ptr(fd,
+					lower_cb[ch]);
+		} else {
+			lower_cb[ch] = hltests_create_cb(fd, num_of_lindma_pkts *
+					hltests_get_max_pkt_size(fd, MB_TRUE, EB_TRUE,
+							transfer->queue_index) * 2, EXTERNAL, 0);
+		}
 
 		/* Just configure and ARM the monitor but don't put the fence */
 		memset(&mon_info, 0, sizeof(mon_info));
+		mon_info.qid = transfer[ch].queue_index;
 		mon_info.sob_id = sob0 + 1;
 		mon_info.mon_id = mon0 + 1 + ch;
 		mon_info.mon_address = hltests_get_fence_addr(fd,
@@ -562,6 +624,7 @@ static double indirect_perf_test(int fd, uint32_t num_of_dma_ch,
 
 		/* add 1 to SOB2 by the DDMA QMAN */
 		memset(&pkt_info, 0, sizeof(pkt_info));
+		pkt_info.qid = transfer[ch].queue_index;
 		pkt_info.eb = EB_FALSE;
 		pkt_info.mb = MB_TRUE;
 		pkt_info.write_to_sob.mode = SOB_ADD;
@@ -572,6 +635,7 @@ static double indirect_perf_test(int fd, uint32_t num_of_dma_ch,
 
 		/* Now put the fence of the monitor we configured before */
 		memset(&pkt_info, 0, sizeof(pkt_info));
+		pkt_info.qid = transfer[ch].queue_index;
 		pkt_info.eb = EB_FALSE;
 		pkt_info.mb = MB_TRUE;
 		pkt_info.fence.dec_val = 1;
@@ -581,17 +645,20 @@ static double indirect_perf_test(int fd, uint32_t num_of_dma_ch,
 						lower_cb_offset, &pkt_info);
 
 		memset(&pkt_info, 0, sizeof(pkt_info));
+		pkt_info.qid = transfer[ch].queue_index;
 		pkt_info.eb = EB_FALSE;
 		pkt_info.mb = MB_FALSE;
 		pkt_info.dma.src_addr = transfer[ch].src_addr;
 		pkt_info.dma.dst_addr = transfer[ch].dst_addr;
 		pkt_info.dma.size = transfer[ch].size;
+		pkt_info.dma.dma_dir = transfer[ch].dma_dir;
 
 		for (i = 0 ; i < num_of_lindma_pkts ; i++)
 			lower_cb_offset = hltests_add_dma_pkt(fd, lower_cb[ch],
 						lower_cb_offset, &pkt_info);
 
 		memset(&pkt_info, 0, sizeof(pkt_info));
+		pkt_info.qid = transfer[ch].queue_index;
 		pkt_info.eb = EB_TRUE;
 		pkt_info.mb = MB_TRUE;
 		pkt_info.write_to_sob.sob_id = sob0;
@@ -600,32 +667,41 @@ static double indirect_perf_test(int fd, uint32_t num_of_dma_ch,
 		lower_cb_offset = hltests_add_write_to_sob_pkt(fd, lower_cb[ch],
 						lower_cb_offset, &pkt_info);
 
-		/* Setup upper CB for internal DMA engine (cp_dma) */
-		cp_dma_cb[ch] = hltests_allocate_host_mem(fd, 0x1000, HUGE_MAP);
-		assert_non_null(cp_dma_cb[ch]);
-		cp_dma_cb_device_va[ch] =
-			hltests_get_device_va_for_host_ptr(fd, cp_dma_cb[ch]);
+		if (hltests_is_legacy_mode_enabled(fd)) {
+			/* Setup upper CB for internal DMA engine (cp_dma) */
+			cp_dma_cb[ch] = hltests_allocate_host_mem(fd, 0x1000, HUGE_MAP);
+			assert_non_null(cp_dma_cb[ch]);
+			cp_dma_cb_device_va[ch] =
+				hltests_get_device_va_for_host_ptr(fd, cp_dma_cb[ch]);
 
-		memset(&pkt_info, 0, sizeof(pkt_info));
-		pkt_info.eb = EB_FALSE;
-		pkt_info.mb = MB_FALSE;
-		pkt_info.cp_dma.src_addr = lower_cb_device_va[ch];
-		pkt_info.cp_dma.size = lower_cb_offset;
-		cp_dma_cb_offset = hltests_add_cp_dma_pkt(fd, cp_dma_cb[ch],
-								0, &pkt_info);
+			memset(&pkt_info, 0, sizeof(pkt_info));
+			pkt_info.eb = EB_FALSE;
+			pkt_info.mb = MB_FALSE;
+			pkt_info.cp_dma.src_addr = lower_cb_device_va[ch];
+			pkt_info.cp_dma.size = lower_cb_offset;
+			cp_dma_cb_offset = hltests_add_cp_dma_pkt(fd, cp_dma_cb[ch],
+									0, &pkt_info);
 
-		execute_arr[ch].cb_ptr = (void *) cp_dma_cb_device_va[ch];
-		execute_arr[ch].cb_size = cp_dma_cb_offset;
-		execute_arr[ch].queue_index = transfer[ch].queue_index;
+			execute_arr[ch].cb_ptr = (void *) cp_dma_cb_device_va[ch];
+			execute_arr[ch].cb_size = cp_dma_cb_offset;
+			execute_arr[ch].queue_index = transfer[ch].queue_index;
+
+		} else {
+			execute_arr[ch].cb_ptr = lower_cb[ch];
+			execute_arr[ch].cb_size = lower_cb_offset;
+			execute_arr[ch].queue_index = transfer[ch].queue_index;
+		}
 	}
 
 	/* Setup CB for PDMA */
-	cb = hltests_create_cb(fd, 0x1000, EXTERNAL, 0);
+	cb = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(cb);
+
+	qid = hltests_get_dma_down_qid(fd, STREAM0);
 
 	/* Add monitor to wait on all DDMA to announce they are ready */
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
-	mon_and_fence_info.queue_id = hltests_get_dma_down_qid(fd, STREAM0);
+	mon_and_fence_info.queue_id = qid;
 	mon_and_fence_info.cmdq_fence = false;
 	mon_and_fence_info.sob_id = sob0 + 2;
 	mon_and_fence_info.mon_id = mon0 + 1 + num_of_dma_ch;
@@ -638,6 +714,7 @@ static double indirect_perf_test(int fd, uint32_t num_of_dma_ch,
 
 	/* Now signal DDMA channels they can start executing */
 	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.qid = qid;
 	pkt_info.eb = EB_TRUE;
 	pkt_info.mb = MB_TRUE;
 	pkt_info.write_to_sob.sob_id = sob0 + 1;
@@ -647,7 +724,7 @@ static double indirect_perf_test(int fd, uint32_t num_of_dma_ch,
 
 	/* Wait for DDMA channels to announce they finished */
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
-	mon_and_fence_info.queue_id = hltests_get_dma_down_qid(fd, STREAM0);
+	mon_and_fence_info.queue_id = qid;
 	mon_and_fence_info.cmdq_fence = false;
 	mon_and_fence_info.sob_id = sob0;
 	mon_and_fence_info.mon_id = mon0;
@@ -660,8 +737,14 @@ static double indirect_perf_test(int fd, uint32_t num_of_dma_ch,
 
 	execute_arr[num_of_dma_ch].cb_ptr = cb;
 	execute_arr[num_of_dma_ch].cb_size = cb_offset;
-	execute_arr[num_of_dma_ch].queue_index =
-				hltests_get_dma_down_qid(fd, STREAM0);
+	execute_arr[num_of_dma_ch].queue_index = qid;
+
+	/* Write on device memory first to avoid ECC error on pldm */
+	if (hltests_is_pldm(fd)) {
+		for (ch = 0 ; ch < num_of_dma_ch ; ch++)
+			hltests_zero_device_memory(fd, transfer[ch].src_addr,
+					transfer[ch].size, transfer[ch].dma_dir);
+	}
 
 	clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
 
@@ -676,7 +759,11 @@ static double indirect_perf_test(int fd, uint32_t num_of_dma_ch,
 	hltests_destroy_cb(fd, cb);
 	for (ch = 0 ; ch < num_of_dma_ch ; ch++) {
 		hltests_free_host_mem(fd, cp_dma_cb[ch]);
-		hltests_free_host_mem(fd, lower_cb[ch]);
+
+		if (hltests_is_legacy_mode_enabled(fd))
+			hltests_free_host_mem(fd, lower_cb[ch]);
+		else
+			hltests_destroy_cb(fd, lower_cb[ch]);
 	}
 
 	/* return value in GB/Sec */
@@ -695,37 +782,64 @@ VOID test_sram_dram_single_ch_perf(void **state)
 	uint32_t size;
 	int rc, fd = tests_state->fd;
 
+	/* This test can't run if mmu disabled */
+	if (!tests_state->mmu) {
+		printf("Test is skipped. MMU must be enabled\n");
+		skip();
+	}
+
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
+
+	if (!hltests_get_ddma_cnt(fd))
+		skip();
+
+	if (!hw_ip.sram_size)
+		skip();
+
+	sram_addr = hw_ip.sram_base_address;
+
+	if (hltests_is_pldm(fd))
+		size = 0x1000;
+	else
+		size = hw_ip.sram_size;
 
 	if (!hw_ip.dram_enabled) {
 		printf("DRAM is disabled so skipping test\n");
 		skip();
+	} else {
+		if (hltests_is_simulator(fd) && size > hw_ip.dram_size) {
+			printf(
+				"SIM's DRAM (%lu[B]) is smaller than required allocation (%u[B]) so skipping test\n",
+				hw_ip.dram_size, size);
+			skip();
+		}
+		assert_in_range(size, 1, hw_ip.dram_size);
 	}
 
-	sram_addr = hw_ip.sram_base_address;
-	size = hw_ip.sram_size;
-
-	assert_in_range(size, 1, hw_ip.dram_size);
-	dram_addr = hltests_allocate_device_mem(fd, size, NOT_CONTIGUOUS);
+	dram_addr = hltests_allocate_device_mem(fd, size, 0, NOT_CONTIGUOUS);
 	assert_non_null(dram_addr);
 
 	sram_dram_perf_outcome =
-		&tests_state->perf_outcomes[DMA_PERF_SRAM2DRAM_SINGLE_CH];
+		&tests_state->perf_outcomes[RESULTS_DMA_PERF_SRAM2DRAM_SINGLE_CH];
 
-	transfer.queue_index = hltests_get_ddma_qid(fd, 1, STREAM0);
-
+	transfer.queue_index = hltests_get_ddma_qid(fd, 0, STREAM0);
 	transfer.src_addr = sram_addr;
 	transfer.dst_addr = (uint64_t) (uintptr_t) dram_addr;
 	transfer.size = size;
-	transfer.dma_dir = GOYA_DMA_SRAM_TO_DRAM;
+	transfer.dma_dir = DMA_DIR_SRAM_TO_DRAM;
 
 	if (hltests_is_goya(fd)) {
 		*sram_dram_perf_outcome = execute_host_transfer(fd, &transfer);
 	} else {
 		int num_of_lindma_pkts;
 
-		num_of_lindma_pkts = 30000;
+		if (hltests_is_pldm(fd))
+			num_of_lindma_pkts = 1;
+		else if (hltests_is_simulator(fd))
+			num_of_lindma_pkts = 10;
+		else
+			num_of_lindma_pkts = 30000;
 
 		*sram_dram_perf_outcome = indirect_perf_test(fd, 1, &transfer,
 							num_of_lindma_pkts);
@@ -747,37 +861,64 @@ VOID test_dram_sram_single_ch_perf(void **state)
 	uint32_t size;
 	int rc, fd = tests_state->fd;
 
+	/* This test can't run if mmu disabled */
+	if (!tests_state->mmu) {
+		printf("Test is skipped. MMU must be enabled\n");
+		skip();
+	}
+
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
+	if (!hltests_get_ddma_cnt(fd))
+		skip();
+
+	if (!hw_ip.sram_size)
+		skip();
+
 	sram_addr = hw_ip.sram_base_address;
-	size = hw_ip.sram_size;
+
+	if (hltests_is_pldm(fd))
+		size = 0x1000;
+	else
+		size = hw_ip.sram_size;
 
 	if (!hw_ip.dram_enabled) {
 		printf("DRAM is disabled so skipping test\n");
 		skip();
+	} else {
+		if (hltests_is_simulator(fd) && size > hw_ip.dram_size) {
+			printf(
+				"SIM's DRAM (%lu[B]) is smaller than required allocation (%u[B]) so skipping test\n",
+				hw_ip.dram_size, size);
+			skip();
+		}
+		assert_in_range(size, 1, hw_ip.dram_size);
 	}
 
-	assert_in_range(size, 1, hw_ip.dram_size);
-	dram_addr = hltests_allocate_device_mem(fd, size, NOT_CONTIGUOUS);
+	dram_addr = hltests_allocate_device_mem(fd, size, 0, NOT_CONTIGUOUS);
 	assert_non_null(dram_addr);
 
 	dram_sram_perf_outcome =
-		&tests_state->perf_outcomes[DMA_PERF_DRAM2SRAM_SINGLE_CH];
+		&tests_state->perf_outcomes[RESULTS_DMA_PERF_DRAM2SRAM_SINGLE_CH];
 
 	transfer.queue_index = hltests_get_ddma_qid(fd, 0, STREAM0);
-
 	transfer.src_addr = (uint64_t) (uintptr_t) dram_addr;
 	transfer.dst_addr = sram_addr;
 	transfer.size = size;
-	transfer.dma_dir = GOYA_DMA_DRAM_TO_SRAM;
+	transfer.dma_dir = DMA_DIR_DRAM_TO_SRAM;
 
 	if (hltests_is_goya(fd)) {
 		*dram_sram_perf_outcome = execute_host_transfer(fd, &transfer);
 	} else {
 		int num_of_lindma_pkts;
 
-		num_of_lindma_pkts = 30000;
+		if (hltests_is_pldm(fd))
+			num_of_lindma_pkts = 1;
+		else if (hltests_is_simulator(fd))
+			num_of_lindma_pkts = 10;
+		else
+			num_of_lindma_pkts = 30000;
 
 		*dram_sram_perf_outcome = indirect_perf_test(fd, 1, &transfer,
 							num_of_lindma_pkts);
@@ -798,36 +939,56 @@ VOID test_dram_dram_single_ch_perf(void **state)
 	uint32_t size;
 	int rc, fd = tests_state->fd;
 
+	/* This test can't run if mmu disabled */
+	if (!tests_state->mmu) {
+		printf("Test is skipped. MMU must be enabled\n");
+		skip();
+	}
+
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
+
+	if (!hltests_get_ddma_cnt(fd))
+		skip();
 
 	size = 0x400000;
 
 	if (!hw_ip.dram_enabled) {
 		printf("DRAM is disabled so skipping test\n");
 		skip();
+	} else {
+		if (hltests_is_simulator(fd) && (2 * size) > hw_ip.dram_size) {
+			printf(
+				"SIM's DRAM (%lu[B]) is smaller than required allocation (%u[B]) so skipping test\n",
+				hw_ip.dram_size, 2 * size);
+			skip();
+		}
+		assert_in_range(size, 1, hw_ip.dram_size);
 	}
 
-	assert_in_range(size, 1, hw_ip.dram_size);
-	dram_addr = hltests_allocate_device_mem(fd, size * 2, NOT_CONTIGUOUS);
+	dram_addr = hltests_allocate_device_mem(fd, size * 2, 0, NOT_CONTIGUOUS);
 	assert_non_null(dram_addr);
 
 	dram_dram_perf_outcome =
-		&tests_state->perf_outcomes[DMA_PERF_DRAM2DRAM_SINGLE_CH];
+		&tests_state->perf_outcomes[RESULTS_DMA_PERF_DRAM2DRAM_SINGLE_CH];
 
 	transfer.queue_index = hltests_get_ddma_qid(fd, 0, STREAM0);
-
 	transfer.src_addr = (uint64_t) (uintptr_t) dram_addr;
 	transfer.dst_addr = ((uint64_t) (uintptr_t) dram_addr) + size;
 	transfer.size = size;
-	transfer.dma_dir = GOYA_DMA_DRAM_TO_DRAM;
+	transfer.dma_dir = DMA_DIR_DRAM_TO_DRAM;
 
 	if (hltests_is_goya(fd)) {
 		*dram_dram_perf_outcome = execute_host_transfer(fd, &transfer);
 	} else {
 		int num_of_lindma_pkts;
 
-		num_of_lindma_pkts = 130000;
+		if (hltests_is_pldm(fd))
+			num_of_lindma_pkts = 1;
+		else if (hltests_is_simulator(fd))
+			num_of_lindma_pkts = 10;
+		else
+			num_of_lindma_pkts = 130000;
 
 		*dram_dram_perf_outcome = indirect_perf_test(fd, 1, &transfer,
 							num_of_lindma_pkts);
@@ -854,8 +1015,20 @@ VOID test_sram_dram_multi_ch_perf(void **state)
 		skip();
 	}
 
+	/* This test can't run if mmu disabled */
+	if (!tests_state->mmu) {
+		printf("Test is skipped. MMU must be enabled\n");
+		skip();
+	}
+
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
+
+	if (!hltests_get_ddma_cnt(fd))
+		skip();
+
+	if (!hw_ip.sram_size)
+		skip();
 
 	if (!hw_ip.dram_enabled) {
 		printf("DRAM is disabled so skipping test\n");
@@ -863,7 +1036,7 @@ VOID test_sram_dram_multi_ch_perf(void **state)
 	}
 
 	sram_addr = hw_ip.sram_base_address;
-	tested_dram_size = hw_ip.dram_size;
+	tested_dram_size = rounddown(hltests_get_total_avail_device_mem(fd), hw_ip.dram_page_size);
 	total_dma_size = hw_ip.sram_size;
 	num_of_ddma_ch = hltests_get_ddma_cnt(fd);
 	num_of_lindma_pkts = 60000;
@@ -878,11 +1051,10 @@ VOID test_sram_dram_multi_ch_perf(void **state)
 	assert_in_range(num_of_ddma_ch, 1, MAX_DMA_CH);
 
 	sram_dram_perf_outcome =
-		&tests_state->perf_outcomes[DMA_PERF_SRAM2DRAM_MULTI_CH];
+		&tests_state->perf_outcomes[RESULTS_DMA_PERF_SRAM2DRAM_MULTI_CH];
 
 	dram_addr = (uint64_t) (uintptr_t)
-			hltests_allocate_device_mem(fd, tested_dram_size,
-						NOT_CONTIGUOUS);
+			hltests_allocate_device_mem(fd, tested_dram_size, 0, NOT_CONTIGUOUS);
 	assert_non_null(dram_addr);
 
 	for (ch = 0 ; ch < num_of_ddma_ch ; ch++) {
@@ -926,8 +1098,20 @@ VOID test_dram_sram_multi_ch_perf(void **state)
 		skip();
 	}
 
+	/* This test can't run if mmu disabled */
+	if (!tests_state->mmu) {
+		printf("Test is skipped. MMU must be enabled\n");
+		skip();
+	}
+
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
+
+	if (!hltests_get_ddma_cnt(fd))
+		skip();
+
+	if (!hw_ip.sram_size)
+		skip();
 
 	if (!hw_ip.dram_enabled) {
 		printf("DRAM is disabled so skipping test\n");
@@ -935,7 +1119,7 @@ VOID test_dram_sram_multi_ch_perf(void **state)
 	}
 
 	sram_addr = hw_ip.sram_base_address;
-	tested_dram_size = hw_ip.dram_size;
+	tested_dram_size = rounddown(hltests_get_total_avail_device_mem(fd), hw_ip.dram_page_size);
 	total_dma_size = hw_ip.sram_size;
 	num_of_ddma_ch = hltests_get_ddma_cnt(fd);
 	num_of_lindma_pkts = 60000;
@@ -950,11 +1134,10 @@ VOID test_dram_sram_multi_ch_perf(void **state)
 	assert_in_range(num_of_ddma_ch, 1, MAX_DMA_CH);
 
 	dram_sram_perf_outcome =
-		&tests_state->perf_outcomes[DMA_PERF_DRAM2SRAM_MULTI_CH];
+		&tests_state->perf_outcomes[RESULTS_DMA_PERF_DRAM2SRAM_MULTI_CH];
 
 	dram_addr = (uint64_t) (uintptr_t)
-			hltests_allocate_device_mem(fd, tested_dram_size,
-						NOT_CONTIGUOUS);
+			hltests_allocate_device_mem(fd, tested_dram_size, 0, NOT_CONTIGUOUS);
 	assert_non_null(dram_addr);
 
 	for (ch = 0 ; ch < num_of_ddma_ch ; ch++) {
@@ -998,8 +1181,23 @@ VOID test_dram_dram_multi_ch_perf(void **state)
 		skip();
 	}
 
+	/* This test can't run if mmu disabled */
+	if (!tests_state->mmu) {
+		printf("Test is skipped. MMU must be enabled\n");
+		skip();
+	}
+
+	/* This test can't run on Simulator */
+	if (hltests_is_simulator(fd)) {
+		printf("Test is skipped for Simulator\n");
+		skip();
+	}
+
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
+
+	if (!hltests_get_ddma_cnt(fd))
+		skip();
 
 	if (!hw_ip.dram_enabled) {
 		printf("DRAM is disabled so skipping test\n");
@@ -1007,7 +1205,7 @@ VOID test_dram_dram_multi_ch_perf(void **state)
 	}
 
 	total_dma_size = hw_ip.sram_size;
-	tested_dram_size = hw_ip.dram_size;
+	tested_dram_size = rounddown(hltests_get_total_avail_device_mem(fd), hw_ip.dram_page_size);
 	num_of_lindma_pkts = 40000;
 	num_of_ddma_ch = hltests_get_ddma_cnt(fd);
 
@@ -1021,11 +1219,10 @@ VOID test_dram_dram_multi_ch_perf(void **state)
 	assert_in_range(num_of_ddma_ch, 1, MAX_DMA_CH);
 
 	dram_dram_perf_outcome =
-		&tests_state->perf_outcomes[DMA_PERF_DRAM2DRAM_MULTI_CH];
+		&tests_state->perf_outcomes[RESULTS_DMA_PERF_DRAM2DRAM_MULTI_CH];
 
 	dram_addr = (uint64_t) (uintptr_t)
-			hltests_allocate_device_mem(fd, tested_dram_size,
-						NOT_CONTIGUOUS);
+			hltests_allocate_device_mem(fd, tested_dram_size, 0, NOT_CONTIGUOUS);
 	assert_non_null(dram_addr);
 
 	for (ch = 0 ; ch < num_of_ddma_ch ; ch++) {
@@ -1068,14 +1265,29 @@ VOID test_sram_dram_bidirectional_full_multi_ch_perf(void **state)
 	uint32_t total_dma_size, factor;
 	int num_of_lindma_pkts, rc, ch, fd = tests_state->fd, num_of_ddma_ch;
 
+	if (hltests_is_pldm(fd))
+		skip();
+
 	/* This test can't run on Goya */
 	if (hltests_is_goya(fd)) {
 		printf("Test is skipped for GOYA\n");
 		skip();
 	}
 
+	/* This test can't run if mmu disabled */
+	if (!tests_state->mmu) {
+		printf("Test is skipped. MMU must be enabled\n");
+		skip();
+	}
+
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
+
+	if (!hltests_get_ddma_cnt(fd))
+		skip();
+
+	if (!hw_ip.sram_size)
+		skip();
 
 	if (!hw_ip.dram_enabled) {
 		printf("DRAM is disabled so skipping test\n");
@@ -1083,7 +1295,7 @@ VOID test_sram_dram_bidirectional_full_multi_ch_perf(void **state)
 	}
 
 	sram_addr = hw_ip.sram_base_address;
-	tested_dram_size = hw_ip.dram_size;
+	tested_dram_size = rounddown(hltests_get_total_avail_device_mem(fd), hw_ip.dram_page_size);
 	total_dma_size = hw_ip.sram_size;
 	num_of_ddma_ch = hltests_get_ddma_cnt(fd);
 	num_of_lindma_pkts = 60000;
@@ -1098,11 +1310,10 @@ VOID test_sram_dram_bidirectional_full_multi_ch_perf(void **state)
 	assert_in_range(num_of_ddma_ch, 1, MAX_DMA_CH);
 
 	sram_dram_perf_outcome =
-		&tests_state->perf_outcomes[DMA_PERF_SRAM_DRAM_BIDIR_FULL_CH];
+		&tests_state->perf_outcomes[RESULTS_DMA_PERF_SRAM_DRAM_BIDIR_FULL_CH];
 
 	dram_addr = (uint64_t) (uintptr_t)
-			hltests_allocate_device_mem(fd, tested_dram_size,
-						NOT_CONTIGUOUS);
+			hltests_allocate_device_mem(fd, tested_dram_size, 0, NOT_CONTIGUOUS);
 	assert_non_null(dram_addr);
 
 	for (ch = 0 ; ch < num_of_ddma_ch ; ch++) {
@@ -1149,27 +1360,45 @@ VOID test_sram_dram_bidirectional_full_multi_ch_perf(void **state)
 VOID test_dram_sram_5ch_perf(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	int num_of_lindma_pkts, rc, ch, fd = tests_state->fd;
 	struct dma_perf_transfer transfer[MAX_DMA_CH];
+	uint32_t queue_index[5] = {0, 1, 2, 3, 4};
 	struct hlthunk_hw_ip_info hw_ip;
 	double *dram_sram_perf_outcome;
+	int num_of_ddma_ch = 5;
 	uint64_t dram_addr;
 	uint64_t sram_addr;
-	uint32_t size;
-	int num_of_lindma_pkts, rc, ch, fd = tests_state->fd;
-	int num_of_ddma_ch = 5;
-	uint32_t queue_index[5] = {0, 1, 2, 3, 4};
-	uint8_t factor = 0xff;
+	uint32_t size, factor;
+
+	factor = hltests_is_simulator(fd) ? 0xf : 0xff;
 
 	/* This test runs on Gaudi */
-	if (hlthunk_get_device_name_from_fd(fd) != HLTHUNK_DEVICE_GAUDI) {
+	if (!hltests_is_gaudi(fd)) {
 		printf("Test is only for GAUDI\n");
 		skip();
 	}
 
-	num_of_lindma_pkts = 60000;
+	/* This test can't run if mmu disabled */
+	if (!tests_state->mmu) {
+		printf("Test is skipped. MMU must be enabled\n");
+		skip();
+	}
+
+	if (hltests_is_pldm(fd))
+		num_of_lindma_pkts = 1;
+	else if (hltests_is_simulator(fd))
+		num_of_lindma_pkts = 10;
+	else
+		num_of_lindma_pkts = 60000;
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
+
+	if (!hltests_get_ddma_cnt(fd))
+		skip();
+
+	if (!hw_ip.sram_size)
+		skip();
 
 	if (!hw_ip.dram_enabled) {
 		printf("DRAM is disabled so skipping test\n");
@@ -1177,15 +1406,18 @@ VOID test_dram_sram_5ch_perf(void **state)
 	}
 
 	sram_addr = hw_ip.sram_base_address;
-	size = hw_ip.sram_size;
+
+	if (hltests_is_pldm(fd))
+		size = 0x1000;
+	else
+		size = hw_ip.sram_size;
 
 	dram_sram_perf_outcome =
-		&tests_state->perf_outcomes[DMA_PERF_DRAM2SRAM_5_CH];
+		&tests_state->perf_outcomes[RESULTS_DMA_PERF_DRAM2SRAM_5_CH];
 
 	assert_in_range(size, 1, hw_ip.dram_size);
 	dram_addr = (uint64_t) (uintptr_t)
-			hltests_allocate_device_mem(fd, hw_ip.dram_size,
-						NOT_CONTIGUOUS);
+			hltests_allocate_device_mem(fd, hw_ip.dram_size, 0, NOT_CONTIGUOUS);
 	assert_non_null(dram_addr);
 
 	for (ch = 0 ; ch < num_of_ddma_ch ; ch++) {
@@ -1236,6 +1468,10 @@ VOID test_host_sram_bidirectional_perf(void **state)
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
+
+	if (!hw_ip.sram_size)
+		skip();
+
 	assert_in_range(cfg.dma_size, 1, hw_ip.sram_size / 2);
 
 	sram_addr1 = hw_ip.sram_base_address;
@@ -1250,21 +1486,21 @@ VOID test_host_sram_bidirectional_perf(void **state)
 	host_dst_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
 
 	host_sram_perf_outcome =
-		&tests_state->perf_outcomes[DMA_PERF_HOST_SRAM_BIDIR];
+		&tests_state->perf_outcomes[RESULTS_DMA_PERF_HOST_SRAM_BIDIR];
 
 	host_to_sram_transfer.queue_index =
 			hltests_get_dma_down_qid(fd, STREAM0);
 	host_to_sram_transfer.src_addr = host_src_addr;
 	host_to_sram_transfer.dst_addr = sram_addr1;
 	host_to_sram_transfer.size = cfg.dma_size;
-	host_to_sram_transfer.dma_dir = GOYA_DMA_HOST_TO_SRAM;
+	host_to_sram_transfer.dma_dir = DMA_DIR_HOST_TO_SRAM;
 
 	sram_to_host_transfer.queue_index =
 			hltests_get_dma_up_qid(fd, STREAM0);
 	sram_to_host_transfer.src_addr = sram_addr2;
 	sram_to_host_transfer.dst_addr = host_dst_addr;
 	sram_to_host_transfer.size = cfg.dma_size;
-	sram_to_host_transfer.dma_dir = GOYA_DMA_SRAM_TO_HOST;
+	sram_to_host_transfer.dma_dir = DMA_DIR_SRAM_TO_HOST;
 
 	*host_sram_perf_outcome = execute_host_bidirectional_transfer(fd,
 				&host_to_sram_transfer, &sram_to_host_transfer);
@@ -1307,11 +1543,18 @@ VOID test_host_dram_bidirectional_perf(void **state)
 
 	assert_in_range(cfg.dma_size + cfg.dma_size, 1,
 			hw_ip.dram_size);
-	dram_ptr1 = hltests_allocate_device_mem(fd, cfg.dma_size,
-						NOT_CONTIGUOUS);
+
+	if (hltests_is_simulator(fd) &&
+			(2 * hw_ip.dram_page_size) > hw_ip.dram_size) {
+		printf(
+			"SIM's DRAM (%lu[B]) is smaller than required allocation (%lu[B]) so skipping test\n",
+			hw_ip.dram_size, 2 * hw_ip.dram_page_size);
+		skip();
+	}
+
+	dram_ptr1 = hltests_allocate_device_mem(fd, cfg.dma_size, 0, NOT_CONTIGUOUS);
 	assert_non_null(dram_ptr1);
-	dram_ptr2 = hltests_allocate_device_mem(fd, cfg.dma_size,
-						NOT_CONTIGUOUS);
+	dram_ptr2 = hltests_allocate_device_mem(fd, cfg.dma_size, 0, NOT_CONTIGUOUS);
 	assert_non_null(dram_ptr2);
 
 	src_ptr = hltests_allocate_host_mem(fd, cfg.dma_size, HUGE_MAP);
@@ -1323,21 +1566,21 @@ VOID test_host_dram_bidirectional_perf(void **state)
 	host_dst_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
 
 	host_dram_perf_outcome =
-		&tests_state->perf_outcomes[DMA_PERF_HOST_DRAM_BIDIR];
+		&tests_state->perf_outcomes[RESULTS_DMA_PERF_HOST_DRAM_BIDIR];
 
 	host_to_dram_transfer.queue_index =
 			hltests_get_dma_down_qid(fd, STREAM0);
 	host_to_dram_transfer.src_addr = host_src_addr;
 	host_to_dram_transfer.dst_addr = (uint64_t) (uintptr_t) dram_ptr1;
 	host_to_dram_transfer.size = cfg.dma_size;
-	host_to_dram_transfer.dma_dir = GOYA_DMA_HOST_TO_DRAM;
+	host_to_dram_transfer.dma_dir = DMA_DIR_HOST_TO_DRAM;
 
 	dram_to_host_transfer.queue_index =
 			hltests_get_dma_up_qid(fd, STREAM0);
 	dram_to_host_transfer.src_addr = (uint64_t) (uintptr_t) dram_ptr2;
 	dram_to_host_transfer.dst_addr = host_dst_addr;
 	dram_to_host_transfer.size = cfg.dma_size;
-	dram_to_host_transfer.dma_dir = GOYA_DMA_DRAM_TO_HOST;
+	dram_to_host_transfer.dma_dir = DMA_DIR_DRAM_TO_HOST;
 
 	*host_dram_perf_outcome = execute_host_bidirectional_transfer(fd,
 				&host_to_dram_transfer, &dram_to_host_transfer);
@@ -1363,36 +1606,36 @@ static int hltests_perf_teardown(void **state)
 	printf("RESULTS:\n");
 	printf("========\n");
 	printf("HOST->SRAM             %7.2lf GB/Sec\n",
-			perf_outcomes[DMA_PERF_HOST2SRAM]);
+			perf_outcomes[RESULTS_DMA_PERF_HOST2SRAM]);
 	printf("SRAM->HOST             %7.2lf GB/Sec\n",
-			perf_outcomes[DMA_PERF_SRAM2HOST]);
+			perf_outcomes[RESULTS_DMA_PERF_SRAM2HOST]);
 	printf("HOST->DRAM             %7.2lf GB/Sec\n",
-			perf_outcomes[DMA_PERF_HOST2DRAM]);
+			perf_outcomes[RESULTS_DMA_PERF_HOST2DRAM]);
 	printf("DRAM->HOST             %7.2lf GB/Sec\n",
-			perf_outcomes[DMA_PERF_DRAM2HOST]);
+			perf_outcomes[RESULTS_DMA_PERF_DRAM2HOST]);
 	printf("HOST<->SRAM            %7.2lf GB/Sec\n",
-			perf_outcomes[DMA_PERF_HOST_SRAM_BIDIR]);
+			perf_outcomes[RESULTS_DMA_PERF_HOST_SRAM_BIDIR]);
 	printf("HOST<->DRAM            %7.2lf GB/Sec\n",
-			perf_outcomes[DMA_PERF_HOST_DRAM_BIDIR]);
+			perf_outcomes[RESULTS_DMA_PERF_HOST_DRAM_BIDIR]);
 
 	printf("SRAM->DRAM   Single DMA %7.2lf GB/Sec\n",
-			perf_outcomes[DMA_PERF_SRAM2DRAM_SINGLE_CH]);
+			perf_outcomes[RESULTS_DMA_PERF_SRAM2DRAM_SINGLE_CH]);
 	printf("DRAM->SRAM   Single DMA %7.2lf GB/Sec\n",
-			perf_outcomes[DMA_PERF_DRAM2SRAM_SINGLE_CH]);
+			perf_outcomes[RESULTS_DMA_PERF_DRAM2SRAM_SINGLE_CH]);
 	printf("DRAM->DRAM   Single DMA %7.2lf GB/Sec\n",
-			perf_outcomes[DMA_PERF_DRAM2DRAM_SINGLE_CH]);
+			perf_outcomes[RESULTS_DMA_PERF_DRAM2DRAM_SINGLE_CH]);
 
 	printf("SRAM->DRAM   Multi  DMA %7.2lf GB/Sec\n",
-			perf_outcomes[DMA_PERF_SRAM2DRAM_MULTI_CH]);
+			perf_outcomes[RESULTS_DMA_PERF_SRAM2DRAM_MULTI_CH]);
 	printf("DRAM->SRAM   Multi  DMA %7.2lf GB/Sec\n",
-			perf_outcomes[DMA_PERF_DRAM2SRAM_MULTI_CH]);
+			perf_outcomes[RESULTS_DMA_PERF_DRAM2SRAM_MULTI_CH]);
 	printf("DRAM->DRAM   Multi  DMA %7.2lf GB/Sec\n",
-			perf_outcomes[DMA_PERF_DRAM2DRAM_MULTI_CH]);
+			perf_outcomes[RESULTS_DMA_PERF_DRAM2DRAM_MULTI_CH]);
 	printf("SRAM<->DRAM  Multi  DMA %7.2lf GB/Sec\n",
-			perf_outcomes[DMA_PERF_SRAM_DRAM_BIDIR_FULL_CH]);
+			perf_outcomes[RESULTS_DMA_PERF_SRAM_DRAM_BIDIR_FULL_CH]);
 
 	printf("DRAM->SRAM   5-ch   DMA %7.2lf GB/Sec\n",
-			perf_outcomes[DMA_PERF_DRAM2SRAM_5_CH]);
+			perf_outcomes[RESULTS_DMA_PERF_DRAM2SRAM_5_CH]);
 
 	return hltests_teardown(state);
 }
@@ -1441,8 +1684,11 @@ int main(int argc, const char **argv)
 	int num_tests = sizeof(dma_perf_tests) /
 				sizeof((dma_perf_tests)[0]);
 
-	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_DONT_CARE,
+	hltests_parser(argc, argv, usage, HLTEST_DEVICE_MASK_DONT_CARE,
 			dma_perf_tests, num_tests);
+
+	if (hltests_get_parser_run_disabled_tests())
+		printf("Running in debug mode, stress tests enabled!\n");
 
 	return hltests_run_group_tests("dma_perf", dma_perf_tests, num_tests,
 					hltests_setup, hltests_perf_teardown);

@@ -40,13 +40,18 @@ VOID test_open_by_busid(void **state)
 
 VOID test_open_twice(void **state)
 {
-	int fd, fd2;
+	int fd, fd2, rc;
+	char pci_bus_id[16];
+	const char *pciaddr = hltests_get_parser_pciaddr();
 
-	fd = hlthunk_open(HLTHUNK_DEVICE_DONT_CARE, NULL);
+	fd = hlthunk_open(HLTHUNK_DEVICE_DONT_CARE, pciaddr);
 	assert_in_range(fd, 0, INT_MAX);
 
-	fd2 = hlthunk_open(HLTHUNK_DEVICE_DONT_CARE, NULL);
-	assert_int_equal(fd2, -1);
+	rc = hlthunk_get_pci_bus_id_from_fd(fd, pci_bus_id, sizeof(pci_bus_id));
+	assert_int_equal(rc, 0);
+
+	fd2 = hlthunk_open(HLTHUNK_DEVICE_DONT_CARE, pci_bus_id);
+	assert_int_equal(fd2, -EBUSY);
 
 	hlthunk_close(fd);
 
@@ -55,10 +60,16 @@ VOID test_open_twice(void **state)
 
 VOID test_open_by_module_id(void **state)
 {
+	const char *pciaddr = hltests_get_parser_pciaddr();
 	int fd;
 
 	if (!hltests_get_parser_run_disabled_tests()) {
 		printf("Test is skipped because it is disabled by default\n");
+		skip();
+	}
+
+	if (pciaddr) {
+		printf("Test is skipped because pci address was given\n");
 		skip();
 	}
 
@@ -87,10 +98,14 @@ VOID test_close_without_releasing_debug(void **state)
 {
 	const char *pciaddr = hltests_get_parser_pciaddr();
 	struct hl_debug_args debug;
+	char pci_bus_id[16];
 	int fd, rc;
 
 	fd = hlthunk_open(HLTHUNK_DEVICE_DONT_CARE, pciaddr);
 	assert_in_range(fd, 0, INT_MAX);
+
+	rc = hlthunk_get_pci_bus_id_from_fd(fd, pci_bus_id, sizeof(pci_bus_id));
+	assert_int_equal(rc, 0);
 
 	memset(&debug, 0, sizeof(struct hl_debug_args));
 	debug.op = HL_DEBUG_OP_SET_MODE;
@@ -102,7 +117,7 @@ VOID test_close_without_releasing_debug(void **state)
 	rc = hlthunk_close(fd);
 	assert_int_equal(rc, 0);
 
-	fd = hlthunk_open(HLTHUNK_DEVICE_DONT_CARE, pciaddr);
+	fd = hlthunk_open(HLTHUNK_DEVICE_DONT_CARE, pci_bus_id);
 	assert_in_range(fd, 0, INT_MAX);
 
 	memset(&debug, 0, sizeof(struct hl_debug_args));
@@ -158,7 +173,7 @@ int main(int argc, const char **argv)
 	int num_tests = sizeof(open_close_tests) /
 			sizeof((open_close_tests)[0]);
 
-	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_DONT_CARE,
+	hltests_parser(argc, argv, usage, HLTEST_DEVICE_MASK_DONT_CARE,
 			open_close_tests, num_tests);
 
 	return hltests_run_group_tests("open_close", open_close_tests,

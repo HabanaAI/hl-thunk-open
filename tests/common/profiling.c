@@ -297,8 +297,14 @@ int hltest_bench_host_map(struct hltests_state *tests_state,
 				uint32_t n_iter, uint64_t *sum_measured_ns)
 {
 	uint64_t iter_time_ns = 0, total_time_ns = 0;
+	int rc, fd = tests_state->fd;
 	uint32_t i;
-	int rc;
+
+	/* Benchmarks will not be tested in palladium or simulator */
+	if (hltests_is_simulator(fd) || hltests_is_pldm(fd)) {
+		printf("Skipping benchmark tests in simulator or palladium\n");
+		return -EINVAL;
+	}
 
 	for (i = 0; i < n_iter; ++i) {
 		rc = hltest_bench_host_map_one_iter(
@@ -624,7 +630,7 @@ int main(int argc, const char **argv)
 {
 	int num_tests = sizeof(profiling_tests) / sizeof((profiling_tests)[0]);
 
-	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_DONT_CARE,
+	hltests_parser(argc, argv, usage, HLTEST_DEVICE_MASK_DONT_CARE,
 			profiling_tests, num_tests);
 
 	return hltests_run_group_tests("profiling", profiling_tests,

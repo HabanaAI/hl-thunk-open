@@ -78,7 +78,7 @@ static void *dma_thread_start(void *args)
 	pkt_info.dma.src_addr = params->host_src_device_va;
 	pkt_info.dma.dst_addr = params->device_addr;
 	pkt_info.dma.size = params->size;
-	pkt_info.dma.dma_dir = GOYA_DMA_HOST_TO_DRAM;
+	pkt_info.dma.dma_dir = DMA_DIR_HOST_TO_DRAM;
 	cb_size[0] = hltests_add_dma_pkt(fd, cb[0], cb_size[0], &pkt_info);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
@@ -118,7 +118,7 @@ static void *dma_thread_start(void *args)
 	pkt_info.dma.src_addr = params->device_addr;
 	pkt_info.dma.dst_addr = params->host_dst_device_va;
 	pkt_info.dma.size = params->size;
-	pkt_info.dma.dma_dir = GOYA_DMA_DRAM_TO_HOST;
+	pkt_info.dma.dma_dir = DMA_DIR_DRAM_TO_HOST;
 	cb_size[1] = hltests_add_dma_pkt(fd, cb[1], cb_size[1], &pkt_info);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
@@ -179,11 +179,24 @@ VOID test_dma_threads(void **state, uint32_t num_of_threads)
 	assert_int_equal(rc, 0);
 
 	if (!hw_ip.dram_enabled) {
-		printf("DRAM is disabled so skipping test\n");
-		skip();
+		if (hltests_is_gaudi2(fd) && tests_state->mmu) {
+			printf("DRAM disabled, using DRAM on host\n");
+		} else {
+			printf("DRAM is disabled so skipping test\n");
+			skip();
+		}
+	} else {
+		if (hltests_is_simulator(fd) &&
+				(num_of_threads * hw_ip.dram_page_size) >
+				hw_ip.dram_size) {
+			printf(
+				"SIM's DRAM (%lu[B]) is smaller than required allocation (%lu[B]) so skipping test\n",
+				hw_ip.dram_size, num_of_threads *
+				hw_ip.dram_page_size);
+			skip();
+		}
+		assert_in_range(num_of_threads * dma_size, 1, hw_ip.dram_size);
 	}
-
-	assert_in_range(num_of_threads * dma_size, 1, hw_ip.dram_size);
 
 	/* Allocate arrays for threads management */
 	thread_id = (pthread_t *) hlthunk_malloc(num_of_threads *
@@ -195,7 +208,7 @@ VOID test_dma_threads(void **state, uint32_t num_of_threads)
 	assert_non_null(thread_params);
 
 	/* Allocate memory on DRAM */
-	dram_addr = hltests_allocate_device_mem(fd, dma_size, NOT_CONTIGUOUS);
+	dram_addr = hltests_allocate_device_mem(fd, dma_size, 0, NOT_CONTIGUOUS);
 	assert_non_null(dram_addr);
 
 	/* Allocate memory on host and initiate threads parameters */
@@ -286,12 +299,32 @@ VOID test_dma_8_threads(void **state)
 
 VOID test_dma_64_threads(void **state)
 {
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	int fd = tests_state->fd;
+
+	if (hltests_is_pldm(fd))
+		skip();
+
 	END_TEST_FUNC(test_dma_threads(state, 64));
 }
 
 VOID test_dma_512_threads(void **state)
 {
-	END_TEST_FUNC(test_dma_threads(state, 512));
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	int fd = tests_state->fd;
+
+	if ((hltests_is_simulator(fd)) || (hltests_is_pldm(fd))) {
+		printf("Test is disabled on simulator or PLDM\n");
+		skip();
+	}
+
+	if (hltests_is_legacy_mode_enabled(fd)) {
+		END_TEST_FUNC(test_dma_threads(state, 512));
+	/* TODO - Temporarily set to 256 in ARC mode, disable once SW-85257 is solved */
+	} else {
+		printf("Temporarily run with 256 threads\n");
+		END_TEST_FUNC(test_dma_threads(state, 256));
+	}
 }
 
 VOID dma_4_queues(void **state, bool sram_only)
@@ -310,6 +343,11 @@ VOID dma_4_queues(void **state, bool sram_only)
 		cp_dma_cb_size[2] = {0};
 	uint16_t sob[3], mon[3];
 	int rc, fd = tests_state->fd, i;
+
+	if (!hltests_is_legacy_mode_enabled(fd)) {
+		printf("Test is temporarily disabled in ARC mode, skipping\n");
+		skip();
+	}
 
 	/* This test can't run on Goya, we have a similar test in goya_dma */
 	if (hlthunk_get_device_name_from_fd(fd) == HLTHUNK_DEVICE_GOYA) {
@@ -349,8 +387,23 @@ VOID dma_4_queues(void **state, bool sram_only)
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
+	if (!hw_ip.sram_size)
+		skip();
+
 	if ((!sram_only) && (!hw_ip.dram_enabled)) {
-		printf("DRAM is disabled so skipping test\n");
+		if (hltests_is_gaudi2(fd) && tests_state->mmu) {
+			printf("DRAM disabled, using DRAM on host\n");
+		} else {
+			printf("DRAM is disabled so skipping test\n");
+			skip();
+		}
+	}
+
+	if (hltests_is_simulator(fd) &&
+			(2 * hw_ip.dram_page_size) > hw_ip.dram_size) {
+		printf(
+			"SIM's DRAM (%lu[B]) is smaller than required allocation (%lu[B]) so skipping test\n",
+			hw_ip.dram_size, 2 * hw_ip.dram_page_size);
 		skip();
 	}
 
@@ -372,8 +425,7 @@ VOID dma_4_queues(void **state, bool sram_only)
 		dram_addr[1] = (void *) (sram_addr + 0x2600);
 	} else {
 		for (i = 0 ; i < 2 ; i++) {
-			dram_addr[i] = hltests_allocate_device_mem(fd, dma_size,
-								NOT_CONTIGUOUS);
+			dram_addr[i] = hltests_allocate_device_mem(fd, dma_size, 0, NOT_CONTIGUOUS);
 			assert_non_null(dram_addr[i]);
 		}
 	}
@@ -656,19 +708,172 @@ VOID test_dma_4_queues_sram_only(void **state)
 	END_TEST_FUNC(dma_4_queues(state, true));
 }
 
+VOID test_dma_endian_swap(void **state, bool dma_up_swap,
+					enum hltests_endian_swap endian_swap)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct hlthunk_hw_ip_info hw_ip;
+	struct hltests_pkt_info pkt_info;
+	void *host_src, *host_swapped, *host_dst, *device_addr, *execute_cb;
+	uint64_t host_src_addr, host_dst_addr;
+	uint32_t dma_size = 0x1000, execute_cb_size;
+	int rc, fd = tests_state->fd;
+
+	/* Goya's/Gaudi's DMA engines don't support endianness swapping */
+	if (hltests_is_goya(fd) || hltests_is_gaudi(fd)) {
+		printf("Test is not relevant for Goya/Gaudi, skipping\n");
+		skip();
+	}
+
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	assert_int_equal(rc, 0);
+
+	if (!hw_ip.dram_enabled) {
+		printf("Test is skipped because DRAM is disabled\n");
+		skip();
+	}
+
+	if (hltests_is_simulator(fd) &&
+			(2 * hw_ip.dram_page_size) > hw_ip.dram_size) {
+		printf(
+			"SIM's DRAM (%lu[B]) is smaller than required allocation (%lu[B]) so skipping test\n",
+			hw_ip.dram_size, 2 * hw_ip.dram_page_size);
+		skip();
+	}
+
+	/* Memory allocation */
+	host_src = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE_MAP);
+	assert_non_null(host_src);
+	hltests_fill_rand_values(host_src, dma_size);
+	host_src_addr = hltests_get_device_va_for_host_ptr(fd, host_src);
+
+	host_swapped = hlthunk_malloc(dma_size);
+	assert_non_null(host_swapped);
+	memcpy(host_swapped, host_src, dma_size);
+	hltests_endian_swap_values(host_swapped, dma_size, endian_swap);
+
+	host_dst = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE_MAP);
+	assert_non_null(host_dst);
+	memset(host_dst, 0, dma_size);
+	host_dst_addr = hltests_get_device_va_for_host_ptr(fd, host_dst);
+
+	device_addr = hltests_allocate_device_mem(fd, dma_size, 0, NOT_CONTIGUOUS);
+	assert_non_null(device_addr);
+
+	/* DMA: host->device */
+	execute_cb = hltests_create_cb(fd, HL_MAX_CB_SIZE, EXTERNAL, 0);
+	assert_non_null(execute_cb);
+
+	execute_cb_size = 0;
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.dma.src_addr = host_src_addr;
+	pkt_info.dma.dst_addr = (uint64_t) (uintptr_t) device_addr;
+	pkt_info.dma.size = dma_size;
+	pkt_info.dma.dma_dir = DMA_DIR_HOST_TO_DRAM;
+	pkt_info.dma.endian_swap = dma_up_swap ? ENDIAN_SWAP_NONE : endian_swap;
+	execute_cb_size = hltests_add_dma_pkt(fd, execute_cb, execute_cb_size,
+						&pkt_info);
+
+	hltests_submit_and_wait_cs(fd, execute_cb, execute_cb_size,
+				hltests_get_dma_down_qid(fd, STREAM0),
+				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
+
+	/* DMA: device->host */
+	execute_cb = hltests_create_cb(fd, HL_MAX_CB_SIZE, EXTERNAL, 0);
+	assert_non_null(execute_cb);
+
+	execute_cb_size = 0;
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.eb = EB_TRUE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.dma.src_addr = (uint64_t) (uintptr_t) device_addr;
+	pkt_info.dma.dst_addr = host_dst_addr;
+	pkt_info.dma.size = dma_size;
+	pkt_info.dma.dma_dir = DMA_DIR_DRAM_TO_HOST;
+	pkt_info.dma.endian_swap = dma_up_swap ? endian_swap : ENDIAN_SWAP_NONE;
+	execute_cb_size = hltests_add_dma_pkt(fd, execute_cb, execute_cb_size,
+						&pkt_info);
+
+	hltests_submit_and_wait_cs(fd, execute_cb, execute_cb_size,
+				hltests_get_dma_up_qid(fd, STREAM0),
+				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
+
+	/* Compare host memories */
+	rc = hltests_mem_compare(host_swapped, host_dst, dma_size);
+	assert_int_equal(rc, 0);
+
+	/* Cleanup */
+	rc = hltests_free_device_mem(fd, device_addr);
+	assert_int_equal(rc, 0);
+
+	rc = hltests_free_host_mem(fd, host_dst);
+	assert_int_equal(rc, 0);
+
+	hlthunk_free(host_swapped);
+
+	rc = hltests_free_host_mem(fd, host_src);
+	assert_int_equal(rc, 0);
+
+	END_TEST;
+}
+
+VOID test_dma_down_endian_swap_16(void **state)
+{
+	END_TEST_FUNC(test_dma_endian_swap(state, false, ENDIAN_SWAP_16));
+}
+
+VOID test_dma_up_endian_swap_16(void **state)
+{
+	END_TEST_FUNC(test_dma_endian_swap(state, true, ENDIAN_SWAP_16));
+}
+
+VOID test_dma_down_endian_swap_32(void **state)
+{
+	END_TEST_FUNC(test_dma_endian_swap(state, false, ENDIAN_SWAP_32));
+}
+
+VOID test_dma_up_endian_swap_32(void **state)
+{
+	END_TEST_FUNC(test_dma_endian_swap(state, true, ENDIAN_SWAP_32));
+}
+
+VOID test_dma_down_endian_swap_64(void **state)
+{
+	END_TEST_FUNC(test_dma_endian_swap(state, false, ENDIAN_SWAP_64));
+}
+
+VOID test_dma_up_endian_swap_64(void **state)
+{
+	END_TEST_FUNC(test_dma_endian_swap(state, true, ENDIAN_SWAP_64));
+}
+
 #ifndef HLTESTS_LIB_MODE
 
 const struct CMUnitTest dma_tests[] = {
 	cmocka_unit_test_setup(test_dma_8_threads,
-			hltests_ensure_device_operational),
+				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_dma_64_threads,
-			hltests_ensure_device_operational),
+				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_dma_512_threads,
-			hltests_ensure_device_operational),
+				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_dma_4_queues,
-			hltests_ensure_device_operational),
+				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_dma_4_queues_sram_only,
-			hltests_ensure_device_operational)
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_dma_down_endian_swap_16,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_dma_up_endian_swap_16,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_dma_down_endian_swap_32,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_dma_up_endian_swap_32,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_dma_down_endian_swap_64,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_dma_up_endian_swap_64,
+				hltests_ensure_device_operational)
 };
 
 static const char *const usage[] = {
@@ -679,9 +884,9 @@ static const char *const usage[] = {
 int main(int argc, const char **argv)
 {
 	int num_tests = sizeof(dma_tests) / sizeof((dma_tests)[0]);
+	unsigned long dev_mask = HLTEST_DEVICE_MASK_DONT_CARE;
 
-	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_DONT_CARE, dma_tests,
-			num_tests);
+	hltests_parser(argc, argv, usage, dev_mask, dma_tests, num_tests);
 
 	return hltests_run_group_tests("dma", dma_tests, num_tests,
 					hltests_setup, hltests_teardown);

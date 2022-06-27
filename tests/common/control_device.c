@@ -32,23 +32,28 @@ VOID test_print_hw_ip_info(void **state)
 
 	printf("\nDevice information:");
 	printf("\n-----------------------");
-	printf("\nPCI Device id        : 0x%x", hw_ip.device_id);
-	printf("\nCard name            : %s", hw_ip.card_name);
-	printf("\nDRAM enabled         : %d", hw_ip.dram_enabled);
-	printf("\nDRAM base address    : 0x%lx", hw_ip.dram_base_address);
-	printf("\nDRAM size            : %lu (0x%lx)", hw_ip.dram_size,
-							hw_ip.dram_size);
-	printf("\nSRAM base address    : 0x%lx", hw_ip.sram_base_address);
-	printf("\nSRAM size            : %u (0x%x)", hw_ip.sram_size,
-							hw_ip.sram_size);
-	printf("\nFirst user interrupt : %u",
-					hw_ip.first_available_interrupt_id);
+	printf("\nPCI Device id             : 0x%x", hw_ip.device_id);
+	printf("\nCard name                 : %s", hw_ip.card_name);
+	printf("\nDRAM enabled              : %d", hw_ip.dram_enabled);
+	printf("\nDRAM base address         : 0x%lx", hw_ip.dram_base_address);
+	printf("\nDRAM size                 : %luGB (0x%lx)", hw_ip.dram_size / 1024 / 1024 / 1024,
+								hw_ip.dram_size);
 
-	printf("\nTPC enabled mask     : 0x%x", hw_ip.tpc_enabled_mask);
-	printf("\nServer type          : %u", hw_ip.server_type);
+	printf("\nDRAM page size            : %luMB", hw_ip.dram_page_size / 1024 / 1024);
+	printf("\nSRAM base address         : 0x%lx", hw_ip.sram_base_address);
+	printf("\nSRAM size                 : %uMB (0x%x)", hw_ip.sram_size / 1024 / 1024,
+								hw_ip.sram_size);
 
-	if (hltests_is_gaudi(fd))
-		printf("\nModule ID            : %d", hw_ip.module_id);
+	printf("\nFirst user interrupt      : %u", hw_ip.first_available_interrupt_id);
+	printf("\nNumber of user interrupts : %u", hw_ip.number_of_user_interrupts);
+	printf("\nTPC enabled mask          : 0x%lx", hw_ip.tpc_enabled_mask_ext);
+	printf("\nServer type               : %u", hw_ip.server_type);
+
+	if (!hltests_is_goya(fd))
+		printf("\nModule ID                 : %d", hw_ip.module_id);
+
+	if (hltests_is_gaudi2(fd))
+		printf("\nDecoder enabled mask      : 0x%x\n", hw_ip.decoder_enabled_mask);
 
 	printf("\n\n");
 
@@ -89,7 +94,8 @@ VOID print_engine_name(int fd, uint32_t engine_id)
 			fail_msg("Unexpected engine id %d\n", engine_id);
 		}
 	} else {
-		fail_msg("Unexpected device\n");
+		fail_msg("Unexpected device id %d\n",
+				hlthunk_get_device_name_from_fd(fd));
 	}
 
 	END_TEST;
@@ -362,6 +368,10 @@ VOID print_events_counters(void **state, bool aggregate)
 		hw_events_arr_size = GAUDI_EVENT_SIZE;
 		break;
 
+	case HLTHUNK_DEVICE_GAUDI2:
+		hw_events_arr_size = 1024; /* TODO: replace to real value */
+		break;
+
 	default:
 		fail_msg("Invalid device %d\n", rc);
 		EXIT_FROM_TEST;
@@ -371,7 +381,7 @@ VOID print_events_counters(void **state, bool aggregate)
 							sizeof(uint32_t));
 	assert_int_not_equal(hw_events_arr, 0);
 
-	rc = hlthunk_get_hw_events_arr(fd, aggregate, hw_events_arr_size,
+	rc = hlthunk_get_hw_events_arr(fd, aggregate, hw_events_arr_size * sizeof(uint32_t),
 					hw_events_arr);
 	assert_int_equal(rc, 0);
 
@@ -416,6 +426,11 @@ VOID test_print_pll_info(void **state)
 	struct hlthunk_hw_ip_info hw_ip;
 	uint32_t pll_idx, max_pll_idx;
 	struct hlthunk_pll_frequency_info freq_info;
+
+	if (hltests_is_simulator(fd)) {
+		printf("Test is not required on simulator\n");
+		skip();
+	}
 
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
@@ -464,9 +479,60 @@ VOID test_print_hw_asic_status(void **state)
 		hw_asic_status.open_stats.open_counter);
 	printf("\nLast open period (ms) : %ld",
 		hw_asic_status.open_stats.last_open_period_ms);
+	printf("\nCompute CTX active          : %u",
+		hw_asic_status.open_stats.is_compute_ctx_active);
+	printf("\nCompute CTX is in release : %u",
+		hw_asic_status.open_stats.compute_ctx_in_release);
 	printf("\nTimestamp (sec)       : %ld", hw_asic_status.timestamp_sec);
 
 	printf("\n\n");
+
+	END_TEST;
+}
+
+VOID test_event_record(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct hlthunk_event_record_open_dev_time open_dev_time;
+	struct hlthunk_event_record_cs_timeout cs_timeout;
+	struct hlthunk_event_record_razwi_event razwi;
+	struct hlthunk_event_record_undefined_opcode undef_opcode;
+	int rc, fd = tests_state->fd;
+
+	rc = hlthunk_get_event_record(fd, HLTHUNK_OPEN_DEV, &open_dev_time);
+	assert_int_equal(rc, 0);
+
+	rc = hlthunk_get_event_record(fd, HLTHUNK_CS_TIMEOUT, &cs_timeout);
+	assert_int_equal(rc, 0);
+
+	rc = hlthunk_get_event_record(fd, HLTHUNK_RAZWI_EVENT, &razwi);
+	assert_int_equal(rc, 0);
+
+	rc = hlthunk_get_event_record(fd, HLTHUNK_UNDEFINED_OPCODE, &undef_opcode);
+	assert_int_equal(rc, 0);
+
+	END_TEST;
+}
+
+VOID test_get_dev_memalloc_page_orders(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	uint64_t page_order_bitmask = ULLONG_MAX;
+	int fd = tests_state->fd, rc;
+
+	/*
+	 * as many ASICs that are not supporting multiple page size in device memory
+	 * allocation are expected to return 0-ed mask, initializing to all 1-s will
+	 * catch errors better
+	 */
+	page_order_bitmask = ULLONG_MAX;
+
+	rc = hlthunk_get_dev_memalloc_page_orders(fd, &page_order_bitmask);
+	assert_int_equal(rc, 0);
+
+	printf("device mem alloc page order mask %#lx\n", page_order_bitmask);
+
+	assert_int_equal(page_order_bitmask, 0);
 
 	END_TEST;
 }
@@ -490,7 +556,9 @@ const struct CMUnitTest control_tests[] = {
 	cmocka_unit_test(test_print_events_counters_aggregate),
 	cmocka_unit_test(test_print_pci_bdf),
 	cmocka_unit_test(test_print_pll_info),
-	cmocka_unit_test(test_print_hw_asic_status)
+	cmocka_unit_test(test_print_hw_asic_status),
+	cmocka_unit_test(test_event_record),
+	cmocka_unit_test(test_get_dev_memalloc_page_orders),
 };
 
 static const char *const usage[] = {
@@ -502,7 +570,7 @@ int main(int argc, const char **argv)
 {
 	int num_tests = sizeof(control_tests) / sizeof((control_tests)[0]);
 
-	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_DONT_CARE,
+	hltests_parser(argc, argv, usage, HLTEST_DEVICE_MASK_DONT_CARE,
 			control_tests, num_tests);
 
 	if (!hltests_get_parser_run_disabled_tests()) {

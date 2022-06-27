@@ -1,36 +1,44 @@
 // SPDX-License-Identifier: MIT
 
 /*
- * Copyright 2019 HabanaLabs, Ltd.
+ * Copyright 2019-2022 HabanaLabs, Ltd.
  * All Rights Reserved.
  */
-
 #include "hlthunk_tests.h"
 #include "hlthunk.h"
 #include "gaudi/gaudi.h"
 #include "gaudi/gaudi_packets.h"
 #include "gaudi/asic_reg/gaudi_regs.h"
 
+#include "gaudi/gaudi_async_events.h"
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
 #include <setjmp.h>
 #include <pthread.h>
+#include <unistd.h>
 
-static uint32_t gaudi_add_nop_pkt(void *buffer, uint32_t buf_off, bool eb,
-					bool mb)
+static uint32_t gaudi_add_nop_pkt(void *buffer, uint32_t buf_off,
+					struct hltests_pkt_info *pkt_info)
 {
 	struct packet_nop packet = {0};
 
 	packet.opcode = PACKET_NOP;
-	packet.eng_barrier = eb;
-	packet.msg_barrier = mb;
+	packet.eng_barrier = pkt_info->eb;
+	packet.msg_barrier = pkt_info->mb;
 	packet.reg_barrier = 1;
 
 	packet.ctl = htole32(packet.ctl);
 
 	return hltests_add_packet_to_cb(buffer, buf_off, &packet,
 						sizeof(packet));
+}
+
+static uint32_t gaudi_add_msg_barrier_pkt(void *buffer, uint32_t buf_off,
+		struct hltests_pkt_info *pkt_info)
+{
+	/* Not supported in Gaudi */
+	return buf_off;
 }
 
 static uint32_t gaudi_add_wreg32_pkt(void *buffer, uint32_t buf_off,
@@ -268,7 +276,7 @@ static uint32_t gaudi_add_load_and_exe_pkt(void *buffer, uint32_t buf_off,
 						sizeof(packet));
 }
 
-static uint64_t gaudi_get_fence_addr(uint32_t qid, bool cmdq_fence)
+static uint64_t gaudi_get_fence_addr(int fd, uint32_t qid, bool cmdq_fence)
 {
 	uint64_t fence_addr = 0;
 
@@ -475,7 +483,7 @@ out:
 	return buf_off;
 }
 
-static uint32_t gaudi_add_monitor_and_fence(
+static uint32_t gaudi_add_monitor_and_fence(int fd,
 			enum hltests_dcore_separation_mode dcore_sep_mode,
 			void *buffer, uint32_t buf_off,
 			struct hltests_monitor_and_fence *mon_and_fence_info)
@@ -489,7 +497,7 @@ static uint32_t gaudi_add_monitor_and_fence(
 	if (mon_and_fence_info->mon_address)
 		address = mon_and_fence_info->mon_address;
 	else
-		address = gaudi_get_fence_addr(mon_and_fence_info->queue_id,
+		address = gaudi_get_fence_addr(fd, mon_and_fence_info->queue_id,
 							cmdq_fence);
 
 	mon_info.mon_address = address;
@@ -708,37 +716,43 @@ static uint32_t gaudi_add_arb_en_pkt(void *buffer, uint32_t buf_off,
 	return buf_off;
 }
 
-static uint32_t gaudi_get_dma_down_qid(
+static uint32_t gaudi_add_cq_config_pkt(void *buffer, uint32_t buf_off,
+					struct hltests_cq_config *cq_config)
+{
+	return buf_off;
+}
+
+static uint32_t gaudi_get_dma_down_qid(int fd,
 			enum hltests_dcore_separation_mode dcore_sep_mode,
 			enum hltests_stream_id stream)
 {
 	return GAUDI_QUEUE_ID_DMA_0_0 + stream;
 }
 
-static uint32_t gaudi_get_dma_up_qid(
+static uint32_t gaudi_get_dma_up_qid(int fd,
 			enum hltests_dcore_separation_mode dcore_sep_mode,
 			enum hltests_stream_id stream)
 {
 	return GAUDI_QUEUE_ID_DMA_1_0 + stream;
 }
 
-static uint8_t gaudi_get_ddma_cnt(
+static uint8_t gaudi_get_ddma_cnt(int fd,
 			enum hltests_dcore_separation_mode dcore_sep_mode)
 {
 	return DMA_NUMBER_OF_CHANNELS - 2;
 }
 
-static uint32_t gaudi_get_ddma_qid(
+static uint32_t gaudi_get_ddma_qid(int fd,
 			enum hltests_dcore_separation_mode dcore_sep_mode,
 			int dma_ch,
 			enum hltests_stream_id stream)
 {
-	assert_in_range(dma_ch, 0, gaudi_get_ddma_cnt(dcore_sep_mode) - 1);
+	assert_in_range(dma_ch, 0, gaudi_get_ddma_cnt(fd, dcore_sep_mode) - 1);
 
 	return GAUDI_QUEUE_ID_DMA_2_0 + dma_ch * NUM_OF_STREAMS + stream;
 }
 
-static uint32_t gaudi_get_tpc_qid(
+static uint32_t gaudi_get_tpc_qid(int fd,
 			enum hltests_dcore_separation_mode dcore_sep_mode,
 			uint8_t tpc_id,	enum hltests_stream_id stream)
 {
@@ -752,28 +766,54 @@ static uint32_t gaudi_get_mme_qid(
 	return GAUDI_QUEUE_ID_MME_0_0 + mme_id * 4 + stream;
 }
 
-static uint8_t gaudi_get_tpc_cnt(
+static uint8_t gaudi_get_tpc_cnt(int fd,
 			enum hltests_dcore_separation_mode dcore_sep_mode)
 {
 	return TPC_NUMBER_OF_ENGINES;
 }
 
-static uint8_t gaudi_get_mme_cnt(
-			enum hltests_dcore_separation_mode dcore_sep_mode)
+static uint8_t gaudi_get_mme_cnt(int fd,
+			enum hltests_dcore_separation_mode dcore_sep_mode,
+			bool master_slave_mode)
 {
 	return MME_NUMBER_OF_MASTER_ENGINES;
 }
 
-static uint16_t gaudi_get_first_avail_sob(
-			enum hltests_dcore_separation_mode dcore_sep_mode)
+static uint16_t gaudi_get_first_avail_sob(int fd)
 {
-	return 0;
+	struct hlthunk_sync_manager_info info = {0};
+
+	hlthunk_get_sync_manager_info(fd, HL_GAUDI_EN_DCORE, &info);
+
+	return info.first_available_sync_object;
 }
 
-static uint16_t gaudi_get_first_avail_mon(
-			enum hltests_dcore_separation_mode dcore_sep_mode)
+static uint16_t gaudi_get_first_avail_mon(int fd)
 {
-	return 0;
+	struct hlthunk_sync_manager_info info = {0};
+
+	hlthunk_get_sync_manager_info(fd, HL_GAUDI_EN_DCORE, &info);
+
+	return info.first_available_monitor;
+}
+
+static uint16_t gaudi_get_first_avail_cq(int fd)
+{
+	struct hlthunk_sync_manager_info info = {0};
+
+	hlthunk_get_sync_manager_info(fd, 0, &info);
+
+	return info.first_available_cq;
+}
+
+static uint64_t gaudi_get_sob_base_addr(int fd)
+{
+	return CFG_BASE + mmSYNC_MNGR_E_N_SYNC_MNGR_OBJS_SOB_OBJ_0;
+}
+
+static uint16_t gaudi_get_cache_line_size(void)
+{
+	return DEVICE_CACHE_LINE_SIZE;
 }
 
 static int gaudi_dram_pool_alloc(struct hltests_device *hdev, uint64_t size,
@@ -812,7 +852,18 @@ int gaudi_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us)
 	return hltests_wait_for_legacy_cs(fd, seq, timeout_us);
 }
 
-static int gaudi_dram_pool_init(struct hltests_device *hdev)
+static int gaudi_wait_for_cs_until_not_busy(int fd, uint64_t seq)
+{
+	int status;
+
+	do {
+		status = gaudi_wait_for_cs(fd, seq, WAIT_FOR_CS_DEFAULT_TIMEOUT);
+	} while (status == HL_WAIT_CS_STATUS_BUSY);
+
+	return status;
+}
+
+static int gaudi_asic_priv_init(struct hltests_device *hdev)
 {
 	struct hlthunk_hw_ip_info hw_ip;
 	int rc;
@@ -831,7 +882,7 @@ static int gaudi_dram_pool_init(struct hltests_device *hdev)
 	return 0;
 }
 
-static void gaudi_dram_pool_fini(struct hltests_device *hdev)
+static void gaudi_asic_priv_fini(struct hltests_device *hdev)
 {
 	if (hdev->priv)
 		hltests_mem_pool_fini(hdev->priv);
@@ -929,6 +980,11 @@ static const char *gaudi_stringify_pll_type(uint32_t pll_idx, uint8_t type_idx)
 	}
 }
 
+uint64_t gaudi_get_dram_va_hint_mask(void)
+{
+	return ULONG_MAX;
+}
+
 uint64_t gaudi_get_dram_va_reserved_addr_start(void)
 {
 	return 0;
@@ -936,7 +992,7 @@ uint64_t gaudi_get_dram_va_reserved_addr_start(void)
 
 static uint32_t gaudi_get_sob_id(uint32_t base_addr_off)
 {
-       return (base_addr_off - (mmSYNC_MNGR_W_S_SYNC_MNGR_OBJS_SOB_OBJ_0)) / 4;
+	return (base_addr_off - (mmSYNC_MNGR_W_S_SYNC_MNGR_OBJS_SOB_OBJ_0)) / 4;
 }
 
 static uint16_t gaudi_get_mon_cnt_per_dcore(void)
@@ -963,12 +1019,37 @@ static int gaudi_get_stream_master_qid_arr(uint32_t **qid_arr)
 	return ARRAY_SIZE(gaudi_stream_master);
 }
 
+static int gaudi_get_async_event_id(enum hltests_async_event_id hltests_event_id,
+					uint32_t *asic_event_id)
+{
+	switch (hltests_event_id) {
+	case FIX_POWER_ENV_S:
+		*asic_event_id = GAUDI_EVENT_FIX_POWER_ENV_S;
+		break;
+
+	case FIX_POWER_ENV_E:
+		*asic_event_id = GAUDI_EVENT_FIX_POWER_ENV_E;
+		break;
+
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+uint32_t gaudi_get_max_pkt_size(int fd, bool mb, bool eb, uint32_t qid)
+{
+	return sizeof(struct packet_lin_dma);
+}
+
 static const struct hltests_asic_funcs gaudi_funcs = {
 	.add_arb_en_pkt = gaudi_add_arb_en_pkt,
 	.add_monitor_and_fence = gaudi_add_monitor_and_fence,
 	.add_monitor = gaudi_add_monitor,
 	.get_fence_addr = gaudi_get_fence_addr,
 	.add_nop_pkt = gaudi_add_nop_pkt,
+	.add_msg_barrier_pkt = gaudi_add_msg_barrier_pkt,
 	.add_wreg32_pkt = gaudi_add_wreg32_pkt,
 	.add_arb_point_pkt = gaudi_add_arb_point_pkt,
 	.add_msg_long_pkt = gaudi_add_msg_long_pkt,
@@ -978,6 +1059,7 @@ static const struct hltests_asic_funcs gaudi_funcs = {
 	.add_fence_pkt = gaudi_add_fence_pkt,
 	.add_dma_pkt = gaudi_add_dma_pkt,
 	.add_cp_dma_pkt = gaudi_add_cp_dma_pkt,
+	.add_cb_list_pkt = gaudi_add_cb_list_pkt,
 	.add_load_and_exe_pkt = gaudi_add_load_and_exe_pkt,
 	.get_dma_down_qid = gaudi_get_dma_down_qid,
 	.get_dma_up_qid = gaudi_get_dma_up_qid,
@@ -989,15 +1071,20 @@ static const struct hltests_asic_funcs gaudi_funcs = {
 	.get_mme_cnt = gaudi_get_mme_cnt,
 	.get_first_avail_sob = gaudi_get_first_avail_sob,
 	.get_first_avail_mon = gaudi_get_first_avail_mon,
-	.dram_pool_init = gaudi_dram_pool_init,
-	.dram_pool_fini = gaudi_dram_pool_fini,
+	.get_first_avail_cq = gaudi_get_first_avail_cq,
+	.get_sob_base_addr = gaudi_get_sob_base_addr,
+	.get_cache_line_size = gaudi_get_cache_line_size,
+	.asic_priv_init = gaudi_asic_priv_init,
+	.asic_priv_fini = gaudi_asic_priv_fini,
 	.dram_pool_alloc = gaudi_dram_pool_alloc,
 	.dram_pool_free = gaudi_dram_pool_free,
 	.submit_cs = gaudi_submit_cs,
 	.wait_for_cs = gaudi_wait_for_cs,
+	.wait_for_cs_until_not_busy = gaudi_wait_for_cs_until_not_busy,
 	.get_max_pll_idx = gaudi_get_max_pll_idx,
 	.stringify_pll_idx = gaudi_stringify_pll_idx,
 	.stringify_pll_type = gaudi_stringify_pll_type,
+	.get_dram_va_hint_mask = gaudi_get_dram_va_hint_mask,
 	.get_dram_va_reserved_addr_start = gaudi_get_dram_va_reserved_addr_start,
 	.get_sob_id = gaudi_get_sob_id,
 	.get_mon_cnt_per_dcore = gaudi_get_mon_cnt_per_dcore,
@@ -1007,14 +1094,4 @@ static const struct hltests_asic_funcs gaudi_funcs = {
 void gaudi_tests_set_asic_funcs(struct hltests_device *hdev)
 {
 	hdev->asic_funcs = &gaudi_funcs;
-}
-
-static void *gaudi_mmap(int fd, size_t size, off_t offset)
-{
-	return mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, offset);
-}
-
-static int gaudi_munmap(void *addr, size_t size)
-{
-	return munmap(addr, size);
 }

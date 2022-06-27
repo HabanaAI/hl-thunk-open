@@ -131,11 +131,6 @@ VOID test_hbm_read_temperature(void **state)
 	uint64_t base;
 	bool invalid;
 
-	if (tests_state->asic_type != HLTHUNK_DEVICE_GAUDI) {
-		printf("Test is skipped because device is not GAUDI\n");
-		skip();
-	}
-
 	for (device = 0; device < GAUDI_HBM_DEVICES; device++) {
 		base = GAUDI_HBM_CFG_BASE + device * GAUDI_HBM_CFG_OFFSET;
 
@@ -170,11 +165,6 @@ VOID test_hbm_read_interrupts(void **state)
 	int device, ch;
 	uint32_t val, val2;
 	uint64_t base;
-
-	if (tests_state->asic_type != HLTHUNK_DEVICE_GAUDI) {
-		printf("Test is skipped because device is not GAUDI\n");
-		skip();
-	}
 
 	for (device = 0; device < GAUDI_HBM_DEVICES; device++) {
 		base = GAUDI_HBM_CFG_BASE + device * GAUDI_HBM_CFG_OFFSET;
@@ -253,11 +243,6 @@ VOID test_read_every_4KB_registers_block(void **state)
 	uint64_t addr, end;
 	uint32_t val;
 
-	if (tests_state->asic_type != HLTHUNK_DEVICE_GAUDI) {
-		printf("Test is skipped because device is not GAUDI\n");
-		skip();
-	}
-
 	addr = CFG_BASE;
 	end = CFG_BASE + 0x2000000;
 	while (addr < end) {
@@ -305,11 +290,6 @@ VOID test_read_through_pci(void **state)
 	uint64_t addr, end;
 	uint32_t val, prot;
 
-	if (tests_state->asic_type != HLTHUNK_DEVICE_GAUDI) {
-		printf("Test is skipped because device is not GAUDI\n");
-		skip();
-	}
-
 	memset(&cfg, 0, sizeof(struct read_through_pci_cfg));
 
 	if (!config_filename)
@@ -354,11 +334,6 @@ VOID test_read_e2e_rl_cfg(void **state)
 	uint64_t block_offset;
 	uint32_t val;
 	int i;
-
-	if (tests_state->asic_type != HLTHUNK_DEVICE_GAUDI) {
-		printf("Test is skipped because device is not GAUDI\n");
-		skip();
-	}
 
 	block_offset = mmSIF_RTR_CTRL_1_E2E_HBM_WR_SIZE -
 			mmSIF_RTR_CTRL_0_E2E_HBM_WR_SIZE;
@@ -648,7 +623,7 @@ int main(int argc, const char **argv)
 	int num_tests = sizeof(gaudi_root_debug_tests) /
 			sizeof((gaudi_root_debug_tests)[0]);
 
-	hltests_parser(argc, argv, usage, HLTHUNK_DEVICE_GAUDI,
+	hltests_parser(argc, argv, usage, HLTEST_DEVICE_MASK_GAUDI_ALL,
 			gaudi_root_debug_tests, num_tests);
 
 	if (access("/sys/kernel/debug", R_OK)) {

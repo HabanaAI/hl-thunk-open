@@ -17,7 +17,7 @@ int main(int argc, const char **argv)
 	void *state;
 	int rc;
 
-	hltests_parser(argc, argv, NULL, HLTHUNK_DEVICE_DONT_CARE);
+	hltests_parser(argc, argv, NULL, HLTEST_DEVICE_MASK_DONT_CARE);
 
 	rc = hltests_init();
 	if (rc) {
@@ -40,7 +40,7 @@ int main(int argc, const char **argv)
 	rc = test_host_dram_perf(&state);
 
 	printf("HOST->DRAM             %7.2lf GB/Sec\n",
-		tests_state->perf_outcomes[DMA_PERF_HOST2DRAM]);
+		tests_state->perf_outcomes[RESULTS_DMA_PERF_HOST2DRAM]);
 
 	printf("\nRunning test to measure command submission latency\n");
 
