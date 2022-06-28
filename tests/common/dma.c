@@ -175,6 +175,12 @@ VOID test_dma_threads(void **state, uint32_t num_of_threads)
 	uint16_t sob0, sob8;
 	int rc, fd = tests_state->fd;
 
+	/* TODO - remove this when SW-85257 is resolved */
+	if (!hltests_is_legacy_mode_enabled(fd)) {
+		printf("Test is temporarily disabled in ARC mode\n");
+		skip();
+	}
+
 	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
 	assert_int_equal(rc, 0);
 
