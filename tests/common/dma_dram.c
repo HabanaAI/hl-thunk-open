@@ -523,6 +523,12 @@ VOID test_dma_entire_dram_random_2MB(void **state)
 		skip();
 	}
 
+	/* TODO: enable once SW-93827 is resolved */
+	if (hltests_is_gaudi2(fd) && hltests_is_simulator(fd)) {
+		printf("This test is temporarily disabled for gaudi2 simulator\n");
+		skip();
+	}
+
 	END_TEST_FUNC(dma_entire_dram_random(state,
 					16 * 1024 * 1024, 2 * 1024 * 1024));
 }
