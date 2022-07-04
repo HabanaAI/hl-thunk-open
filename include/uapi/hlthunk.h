@@ -372,43 +372,6 @@ struct hlthunk_event_record_undefined_opcode {
 	uint32_t stream_id;
 };
 
-#define TPM_PCR_DATA_BUF_SZ	256
-#define TPM_PCR_QUOTE_BUF_SZ	510		/* (512 - 2) 2 bytes used for size */
-#define TPM_SIGNATURE_BUF_SZ	255		/* (256 - 1) 1 byte used for size */
-#define TPM_PUB_DATA_BUF_SZ	510		/* (512 - 2) 2 bytes used for size */
-#define TPM_CERTIFICATE_BUF_SZ	2046	/* (2048 - 2) 2 bytes used for size */
-
-/**
- * struct hl_info_tpm - attestation data of the boot from the TPM
- * @nonce: number only used once. random number provided by host. this also passed to the quote
- *         command as a qualifying data.
- * @pcr_quote_len: length of the attestation quote data in bytes
- * @pub_data_len: length of the public data in bytes
- * @certificate_len: length of the certificate in bytes
- * @pcr_num_reg: number of PCR registers in the pcr_data array
- * @pcr_reg_len: length of each PCR register in the pcr_data array in bytes
- * @quote_sig_len: length of the attestation signature in bytes
- * @pcr_data: raw values of the PCR registers from the TPM
- * @pcr_quote: attestation data structure (TPM2B_ATTEST) from the TPM
- * @public_data: public key and certificate info from the TPM (outPublic + name + qualifiedName)
- * @certificate: certificate for the attestation data, read from the TPM NV mem
- * @quote_sig: signature structure (TPMT_SIGNATURE) of the attestation data
- */
-struct hlthunk_tpm_info {
-	uint32_t nonce;
-	uint16_t pcr_quote_len;
-	uint16_t pub_data_len;
-	uint16_t certificate_len;
-	uint8_t pcr_num_reg;
-	uint8_t pcr_reg_len;
-	uint8_t quote_sig_len;
-	uint8_t pcr_data[TPM_PCR_DATA_BUF_SZ];
-	uint8_t pcr_quote[TPM_PCR_QUOTE_BUF_SZ];
-	uint8_t public_data[TPM_PUB_DATA_BUF_SZ];
-	uint8_t certificate[TPM_CERTIFICATE_BUF_SZ];
-	uint8_t quote_sig[TPM_SIGNATURE_BUF_SZ];
-};
-
 struct hlthunk_functions_pointers {
 	/*
 	 * Functions that will be wrapped with profiler code to enable
