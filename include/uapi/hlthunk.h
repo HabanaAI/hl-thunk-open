@@ -1574,7 +1574,7 @@ hlthunk_public int hlthunk_notifier_release(int fd, int handle);
  *  number greater from zero - indicates the notifications count since the last read.
  * @param flags of function's operations. Not used for now.
  * @param timeout in milliseconds. If the timeout value is 0, the function
- *  will block until an event is received.
+ *  will return immediately, even if no notification was received.
  * @return 0 for success, a negative value for failure
  */
 hlthunk_public int hlthunk_notifier_recv(int fd, int handle, uint64_t *notifier_events,
