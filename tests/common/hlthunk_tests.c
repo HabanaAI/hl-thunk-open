@@ -2100,7 +2100,8 @@ int hltests_submit_and_wait_cs(int fd, void *cb_ptr, uint32_t cb_size,
 	assert_int_equal(rc, 0);
 
 	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
-	assert_int_equal(rc, expected_val);
+	if (rc)
+		assert_int_equal(rc, expected_val);
 
 	if (destroy_cb) {
 		rc = hltests_destroy_cb(fd, cb_ptr);
