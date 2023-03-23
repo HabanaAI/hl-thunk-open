@@ -29,12 +29,15 @@
 #include <sys/eventfd.h>
 #include <sys/poll.h>
 #include <limits.h>
+#include <sys/utsname.h>
 
 extern const char *HLTHUNK_SHA1_VERSION;
 
 int hlthunk_debug_level = HLTHUNK_DEBUG_LEVEL_NA;
 #define BUSID_WITHOUT_DOMAIN_LEN	7
 #define BUSID_WITH_DOMAIN_LEN		12
+
+#define ACCEL_MAJOR			261
 
 /*
  * This table holds the pointers to the functions that should be called for
@@ -114,6 +117,68 @@ static int hlthunk_open_by_busid(const char *busid, enum hlthunk_node_type type)
 		return -EINVAL;
 
 	return hlthunk_open_minor(device_index, type);
+}
+
+struct kernel_release {
+	uint32_t version;
+	uint32_t patchlevel;
+	uint32_t sublevel;
+	char extraversion[_UTSNAME_RELEASE_LENGTH];
+};
+
+static int get_kernel_release(struct kernel_release *release)
+{
+	struct utsname uts;
+	int rc;
+
+	rc = uname(&uts);
+	if (rc)
+		return rc;
+
+	rc = sscanf(uts.release, "%u.%u.%u-%s", &release->version, &release->patchlevel,
+			&release->sublevel, release->extraversion);
+	if (rc < 0)
+		return rc;
+
+	return 0;
+}
+
+static bool is_drm_accel_enabled(void)
+{
+	struct kernel_release release;
+	int rc;
+
+	memset(&release, 0, sizeof(release));
+
+	rc = get_kernel_release(&release);
+	if (rc)
+		return false;
+
+	/* CONFIG_DRM_ACCEL is expected to be enabled on kernel versions >= 6.2 */
+	return (release.version > 6 || (release.version == 6 && release.patchlevel >= 2));
+}
+
+static void get_major_minor_from_control_major_minor(int ctrl_major, int ctrl_minor, int *major,
+							int *minor)
+{
+	/*
+	 * When using the habanalabs devices and not registering to the accel subsystem and, a
+	 * single major number is dynamically allocated and used for both the compute and the
+	 * control devices, and their minor numbers are N and N+1 respectively.
+	 *
+	 * When registering to the accel subsystem, the dynamic major number is used only for the
+	 * control device, while the compute device has a fixed major value of accel devices.
+	 * It is currently assumed that no other types of accel devices exist on the system, and
+	 * thus the accel minor number N which is assigned to the compute device, equals the minor
+	 * value N which is assigned to the control device by driver.
+	 */
+	if (is_drm_accel_enabled()) {
+		*major = ACCEL_MAJOR;
+		*minor = ctrl_minor;
+	} else {
+		*major = ctrl_major;
+		*minor = ctrl_minor - 1;
+	}
 }
 
 hlthunk_public int hlthunk_get_device_index_from_pci_bus_id(const char *busid)
@@ -214,11 +279,12 @@ hlthunk_public enum hlthunk_device_name hlthunk_get_device_name_from_fd(int fd)
 
 hlthunk_public int hlthunk_get_pci_bus_id_from_fd(int fd, char *pci_bus_id, int len)
 {
-	char pci_bus_file_name[128], read_busid[16];
+	char sysfs_device_dir[128], pci_bus_file_name[128], read_busid[16];
 	const char *base_path = "/sys/dev/char";
 	const char *pci_bus_prefix = "pci_addr";
-	int rc, major_num, minor_num, pci_fd;
+	int rc, major, minor, pci_fd;
 	struct stat fd_stat;
+	DIR *dir;
 
 	if (!pci_bus_id)
 		return -EINVAL;
@@ -227,17 +293,25 @@ hlthunk_public int hlthunk_get_pci_bus_id_from_fd(int fd, char *pci_bus_id, int 
 	if (rc < 0)
 		return rc;
 
-	major_num = major(fd_stat.st_rdev);
-	minor_num = minor(fd_stat.st_rdev);
+	major = major(fd_stat.st_rdev);
+	minor = minor(fd_stat.st_rdev);
 
-	/* If the FD represents a control device, use the real device to get
-	 * the PCI BDF
+	/*
+	 * If the FD represents a control device, use the real device to get the PCI BDF.
+	 * To distinguish between the 2 device types, check the existence of the
+	 * "/sys/dev/char/<major>:<minor>/device" folder, because a control device has no parent
+	 * device behind it, and therefore it doesn't have a sysfs "device"-link.
 	 */
-	if (minor_num & 1)
-		minor_num--;
+	snprintf(sysfs_device_dir, sizeof(sysfs_device_dir), "%s/%d:%d/device",
+			base_path, major, minor);
+	dir = opendir(sysfs_device_dir);
+	if (dir)
+		closedir(dir);
+	else
+		get_major_minor_from_control_major_minor(major, minor, &major, &minor);
 
-	snprintf(pci_bus_file_name, 127, "%s/%d:%d/device/%s",
-			base_path, major_num, minor_num, pci_bus_prefix);
+	snprintf(pci_bus_file_name, sizeof(pci_bus_file_name), "%s/%d:%d/device/%s",
+			base_path, major, minor, pci_bus_prefix);
 
 	pci_fd = open(pci_bus_file_name, O_RDONLY);
 	if (pci_fd < 0)
@@ -461,8 +535,9 @@ hlthunk_public int hlthunk_open_by_module_id(uint32_t module_id)
 	if (rc != 2)
 		return -1;
 
-	sprintf(sys_file_name, "%s%d:%d/device/%s", char_base_path, major, minor - 1,
-						pci_addr_prefix);
+	/* Use the primary device to get the PCI address */
+	get_major_minor_from_control_major_minor(major, minor, &major, &minor);
+	sprintf(sys_file_name, "%s%d:%d/device/%s", char_base_path, major, minor, pci_addr_prefix);
 
 	pci_fd = open(sys_file_name, O_RDONLY);
 	if (pci_fd < 0)
