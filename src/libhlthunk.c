@@ -155,8 +155,8 @@ hlthunk_public int hlthunk_get_device_index_from_pci_bus_id(const char *busid)
 		else
 			continue;
 
-		sprintf(pci_bus_file_name, "%s%s/%s", base_path,
-					entry->d_name, pci_bus_prefix);
+		sprintf(pci_bus_file_name, "%s%s/device/%s",
+				base_path, entry->d_name, pci_bus_prefix);
 
 		fd = open(pci_bus_file_name, O_RDONLY);
 		if (fd < 0)
@@ -236,8 +236,8 @@ hlthunk_public int hlthunk_get_pci_bus_id_from_fd(int fd, char *pci_bus_id, int 
 	if (minor_num & 1)
 		minor_num--;
 
-	snprintf(pci_bus_file_name, 127, "%s/%d:%d/%s", base_path, major_num,
-						minor_num, pci_bus_prefix);
+	snprintf(pci_bus_file_name, 127, "%s/%d:%d/device/%s",
+			base_path, major_num, minor_num, pci_bus_prefix);
 
 	pci_fd = open(pci_bus_file_name, O_RDONLY);
 	if (pci_fd < 0)
@@ -461,7 +461,7 @@ hlthunk_public int hlthunk_open_by_module_id(uint32_t module_id)
 	if (rc != 2)
 		return -1;
 
-	sprintf(sys_file_name, "%s%d:%d/%s", char_base_path, major, minor - 1,
+	sprintf(sys_file_name, "%s%d:%d/device/%s", char_base_path, major, minor - 1,
 						pci_addr_prefix);
 
 	pci_fd = open(sys_file_name, O_RDONLY);
