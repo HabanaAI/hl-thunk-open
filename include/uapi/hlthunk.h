@@ -1439,7 +1439,10 @@ hlthunk_public int hlthunk_debug(int fd, struct hl_debug_args *debug);
  * @param fd file descriptor of the device that is used by the application.
  * @param event_id event id to retrieve its data.
  * @param buf buffer that holds retrieved data of requested event id.
- * @return 0 if success. Non-zero for any error.
+ * @return 0 if success. Non-zero for any error. In case no data was available, function will
+ *  return 0 and the timestamp will not be changed. This can happen in the following
+ *  events: HLTHUNK_RAZWI_EVENT, HLTHUNK_UNDEFINED_OPCODE, HLTHUNK_HW_ERR_OPCODE and
+ *  HLTHUNK_FW_ERR_OPCODE.
  */
 hlthunk_public int hlthunk_get_event_record(int fd,
 		enum hlthunk_event_record_id event_id, void *buf);
@@ -1656,7 +1659,8 @@ hlthunk_public int hlthunk_get_sec_attest_info(int fd, uint32_t nonce,
  * @param fd file descriptor handle of habanalabs main device
  * @param pf holds all page fault info, including user mappings
  * @param num_of_allocated_mappings array size of user buffer holding user mappings
- * @return 0 for success, a negative value for failure
+ * @return 0 for success, a negative value for failure. In case no data was available, function will
+ * return 0 and the timestamp will not be changed.
  */
 hlthunk_public int hlthunk_get_page_fault_info(int fd, struct hlthunk_page_fault_info *pf,
 						uint32_t num_of_allocated_mappings);
