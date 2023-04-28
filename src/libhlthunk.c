@@ -654,7 +654,7 @@ hlthunk_public int hlthunk_get_open_stats(int fd, struct hlthunk_open_stats_info
 	args.return_pointer = (__u64) (uintptr_t) &hl_open_stats;
 	args.return_size = sizeof(hl_open_stats);
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_INFO, &args);
 	if (rc)
 		return rc;
 
@@ -717,7 +717,7 @@ hlthunk_public int hlthunk_get_hw_ip_info(int fd, struct hlthunk_hw_ip_info *hw_
 	args.return_pointer = (__u64) (uintptr_t) &hl_hw_ip;
 	args.return_size = sizeof(hl_hw_ip);
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_INFO, &args);
 	if (rc)
 		return rc;
 
@@ -772,7 +772,7 @@ hlthunk_public int hlthunk_get_dram_usage(int fd, struct hlthunk_dram_usage_info
 	args.return_pointer = (__u64) (uintptr_t) &hl_dram_usage;
 	args.return_size = sizeof(hl_dram_usage);
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_INFO, &args);
 	if (rc)
 		return rc;
 
@@ -795,7 +795,7 @@ hlthunk_public int hlthunk_get_device_status_info(int fd)
 	args.return_pointer = (__u64) (uintptr_t) &hl_dev_status;
 	args.return_size = sizeof(hl_dev_status);
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_INFO, &args);
 	if (rc)
 		return rc;
 
@@ -820,7 +820,7 @@ static int hlthunk_get_hw_idle_info(int fd, struct hlthunk_engines_idle_info *in
 	args.return_pointer = (__u64) (uintptr_t) &hl_hw_idle;
 	args.return_size = sizeof(hl_hw_idle);
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_INFO, &args);
 	if (rc)
 		return rc;
 
@@ -871,7 +871,7 @@ hlthunk_public int hlthunk_get_pll_frequency(int fd, uint32_t index,
 	args.return_size = sizeof(hl_info);
 	args.pll_index = index;
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_INFO, &args);
 	if (rc)
 		return rc;
 
@@ -897,7 +897,7 @@ hlthunk_public int hlthunk_get_device_utilization(int fd, uint32_t period_ms, ui
 	args.return_size = sizeof(hl_info);
 	args.period_ms = period_ms;
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_INFO, &args);
 	if (rc)
 		return rc;
 
@@ -924,7 +924,7 @@ hlthunk_public int hlthunk_get_hw_events_arr(int fd, bool aggregate, uint32_t hw
 	args.return_pointer = (__u64) (uintptr_t) hw_events_arr;
 	args.return_size = hw_events_arr_size;
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_INFO, &args);
 	if (rc)
 		return rc;
 
@@ -947,7 +947,7 @@ hlthunk_public int hlthunk_get_clk_rate(int fd, uint32_t *cur_clk_mhz, uint32_t 
 	args.return_pointer = (__u64) (uintptr_t) &hl_clk_rate;
 	args.return_size = sizeof(hl_clk_rate);
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_INFO, &args);
 	if (rc)
 		return rc;
 
@@ -974,7 +974,7 @@ hlthunk_public int hlthunk_get_reset_count_info(int fd, struct hlthunk_reset_cou
 	args.return_pointer = (__u64) (uintptr_t) &hl_reset_count;
 	args.return_size = sizeof(hl_reset_count);
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_INFO, &args);
 	if (rc)
 		return rc;
 
@@ -1001,7 +1001,7 @@ hlthunk_public int hlthunk_get_time_sync_info(int fd, struct hlthunk_time_sync_i
 	args.return_pointer = (__u64) (uintptr_t) &hl_time_sync;
 	args.return_size = sizeof(hl_time_sync);
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_INFO, &args);
 	if (rc)
 		return rc;
 
@@ -1029,7 +1029,7 @@ hlthunk_public int hlthunk_get_sync_manager_info(int fd, int dcore_id,
 	args.return_pointer = (__u64) (uintptr_t) &sm_info;
 	args.return_size = sizeof(sm_info);
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_INFO, &args);
 	if (rc)
 		return rc;
 
@@ -1056,7 +1056,7 @@ hlthunk_public int hlthunk_get_dev_memalloc_page_orders(int fd, uint64_t *page_o
 	args.return_pointer = (__u64) (uintptr_t) &page_size_info;
 	args.return_size = sizeof(page_size_info);
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_INFO, &args);
 	if (rc)
 		return rc;
 
@@ -1081,7 +1081,7 @@ hlthunk_public int hlthunk_get_cs_counters_info(int fd, struct hl_info_cs_counte
 	args.return_pointer = (__u64) (uintptr_t) &hl_cs_counters;
 	args.return_size = sizeof(hl_cs_counters);
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_INFO, &args);
 	if (rc)
 		return rc;
 
@@ -1130,7 +1130,7 @@ hlthunk_public int hlthunk_get_pci_counters_info(int fd, struct hlthunk_pci_coun
 	args.return_pointer = (__u64) (uintptr_t) &pci_counters;
 	args.return_size = sizeof(pci_counters);
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_INFO, &args);
 	if (rc)
 		return rc;
 
@@ -1157,7 +1157,7 @@ hlthunk_public int hlthunk_get_clk_throttle_info(int fd, struct hlthunk_clk_thro
 	args.return_pointer = (__u64) (uintptr_t) &clk_throttle;
 	args.return_size = sizeof(clk_throttle);
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_INFO, &args);
 	if (rc)
 		return rc;
 
@@ -1190,7 +1190,7 @@ hlthunk_public int hlthunk_get_total_energy_consumption_info(int fd,
 	args.return_pointer = (__u64) (uintptr_t) &energy_info;
 	args.return_size = sizeof(energy_info);
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_INFO, &args);
 	if (rc)
 		return rc;
 
@@ -1215,7 +1215,7 @@ hlthunk_public int hlthunk_get_power_info(int fd, struct hlthunk_power_info *inf
 	args.return_pointer = (__u64) (uintptr_t) &power_info;
 	args.return_size = sizeof(power_info);
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_INFO, &args);
 	if (rc)
 		return rc;
 
@@ -1241,7 +1241,7 @@ static int _hlthunk_get_dram_replaced_rows_info(int fd,
 	args.return_pointer = (__u64) (uintptr_t) &repl_rows_info;
 	args.return_size = sizeof(repl_rows_info);
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_INFO, &args);
 	if (rc)
 		return rc;
 
@@ -1265,7 +1265,7 @@ static int _hlthunk_get_dram_pending_rows_info(int fd, uint32_t *out)
 	args.return_pointer = (__u64) (uintptr_t) &pend_rows_num;
 	args.return_size = sizeof(pend_rows_num);
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_INFO, &args);
 	if (rc)
 		return rc;
 
@@ -1289,7 +1289,7 @@ hlthunk_public int hlthunk_get_sec_attest_info(int fd, uint32_t nonce,
 	args.return_pointer = (__u64) (uintptr_t) &tpm_info;
 	args.return_size = sizeof(tpm_info);
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_INFO, &args);
 	if (rc)
 		return rc;
 
@@ -1343,7 +1343,7 @@ hlthunk_public int hlthunk_request_command_buffer(int fd, uint32_t cb_size, uint
 	args.in.op = HL_CB_OP_CREATE;
 	args.in.cb_size = cb_size;
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_CB, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_CB, &args);
 	if (rc)
 		return rc;
 
@@ -1366,7 +1366,7 @@ hlthunk_public int hlthunk_request_mapped_command_buffer(int fd, uint32_t cb_siz
 	args.in.cb_size = cb_size;
 	args.in.flags = HL_CB_FLAGS_MAP;
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_CB, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_CB, &args);
 	if (rc)
 		return rc;
 
@@ -1387,7 +1387,7 @@ int hlthunk_get_mapped_cb_device_va_by_handle_original(int fd, uint64_t cb_handl
 	args.in.cb_handle = cb_handle;
 	args.in.flags = HL_CB_FLAGS_GET_DEVICE_VA;
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_CB, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_CB, &args);
 	if (rc)
 		return rc;
 
@@ -1411,7 +1411,7 @@ hlthunk_public int hlthunk_destroy_command_buffer(int fd, uint64_t cb_handle)
 	args.in.op = HL_CB_OP_DESTROY;
 	args.in.cb_handle = cb_handle;
 
-	return hlthunk_ioctl(fd, HL_IOCTL_CB, &args);
+	return hlthunk_ioctl(fd, DRM_IOCTL_HL_CB, &args);
 }
 
 hlthunk_public int hlthunk_get_cb_usage_count(int fd, uint64_t cb_handle, uint32_t *usage_cnt)
@@ -1426,7 +1426,7 @@ hlthunk_public int hlthunk_get_cb_usage_count(int fd, uint64_t cb_handle, uint32
 	args.in.op = HL_CB_OP_INFO;
 	args.in.cb_handle = cb_handle;
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_CB, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_CB, &args);
 	if (rc)
 		return rc;
 
@@ -1459,7 +1459,7 @@ static int _hlthunk_command_submission(int fd, struct hlthunk_cs_in *in, struct 
 		hl_in->timeout = timeout;
 	}
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_CS, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_CS, &args);
 	if (rc)
 		return rc;
 
@@ -1525,7 +1525,7 @@ hlthunk_public int hlthunk_cs_flush_pci_hbw_writes(int fd)
 	memset(&args, 0, sizeof(args));
 	args.in.cs_flags = HL_CS_FLAGS_FLUSH_PCI_HBW_WRITES;
 
-	return hlthunk_ioctl(fd, HL_IOCTL_CS, &args);
+	return hlthunk_ioctl(fd, DRM_IOCTL_HL_CS, &args);
 }
 
 static int _hlthunk_staged_command_submission(int fd, uint64_t sequence, struct hlthunk_cs_in *in,
@@ -1556,7 +1556,7 @@ static int _hlthunk_staged_command_submission(int fd, uint64_t sequence, struct 
 		hl_in->timeout = timeout;
 	}
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_CS, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_CS, &args);
 	if (rc)
 		return rc;
 
@@ -1638,7 +1638,7 @@ int hlthunk_reserve_encaps_signals_original(int fd, struct hlthunk_sig_res_in *i
 	hl_in->num_chunks_execute = 1;
 	hl_in->cs_flags |= HL_CS_FLAGS_RESERVE_SIGNALS_ONLY;
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_CS, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_CS, &args);
 	if (rc)
 		return rc;
 
@@ -1677,7 +1677,7 @@ int hlthunk_unreserve_encaps_signals_original(int fd, struct reserve_sig_handle 
 	hl_in->num_chunks_execute = 1;
 	hl_in->cs_flags |= HL_CS_FLAGS_UNRESERVE_SIGNALS_ONLY;
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_CS, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_CS, &args);
 	if (rc)
 		return rc;
 
@@ -1720,7 +1720,7 @@ int hlthunk_staged_command_submission_encaps_signals_original(int fd, uint64_t h
 	hl_in->num_chunks_execute = in->num_chunks_execute;
 	hl_in->cs_flags = in->flags | HL_CS_FLAGS_ENCAP_SIGNALS;
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_CS, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_CS, &args);
 	if (rc)
 		return rc;
 
@@ -1764,7 +1764,7 @@ int hlthunk_get_hw_block_original(int fd, uint64_t block_address, uint32_t *bloc
 	ioctl_args.in.map_block.block_addr = block_address;
 	ioctl_args.in.op = HL_MEM_OP_MAP_BLOCK;
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_MEMORY, &ioctl_args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_MEMORY, &ioctl_args);
 	if (rc)
 		return rc;
 
@@ -1808,7 +1808,7 @@ static int _hlthunk_signal_submission(int fd, struct hlthunk_signal_in *in,
 		hl_in->timeout = timeout;
 	}
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_CS, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_CS, &args);
 	if (rc)
 		return rc;
 
@@ -1926,7 +1926,7 @@ static int _hlthunk_wait_for_signal(int fd, struct hlthunk_wait_in *in,
 		hl_in->timeout = timeout;
 	}
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_CS, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_CS, &args);
 	if (rc)
 		return rc;
 
@@ -2019,7 +2019,7 @@ static int _hlthunk_wait_for_collective_signal(int fd, struct hlthunk_wait_in *i
 		hl_in->timeout = timeout;
 	}
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_CS, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_CS, &args);
 	if (rc)
 		return rc;
 
@@ -2078,7 +2078,7 @@ hlthunk_public int hlthunk_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us
 	hl_in->seq = seq;
 	hl_in->timeout_us = timeout_us;
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_WAIT_CS, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_WAIT_CS, &args);
 
 	hl_out = &args.out;
 	*status = hl_out->status;
@@ -2103,7 +2103,7 @@ hlthunk_public int hlthunk_wait_for_cs_with_timestamp(int fd, uint64_t seq, uint
 	hl_in->seq = seq;
 	hl_in->timeout_us = timeout_us;
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_WAIT_CS, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_WAIT_CS, &args);
 
 	hl_out = &args.out;
 	*status = hl_out->status;
@@ -2133,7 +2133,7 @@ static int hlthunk_wait_for_multi_cs_common(int fd, union hl_wait_cs_args *args,
 	hl_in->timeout_us = in->timeout_us;
 	hl_in->flags = HL_WAIT_CS_FLAGS_MULTI_CS;
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_WAIT_CS, args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_WAIT_CS, args);
 
 	hl_out = &args->out;
 	out->status = hl_out->status;
@@ -2234,7 +2234,7 @@ hlthunk_public int hlthunk_wait_for_interrupt_by_handle_with_timestamp(int fd,
 	else
 		hl_in->flags |= interrupt_id << __builtin_ctz(HL_WAIT_CS_FLAGS_INTERRUPT_MASK);
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_WAIT_CS, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_WAIT_CS, &args);
 
 	hl_out = &args.out;
 	*status = hl_out->status;
@@ -2274,7 +2274,7 @@ hlthunk_public int hlthunk_wait_for_interrupt_with_timestamp(int fd,
 	else
 		hl_in->flags |= interrupt_id << __builtin_ctz(HL_WAIT_CS_FLAGS_INTERRUPT_MASK);
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_WAIT_CS, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_WAIT_CS, &args);
 
 	hl_out = &args.out;
 	*status = hl_out->status;
@@ -2316,7 +2316,7 @@ hlthunk_public int hlthunk_register_timestamp_interrupt(int fd, uint32_t interru
 	else
 		hl_in->flags |= interrupt_id << __builtin_ctz(HL_WAIT_CS_FLAGS_INTERRUPT_MASK);
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_WAIT_CS, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_WAIT_CS, &args);
 
 	hl_out = &args.out;
 
@@ -2353,7 +2353,7 @@ hlthunk_public uint32_t hlthunk_get_device_id_from_fd(int fd)
 
 hlthunk_public int hlthunk_get_info(int fd, struct hl_info_args *info)
 {
-	return hlthunk_ioctl(fd, HL_IOCTL_INFO, info);
+	return hlthunk_ioctl(fd, DRM_IOCTL_HL_INFO, info);
 }
 
 hlthunk_public uint64_t hlthunk_device_memory_alloc(int fd, uint64_t size, uint64_t page_size,
@@ -2372,7 +2372,7 @@ hlthunk_public uint64_t hlthunk_device_memory_alloc(int fd, uint64_t size, uint6
 		ioctl_args.in.flags |= HL_MEM_SHARED;
 	ioctl_args.in.op = HL_MEM_OP_ALLOC;
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_MEMORY, &ioctl_args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_MEMORY, &ioctl_args);
 	if (rc)
 		return 0;
 
@@ -2387,7 +2387,7 @@ hlthunk_public int hlthunk_device_memory_free(int fd, uint64_t handle)
 	ioctl_args.in.free.handle = handle;
 	ioctl_args.in.op = HL_MEM_OP_FREE;
 
-	return hlthunk_ioctl(fd, HL_IOCTL_MEMORY, &ioctl_args);
+	return hlthunk_ioctl(fd, DRM_IOCTL_HL_MEMORY, &ioctl_args);
 }
 
 hlthunk_public uint64_t hlthunk_device_memory_map(int fd, uint64_t handle, uint64_t hint_addr)
@@ -2400,7 +2400,7 @@ hlthunk_public uint64_t hlthunk_device_memory_map(int fd, uint64_t handle, uint6
 	ioctl_args.in.map_device.handle = handle;
 	ioctl_args.in.op = HL_MEM_OP_MAP;
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_MEMORY, &ioctl_args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_MEMORY, &ioctl_args);
 	if (rc)
 		return 0;
 
@@ -2433,7 +2433,7 @@ uint64_t hlthunk_host_memory_map_flags_original(int fd, void *host_virt_addr, ui
 	ioctl_args.in.flags = flags | HL_MEM_USERPTR;
 	ioctl_args.in.op = HL_MEM_OP_MAP;
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_MEMORY, &ioctl_args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_MEMORY, &ioctl_args);
 	if (rc)
 		return 0;
 
@@ -2456,7 +2456,7 @@ int hlthunk_memory_unmap_original(int fd, uint64_t device_virt_addr)
 	ioctl_args.in.unmap.device_virt_addr = device_virt_addr;
 	ioctl_args.in.op = HL_MEM_OP_UNMAP;
 
-	return hlthunk_ioctl(fd, HL_IOCTL_MEMORY, &ioctl_args);
+	return hlthunk_ioctl(fd, DRM_IOCTL_HL_MEMORY, &ioctl_args);
 }
 
 hlthunk_public int hlthunk_memory_unmap(int fd, uint64_t device_virt_addr)
@@ -2479,7 +2479,7 @@ static int hlthunk_device_memory_export_dmabuf_fd_common(int fd, uint64_t addr,
 	ioctl_args.in.flags = flags;
 	ioctl_args.in.op = HL_MEM_OP_EXPORT_DMABUF_FD;
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_MEMORY, &ioctl_args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_MEMORY, &ioctl_args);
 	if (rc)
 		return rc;
 
@@ -2513,7 +2513,7 @@ hlthunk_public int hlthunk_allocate_timestamp_elements(int fd, uint32_t num_elem
 	ioctl_args.in.num_of_elements = num_elements;
 	ioctl_args.in.op = HL_MEM_OP_TS_ALLOC;
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_MEMORY, &ioctl_args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_MEMORY, &ioctl_args);
 
 	*handle = ioctl_args.out.handle;
 
@@ -2522,7 +2522,7 @@ hlthunk_public int hlthunk_allocate_timestamp_elements(int fd, uint32_t num_elem
 
 hlthunk_public int hlthunk_debug(int fd, struct hl_debug_args *debug)
 {
-	return hlthunk_ioctl(fd, HL_IOCTL_DEBUG, debug);
+	return hlthunk_ioctl(fd, DRM_IOCTL_HL_DEBUG, debug);
 }
 
 hlthunk_public int hlthunk_get_event_record(int fd, enum hlthunk_event_record_id event_id,
@@ -2595,7 +2595,7 @@ hlthunk_public int hlthunk_get_event_record(int fd, enum hlthunk_event_record_id
 		return -EINVAL;
 	}
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_INFO, &args);
 	if (rc)
 		return rc;
 
@@ -2669,7 +2669,7 @@ static int get_user_mappings(int fd, struct hlthunk_user_mapping *um,
 	args.return_pointer = (__u64) (uintptr_t) mappings;
 	args.return_size = mappings_buf_size;
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_INFO, &args);
 
 	*actual_num_of_mappings = args.array_size;
 	if (!rc) {
@@ -2702,7 +2702,7 @@ hlthunk_public int hlthunk_get_page_fault_info(int fd, struct hlthunk_page_fault
 	args.return_pointer = (__u64) (uintptr_t) &page_fault;
 	args.return_size = sizeof(page_fault);
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_INFO, &args);
 	if (rc)
 		return rc;
 
@@ -2957,7 +2957,7 @@ hlthunk_public int hlthunk_notifier_create(int fd)
 	memset(&args, 0, sizeof(args));
 	args.eventfd = handle;
 	args.op = HL_INFO_REGISTER_EVENTFD;
-	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_INFO, &args);
 	if (rc) {
 		close(handle);
 		return rc;
@@ -2975,7 +2975,7 @@ hlthunk_public int hlthunk_notifier_release(int fd, int handle)
 
 	args.eventfd = handle;
 	args.op = HL_INFO_UNREGISTER_EVENTFD;
-	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_INFO, &args);
 	if (rc)
 		return rc;
 
@@ -3020,7 +3020,7 @@ hlthunk_public int hlthunk_notifier_recv(int fd, int handle, uint64_t *notifier_
 	args.op = HL_INFO_GET_EVENTS;
 	args.return_pointer = (__u64) (uintptr_t) notifier_events;
 	args.return_size    = sizeof(*notifier_events);
-	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_INFO, &args);
 	if (rc)
 		return rc;
 
@@ -3042,7 +3042,7 @@ hlthunk_public int hlthunk_get_engine_status(int fd, char *status_buf, uint32_t 
 	args.return_pointer = (__u64) (uintptr_t) status_buf;
 	args.return_size = status_buf_size;
 
-	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_INFO, &args);
 	if (rc)
 		return rc;
 
@@ -3069,7 +3069,7 @@ hlthunk_public int hlthunk_engine_cores_set_mode(int fd, const uint32_t *core_id
 	if (mode == HL_ENGINE_CORE_RUN || mode == HL_ENGINE_CORE_HALT) {
 		hl_in->core_command = mode;
 		hl_in->cs_flags = HL_CS_FLAGS_ENGINE_CORE_COMMAND;
-		rc = hlthunk_ioctl(fd, HL_IOCTL_CS, &args);
+		rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_CS, &args);
 	} else {
 		rc = -EINVAL;
 	}
@@ -3098,7 +3098,7 @@ hlthunk_public int hlthunk_engines_command(int fd, const uint32_t *engine_ids,
 		hl_in->num_engines = num_engines;
 		hl_in->engine_command = command;
 		hl_in->cs_flags = HL_CS_FLAGS_ENGINES_COMMAND;
-		return hlthunk_ioctl(fd, HL_IOCTL_CS, &args);
+		return hlthunk_ioctl(fd, DRM_IOCTL_HL_CS, &args);
 	default:
 		return -EINVAL;
 	}
@@ -3140,7 +3140,7 @@ int hlthunk_fw_send_generic_request(int fd, void *buff, uint32_t buff_size,
 	info_args.return_pointer = (__u64) (uintptr_t)buff;
 	info_args.return_size = buff_size;
 	info_args.fw_sub_opcode = sub_opcode;
-	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &info_args);
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_INFO, &info_args);
 	if (rc)
 		return rc;
 
