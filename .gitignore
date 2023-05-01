@@ -6,3 +6,6 @@ build/
 *.orig
 cscope*
 tags*
+.cache
+.vscode
+compile_commands.json
