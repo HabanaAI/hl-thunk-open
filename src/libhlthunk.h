@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT
  *
- * Copyright 2019 HabanaLabs, Ltd.
+ * Copyright 2019-2023 HabanaLabs, Ltd.
  * All Rights Reserved.
  *
  */
@@ -109,6 +109,8 @@ do { \
 	.fp_DEPRECATED1 = NULL,\
 	.fp_hlthunk_device_memory_export_dmabuf_fd =\
 		hlthunk_device_memory_export_dmabuf_fd,\
+	.fp_hlthunk_device_mapped_memory_export_dmabuf_fd =\
+		hlthunk_device_mapped_memory_export_dmabuf_fd,\
 	.fp_hlthunk_host_memory_map_flags = \
 		hlthunk_host_memory_map_flags_original,\
 	.fp_hlthunk_reserve_signals = hlthunk_reserve_encaps_signals_original,\
@@ -128,8 +130,8 @@ do { \
 	.fp_hlthunk_get_mapped_cb_device_va_by_handle =\
 		hlthunk_get_mapped_cb_device_va_by_handle_original,\
 	.fp_hlthunk_get_pll_frequency = hlthunk_get_pll_frequency,\
-	.fp_hlthunk_register_timestamp_interrupt = hlthunk_register_timestamp_interrupt,\
-	.fp_hlthunk_allocate_timestamp_elements = hlthunk_allocate_timestamp_elements\
+	.fp_hlthunk_deprecated_func2 = hlthunk_deprecated_func2,\
+	.fp_hlthunk_deprecated_func3 = hlthunk_deprecated_func3\
 }
 
 int hlthunk_command_submission_original(int fd, struct hlthunk_cs_in *in,

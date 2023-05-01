@@ -8,7 +8,7 @@
 #ifndef HLTHUNK_TESTS_H
 #define HLTHUNK_TESTS_H
 
-#include "misc/habanalabs.h"
+#include "drm/habanalabs_accel.h"
 #include "hlthunk.h"
 #include "khash.h"
 #include "pci_ids.h"

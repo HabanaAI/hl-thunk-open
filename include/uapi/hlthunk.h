@@ -12,7 +12,7 @@
 extern "C" {
 #endif
 
-#include <misc/habanalabs.h>
+#include "drm/habanalabs_accel.h"
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -21,8 +21,13 @@ extern "C" {
 #define hlthunk_public  __attribute__((visibility("default")))
 
 #define HLTHUNK_MAX_MINOR		256
-#define HLTHUNK_DEV_NAME_PRIMARY	"/dev/hl%d"
-#define HLTHUNK_DEV_NAME_CONTROL	"/dev/hl_controlD%d"
+#define HLTHUNK_DEV_NAME_PRIMARY	"/dev/accel/accel%d"
+#define HLTHUNK_DEV_NAME_CONTROL	"/dev/accel/accel_controlD%d"
+
+#define HLTHUNK_DEV_NAME_PRIMARY_LEGACY	"/dev/hl%d"
+#define HLTHUNK_DEV_NAME_CONTROL_LEGACY	"/dev/hl_controlD%d"
+
+#define HLTHUNK_BUSY_ENGINES_MASK_SIZE	4
 
 enum hlthunk_node_type {
 	HLTHUNK_NODE_PRIMARY,
@@ -39,6 +44,7 @@ enum hlthunk_device_name {
 	HLTHUNK_DEVICE_GAUDI2,
 	HLTHUNK_DEVICE_PLACEHOLDER2,
 	HLTHUNK_DEVICE_PLACEHOLDER3,
+	HLTHUNK_DEVICE_PLACEHOLDER4,
 	HLTHUNK_DEVICE_MAX
 };
 
@@ -46,7 +52,9 @@ enum hlthunk_event_record_id {
 	HLTHUNK_OPEN_DEV,
 	HLTHUNK_CS_TIMEOUT,
 	HLTHUNK_RAZWI_EVENT,
-	HLTHUNK_UNDEFINED_OPCODE
+	HLTHUNK_UNDEFINED_OPCODE,
+	HLTHUNK_HW_ERR_OPCODE,
+	HLTHUNK_FW_ERR_OPCODE
 };
 
 /**
@@ -91,6 +99,13 @@ enum hlthunk_event_record_id {
  * @number_of_user_interrupts: The number of interrupts that are available to the userspace
  *                             application to use. Relevant for Gaudi2 and later.
  * @device_mem_alloc_default_page_size: default page size used in device memory allocation.
+ * @security_enabled: true if security is enabled on device.
+ * @revision_id: PCI revision ID of the ASIC.
+ * @tpc_interrupt_id: interrupt id for TPC to use in order to raise events toward host.
+ * @engine_core_interrupt_reg_addr: interrupt register address for engine core to use
+ *                                  in order to raise events toward FW.
+ * @rotator_enabled_mask: Bit-mask that represents which rotators are enabled.
+ * @reserved_dram_size: DRAM size reserved for driver and firmware.
  */
 struct hlthunk_hw_ip_info {
 	uint64_t sram_base_address;
@@ -116,8 +131,22 @@ struct hlthunk_hw_ip_info {
 	uint16_t first_available_interrupt_id;
 	uint32_t edma_enabled_mask;
 	uint16_t server_type;
+	uint64_t reserved1;
 	uint16_t number_of_user_interrupts;
 	uint64_t device_mem_alloc_default_page_size;
+	uint64_t reserved2;
+	uint8_t reserved3;
+	uint8_t reserved4;
+	uint64_t reserved5;
+	uint32_t reserved6;
+	uint8_t reserved7;
+	uint8_t security_enabled;
+	uint8_t revision_id;
+	uint16_t tpc_interrupt_id;
+	uint64_t engine_core_interrupt_reg_addr;
+	uint32_t rotator_enabled_mask;
+	uint32_t reserved8;
+	uint64_t reserved_dram_size;
 };
 
 struct hlthunk_dram_usage_info {
@@ -128,7 +157,7 @@ struct hlthunk_dram_usage_info {
 struct hlthunk_engines_idle_info {
 	uint32_t is_idle;
 	uint32_t pad;
-	uint64_t mask[HL_BUSY_ENGINES_MASK_EXT_SIZE];
+	uint64_t mask[HLTHUNK_BUSY_ENGINES_MASK_SIZE];
 };
 
 struct hlthunk_pll_frequency_info {
@@ -321,29 +350,35 @@ struct hlthunk_event_record_cs_timeout {
 	uint64_t seq;
 };
 
-#define HLTHUNK_RAZWI_PAGE_FAULT 0
-#define HLTHUNK_RAZWI_MMU_ACCESS_ERROR 1
 
 /**
- * struct hlthunk_info_razwi_event - razwi information.
+ * struct hlthunk_event_record_razwi_event - razwi information.
  * @timestamp: timestamp of razwi.
  * @addr: address which accessing it caused razwi.
- * @engine_id_1: engine id of the razwi initiator, if it was initiated by engine that does not
- *               have engine id it will be set to U16_MAX.
- * @engine_id_2: second engine id of razwi initiator. Might happen that razwi have 2 possible
- *               engines which one them caused the razwi. In that case, it will contain the
- *               second possible engine id, otherwise it will be set to U16_MAX.
- * @no_engine_id: if razwi initiator does not have engine id, this field will be set to 1,
- *                otherwise 0.
- * @error_type: cause of razwi, page fault or access error, otherwise it will be set to U8_MAX.
+ * @engine_id: engine id of the razwi initiator, if it was initiated by engine that does not
+ *             have engine id it will be set to HL_RAZWI_NA_ENG_ID. If there are several possible
+ *             engines which caused the razwi, it will hold all of them.
+ * @num_of_possible_engines: contains number of possible engine ids. In some asics, razwi indication
+ *                           might be common for several engines and there is no way to get the
+ *                           exact engine. In this way, engine_id array will be filled with all
+ *                           possible engines caused this razwi. Also, there might be possibility
+ *                           in gaudi, where we don't indication on specific engine, in that case
+ *                           the value of this parameter will be zero.
+ * @flags: bitmask for additional data: HL_RAZWI_READ - razwi caused by read operation
+ *                                      HL_RAZWI_WRITE - razwi caused by write operation
+ *                                      HL_RAZWI_LBW - razwi caused by lbw fabric transaction
+ *                                      HL_RAZWI_HBW - razwi caused by hbw fabric transaction
+ *                                      HL_RAZWI_RR - razwi caused by range register
+ *                                      HL_RAZWI_ADDR_DEC - razwi caused by address decode error
+ *         Note: this data is not supported by all asics, in that case the relevant bits will not
+ *               be set.
  */
 struct hlthunk_event_record_razwi_event {
 	int64_t timestamp;
 	uint64_t addr;
-	uint16_t engine_id_1;
-	uint16_t engine_id_2;
-	uint8_t no_engine_id;
-	uint8_t error_type;
+	uint16_t engine_id[HL_RAZWI_MAX_NUM_OF_ENGINES_PER_RTR];
+	uint16_t num_of_possible_engines;
+	uint8_t flags;
 };
 
 /**
@@ -370,6 +405,94 @@ struct hlthunk_event_record_undefined_opcode {
 	uint32_t cb_addr_streams_len;
 	uint32_t engine_id;
 	uint32_t stream_id;
+};
+
+/**
+ * struct hlthunk_event_record_critical_hw_err - info about the HW error that occurred
+ * @timestamp: The time of the error occurrence.
+ * @event_id: The device event generated by this error.
+ */
+struct hlthunk_event_record_critical_hw_err {
+	int64_t timestamp;
+	uint16_t event_id;
+};
+
+/**
+ * struct hlthunk_event_record_critical_fw_err - info about the FW error that occurred
+ * @timestamp: timestamp of the undefined opcode error
+ * @err_type: The type of error being reported.
+ * @reported_err_id: The reported error ID in-case of FW_REPORTED_ERR.
+ */
+struct  hlthunk_event_record_critical_fw_err {
+	int64_t timestamp;
+	enum hl_info_fw_err_type err_type;
+	uint16_t reported_err_id;
+};
+
+#define SEC_PCR_DATA_BUF_SZ	256
+#define SEC_PCR_QUOTE_BUF_SZ	510	/* (512 - 2) 2 bytes used for size */
+#define SEC_SIGNATURE_BUF_SZ	255	/* (256 - 1) 1 byte used for size */
+#define SEC_PUB_DATA_BUF_SZ	510	/* (512 - 2) 2 bytes used for size */
+#define SEC_CERTIFICATE_BUF_SZ	2046	/* (2048 - 2) 2 bytes used for size */
+
+/*
+ * struct hlthunk_sec_attest_info - attestation report of the boot
+ * @nonce: number only used once. random number provided by host. this also passed to the quote
+ *         command as a qualifying data.
+ * @pcr_quote_len: length of the attestation quote data (bytes)
+ * @pub_data_len: length of the public data (bytes)
+ * @certificate_len: length of the certificate (bytes)
+ * @pcr_num_reg: number of PCR registers in the pcr_data array
+ * @pcr_reg_len: length of each PCR register in the pcr_data array (bytes)
+ * @quote_sig_len: length of the attestation report signature (bytes)
+ * @pcr_data: raw values of the PCR registers
+ * @pcr_quote: attestation report data structure
+ * @quote_sig: signature structure of the attestation report
+ * @public_data: public key for the signed attestation
+ *		 (outPublic + name + qualifiedName)
+ * @certificate: certificate for the attestation signing key
+ */
+struct hlthunk_sec_attest_info {
+	uint32_t nonce;
+	uint16_t pcr_quote_len;
+	uint16_t pub_data_len;
+	uint16_t certificate_len;
+	uint8_t pcr_num_reg;
+	uint8_t pcr_reg_len;
+	uint8_t quote_sig_len;
+	uint8_t pcr_data[SEC_PCR_DATA_BUF_SZ];
+	uint8_t pcr_quote[SEC_PCR_QUOTE_BUF_SZ];
+	uint8_t quote_sig[SEC_SIGNATURE_BUF_SZ];
+	uint8_t public_data[SEC_PUB_DATA_BUF_SZ];
+	uint8_t certificate[SEC_CERTIFICATE_BUF_SZ];
+};
+
+/**
+ * struct hlthunk_user_mapping - user mapping information.
+ * @dev_va: device virtual address.
+ * @size: virtual address mapping size.
+ */
+struct hlthunk_user_mapping {
+	uint64_t dev_va;
+	uint64_t size;
+};
+/*
+ * struct hl_page_fault_info - page fault information.
+ * @timestamp: timestamp of page fault.
+ * @addr: address which accessing it caused page fault.
+ * @engine_id: engine id which caused the page fault, supported only in gaudi3.
+ * @num_of_mappings: actual number of user mappings, filled by the driver. Even if error is
+ *                   returned, this parameter will be filled by driver, unless driver did not had
+ *                   the chance to fill it, in that case it will be equal to 0xFFFFFFFF.
+ * @mappings_buf: holds all user mappings
+ */
+struct hlthunk_page_fault_info {
+	int64_t timestamp;
+	uint64_t addr;
+	uint16_t engine_id;
+	uint32_t num_of_mappings;
+	struct hlthunk_user_mapping *mappings_buf;
+
 };
 
 struct hlthunk_functions_pointers {
@@ -503,15 +626,18 @@ struct hlthunk_functions_pointers {
 						uint64_t *device_va);
 	int (*fp_hlthunk_get_pll_frequency)(int fd, uint32_t index,
 					struct hlthunk_pll_frequency_info *frequency);
-	int (*fp_hlthunk_register_timestamp_interrupt)(int fd, uint32_t interrupt_id,
-					uint64_t cq_counters_handle,
-					uint64_t cq_counters_offset,
-					uint64_t target_value,
-					uint64_t timestamp_handle,
-					uint64_t timestamp_offset);
-	int (*fp_hlthunk_allocate_timestamp_elements)(int fd,
-					uint32_t num_elements,
-					uint64_t *handle);
+	int (*fp_hlthunk_deprecated_func2)(int fd, uint32_t interrupt_id,
+							uint64_t cq_counters_handle,
+							uint64_t cq_counters_offset,
+							uint64_t target_value,
+							uint64_t timestamp_handle,
+							uint64_t timestamp_offset);
+	int (*fp_hlthunk_deprecated_func3)(int fd, uint32_t num_elements, uint64_t *handle);
+	int (*fp_hlthunk_device_mapped_memory_export_dmabuf_fd)(int fd,
+							uint64_t addr,
+							uint64_t size,
+							uint64_t offset,
+							uint32_t flags);
 };
 
 struct hlthunk_debugfs {
@@ -546,8 +672,8 @@ hlthunk_public int hlthunk_open_by_module_id(uint32_t module_id);
  * busid is specified but the device can't be opened, the function fails.
  * @param dev_id the dev_id number of the control device as appears in /dev/.
  * The control devices appear like this:
- * /dev/hl_controlD0
- * /dev/hl_controlD1
+ * /dev/accel/accel_controlD0
+ * /dev/accel/accel_controlD1
  * ...
  * So the dev_id represents the number that appear at the name of the node.
  * Note it is different from the minor number
@@ -566,6 +692,23 @@ hlthunk_public int hlthunk_open_control(int dev_id, const char *busid);
  */
 hlthunk_public int hlthunk_open_control_by_name(enum hlthunk_device_name device_name,
 					const char *busid);
+
+/**
+ * This function opens the habanalabs control device according to a specified module id.
+ * This API is relevant only for ASICs that support this property
+ * @param module_id a number representing the module_id in the host machine
+ * @return file descriptor handle or negative value in case of error
+ */
+hlthunk_public int hlthunk_open_control_by_module_id(uint32_t module_id);
+
+/**
+ * This function opens the habanalabs control device according to a specified bus id.
+ * @param busid null-terminated string of the device PCI bus ID in the following
+ * format: [domain]:[bus]:[device].[function] where domain, bus, device, and
+ * function are all hexadecimal values.
+ * @return file descriptor handle or negative value in case of error
+ */
+hlthunk_public int hlthunk_open_control_by_bus_id(const char *busid);
 
 /**
  * This function closes an open file descriptor
@@ -1233,19 +1376,41 @@ hlthunk_public int hlthunk_memory_unmap(int fd, uint64_t device_virt_addr);
  * This function asks the driver to create a DMA-BUF object that will represent
  * an existing memory allocation inside the device memory. The function will
  * return a FD that will represent that DMA-BUF object. The application should
- * pass that FD to the importer driver.
+ * pass that FD to the importer driver. This function shall be used only for
+ * Gaudi1
  * @param fd file descriptor of the device that this memory belongs to
- * @param handle the opaque handle that represents this memory allocation. In
- * GAUDI, this is expected to hold a physical address inside the device memory
- * space.
- * @param size Relevant only for GAUDI. Holds the size of the memory that the
- * user wants to create a dma-buf that will describe it.
+ * @param addr physical address inside the device's DRAM.
+ * @param size holds the size of the memory that the user wants to create a
+ *             dma-buf that will describe it.
  * @param flags DMA-BUF file/FD flags. For now this parameter is not used.
  * @return file descriptor (positive value). negative value for failure
  */
 hlthunk_public int hlthunk_device_memory_export_dmabuf_fd(int fd,
-							uint64_t handle,
+							uint64_t addr,
 							uint64_t size,
+							uint32_t flags);
+
+/**
+ * This function does the same as hlthunk_device_memory_export_dmabuf_fd but
+ * with different interface for the application. this function shall be used
+ * only for Gaudi2 and later ASICs
+ * @param fd file descriptor of the device that this memory belongs to
+ * @param addr a device virtual address that represents the start address of
+ *             a mapped DRAM memory area inside the device. the address must
+ *             be the same as was received from the driver during a previous
+ *             HL_MEM_OP_MAP operation.
+ * @param size holds the size of the memory that the user wants to create a
+ *             dma-buf that will describe it.
+ * @param offset an offset inside of the memory area describe by addr. The
+ *               offset represents the start address of that the exported
+ *               dma-buf object describes.
+ * @param flags DMA-BUF file/FD flags. For now this parameter is not used.
+ * @return file descriptor (positive value). negative value for failure
+ */
+hlthunk_public int hlthunk_device_mapped_memory_export_dmabuf_fd(int fd,
+							uint64_t addr,
+							uint64_t size,
+							uint64_t offset,
 							uint32_t flags);
 
 /**
@@ -1477,6 +1642,26 @@ hlthunk_public int hlthunk_get_dram_replaced_rows_info(int fd,
 hlthunk_public int hlthunk_get_dram_pending_rows_info(int fd, uint32_t *out);
 
 /**
+ * This function retrieves attestation report of the boot.
+ * @param fd file descriptor handle of habanalabs main device
+ * @param nonce number used to generate secured attestation report
+ * @param info pointer to attestation report info output buffer
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_get_sec_attest_info(int fd, uint32_t nonce,
+					struct hlthunk_sec_attest_info *info);
+
+/**
+ * This function retrieves page fault information.
+ * @param fd file descriptor handle of habanalabs main device
+ * @param pf holds all page fault info, including user mappings
+ * @param num_of_allocated_mappings array size of user buffer holding user mappings
+ * @return 0 for success, a negative value for failure
+ */
+hlthunk_public int hlthunk_get_page_fault_info(int fd, struct hlthunk_page_fault_info *pf,
+						uint32_t num_of_allocated_mappings);
+
+/**
  * This function retrieve the device va of a command buffer previously allocated
  * in host kernel memory.
  * Note that the buffer should be created with CB_TYPE_KERNEL_MAPPED flag.
@@ -1490,13 +1675,20 @@ hlthunk_public int hlthunk_get_mapped_cb_device_va_by_handle(int fd,
 							uint64_t *device_va);
 
 /**
+ * This function flush all PCI HBW writes
+ * @param fd file descriptor handle of habanalabs main device
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_cs_flush_pci_hbw_writes(int fd);
+
+/**
  * This function registers a timestamp event of a specific user interrupt id.
  * when interrupt occurred the driver will compare the CQ pi value with the
  * target value, and if CQ reached that value it'll write the timestamp
  * into the specified timestamp offset.
  * - If the timestamp record is already registered for interrupt, that has not
- * been expired yet, it will be unregistered first before being registered
- * again on the new interrupt.
+ * been expired yet, the API will fail and the user must call the unregister API
+ * and try again.
  * - As part of the call, the timestamp handle will be set atomically to TS_NOT_EXP_VAL.
  * The value is then overridden only after the cq counter reaches its target value.
  * users can wait until the timestamp entry is different than TS_NOT_EXP_VAL
@@ -1581,9 +1773,74 @@ hlthunk_public int hlthunk_notifier_recv(int fd, int handle, uint64_t *notifier_
 						uint64_t *notifier_cnt, uint32_t flags,
 						uint32_t timeout);
 
+/**
+ * This function retrieves string containing engines status.
+ * @param fd file descriptor handle of habanalabs main device
+ * @param status_buf buffer for retrieved string
+ * @param status_buf_size buffer size
+ * @param actual_size actual size of data
+ * @return 0 for success, a negative value for failure
+ */
+hlthunk_public int hlthunk_get_engine_status(int fd, char *status_buf, uint32_t status_buf_size,
+						int *actual_size);
+
+/**
+ * This function set a run mode for all the cores that are supplied in core_ids array
+ * @param fd file descriptor handle of habanalabs main device
+ * @param core_ids a pointer to an array of cores numbers
+ * @param num_cores actual number of core numbers in the core_ids array
+ * @param mode the mode to be set, HL_ENGINE_CORE_RUN/HALT values.
+ * @return 0 for success, a negative value for failure
+ */
+hlthunk_public int hlthunk_engine_cores_set_mode(int fd, const uint32_t *core_ids,
+				uint32_t num_cores, uint32_t mode);
+
+/**
+ * This function applies a command for all the engines that are supplied in engine_ids array
+ * @param fd file descriptor handle of habanalabs main device
+ * @param engine_ids a pointer to an array of engine numbers
+ * @param num_engines actual number of engine numbers in the engine_ids array
+ * @param command the command to be set
+ * @return 0 for success, a negative value for failure
+ */
+hlthunk_public int hlthunk_engines_command(int fd, const uint32_t *engine_ids,
+				uint32_t num_engines, enum hl_engine_command command);
+
+/**
+ * This function returns the number of devices for the given device name.
+ * @param device_name name of the device to count
+ * @return number of devices for success, negative value for failure
+ */
+hlthunk_public int hlthunk_get_device_count(enum hlthunk_device_name device_name);
+
 hlthunk_public int hlthunk_deprecated_func1(int fd, uint64_t seq,
 					uint64_t timeout_us, uint32_t *status,
 					uint64_t *timestamp);
+
+hlthunk_public int hlthunk_deprecated_func2(int fd, uint32_t interrupt_id,
+						uint64_t cq_counters_handle,
+						uint64_t cq_counters_offset,
+						uint64_t target_value,
+						uint64_t timestamp_handle,
+						uint64_t timestamp_offset);
+
+hlthunk_public int hlthunk_deprecated_func3(int fd, uint32_t num_elements, uint64_t *handle);
+
+/**
+ * This function used to send a generic request asking FW for some information.
+ * The driver will verify the opcode of the command and send it to fw then copy
+ * the output to the specified buffer.
+ * @param fd file descriptor handle of habanalabs main device
+ * @param buff buffer to be sent to the FW.
+ *	Note that this buffer may serve for both input/output buffer, for cases
+ *	where the command has also input data to be passed to fw.
+ * @param buff_size size of the buffer.
+ * @sub_opcode generic request sub-opcode.
+ * @return 0 for success, a negative value for failure.
+ */
+hlthunk_public int hlthunk_fw_send_generic_request(int fd, void *buff, uint32_t buff_size,
+							uint32_t sub_opcode);
+
 #ifdef __cplusplus
 }   //extern "C"
 #endif

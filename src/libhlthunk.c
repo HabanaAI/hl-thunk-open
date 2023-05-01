@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 
 /*
- * Copyright 2019-2022 HabanaLabs, Ltd.
+ * Copyright 2019-2023 HabanaLabs, Ltd.
  * All Rights Reserved.
  */
 
 #include "libhlthunk.h"
 #include "specs/common/pci_ids.h"
 #include "specs/common/shim_types.h"
+#include "specs/hw_ip/pci/pci_general.h"
 
 #define _GNU_SOURCE
 
@@ -60,6 +61,23 @@ struct global_hlthunk_members global_members = {
 	.pfn_shim_finish = NULL
 };
 
+void __attribute__ ((destructor)) hlthunk_fini(void)
+{
+	hlthunk_profiler_destroy_original();
+}
+
+static int is_accel_dev(void)
+{
+	DIR *dir = opendir("/dev/accel");
+
+	if (dir) {
+		closedir(dir);
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
 static int hlthunk_ioctl(int fd, unsigned long request, void *arg)
 {
 	int ret;
@@ -77,15 +95,21 @@ static int hlthunk_ioctl(int fd, unsigned long request, void *arg)
 static int hlthunk_open_minor(int device_index, enum hlthunk_node_type type)
 {
 	char buf[64], *dev_name;
-	int fd;
+	int fd, rc;
+
+	rc = is_accel_dev();
 
 	switch (type) {
 	case HLTHUNK_NODE_PRIMARY:
 		dev_name = HLTHUNK_DEV_NAME_PRIMARY;
+		if (!rc)
+			dev_name = HLTHUNK_DEV_NAME_PRIMARY_LEGACY;
 		break;
 
 	case HLTHUNK_NODE_CONTROL:
 		dev_name = HLTHUNK_DEV_NAME_CONTROL;
+		if (!rc)
+			dev_name = HLTHUNK_DEV_NAME_CONTROL_LEGACY;
 		break;
 
 	default:
@@ -112,17 +136,16 @@ static int hlthunk_open_by_busid(const char *busid, enum hlthunk_node_type type)
 
 hlthunk_public int hlthunk_get_device_index_from_pci_bus_id(const char *busid)
 {
-	const char *base_path = "/sys/class/habanalabs/";
-	char *substr_ptr;
-	struct dirent *entry;
-	DIR *dir;
-	const char *device_prefix = "hl";
-	const char *virtual_device_prefix = "hlv";
-	const char *sim_device_prefix = "hls";
+	const char *ctrl_device_prefix = "accel_controlD";
+	const char *base_path = "/sys/class/accel/";
 	const char *pci_bus_prefix = "pci_addr";
-	char pci_bus_file_name[PATH_MAX];
 	char read_busid[16], full_busid[16];
+	const char *device_prefix = "accel";
+	char pci_bus_file_name[PATH_MAX];
 	int fd, rc, device_index;
+	struct dirent *entry;
+	char *substr_ptr;
+	DIR *dir;
 
 	if (!busid)
 		return -EINVAL;
@@ -140,16 +163,13 @@ hlthunk_public int hlthunk_get_device_index_from_pci_bus_id(const char *busid)
 		return -errno;
 
 	while ((entry = readdir(dir)) != NULL) {
-		if (strstr(entry->d_name, virtual_device_prefix) != NULL)
-			// Ignoring "hlv" entry-name
-			continue;
-		else if (strstr(entry->d_name, sim_device_prefix) != NULL)
-			// Ignoring "hls" entry-name
+		/* Control devices don't have a "pci_addr" sysfs attribute  */
+		if (strstr(entry->d_name, ctrl_device_prefix) != NULL)
 			continue;
 
 		substr_ptr = strstr(entry->d_name, device_prefix);
 		if (substr_ptr != NULL)
-			device_index = atoi(substr_ptr + 2);
+			device_index = atoi(substr_ptr + strlen(device_prefix));
 		else
 			continue;
 
@@ -178,6 +198,17 @@ hlthunk_public int hlthunk_get_device_index_from_pci_bus_id(const char *busid)
 	closedir(dir);
 
 	return -1;
+}
+
+static uint8_t hlthunk_get_revision_id_from_fd(int fd)
+{
+	struct hlthunk_hw_ip_info hw_ip;
+
+	memset(&hw_ip, 0, sizeof(hw_ip));
+	if (hlthunk_get_hw_ip_info(fd, &hw_ip))
+		return REV_ID_INVALID;
+
+	return hw_ip.revision_id;
 }
 
 hlthunk_public enum hlthunk_device_name hlthunk_get_device_name_from_fd(int fd)
@@ -403,15 +434,24 @@ hlthunk_public int hlthunk_open(enum hlthunk_device_name device_name, const char
 
 hlthunk_public int hlthunk_open_by_module_id(uint32_t module_id)
 {
-	const char *base_path = "/sys/class/habanalabs/";
+	const char *base_path;
 	const char *char_base_path = "/sys/dev/char/";
-	const char *device_prefix = "hl_controlD";
+	const char *device_prefix;
 	const char *dev_file_prefix = "dev";
 	const char *pci_addr_prefix = "pci_addr";
 	char dev_name[64], read_busid[16], sys_file_name[128];
 	int i, rc, ctrl_fd, major, minor, pci_fd;
 	bool found = false;
 	FILE *sys_file;
+
+	rc = is_accel_dev();
+	if (rc) {
+		base_path = "/sys/class/accel/";
+		device_prefix = "accel_controlD";
+	} else {
+		base_path = "/sys/class/habanalabs/";
+		device_prefix = "hl_controlD";
+	}
 
 	for (i = 0 ; i < HLTHUNK_MAX_MINOR ; i++) {
 		struct hlthunk_hw_ip_info hw_ip;
@@ -483,6 +523,63 @@ hlthunk_public int hlthunk_open_control_by_name(enum hlthunk_device_name device_
 	return hlthunk_open_device_by_name(device_name, HLTHUNK_NODE_CONTROL);
 }
 
+hlthunk_public int hlthunk_open_control_by_module_id(uint32_t module_id)
+{
+	struct hlthunk_hw_ip_info hw_ip;
+	int i, rc, ctrl_fd;
+	bool found = false;
+
+	for (i = 0 ; i < HLTHUNK_MAX_MINOR ; i++) {
+		ctrl_fd = hlthunk_open_control(i, NULL);
+		if (ctrl_fd < 0)
+			continue;
+
+		rc = hlthunk_get_hw_ip_info(ctrl_fd, &hw_ip);
+		if (!rc && hw_ip.module_id == module_id) {
+			found = true;
+			break;
+		}
+
+		hlthunk_close_original(ctrl_fd);
+	}
+
+	return found ? ctrl_fd : -EBADF;
+}
+
+hlthunk_public int hlthunk_open_control_by_bus_id(const char *busid)
+{
+	int i, rc, ctrl_fd;
+	bool found = false;
+	char full_busid[BUSID_WITH_DOMAIN_LEN + 1];
+	char pci_bus_id[BUSID_WITH_DOMAIN_LEN + 1];
+
+	if (!busid)
+		return -EINVAL;
+
+	if (strlen(busid) == BUSID_WITHOUT_DOMAIN_LEN) {
+		snprintf(full_busid, BUSID_WITH_DOMAIN_LEN + 1, "0000:%s", busid);
+	} else {
+		strncpy(full_busid, busid, BUSID_WITH_DOMAIN_LEN);
+		full_busid[BUSID_WITH_DOMAIN_LEN] = '\0';
+	}
+
+	for (i = 0 ; i < HLTHUNK_MAX_MINOR ; i++) {
+		ctrl_fd = hlthunk_open_control(i, NULL);
+		if (ctrl_fd < 0)
+			continue;
+
+		rc = hlthunk_get_pci_bus_id_from_fd(ctrl_fd, pci_bus_id, sizeof(pci_bus_id));
+		if (!rc && !strcmp(pci_bus_id, full_busid)) {
+			found = true;
+			break;
+		}
+
+		hlthunk_close_original(ctrl_fd);
+	}
+
+	return found ? ctrl_fd : -EBADF;
+}
+
 int hlthunk_close_original(int fd)
 {
 	return close(fd);
@@ -530,6 +627,12 @@ hlthunk_public int hlthunk_get_hw_asic_status(int fd, struct hlthunk_hw_asic_sta
 
 	hw_asic_status->valid = 0;
 
+	hw_asic_status->status = hlthunk_get_device_status_info(fd);
+	if (hw_asic_status->status < 0)
+		return hw_asic_status->status;
+
+	hw_asic_status->valid = 1;
+
 	rc = hlthunk_get_clk_throttle_info(fd, &hw_asic_status->throttle);
 	if (rc)
 		return rc;
@@ -538,17 +641,13 @@ hlthunk_public int hlthunk_get_hw_asic_status(int fd, struct hlthunk_hw_asic_sta
 	if (rc)
 		return rc;
 
-	rc = hlthunk_get_power_info(fd, &hw_asic_status->power);
-	if (rc)
-		return rc;
-
-	hw_asic_status->status = hlthunk_get_device_status_info(fd);
-	if (hw_asic_status->status < 0)
-		return hw_asic_status->status;
+	if (hw_asic_status->status == HL_DEVICE_STATUS_OPERATIONAL) {
+		rc = hlthunk_get_power_info(fd, &hw_asic_status->power);
+		if (rc)
+			return rc;
+	}
 
 	hw_asic_status->timestamp_sec = time(NULL);
-
-	hw_asic_status->valid = 1;
 
 	return 0;
 }
@@ -598,6 +697,12 @@ hlthunk_public int hlthunk_get_hw_ip_info(int fd, struct hlthunk_hw_ip_info *hw_
 	hw_ip->server_type = hl_hw_ip.server_type;
 	hw_ip->number_of_user_interrupts = hl_hw_ip.number_of_user_interrupts;
 	hw_ip->device_mem_alloc_default_page_size = hl_hw_ip.device_mem_alloc_default_page_size;
+	hw_ip->security_enabled = hl_hw_ip.security_enabled;
+	hw_ip->revision_id = hl_hw_ip.revision_id;
+	hw_ip->tpc_interrupt_id = hl_hw_ip.tpc_interrupt_id;
+	hw_ip->engine_core_interrupt_reg_addr = hl_hw_ip.engine_core_interrupt_reg_addr;
+	hw_ip->rotator_enabled_mask = hl_hw_ip.rotator_enabled_mask;
+	hw_ip->reserved_dram_size = hl_hw_ip.reserved_dram_size;
 
 	return 0;
 }
@@ -650,8 +755,9 @@ hlthunk_public enum hl_device_status hlthunk_get_device_status_info(int fd)
 
 static int hlthunk_get_hw_idle_info(int fd, struct hlthunk_engines_idle_info *info)
 {
-	struct hl_info_args args;
 	struct hl_info_hw_idle hl_hw_idle;
+	uint32_t busy_engines_mask_size;
+	struct hl_info_args args;
 	int rc, i;
 
 	if (!info)
@@ -668,8 +774,12 @@ static int hlthunk_get_hw_idle_info(int fd, struct hlthunk_engines_idle_info *in
 	if (rc)
 		return rc;
 
+	memset(info, 0, sizeof(*info));
 	info->is_idle = hl_hw_idle.is_idle;
-	for (i = 0 ; i < HL_BUSY_ENGINES_MASK_EXT_SIZE ; i++)
+	busy_engines_mask_size = (HLTHUNK_BUSY_ENGINES_MASK_SIZE < HL_BUSY_ENGINES_MASK_EXT_SIZE) ?
+					HLTHUNK_BUSY_ENGINES_MASK_SIZE :
+					HL_BUSY_ENGINES_MASK_EXT_SIZE;
+	for (i = 0 ; i < busy_engines_mask_size ; i++)
 		info->mask[i] = hl_hw_idle.busy_engines_mask_ext[i];
 
 	return 0;
@@ -1114,6 +1224,41 @@ static int _hlthunk_get_dram_pending_rows_info(int fd, uint32_t *out)
 	return 0;
 }
 
+hlthunk_public int hlthunk_get_sec_attest_info(int fd, uint32_t nonce,
+					struct hlthunk_sec_attest_info *info)
+{
+	struct hl_info_args args;
+	struct hl_info_sec_attest tpm_info;
+	int rc;
+
+	memset(&args, 0, sizeof(args));
+	memset(&tpm_info, 0, sizeof(tpm_info));
+
+	args.op = HL_INFO_SECURED_ATTESTATION;
+	args.sec_attest_nonce = nonce;
+	args.return_pointer = (__u64) (uintptr_t) &tpm_info;
+	args.return_size = sizeof(tpm_info);
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	if (rc)
+		return rc;
+
+	info->nonce = tpm_info.nonce;
+	info->pcr_quote_len = tpm_info.pcr_quote_len;
+	info->pub_data_len = tpm_info.pub_data_len;
+	info->certificate_len = tpm_info.certificate_len;
+	info->pcr_num_reg = tpm_info.pcr_num_reg;
+	info->pcr_reg_len = tpm_info.pcr_reg_len;
+	info->quote_sig_len = tpm_info.quote_sig_len;
+	memcpy(&info->pcr_data, &tpm_info.pcr_data, sizeof(info->pcr_data));
+	memcpy(&info->pcr_quote, &tpm_info.pcr_quote, sizeof(info->pcr_quote));
+	memcpy(&info->public_data, &tpm_info.public_data, sizeof(info->public_data));
+	memcpy(&info->certificate, &tpm_info.certificate, sizeof(info->certificate));
+	memcpy(&info->quote_sig, &tpm_info.quote_sig, sizeof(info->quote_sig));
+
+	return 0;
+}
+
 int hlthunk_get_dram_replaced_rows_info_original(int fd,
 				struct hlthunk_dram_replaced_rows_info *out)
 {
@@ -1321,6 +1466,16 @@ hlthunk_public int hlthunk_command_submission_timeout(int fd, struct hlthunk_cs_
 	out->status = cs_info.status;
 
 	return 0;
+}
+
+hlthunk_public int hlthunk_cs_flush_pci_hbw_writes(int fd)
+{
+	union hl_cs_args args;
+
+	memset(&args, 0, sizeof(args));
+	args.in.cs_flags = HL_CS_FLAGS_FLUSH_PCI_HBW_WRITES;
+
+	return hlthunk_ioctl(fd, HL_IOCTL_CS, &args);
 }
 
 static int _hlthunk_staged_command_submission(int fd, uint64_t sequence, struct hlthunk_cs_in *in,
@@ -2259,16 +2414,19 @@ hlthunk_public int hlthunk_memory_unmap(int fd, uint64_t device_virt_addr)
 	return (*functions_pointers_table->fp_hlthunk_memory_unmap)(fd, device_virt_addr);
 }
 
-hlthunk_public int hlthunk_device_memory_export_dmabuf_fd(int fd, uint64_t handle, uint64_t size,
+static int hlthunk_device_memory_export_dmabuf_fd_common(int fd, uint64_t addr,
+								uint64_t size,
+								uint64_t offset,
 								uint32_t flags)
 {
 	union hl_mem_args ioctl_args;
 	int rc;
 
 	memset(&ioctl_args, 0, sizeof(ioctl_args));
-	ioctl_args.in.export_dmabuf_fd.handle = handle;
+	ioctl_args.in.export_dmabuf_fd.addr = addr;
 	ioctl_args.in.export_dmabuf_fd.mem_size = size;
-	ioctl_args.in.flags = O_RDWR | O_CLOEXEC;
+	ioctl_args.in.export_dmabuf_fd.offset = offset;
+	ioctl_args.in.flags = flags;
 	ioctl_args.in.op = HL_MEM_OP_EXPORT_DMABUF_FD;
 
 	rc = hlthunk_ioctl(fd, HL_IOCTL_MEMORY, &ioctl_args);
@@ -2276,6 +2434,23 @@ hlthunk_public int hlthunk_device_memory_export_dmabuf_fd(int fd, uint64_t handl
 		return rc;
 
 	return ioctl_args.out.fd;
+}
+
+hlthunk_public int hlthunk_device_memory_export_dmabuf_fd(int fd, uint64_t addr, uint64_t size,
+								uint32_t flags)
+{
+	return hlthunk_device_memory_export_dmabuf_fd_common(fd, addr, size, 0, O_RDWR | O_CLOEXEC);
+}
+
+hlthunk_public int hlthunk_device_mapped_memory_export_dmabuf_fd(int fd, uint64_t addr,
+									uint64_t size,
+									uint64_t offset,
+									uint32_t flags)
+{
+	if (flags != (O_RDWR | O_CLOEXEC))
+		return -EINVAL;
+
+	return hlthunk_device_memory_export_dmabuf_fd_common(fd, addr, size, offset, flags);
 }
 
 hlthunk_public int hlthunk_allocate_timestamp_elements(int fd, uint32_t num_elements,
@@ -2307,10 +2482,14 @@ hlthunk_public int hlthunk_get_event_record(int fd, enum hlthunk_event_record_id
 	struct hlthunk_event_record_cs_timeout *cs_timeout_buf = buf;
 	struct hlthunk_event_record_razwi_event *razwi_buf = buf;
 	struct hlthunk_event_record_undefined_opcode *undef_opcode_buf = buf;
+	struct hlthunk_event_record_critical_hw_err *hw_buf = buf;
+	struct hlthunk_event_record_critical_fw_err *fw_buf = buf;
 	struct hl_info_last_err_open_dev_time open_dev_time;
 	struct hl_info_cs_timeout_event cs_timeout;
 	struct hl_info_razwi_event razwi;
 	struct hl_info_undefined_opcode_event undef_opcode;
+	struct hl_info_hw_err_event hw_err;
+	struct hl_info_fw_err_event fw_err;
 	struct hl_info_args args;
 	int rc;
 
@@ -2326,24 +2505,42 @@ hlthunk_public int hlthunk_get_event_record(int fd, enum hlthunk_event_record_id
 		args.return_pointer = (__u64) (uintptr_t) &open_dev_time;
 		args.return_size = sizeof(open_dev_time);
 		break;
+
 	case HLTHUNK_CS_TIMEOUT:
 		memset(&cs_timeout, 0, sizeof(cs_timeout));
 		args.op = HL_INFO_CS_TIMEOUT_EVENT;
 		args.return_pointer = (__u64) (uintptr_t) &cs_timeout;
 		args.return_size = sizeof(cs_timeout);
 		break;
+
 	case HLTHUNK_RAZWI_EVENT:
 		memset(&razwi, 0, sizeof(razwi));
 		args.op = HL_INFO_RAZWI_EVENT;
 		args.return_pointer = (__u64) (uintptr_t) &razwi;
 		args.return_size = sizeof(razwi);
 		break;
+
 	case HLTHUNK_UNDEFINED_OPCODE:
 		memset(&undef_opcode, 0, sizeof(undef_opcode));
 		args.op = HL_INFO_UNDEFINED_OPCODE_EVENT;
 		args.return_pointer = (__u64) (uintptr_t) &undef_opcode;
 		args.return_size = sizeof(undef_opcode);
 		break;
+
+	case HLTHUNK_HW_ERR_OPCODE:
+		memset(&hw_err, 0, sizeof(hw_err));
+		args.op = HL_INFO_HW_ERR_EVENT;
+		args.return_pointer = (__u64) (uintptr_t) &hw_err;
+		args.return_size = sizeof(hw_err);
+		break;
+
+	case HLTHUNK_FW_ERR_OPCODE:
+		memset(&fw_err, 0, sizeof(fw_err));
+		args.op = HL_INFO_FW_ERR_EVENT;
+		args.return_pointer = (__u64) (uintptr_t) &fw_err;
+		args.return_size = sizeof(fw_err);
+		break;
+
 	default:
 		return -EINVAL;
 	}
@@ -2356,18 +2553,21 @@ hlthunk_public int hlthunk_get_event_record(int fd, enum hlthunk_event_record_id
 	case HLTHUNK_OPEN_DEV:
 		open_dev_time_buf->timestamp = open_dev_time.timestamp;
 		break;
+
 	case HLTHUNK_CS_TIMEOUT:
 		cs_timeout_buf->timestamp = cs_timeout.timestamp;
 		cs_timeout_buf->seq = cs_timeout.seq;
 		break;
+
 	case HLTHUNK_RAZWI_EVENT:
 		razwi_buf->timestamp = razwi.timestamp;
 		razwi_buf->addr = razwi.addr;
-		razwi_buf->engine_id_1 = razwi.engine_id_1;
-		razwi_buf->engine_id_2 = razwi.engine_id_2;
-		razwi_buf->no_engine_id = razwi.no_engine_id;
-		razwi_buf->error_type = razwi.error_type;
+		razwi_buf->num_of_possible_engines = razwi.num_of_possible_engines;
+		memcpy(&razwi_buf->engine_id[0], &razwi.engine_id[0],
+				razwi_buf->num_of_possible_engines * sizeof(uint16_t));
+		razwi_buf->flags = razwi.flags;
 		break;
+
 	case HLTHUNK_UNDEFINED_OPCODE:
 		undef_opcode_buf->timestamp = undef_opcode.timestamp;
 		undef_opcode_buf->engine_id = undef_opcode.engine_id;
@@ -2378,11 +2578,90 @@ hlthunk_public int hlthunk_get_event_record(int fd, enum hlthunk_event_record_id
 		memcpy(undef_opcode_buf->cb_addr_streams, undef_opcode.cb_addr_streams,
 					sizeof(undef_opcode_buf->cb_addr_streams));
 		break;
+
+	case HLTHUNK_HW_ERR_OPCODE:
+		hw_buf->timestamp = hw_err.timestamp;
+		hw_buf->event_id = hw_err.event_id;
+		break;
+
+	case HLTHUNK_FW_ERR_OPCODE:
+		fw_buf->timestamp = fw_err.timestamp;
+		fw_buf->err_type = fw_err.err_type;
+		fw_buf->reported_err_id = fw_err.event_id;
+		break;
+
 	default:
 		return -EINVAL;
 	}
 
 	return 0;
+}
+
+static int get_user_mappings(int fd, struct hlthunk_user_mapping *um,
+						uint32_t num_of_allocated_mappings,
+						uint32_t *actual_num_of_mappings)
+{
+	struct hl_user_mapping *mappings;
+	uint64_t mappings_buf_size;
+	struct hl_info_args args;
+	int rc, i;
+
+	if (!um || !num_of_allocated_mappings)
+		return -EINVAL;
+
+	mappings_buf_size = num_of_allocated_mappings * sizeof(struct hl_user_mapping);
+	mappings = hlthunk_malloc(mappings_buf_size);
+	if (!mappings)
+		return -ENOMEM;
+
+	memset(&args, 0, sizeof(args));
+	args.op = HL_INFO_USER_MAPPINGS;
+	args.return_pointer = (__u64) (uintptr_t) mappings;
+	args.return_size = mappings_buf_size;
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+
+	*actual_num_of_mappings = args.array_size;
+	if (!rc) {
+		for (i = 0 ; i < *actual_num_of_mappings ; i++) {
+			um[i].dev_va = mappings[i].dev_va;
+			um[i].size = mappings[i].size;
+		}
+	}
+
+	hlthunk_free(mappings);
+
+	return rc;
+}
+
+hlthunk_public int hlthunk_get_page_fault_info(int fd, struct hlthunk_page_fault_info *pgf_info,
+						uint32_t num_of_allocated_mappings)
+{
+	struct hl_page_fault_info page_fault;
+	struct hl_info_args args;
+	int rc;
+
+	if (!pgf_info)
+		return -EINVAL;
+
+	memset(&page_fault, 0, sizeof(page_fault));
+	pgf_info->num_of_mappings = 0xFFFFFFFF;
+
+	memset(&args, 0, sizeof(args));
+	args.op = HL_INFO_PAGE_FAULT_EVENT;
+	args.return_pointer = (__u64) (uintptr_t) &page_fault;
+	args.return_size = sizeof(page_fault);
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	if (rc)
+		return rc;
+
+	pgf_info->addr = page_fault.addr;
+	pgf_info->timestamp = page_fault.timestamp;
+	pgf_info->engine_id = page_fault.engine_id;
+
+	return get_user_mappings(fd, pgf_info->mappings_buf, num_of_allocated_mappings,
+					&pgf_info->num_of_mappings);
 }
 
 hlthunk_public char *hlthunk_get_version(void)
@@ -2474,7 +2753,7 @@ hlthunk_public int hlthunk_debugfs_open(int fd, struct hlthunk_debugfs *debugfs)
 	if (!path)
 		return -ENOMEM;
 
-	snprintf(path, PATH_MAX, "//sys/kernel/debug/habanalabs/hl%d/addr", device_idx);
+	snprintf(path, PATH_MAX, "//sys/kernel/debug/accel/%d/addr", device_idx);
 
 	debugfs_addr_fd = open(path, O_WRONLY);
 	if (debugfs_addr_fd == -1) {
@@ -2482,7 +2761,7 @@ hlthunk_public int hlthunk_debugfs_open(int fd, struct hlthunk_debugfs *debugfs)
 		goto err_exit;
 	}
 
-	snprintf(path, PATH_MAX, "//sys/kernel/debug/habanalabs/hl%d/data32", device_idx);
+	snprintf(path, PATH_MAX, "//sys/kernel/debug/accel/%d/data32", device_idx);
 
 	debugfs_data_fd = open(path, O_RDWR);
 
@@ -2491,7 +2770,7 @@ hlthunk_public int hlthunk_debugfs_open(int fd, struct hlthunk_debugfs *debugfs)
 		goto err_exit;
 	}
 
-	snprintf(path, PATH_MAX, "//sys/kernel/debug/habanalabs/hl%d/clk_gate", device_idx);
+	snprintf(path, PATH_MAX, "//sys/kernel/debug/accel/%d/clk_gate", device_idx);
 
 	clk_gate_fd = open(path, O_RDWR);
 
@@ -2599,6 +2878,21 @@ hlthunk_public int hlthunk_deprecated_func1(int fd, uint64_t seq, uint64_t timeo
 	return -EPERM;
 }
 
+hlthunk_public int hlthunk_deprecated_func2(int fd, uint32_t interrupt_id,
+						uint64_t cq_counters_handle,
+						uint64_t cq_counters_offset,
+						uint64_t target_value,
+						uint64_t timestamp_handle,
+						uint64_t timestamp_offset)
+{
+	return -EPERM;
+}
+
+hlthunk_public int hlthunk_deprecated_func3(int fd, uint32_t num_elements, uint64_t *handle)
+{
+	return -EPERM;
+}
+
 hlthunk_public int hlthunk_notifier_create(int fd)
 {
 	struct hl_info_args args;
@@ -2681,5 +2975,124 @@ hlthunk_public int hlthunk_notifier_recv(int fd, int handle, uint64_t *notifier_
 		return rc;
 
 	*notifier_cnt = cnt;
+	return 0;
+}
+
+hlthunk_public int hlthunk_get_engine_status(int fd, char *status_buf, uint32_t status_buf_size,
+						int *actual_size)
+{
+	struct hl_info_args args;
+	int rc;
+
+	if (!status_buf_size || !status_buf)
+		return -EINVAL;
+
+	memset(&args, 0, sizeof(args));
+	args.op = HL_INFO_ENGINE_STATUS;
+	args.return_pointer = (__u64) (uintptr_t) status_buf;
+	args.return_size = status_buf_size;
+
+	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &args);
+	if (rc)
+		return rc;
+
+	*actual_size = args.user_buffer_actual_size;
+
+	return 0;
+}
+
+hlthunk_public int hlthunk_engine_cores_set_mode(int fd, const uint32_t *core_ids,
+				uint32_t num_cores, uint32_t mode)
+{
+	int rc;
+	union hl_cs_args args;
+	struct hl_cs_in *hl_in;
+
+	if (!core_ids)
+		return -EINVAL;
+
+	memset(&args, 0, sizeof(args));
+	hl_in = &args.in;
+	hl_in->engine_cores = (__u64) (uintptr_t) core_ids;
+	hl_in->num_engine_cores = num_cores;
+
+	if (mode == HL_ENGINE_CORE_RUN || mode == HL_ENGINE_CORE_HALT) {
+		hl_in->core_command = mode;
+		hl_in->cs_flags = HL_CS_FLAGS_ENGINE_CORE_COMMAND;
+		rc = hlthunk_ioctl(fd, HL_IOCTL_CS, &args);
+	} else {
+		rc = -EINVAL;
+	}
+
+	return rc;
+}
+
+hlthunk_public int hlthunk_engines_command(int fd, const uint32_t *engine_ids,
+				uint32_t num_engines, enum hl_engine_command command)
+{
+	struct hl_cs_in *hl_in;
+	union hl_cs_args args;
+
+	if (!engine_ids)
+		return -EINVAL;
+
+	memset(&args, 0, sizeof(args));
+	hl_in = &args.in;
+
+	switch (command) {
+	case HL_ENGINE_CORE_HALT:
+	case HL_ENGINE_CORE_RUN:
+	case HL_ENGINE_STALL:
+	case HL_ENGINE_RESUME:
+		hl_in->engines = (__u64) (uintptr_t) engine_ids;
+		hl_in->num_engines = num_engines;
+		hl_in->engine_command = command;
+		hl_in->cs_flags = HL_CS_FLAGS_ENGINES_COMMAND;
+		return hlthunk_ioctl(fd, HL_IOCTL_CS, &args);
+	default:
+		return -EINVAL;
+	}
+}
+
+hlthunk_public int hlthunk_get_device_count(enum hlthunk_device_name device_name)
+{
+	int i, ctrl_fd, count = 0;
+
+	if (device_name == HLTHUNK_DEVICE_INVALID || device_name >= HLTHUNK_DEVICE_MAX)
+		return -EINVAL;
+
+	for (i = 0 ; i < HLTHUNK_MAX_MINOR ; i++) {
+		ctrl_fd = hlthunk_open_minor(i, HLTHUNK_NODE_CONTROL);
+		if (ctrl_fd < 0)
+			continue;
+
+		if (device_name == HLTHUNK_DEVICE_DONT_CARE ||
+				device_name == hlthunk_get_device_name_from_fd(ctrl_fd))
+			++count;
+
+		hlthunk_close_original(ctrl_fd);
+	}
+
+	return count;
+}
+
+int hlthunk_fw_send_generic_request(int fd, void *buff, uint32_t buff_size,
+		uint32_t sub_opcode)
+{
+	struct hl_info_args info_args;
+	int rc;
+
+	if (!buff || !buff_size)
+		return -EINVAL;
+
+	memset(&info_args, 0, sizeof(info_args));
+	info_args.op = HL_INFO_FW_GENERIC_REQ;
+	info_args.return_pointer = (__u64) (uintptr_t)buff;
+	info_args.return_size = buff_size;
+	info_args.fw_sub_opcode = sub_opcode;
+	rc = hlthunk_ioctl(fd, HL_IOCTL_INFO, &info_args);
+	if (rc)
+		return rc;
+
 	return 0;
 }
