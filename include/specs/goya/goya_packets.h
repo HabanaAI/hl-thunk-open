@@ -28,6 +28,11 @@ enum packet_id {
 				PACKET_HEADER_PACKET_ID_SHIFT) + 1
 };
 
+/* IMPORTANT NOTE:
+ * goya_dma_direction enum MUST match exactly enum "hl_goya_dma_direction" in drm/habanalabs_accel.h.
+ * Otherwise, there could be errors resulting from mismatch between user-space and the kernel
+ * driver. It is recommended that user-space will use only "hl_goya_dma_direction" enum.
+ */
 enum goya_dma_direction {
 	DMA_HOST_TO_DRAM,
 	DMA_HOST_TO_SRAM,

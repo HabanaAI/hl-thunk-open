@@ -72,4 +72,6 @@
 
 #define SPMU_MAX_COUNTERS	6
 
+#define NIC_HW_MAX_QP_NUM	(1 << 15) /* 32K (per nic) */
+
 #endif /* GAUDI_H */

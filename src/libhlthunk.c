@@ -191,7 +191,6 @@ hlthunk_public enum hlthunk_device_name hlthunk_get_device_name_from_fd(int fd)
 	case PCI_IDS_GAUDI_SEC:
 		return HLTHUNK_DEVICE_GAUDI;
 	case PCI_IDS_GAUDI2:
-	case PCI_IDS_GAUDI2_SEC:
 		return HLTHUNK_DEVICE_GAUDI2;
 	default:
 		break;

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT
  *
- * Copyright 2018-2021 HabanaLabs, Ltd.
+ * Copyright 2018-2022 HabanaLabs, Ltd.
  * All Rights Reserved.
  *
  */
@@ -957,6 +957,8 @@ enum gaudi2_async_event_id {
 	GAUDI2_EVENT_CPU11_STATUS_NIC11_ENG0 = 1317,
 	GAUDI2_EVENT_CPU11_STATUS_NIC11_ENG1 = 1318,
 	GAUDI2_EVENT_ARC_DCCM_FULL = 1319,
+	GAUDI2_EVENT_CPU_FP32_NOT_SUPPORTED = 1320,
+	GAUDI2_EVENT_CPU_DEV_RESET_REQ = 1321,
 	GAUDI2_EVENT_SIZE,
 };
 

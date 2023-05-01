@@ -17,7 +17,6 @@ enum hl_pci_ids {
 	PCI_IDS_GAUDI				= 0x1000,
 	PCI_IDS_GAUDI_SEC			= 0x1010,
 	PCI_IDS_GAUDI2				= 0x1020,
-	PCI_IDS_GAUDI2_SEC			= 0x1030
 };
 
 #endif /* PCI_IDS_H */

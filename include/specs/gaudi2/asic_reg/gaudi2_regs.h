@@ -29,6 +29,8 @@
 #include "dcore1_tpc0_qm_regs.h"
 #include "dcore2_tpc0_qm_regs.h"
 #include "dcore3_tpc0_qm_regs.h"
+#include "dcore0_tpc0_cfg_regs.h"
+#include "dcore1_tpc0_cfg_regs.h"
 #include "pcie_wrap_regs.h"
 #include "dcore0_sync_mngr_objs_masks.h"
 #include "pcie_dbi_regs.h"
