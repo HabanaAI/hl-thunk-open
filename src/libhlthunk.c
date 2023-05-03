@@ -2839,12 +2839,9 @@ hlthunk_public void hlthunk_profiler_destroy(void)
 
 hlthunk_public int hlthunk_debugfs_open(int fd, struct hlthunk_debugfs *debugfs)
 {
-	char pci_bus_id[13];
-	char *path;
-	char clk_gate_str[16] = "0";
+	int device_idx, rc = 0, clk_gate_fd = -1, addr_fd = -1, data_fd = -1, parent_device_fd;
+	char pci_bus_id[13], *path, clk_gate_str[16] = "0", parent_device[16];
 	ssize_t size;
-	int device_idx, rc = 0;
-	int clk_gate_fd = -1, debugfs_addr_fd = -1, debugfs_data_fd = -1;
 
 	rc = hlthunk_get_pci_bus_id_from_fd(fd, pci_bus_id, sizeof(pci_bus_id));
 	if (rc)
@@ -2858,24 +2855,37 @@ hlthunk_public int hlthunk_debugfs_open(int fd, struct hlthunk_debugfs *debugfs)
 	if (!path)
 		return -ENOMEM;
 
-	snprintf(path, PATH_MAX, "//sys/kernel/debug/accel/%d/addr", device_idx);
+	snprintf(path, PATH_MAX, "/sys/class/accel/accel%d/device/parent_device", device_idx);
+	parent_device_fd = open(path, O_RDONLY);
+	if (parent_device_fd == -1)
+		return -EPERM;
 
-	debugfs_addr_fd = open(path, O_WRONLY);
-	if (debugfs_addr_fd == -1) {
+	size = read(parent_device_fd, parent_device, sizeof(parent_device));
+	if (size <= 0) {
+		close(parent_device_fd);
+		return -errno;
+	}
+
+	parent_device[strcspn(parent_device, "\n")] = '\0'; /* remove trailing newline character */
+	close(parent_device_fd);
+
+	snprintf(path, PATH_MAX, "/sys/kernel/debug/accel/%s/addr", parent_device);
+
+	addr_fd = open(path, O_WRONLY);
+	if (addr_fd == -1) {
 		rc = -EPERM;
 		goto err_exit;
 	}
 
-	snprintf(path, PATH_MAX, "//sys/kernel/debug/accel/%d/data32", device_idx);
+	snprintf(path, PATH_MAX, "/sys/kernel/debug/accel/%s/data32", parent_device);
 
-	debugfs_data_fd = open(path, O_RDWR);
-
-	if (debugfs_data_fd == -1) {
+	data_fd = open(path, O_RDWR);
+	if (data_fd == -1) {
 		rc = -EPERM;
 		goto err_exit;
 	}
 
-	snprintf(path, PATH_MAX, "//sys/kernel/debug/accel/%d/clk_gate", device_idx);
+	snprintf(path, PATH_MAX, "/sys/kernel/debug/accel/%s/clk_gate", parent_device);
 
 	clk_gate_fd = open(path, O_RDWR);
 
@@ -2884,8 +2894,8 @@ hlthunk_public int hlthunk_debugfs_open(int fd, struct hlthunk_debugfs *debugfs)
 		goto err_exit;
 	}
 
-	debugfs->addr_fd = debugfs_addr_fd;
-	debugfs->data_fd = debugfs_data_fd;
+	debugfs->addr_fd = addr_fd;
+	debugfs->data_fd = data_fd;
 	debugfs->clk_gate_fd = clk_gate_fd;
 
 	size = pread(debugfs->clk_gate_fd, debugfs->clk_gate_val, sizeof(debugfs->clk_gate_val), 0);
@@ -2904,11 +2914,11 @@ hlthunk_public int hlthunk_debugfs_open(int fd, struct hlthunk_debugfs *debugfs)
 	return 0;
 
 err_exit:
-	if (debugfs_addr_fd != -1)
-		close(debugfs_addr_fd);
+	if (addr_fd != -1)
+		close(addr_fd);
 
-	if (debugfs_data_fd != -1)
-		close(debugfs_data_fd);
+	if (data_fd != -1)
+		close(data_fd);
 
 	hlthunk_free(path);
 	return rc;
