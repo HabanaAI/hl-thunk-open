@@ -83,12 +83,15 @@ static const char *build_path;
 static int enable_arc_log;
 
 char asic_names[HLTHUNK_DEVICE_MAX][20] = {
-	"Goya",
-	"Placeholder1",
-	"Gaudi",
-	"Invalid",
-	"Don't care",
-	"Gaudi2"
+	[HLTHUNK_DEVICE_INVALID] = "Invalid",
+	[HLTHUNK_DEVICE_GOYA] = "Goya",
+	[HLTHUNK_DEVICE_GAUDI] = "Gaudi",
+	[HLTHUNK_DEVICE_PLACEHOLDER2] = "Placeholder2",
+	[HLTHUNK_DEVICE_PLACEHOLDER1] = "Placeholder1",
+	[HLTHUNK_DEVICE_GAUDI2] = "Gaudi2",
+	[HLTHUNK_DEVICE_PLACEHOLDER4] = "Placeholder4",
+	[HLTHUNK_DEVICE_PLACEHOLDER3] = "Placeholder3",
+	[HLTHUNK_DEVICE_DONT_CARE] = "Don't care"
 };
 
 /* translate device name (enum) to device mask */
