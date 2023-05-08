@@ -24,9 +24,6 @@ extern "C" {
 #define HLTHUNK_DEV_NAME_PRIMARY	"/dev/accel/accel%d"
 #define HLTHUNK_DEV_NAME_CONTROL	"/dev/accel/accel_controlD%d"
 
-#define HLTHUNK_DEV_NAME_PRIMARY_LEGACY	"/dev/hl%d"
-#define HLTHUNK_DEV_NAME_CONTROL_LEGACY	"/dev/hl_controlD%d"
-
 #define HLTHUNK_BUSY_ENGINES_MASK_SIZE	4
 
 enum hlthunk_node_type {

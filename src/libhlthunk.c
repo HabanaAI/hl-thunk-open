@@ -66,18 +66,6 @@ void __attribute__ ((destructor)) hlthunk_fini(void)
 	hlthunk_profiler_destroy_original();
 }
 
-static int is_accel_dev(void)
-{
-	DIR *dir = opendir("/dev/accel");
-
-	if (dir) {
-		closedir(dir);
-		return 1;
-	} else {
-		return 0;
-	}
-}
-
 static int hlthunk_ioctl(int fd, unsigned long request, void *arg)
 {
 	int ret;
@@ -95,21 +83,15 @@ static int hlthunk_ioctl(int fd, unsigned long request, void *arg)
 static int hlthunk_open_minor(int device_index, enum hlthunk_node_type type)
 {
 	char buf[64], *dev_name;
-	int fd, rc;
-
-	rc = is_accel_dev();
+	int fd;
 
 	switch (type) {
 	case HLTHUNK_NODE_PRIMARY:
 		dev_name = HLTHUNK_DEV_NAME_PRIMARY;
-		if (!rc)
-			dev_name = HLTHUNK_DEV_NAME_PRIMARY_LEGACY;
 		break;
 
 	case HLTHUNK_NODE_CONTROL:
 		dev_name = HLTHUNK_DEV_NAME_CONTROL;
-		if (!rc)
-			dev_name = HLTHUNK_DEV_NAME_CONTROL_LEGACY;
 		break;
 
 	default:
@@ -434,24 +416,15 @@ hlthunk_public int hlthunk_open(enum hlthunk_device_name device_name, const char
 
 hlthunk_public int hlthunk_open_by_module_id(uint32_t module_id)
 {
-	const char *base_path;
+	const char *base_path = "/sys/class/accel/";
 	const char *char_base_path = "/sys/dev/char/";
-	const char *device_prefix;
+	const char *device_prefix = "accel_controlD";
 	const char *dev_file_prefix = "dev";
 	const char *pci_addr_prefix = "pci_addr";
 	char dev_name[64], read_busid[16], sys_file_name[128];
 	int i, rc, ctrl_fd, major, minor, pci_fd;
 	bool found = false;
 	FILE *sys_file;
-
-	rc = is_accel_dev();
-	if (rc) {
-		base_path = "/sys/class/accel/";
-		device_prefix = "accel_controlD";
-	} else {
-		base_path = "/sys/class/habanalabs/";
-		device_prefix = "hl_controlD";
-	}
 
 	for (i = 0 ; i < HLTHUNK_MAX_MINOR ; i++) {
 		struct hlthunk_hw_ip_info hw_ip;
