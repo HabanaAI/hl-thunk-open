@@ -793,9 +793,10 @@ hlthunk_public int hlthunk_get_dram_usage(int fd,
 /**
  * This function retrieves the status of a specific device
  * @param fd file descriptor handle of habanalabs main device
- * @return enumeration value that represents the status of the acquired device
+ * @return enum value that represents the device's status in case it was acquired,
+ * otherwise - returns Linux error code.
  */
-hlthunk_public enum hl_device_status hlthunk_get_device_status_info(int fd);
+hlthunk_public int hlthunk_get_device_status_info(int fd);
 
 /**
  * This function checks whether a specific device is idle
