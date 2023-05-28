@@ -593,17 +593,18 @@ hlthunk_public int hlthunk_get_open_stats(int fd, struct hlthunk_open_stats_info
 
 hlthunk_public int hlthunk_get_hw_asic_status(int fd, struct hlthunk_hw_asic_status *hw_asic_status)
 {
-	int rc;
+	int rc, ret;
 
 	if (!hw_asic_status)
 		return -EINVAL;
 
 	hw_asic_status->valid = 0;
 
-	hw_asic_status->status = hlthunk_get_device_status_info(fd);
-	if (hw_asic_status->status < 0)
-		return hw_asic_status->status;
+	ret = hlthunk_get_device_status_info(fd);
+	if (ret < 0)
+		return ret;
 
+	hw_asic_status->status = ret;
 	hw_asic_status->valid = 1;
 
 	rc = hlthunk_get_clk_throttle_info(fd, &hw_asic_status->throttle);
