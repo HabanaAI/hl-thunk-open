@@ -1688,8 +1688,7 @@ hlthunk_public int hlthunk_cs_flush_pci_hbw_writes(int fd);
  * target value, and if CQ reached that value it'll write the timestamp
  * into the specified timestamp offset.
  * - If the timestamp record is already registered for interrupt, that has not
- * been expired yet, the API will fail and the user must call the unregister API
- * and try again.
+ * been expired yet, the driver will unregister the node and will register it on the new interrupt.
  * - As part of the call, the timestamp handle will be set atomically to TS_NOT_EXP_VAL.
  * The value is then overridden only after the cq counter reaches its target value.
  * users can wait until the timestamp entry is different than TS_NOT_EXP_VAL
