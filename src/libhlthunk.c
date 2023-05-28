@@ -707,7 +707,7 @@ hlthunk_public int hlthunk_get_dram_usage(int fd, struct hlthunk_dram_usage_info
 	return 0;
 }
 
-hlthunk_public enum hl_device_status hlthunk_get_device_status_info(int fd)
+hlthunk_public int hlthunk_get_device_status_info(int fd)
 {
 	struct hl_info_args args;
 	struct hl_info_device_status hl_dev_status;
@@ -724,7 +724,8 @@ hlthunk_public enum hl_device_status hlthunk_get_device_status_info(int fd)
 	if (rc)
 		return rc;
 
-	return hl_dev_status.status;
+	/* acquired device's status is an enum which is guaranteed to be int-representable */
+	return (int)hl_dev_status.status;
 }
 
 static int hlthunk_get_hw_idle_info(int fd, struct hlthunk_engines_idle_info *info)
