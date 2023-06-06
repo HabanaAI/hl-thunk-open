@@ -2534,12 +2534,14 @@ hlthunk_public int hlthunk_get_event_record(int fd, enum hlthunk_event_record_id
 	struct hlthunk_event_record_undefined_opcode *undef_opcode_buf = buf;
 	struct hlthunk_event_record_critical_hw_err *hw_buf = buf;
 	struct hlthunk_event_record_critical_fw_err *fw_buf = buf;
+	struct hlthunk_event_record_engine_err *engine_buf = buf;
 	struct hl_info_last_err_open_dev_time open_dev_time;
 	struct hl_info_cs_timeout_event cs_timeout;
 	struct hl_info_razwi_event razwi;
 	struct hl_info_undefined_opcode_event undef_opcode;
 	struct hl_info_hw_err_event hw_err;
 	struct hl_info_fw_err_event fw_err;
+	struct hl_info_engine_err_event engine_err;
 	struct hl_info_args args;
 	int rc;
 
@@ -2591,6 +2593,13 @@ hlthunk_public int hlthunk_get_event_record(int fd, enum hlthunk_event_record_id
 		args.return_size = sizeof(fw_err);
 		break;
 
+	case HLTHUNK_ENGINE_EVENT:
+		memset(&engine_err, 0, sizeof(engine_err));
+		args.op = HL_INFO_USER_ENGINE_ERR_EVENT;
+		args.return_pointer = (__u64) (uintptr_t) &engine_err;
+		args.return_size = sizeof(engine_err);
+		break;
+
 	default:
 		return -EINVAL;
 	}
@@ -2638,6 +2647,12 @@ hlthunk_public int hlthunk_get_event_record(int fd, enum hlthunk_event_record_id
 		fw_buf->timestamp = fw_err.timestamp;
 		fw_buf->err_type = fw_err.err_type;
 		fw_buf->reported_err_id = fw_err.event_id;
+		break;
+
+	case HLTHUNK_ENGINE_EVENT:
+		engine_buf->timestamp = engine_err.timestamp;
+		engine_buf->engine_id = engine_err.engine_id;
+		engine_buf->error_count = engine_err.error_count;
 		break;
 
 	default:

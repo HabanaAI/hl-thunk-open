@@ -51,7 +51,8 @@ enum hlthunk_event_record_id {
 	HLTHUNK_RAZWI_EVENT,
 	HLTHUNK_UNDEFINED_OPCODE,
 	HLTHUNK_HW_ERR_OPCODE,
-	HLTHUNK_FW_ERR_OPCODE
+	HLTHUNK_FW_ERR_OPCODE,
+	HLTHUNK_ENGINE_EVENT,
 };
 
 /**
@@ -420,10 +421,22 @@ struct hlthunk_event_record_critical_hw_err {
  * @err_type: The type of error being reported.
  * @reported_err_id: The reported error ID in-case of FW_REPORTED_ERR.
  */
-struct  hlthunk_event_record_critical_fw_err {
+struct hlthunk_event_record_critical_fw_err {
 	int64_t timestamp;
 	enum hl_info_fw_err_type err_type;
 	uint16_t reported_err_id;
+};
+
+/**
+ * struct hlthunk_event_record_engine_err - info about the engine reported an error
+ * @timestamp: timestamp of the engine error.
+ * @engine_id: engine id who reported the error.
+ * @error_count: Amount of errors reported.
+ */
+struct  hlthunk_event_record_engine_err {
+	int64_t timestamp;
+	uint16_t engine_id;
+	uint16_t error_count;
 };
 
 #define SEC_PCR_DATA_BUF_SZ	256
