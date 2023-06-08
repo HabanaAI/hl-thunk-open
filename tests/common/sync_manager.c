@@ -791,7 +791,7 @@ VOID test_sm_monitor_set_sram(void **state)
 	int rc, fd = tests_state->fd;
 
 	if (hltests_is_gaudi(fd) || hltests_is_goya(fd)) {
-		printf("Test relevant for Greco and above, skipping\n");
+		printf("Test is not supported in Goya and Gaudi1, skipping\n");
 		skip();
 	}
 
@@ -1264,7 +1264,7 @@ static VOID _test_signal_wait(void **state, bool collective_wait,
 	void *retval;
 
 	if (!hltests_is_gaudi(fd)) {
-		printf("Test is supported on Gaudi/Greco, skipping.\n");
+		printf("Test is supported only on Gaudi1, skipping.\n");
 		skip();
 	}
 
@@ -1350,7 +1350,7 @@ VOID test_sm_long_mode(void **state)
 	int fd = tests_state->fd;
 
 	if (hltests_is_gaudi(fd) || hltests_is_goya(fd)) {
-		printf("Test relevant for Gaudi2 and above, skipping\n");
+		printf("Test is not supported in Goya and Gaudi1, skipping\n");
 		skip();
 	}
 

@@ -233,7 +233,7 @@ VOID test_cb_unalign(void **state)
 
 	/* Test only asic which supports unaligned cb */
 	if (hltests_is_goya(fd) || hltests_is_gaudi(fd)) {
-		printf("Test is supported on Greco and above, skipping.\n");
+		printf("Test is not supported in Goya and Gaudi1, skipping.\n");
 		skip();
 	}
 
@@ -511,7 +511,7 @@ VOID test_common_cb_unalign(void **state)
 
 	/* Test only asic which supports unaligned cb */
 	if (hltests_is_goya(fd) || hltests_is_gaudi(fd)) {
-		printf("Test is supported on Greco and above, skipping.\n");
+		printf("Test is supported in Goya and Gaudi1, skipping.\n");
 		skip();
 	}
 

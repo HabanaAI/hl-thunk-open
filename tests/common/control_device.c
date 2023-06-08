@@ -32,28 +32,28 @@ VOID test_print_hw_ip_info(void **state)
 
 	printf("\nDevice information:");
 	printf("\n-----------------------");
-	printf("\nPCI Device id             : 0x%x", hw_ip.device_id);
+	printf("\nPCI Device id             : %#x", hw_ip.device_id);
 	printf("\nCard name                 : %s", hw_ip.card_name);
 	printf("\nDRAM enabled              : %d", hw_ip.dram_enabled);
-	printf("\nDRAM base address         : 0x%lx", hw_ip.dram_base_address);
+	printf("\nDRAM base address         : %#lx", hw_ip.dram_base_address);
 	printf("\nDRAM size                 : %luGB (0x%lx)", hw_ip.dram_size / 1024 / 1024 / 1024,
 								hw_ip.dram_size);
 
 	printf("\nDRAM page size            : %luMB", hw_ip.dram_page_size / 1024 / 1024);
-	printf("\nSRAM base address         : 0x%lx", hw_ip.sram_base_address);
+	printf("\nSRAM base address         : %#lx", hw_ip.sram_base_address);
 	printf("\nSRAM size                 : %uMB (0x%x)", hw_ip.sram_size / 1024 / 1024,
 								hw_ip.sram_size);
 
 	printf("\nFirst user interrupt      : %u", hw_ip.first_available_interrupt_id);
 	printf("\nNumber of user interrupts : %u", hw_ip.number_of_user_interrupts);
-	printf("\nTPC enabled mask          : 0x%lx", hw_ip.tpc_enabled_mask_ext);
+	printf("\nTPC enabled mask          : %#lx", hw_ip.tpc_enabled_mask_ext);
 	printf("\nServer type               : %u", hw_ip.server_type);
 
 	if (!hltests_is_goya(fd))
 		printf("\nModule ID                 : %d", hw_ip.module_id);
 
 	if (hltests_is_gaudi2(fd))
-		printf("\nDecoder enabled mask      : 0x%x\n", hw_ip.decoder_enabled_mask);
+		printf("\nDecoder enabled mask      : %#x\n", hw_ip.decoder_enabled_mask);
 
 	printf("\n\n");
 
