@@ -321,7 +321,7 @@ VOID test_wait_for_multi_cs_common(void **state, bool do_complete)
 	void *retval;
 
 	if (!hltests_is_gaudi(fd)) {
-		printf("Test is skipped. Goya doesn't support multi-CS\n");
+		printf("Test is supported only for Gaudi1\n");
 		skip();
 	}
 
@@ -962,7 +962,7 @@ VOID test_cs_two_streams_with_priority_arb(void **state)
 	void *data[3], *src_data[2], *dst_data, *cb_upstream;
 	int i, rc, fd = tests_state->fd;
 
-	/* Test intermittently fails on Greco and Gaudi2 */
+	/* Test intermittently fails on Gaudi2 */
 	if (!hltests_is_gaudi(fd)) {
 		printf("Test is relevant for Gaudi only, skipping\n");
 		skip();
@@ -1886,7 +1886,6 @@ VOID test_cs_cb_list(void **state)
 		entry_size = 16;
 	else
 		fail_msg("CB_LIST entry size of 32 bytes is not supported");
-
 	/* Verify that CB_LIST table is large enough to hold all entries */
 	table_size = CB_LIST_LENGTH * entry_size * index_factor;
 	assert_true((cb_sram_addr - table_sram_addr) > table_size);
@@ -2271,7 +2270,6 @@ VOID test_cs_cb_list_with_parallel_pqe(void **state)
 		entry_size = 16;
 	else
 		fail_msg("CB_LIST entry size of 32 bytes is not supported");
-
 	/* Verify that CB_LIST table is large enough to hold all entries */
 	table_size = CB_LIST_LENGTH * entry_size * index_factor;
 	assert_true((cb_sram_addr - table_sram_addr) > table_size);
@@ -3730,7 +3728,7 @@ VOID test_wait_for_multi_cs_multi_thread_common(void **state, bool single_mode)
 	}
 
 	if (!hltests_is_gaudi(fd)) {
-		printf("Test is supported only for Gaudi, support for Greco will be added later\n");
+		printf("Test is supported only for Gaudi\n");
 		skip();
 	}
 

@@ -516,7 +516,7 @@ VOID test_pmmu_hint_address_huge_page(void **state)
 }
 
 /*
- * This test is relevant for asics with pmmu memcache, i.e. greco and gaudi2.
+ * This test is relevant for asics with pmmu memcache, i.e. gaudi2.
  * This test does the following:
  * 1. Allocate and release 3 contigious pages P1, P2, P3 - this ensures we have
  *    at least 2 of them in the same cache line, P1 and P2 or P2 and P3.
@@ -542,7 +542,7 @@ VOID test_pdma_cache_lines_inconsistency(void **state)
 	int rc, fd = tests_state->fd;
 
 	if (hltests_is_gaudi(fd) || hltests_is_goya(fd)) {
-		printf("This test requires either gaudi2 or greco, skipping\n");
+		printf("This test requires gaudi2 and later, skipping\n");
 		skip();
 	}
 

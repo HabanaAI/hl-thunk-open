@@ -82,9 +82,9 @@ enum hlthunk_event_record_id {
  * @card_name: The card name as passed by the f/w.
  * @decoder_enabled_mask: Bit-mask that represents which decoders are enabled.
  * @mme_master_slave_mode: Indicate whether the MME is working in master/slave
- *                         configuration. Relevant for Greco and later.
+ *                         configuration. Relevant for Gaudi2 and later.
  * @tpc_enabled_mask_ext: Bit-mask that represents which TPCs are enabled.
- *                        Relevant for Greco and later.
+ *                        Relevant for Gaudi2 and later.
  * @dram_page_size: The DRAM physical page size.
  * @first_available_interrupt_id: The first available interrupt ID for the user
  *                                to be used when it works with user interrupts.
