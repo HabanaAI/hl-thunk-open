@@ -6,6 +6,7 @@ build/
 *.orig
 cscope*
 tags*
-.cache
-.vscode
+.cache/
 compile_commands.json
+.vscode/
+.clangd
