@@ -170,6 +170,7 @@ struct hlthunk_reset_count_info {
 struct hlthunk_time_sync_info {
 	uint64_t device_time;
 	uint64_t host_time;
+	uint64_t tsc_time;
 };
 
 struct hlthunk_sync_manager_info {
