@@ -1007,6 +1007,7 @@ hlthunk_public int hlthunk_get_time_sync_info(int fd, struct hlthunk_time_sync_i
 
 	info->device_time = hl_time_sync.device_time;
 	info->host_time = hl_time_sync.host_time;
+	info->tsc_time = hl_time_sync.tsc_time;
 
 	return 0;
 }
