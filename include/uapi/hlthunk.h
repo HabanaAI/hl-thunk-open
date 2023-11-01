@@ -670,6 +670,9 @@ struct hlthunk_functions_pointers {
 							uint64_t size,
 							uint64_t offset,
 							uint32_t flags);
+	int (*fp_hlthunk_get_time_sync_per_die_info)(int fd,
+					uint32_t die_index,
+					struct hlthunk_time_sync_info *info);
 };
 
 struct hlthunk_debugfs {
@@ -1886,6 +1889,17 @@ hlthunk_public int hlthunk_fw_send_generic_request(int fd, void *buff, uint32_t 
  */
 hlthunk_public int hlthunk_get_dev_info_signed(int fd, uint32_t nonce,
 						struct hlthunk_dev_info_signed *info);
+/**
+ * This function retrieves the device's time alongside the host's time
+ * on specified die for synchronization
+ * @param fd file descriptor handle of habanalabs main device
+ * @param die_index index for requested die must be assigned
+ * @param info pointer to memory that will be filled by the function with the
+ * device's and host's times
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_get_time_sync_per_die_info(int fd, uint32_t die_index,
+					struct hlthunk_time_sync_info *info);
 
 #ifdef __cplusplus
 }   //extern "C"
