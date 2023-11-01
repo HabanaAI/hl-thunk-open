@@ -131,7 +131,8 @@ do { \
 		hlthunk_get_mapped_cb_device_va_by_handle_original,\
 	.fp_hlthunk_get_pll_frequency = hlthunk_get_pll_frequency,\
 	.fp_hlthunk_deprecated_func2 = hlthunk_deprecated_func2,\
-	.fp_hlthunk_deprecated_func3 = hlthunk_deprecated_func3\
+	.fp_hlthunk_deprecated_func3 = hlthunk_deprecated_func3,\
+	.fp_hlthunk_get_time_sync_per_die_info = hlthunk_get_time_sync_per_die_info\
 }
 
 int hlthunk_command_submission_original(int fd, struct hlthunk_cs_in *in,

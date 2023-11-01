@@ -987,8 +987,14 @@ hlthunk_public int hlthunk_get_reset_count_info(int fd, struct hlthunk_reset_cou
 
 hlthunk_public int hlthunk_get_time_sync_info(int fd, struct hlthunk_time_sync_info *info)
 {
+	return hlthunk_get_time_sync_per_die_info(fd, 0, info);
+}
+
+hlthunk_public int hlthunk_get_time_sync_per_die_info(int fd, uint32_t die_index,
+	struct hlthunk_time_sync_info *info)
+{
 	struct hl_info_args args;
-	struct hl_info_time_sync hl_time_sync;
+	struct hl_info_time_sync_per_die hl_time_sync = {0};
 	int rc;
 
 	if (!info)
@@ -997,7 +1003,9 @@ hlthunk_public int hlthunk_get_time_sync_info(int fd, struct hlthunk_time_sync_i
 	memset(&args, 0, sizeof(args));
 	memset(&hl_time_sync, 0, sizeof(hl_time_sync));
 
-	args.op = HL_INFO_TIME_SYNC;
+	hl_time_sync.die_index = die_index;
+
+	args.op = HL_INFO_TIME_SYNC_PER_DIE;
 	args.return_pointer = (__u64) (uintptr_t) &hl_time_sync;
 	args.return_size = sizeof(hl_time_sync);
 
