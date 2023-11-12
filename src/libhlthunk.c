@@ -1310,6 +1310,37 @@ hlthunk_public int hlthunk_get_sec_attest_info(int fd, uint32_t nonce,
 	return 0;
 }
 
+
+hlthunk_public int hlthunk_get_dev_info_signed(int fd, uint32_t nonce,
+						struct hlthunk_dev_info_signed *info)
+{
+	struct hl_info_args args;
+	struct hl_info_signed dev_info;
+	int rc;
+
+	memset(&args, 0, sizeof(args));
+	memset(&dev_info, 0, sizeof(dev_info));
+
+	args.op = HL_INFO_DEV_SIGNED;
+	args.sec_attest_nonce = nonce;
+	args.return_pointer = (__u64) (uintptr_t) &dev_info;
+	args.return_size = sizeof(dev_info);
+
+	rc = hlthunk_ioctl(fd, DRM_IOCTL_HL_INFO, &args);
+	if (rc)
+		return rc;
+
+	info->nonce = dev_info.nonce;
+	info->pub_data_len = dev_info.pub_data_len;
+	info->certificate_len = dev_info.certificate_len;
+	info->info_sig_len = dev_info.info_sig_len;
+	memcpy(&info->public_data, &dev_info.public_data, sizeof(info->public_data));
+	memcpy(&info->certificate, &dev_info.certificate, sizeof(info->certificate));
+	memcpy(&info->info_sig, &dev_info.info_sig, sizeof(info->info_sig));
+
+	return 0;
+}
+
 int hlthunk_get_dram_replaced_rows_info_original(int fd,
 				struct hlthunk_dram_replaced_rows_info *out)
 {
