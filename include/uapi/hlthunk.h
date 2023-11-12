@@ -478,6 +478,27 @@ struct hlthunk_sec_attest_info {
 	uint8_t certificate[SEC_CERTIFICATE_BUF_SZ];
 };
 
+/*
+ * struct hlthunk_dev_info_signed - device information signed by a secured device.
+ * @nonce: number only used once. random number provided by host. this also passed to the quote
+ *         command as a qualifying data.
+ * @pub_data_len: length of the public data (bytes)
+ * @certificate_len: length of the certificate (bytes)
+ * @info_sig_len: length of the attestation signature (bytes)
+ * @public_data: public key info signed info data (outPublic + name + qualifiedName)
+ * @certificate: certificate for the signing key
+ * @info_sig: signature of the info + nonce data.
+ */
+struct hlthunk_dev_info_signed {
+	uint32_t nonce;
+	uint16_t pub_data_len;
+	uint16_t certificate_len;
+	uint8_t info_sig_len;
+	uint8_t public_data[SEC_PUB_DATA_BUF_SZ];
+	uint8_t certificate[SEC_CERTIFICATE_BUF_SZ];
+	uint8_t info_sig[SEC_SIGNATURE_BUF_SZ];
+};
+
 /**
  * struct hlthunk_user_mapping - user mapping information.
  * @dev_va: device virtual address.
@@ -1855,6 +1876,16 @@ hlthunk_public int hlthunk_deprecated_func3(int fd, uint32_t num_elements, uint6
  */
 hlthunk_public int hlthunk_fw_send_generic_request(int fd, void *buff, uint32_t buff_size,
 							uint32_t sub_opcode);
+
+/**
+ * This function retrieves the signed device information.
+ * @param fd file descriptor handle of habanalabs main device
+ * @param nonce number used to generate signed device info report
+ * @param info pointer to the signed device info output buffer
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_get_dev_info_signed(int fd, uint32_t nonce,
+						struct hlthunk_dev_info_signed *info);
 
 #ifdef __cplusplus
 }   //extern "C"
