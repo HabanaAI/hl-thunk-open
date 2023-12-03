@@ -1390,9 +1390,11 @@ hlthunk_public int hlthunk_get_dev_info_signed(int fd, uint32_t nonce,
 	info->pub_data_len = dev_info.pub_data_len;
 	info->certificate_len = dev_info.certificate_len;
 	info->info_sig_len = dev_info.info_sig_len;
+	info->dev_info_len = dev_info.dev_info_len;
 	memcpy(&info->public_data, &dev_info.public_data, sizeof(info->public_data));
 	memcpy(&info->certificate, &dev_info.certificate, sizeof(info->certificate));
 	memcpy(&info->info_sig, &dev_info.info_sig, sizeof(info->info_sig));
+	memcpy(&info->dev_info, &dev_info.dev_info, info->dev_info_len);
 
 	return 0;
 }

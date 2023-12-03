@@ -488,6 +488,8 @@ struct hlthunk_sec_attest_info {
  * @public_data: public key info signed info data (outPublic + name + qualifiedName)
  * @certificate: certificate for the signing key
  * @info_sig: signature of the info + nonce data.
+ * @dev_info_len: length of the device info (bytes)
+ * @dev_info: device info (provided as an array of bytes).
  */
 struct hlthunk_dev_info_signed {
 	uint32_t nonce;
@@ -497,6 +499,8 @@ struct hlthunk_dev_info_signed {
 	uint8_t public_data[SEC_PUB_DATA_BUF_SZ];
 	uint8_t certificate[SEC_CERTIFICATE_BUF_SZ];
 	uint8_t info_sig[SEC_SIGNATURE_BUF_SZ];
+	uint16_t dev_info_len;
+	uint8_t dev_info[SEC_DEV_INFO_BUF_SZ];
 };
 
 /**
