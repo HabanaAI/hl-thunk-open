@@ -210,7 +210,7 @@ hlthunk_public int hlthunk_get_device_index_from_pci_bus_id(const char *busid)
 		return -errno;
 
 	while ((entry = readdir(dir)) != NULL) {
-		/* Control devices don't have a "pci_addr" sysfs attribute  */
+		/* Control devices don't have a "pci_addr" sysfs attribute */
 		if (strstr(entry->d_name, ctrl_device_prefix) != NULL)
 			continue;
 
@@ -245,6 +245,54 @@ hlthunk_public int hlthunk_get_device_index_from_pci_bus_id(const char *busid)
 	closedir(dir);
 
 	return -1;
+}
+
+hlthunk_public int hlthunk_get_device_index_from_module_id(uint32_t module_id)
+{
+	char *substr_ptr, module_id_file_path[PATH_MAX], module_id_str[16] = "";
+	const char *base_path = "/sys/class/accel", *device_prefix = "accel",
+			*ctrl_device_prefix = "accel_controlD";
+	int fd, rc, device_index = -1;
+	uint32_t read_module_id;
+	struct dirent *entry;
+	DIR *dir;
+
+	dir = opendir(base_path);
+	if (!dir)
+		return -errno;
+
+	while ((entry = readdir(dir)) != NULL) {
+		/* Control devices don't have a "module_id" sysfs attribute */
+		if (strstr(entry->d_name, ctrl_device_prefix))
+			continue;
+
+		substr_ptr = strstr(entry->d_name, device_prefix);
+		if (!substr_ptr)
+			continue;
+
+		sprintf(module_id_file_path, "%s/%s/device/module_id", base_path, entry->d_name);
+		fd = open(module_id_file_path, O_RDONLY);
+		if (fd < 0)
+			continue;
+
+		rc = read(fd, module_id_str, sizeof(uint32_t));
+		if (rc < 0) {
+			close(fd);
+			continue;
+		}
+
+		read_module_id = strtoul(module_id_str, NULL, 10);
+		close(fd);
+
+		if (read_module_id == module_id) {
+			device_index = atoi(substr_ptr + strlen(device_prefix));
+			break;
+		}
+	}
+
+	closedir(dir);
+
+	return device_index;
 }
 
 static uint8_t hlthunk_get_revision_id_from_fd(int fd)
