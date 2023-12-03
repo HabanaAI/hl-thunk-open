@@ -783,13 +783,20 @@ hlthunk_public int hlthunk_get_pci_bus_id_from_fd(int fd, char *pci_bus_id,
 							int len);
 
 /**
- * This function retrieves the device index of a specific device
+ * This function retrieves the device index of a specific device by its PCI bus ID
  * @param busid null-terminated string of the device PCI bus ID in the following
  * format: [domain]:[bus]:[device].[function] where domain, bus, device, and
  * function are all hexadecimal values.
  * @return device index for success, negative value for failure
  */
 hlthunk_public int hlthunk_get_device_index_from_pci_bus_id(const char *busid);
+
+/**
+ * This function retrieves the device index of a specific device by its module ID
+ * @param module_id a number representing the module_id in the host machine
+ * @return device index for success, negative value for failure
+ */
+hlthunk_public int hlthunk_get_device_index_from_module_id(uint32_t module_id);
 
 /**
  * This function retrieves H/W IP information for a specific device
