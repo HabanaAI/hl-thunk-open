@@ -1104,7 +1104,7 @@ hlthunk_public int hlthunk_staged_command_submission_timeout(int fd,
  * value is 0, the driver won't sleep at all. It will check the status of the
  * CS and return immediately
  * @param status pointer to uint32_t to store the wait status
- * @return 0 for success, negative value for failure
+ * @return negative error code on error, otherwise non-negative CS status
  */
 hlthunk_public int hlthunk_wait_for_cs(int fd, uint64_t seq,
 					uint64_t timeout_us, uint32_t *status);
