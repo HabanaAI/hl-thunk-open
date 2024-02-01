@@ -677,6 +677,8 @@ struct hlthunk_functions_pointers {
 	int (*fp_hlthunk_get_time_sync_per_die_info)(int fd,
 					uint32_t die_index,
 					struct hlthunk_time_sync_info *info);
+	int (*fp_hlthunk_get_hw_ip_info)(int fd,
+					struct hlthunk_hw_ip_info *hw_ip);
 };
 
 struct hlthunk_debugfs {
