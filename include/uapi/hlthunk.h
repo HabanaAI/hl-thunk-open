@@ -278,6 +278,7 @@ struct hlthunk_open_stats_info {
 	uint64_t last_open_period_ms;
 	uint8_t is_compute_ctx_active;
 	uint8_t compute_ctx_in_release;
+	uint8_t compute_ctx_has_mapped_resources;
 };
 
 struct hlthunk_hw_asic_status {

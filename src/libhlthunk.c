@@ -710,6 +710,8 @@ hlthunk_public int hlthunk_get_open_stats(int fd, struct hlthunk_open_stats_info
 	open_stats->last_open_period_ms = hl_open_stats.last_open_period_ms;
 	open_stats->is_compute_ctx_active = hl_open_stats.is_compute_ctx_active;
 	open_stats->compute_ctx_in_release = hl_open_stats.compute_ctx_in_release;
+	open_stats->compute_ctx_has_mapped_resources =
+		hl_open_stats.compute_ctx_has_mapped_resources;
 
 	return 0;
 }
