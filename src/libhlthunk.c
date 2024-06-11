@@ -888,7 +888,6 @@ static int hlthunk_get_hw_idle_info(int fd, struct hlthunk_engines_idle_info *in
 hlthunk_public bool hlthunk_is_device_idle(int fd)
 {
 	struct hlthunk_engines_idle_info info;
-
 	int rc;
 
 	rc = hlthunk_get_hw_idle_info(fd, &info);
