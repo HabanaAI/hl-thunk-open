@@ -29,7 +29,7 @@ enum packet_id {
 };
 
 /* IMPORTANT NOTE:
- * goya_dma_direction enum MUST match exactly enum "hl_goya_dma_direction" in drm/habanalabs_accel.h.
+ * goya_dma_direction enum MUST match exactly enum "hl_goya_dma_direction" in misc/habanalabs.h.
  * Otherwise, there could be errors resulting from mismatch between user-space and the kernel
  * driver. It is recommended that user-space will use only "hl_goya_dma_direction" enum.
  */

@@ -376,11 +376,8 @@ VOID hltest_bench_host_map_expected(struct hltests_state *tests_state,
 	uint64_t t_ns = 0;
 	int rc;
 
-	/* Check if tests is disable by default and requires explicit enable */
-	if (disabled_test && !hltests_get_parser_run_disabled_tests()) {
-		printf("This test need to be run with -d flag\n");
+	if (disabled_test && !hltests_get_parser_run_disabled_tests())
 		skip();
-	}
 
 	/* Geting exp results from config */
 	if (validate_exp) {
@@ -557,10 +554,8 @@ VOID test_bench_mappings_custom(void **state)
 	uint64_t t_ns = 0;
 	int rc;
 
-	if (!hltests_get_parser_run_disabled_tests()) {
-		print_message("This test need to be run with -d flag\n");
+	if (!hltests_get_parser_run_disabled_tests())
 		skip();
-	}
 
 	if (!config_filename)
 		fail_msg("User didn't supply a configuration file name!\n");
@@ -632,7 +627,8 @@ int main(int argc, const char **argv)
 
 	hltests_parser(argc, argv, usage, HLTEST_DEVICE_MASK_DONT_CARE,
 			profiling_tests, num_tests);
-
+	hltests_set_capabilities_mask(CAP_ARC_FW_LOAD_SCHED_MASK |
+				CAP_ARC_FW_LOAD_PDMA_MASK);
 	return hltests_run_group_tests("profiling", profiling_tests,
 				num_tests, hltests_setup, hltests_teardown);
 }

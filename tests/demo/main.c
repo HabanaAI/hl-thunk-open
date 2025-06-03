@@ -19,13 +19,17 @@ int main(int argc, const char **argv)
 
 	hltests_parser(argc, argv, NULL, HLTEST_DEVICE_MASK_DONT_CARE);
 
+	hltests_set_capabilities_mask(CAP_ARC_FW_LOAD_SCHED_MASK | CAP_ARC_FW_LOAD_PDMA_MASK |
+					CAP_ARC_FW_LOAD_EDMA_MASK | CAP_ARC_FW_LOAD_MME_MASK |
+					CAP_MME_DMA_MASK);
+
 	rc = hltests_init();
 	if (rc) {
 		printf("Failed to initialize hlthunk tests library %d\n", rc);
 		return rc;
 	}
 
-	/* Similar to synAcquireDevice */
+	/* Similar to synDeviceAcquire */
 	rc = hltests_setup(&state);
 	if (rc) {
 		printf("Failed to run setup phase of hlthunk tests %d\n", rc);

@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <time.h>
+#include <inttypes.h>
 
 #define ARB_MST_QUIET_PER_DEFAULT 0x10
 #define ARB_MST_QUIET_PER_SIMULATOR 0x186A0
@@ -41,8 +42,7 @@ static VOID measure_cs_nop(struct hltests_state *tests_state,
 	clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
 
 	for (i = 0, j = wait_after_cs_cnt ; i < loop_cnt ; i++) {
-		rc = hltests_submit_cs(fd, NULL, 0, execute_arr,
-					num_of_pqe, 0, &seq);
+		rc = hltests_submit_cs(fd, NULL, 0, execute_arr, num_of_pqe, 0, &seq);
 		assert_int_equal(rc, 0);
 
 		if (!--j) {
@@ -57,8 +57,85 @@ static VOID measure_cs_nop(struct hltests_state *tests_state,
 
 	printf("time = %.3fus\n", (time_diff / loop_cnt) * 1000000);
 
+	/* There might be still running CS at this point, because we wait for completion only after
+	 * a given number of submissions.
+	 * To prevent a race with CB destroy in the calling function, wait until device is idle.
+	 */
+	rc = wait_until_device_idle(fd, 1);
+	assert_int_equal(rc, 0);
+
 	END_TEST;
 }
+
+VOID submit_cs_nop_mixed_engines(void **state, int num_of_pqe)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct hltests_cs_chunk execute_arr[64];
+	struct hltests_pkt_info pkt_info;
+	struct hlthunk_hw_ip_info *hw_ip = &tests_state->hw_ip;
+	int rc, i, fd = tests_state->fd;
+	uint32_t cb_size = 0, qid;
+	bool tpc = false;
+	uint64_t seq = 0;
+	uint16_t tpc_id;
+	void *cb[64];
+
+	if (!hltests_is_gaudi3(fd)) {
+		printf("This test is supported only on gaudi3\n");
+		skip();
+	}
+
+	if (hltests_is_pldm(fd) && (num_of_pqe > PLDM_MAX_NUM_PQE_FOR_TESTING)) {
+		printf("Test is NOT supported on PLDM with num of PQEs greater than %u\n",
+				PLDM_MAX_NUM_PQE_FOR_TESTING);
+		skip();
+	}
+
+	assert_in_range(num_of_pqe, 1, 64);
+
+	if (!hw_ip->tpc_enabled_mask_ext) {
+		printf("TPCs are disabled so skipping test\n");
+		skip();
+	}
+
+	for (i = 0 ; i < num_of_pqe ; i++) {
+		cb[i] = hltests_create_cb(fd, 0x1000, EXTERNAL, 0);
+		assert_non_null(cb[i]);
+
+		memset(&pkt_info, 0, sizeof(pkt_info));
+		if (tpc) {
+			tpc_id = __builtin_ffsll(hw_ip->tpc_enabled_mask_ext);
+			qid = hltests_get_tpc_qid(fd, tpc_id - 1, STREAM0);
+		} else {
+			qid = hltests_get_dma_down_qid(fd, STREAM0);
+		}
+
+		pkt_info.qid = qid;
+		pkt_info.eb = EB_FALSE;
+		pkt_info.mb = MB_FALSE;
+		cb_size = hltests_add_nop_pkt(fd, cb[i], 0, &pkt_info);
+
+		execute_arr[i].cb_ptr = cb[i];
+		execute_arr[i].cb_size = cb_size;
+		execute_arr[i].queue_index = qid;
+		tpc = !tpc;
+	}
+
+	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, num_of_pqe, 0,
+				&seq);
+	assert_int_equal(rc, 0);
+
+	rc = hltests_wait_for_cs_until_not_busy(fd, seq);
+	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
+
+	for (i = 0 ; i < num_of_pqe ; i++) {
+		rc = hltests_destroy_cb(fd, cb[i]);
+		assert_int_equal(rc, 0);
+	}
+
+	END_TEST;
+}
+
 
 
 VOID submit_cs_nop(void **state, int num_of_pqe,
@@ -72,8 +149,14 @@ VOID submit_cs_nop(void **state, int num_of_pqe,
 	void *cb[64];
 	int rc, i, fd = tests_state->fd;
 
-	if (hltests_is_pldm(fd) && (num_of_pqe > PLDM_MAX_NUM_PQE_FOR_TESTING))
+	if (hltests_get_parser_mini_suite())
 		skip();
+
+	if (hltests_is_pldm(fd) && (num_of_pqe > PLDM_MAX_NUM_PQE_FOR_TESTING)) {
+		printf("Test is NOT supported on PLDM with num of PQEs greater than %u\n",
+				PLDM_MAX_NUM_PQE_FOR_TESTING);
+		skip();
+	}
 
 	assert_in_range(num_of_pqe, 1, 64);
 
@@ -140,17 +223,23 @@ VOID test_cs_nop_64PQE(void **state)
 	END_TEST_FUNC(submit_cs_nop(state, 64, 0));
 }
 
+VOID test_cs_nop_mixed_engines(void **state)
+{
+	END_TEST_FUNC(submit_cs_nop_mixed_engines(state, 4));
+}
+
 VOID test_and_measure_wait_after_submit_cs_nop(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int fd = tests_state->fd;
 
-	if (hltests_is_simulator(fd) || hltests_is_pldm(fd))
+	if (hltests_is_simulator(fd) || hltests_is_pldm(fd)) {
+		printf("Test is not supported on simulator/PLDM\n");
 		skip();
+	}
 
 	if (!hltests_is_legacy_mode_enabled(fd) && !hltests_get_parser_run_disabled_tests())
 		skip();
-
 
 	END_TEST_FUNC(submit_cs_nop(state, 1, 1));
 }
@@ -160,11 +249,16 @@ VOID test_and_measure_wait_after_64_submit_cs_nop(void **state)
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int fd = tests_state->fd;
 
-	if (hltests_is_simulator(fd) || hltests_is_pldm(fd))
+	if (hltests_is_simulator(fd) || hltests_is_pldm(fd)) {
+		printf("Test is not supported on simulator/PLDM\n");
 		skip();
+	}
+
 	/* Since we have up to 64 cq and driver uses one of them, we can't run test in ARC mode*/
-	if (!hltests_is_legacy_mode_enabled(fd))
+	if (!hltests_is_legacy_mode_enabled(fd)) {
+		printf("Test is not supported in ARC mode\n");
 		skip();
+	}
 
 	END_TEST_FUNC(submit_cs_nop(state, 1, 64));
 }
@@ -174,11 +268,16 @@ VOID test_and_measure_wait_after_256_submit_cs_nop(void **state)
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int fd = tests_state->fd;
 
-	if (hltests_is_simulator(fd) || hltests_is_pldm(fd))
+	if (hltests_is_simulator(fd) || hltests_is_pldm(fd)) {
+		printf("Test is not supported on simulator/PLDM\n");
 		skip();
+	}
+
 	/* Since we have up to 64 cq and driver uses one of them, we can't run test in ARC mode*/
-	if (!hltests_is_legacy_mode_enabled(fd))
+	if (!hltests_is_legacy_mode_enabled(fd)) {
+		printf("Test is not supported in ARC mode\n");
 		skip();
+	}
 
 	END_TEST_FUNC(submit_cs_nop(state, 1, 256));
 }
@@ -186,25 +285,24 @@ VOID test_and_measure_wait_after_256_submit_cs_nop(void **state)
 VOID test_cs_msg_long(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	struct hlthunk_hw_ip_info hw_ip;
+	struct hlthunk_hw_ip_info *hw_ip = &tests_state->hw_ip;
 	struct hltests_pkt_info pkt_info;
 	uint32_t cb_size = 0;
 	void *cb;
-	int rc, fd = tests_state->fd;
+	int fd = tests_state->fd;
+
+	if (hltests_is_gaudi3(fd)) {
+		printf("Test is not supported on Gaudi3 as PQM can't do HBW writes\n");
+		skip();
+	}
 
 	cb = hltests_create_cb(fd, 0x1000, EXTERNAL, 0);
 	assert_non_null(cb);
 
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
-	if (!hw_ip.sram_size)
-		skip();
-
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_TRUE;
-	pkt_info.msg_long.address = hw_ip.sram_base_address + 0x1000;
+	pkt_info.msg_long.address = hw_ip->sram_base_address + 0x1000;
 	pkt_info.msg_long.value = 0xbaba0ded;
 	cb_size = hltests_add_msg_long_pkt(fd, cb, cb_size, &pkt_info);
 
@@ -219,26 +317,25 @@ VOID test_cs_msg_long_2000(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hltests_pkt_info pkt_info;
-	struct hlthunk_hw_ip_info hw_ip;
-	int rc, fd = tests_state->fd, i;
+	struct hlthunk_hw_ip_info *hw_ip = &tests_state->hw_ip;
+	int fd = tests_state->fd, i;
 	uint32_t cb_size = 0;
 	void *cb;
+
+	if (hltests_is_gaudi3(fd)) {
+		printf("Test is not supported on Gaudi3 as PQM can't do HBW writes\n");
+		skip();
+	}
 
 	/* Largest packet is 24 bytes, so 32 is a good number */
 	cb = hltests_create_cb(fd, NUM_OF_MSGS * 32, EXTERNAL, 0);
 	assert_non_null(cb);
 
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
-	if (!hw_ip.sram_size)
-		skip();
-
 	for (i = 0 ; i < NUM_OF_MSGS ; i++) {
 		memset(&pkt_info, 0, sizeof(pkt_info));
 		pkt_info.eb = EB_FALSE;
 		pkt_info.mb = MB_TRUE;
-		pkt_info.msg_long.address = hw_ip.sram_base_address +
+		pkt_info.msg_long.address = hw_ip->sram_base_address +
 							0x1000 + i * 4;
 		pkt_info.msg_long.value = 0x0ded0000 + i;
 		cb_size = hltests_add_msg_long_pkt(fd, cb, cb_size, &pkt_info);
@@ -320,8 +417,11 @@ VOID test_wait_for_multi_cs_common(void **state, bool do_complete)
 	pthread_t thread_id;
 	void *retval;
 
+	if (hltests_get_parser_mini_suite())
+		skip();
+
 	if (!hltests_is_gaudi(fd)) {
-		printf("Test is supported only for Gaudi1\n");
+		printf("Test is supported only for Gaudi\n");
 		skip();
 	}
 
@@ -393,6 +493,7 @@ VOID test_wait_for_multi_cs_common(void **state, bool do_complete)
 			mon_and_fence_info.sob_val = 1;
 			mon_and_fence_info.dec_fence = true;
 			mon_and_fence_info.mon_payload = 1;
+			mon_and_fence_info.mon_mode = SOB_EQUAL;
 			mon_cb_size[i] = hltests_add_monitor_and_fence(fd, mon_cb[i],
 							0, &mon_and_fence_info);
 		}
@@ -503,18 +604,22 @@ VOID test_wait_for_multi_cs_poll(void **state)
 VOID test_cs_two_streams_with_fence(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	struct hlthunk_hw_ip_info hw_ip;
-	struct hltests_pkt_info pkt_info;
-	struct hltests_monitor_and_fence mon_and_fence_info;
-	struct hltests_cs_chunk execute_arr[1];
-	uint32_t dma_size = 4, cb_stream0_size = 0, cb_stream3_size = 0;
-	uint64_t src_data_device_va, device_data_address, seq;
+	uint32_t dma_size = 4, cb_stream0_size = 0, cb_stream3_size = 0,
+			dma_dir_down = DMA_DIR_HOST_TO_SRAM;
+	uint64_t src_data_device_va, device_data_address = 0x0, seq;
+	void *src_data, *cb_stream0, *cb_stream3, *dram_ptr = NULL;
 	uint16_t sob0, mon0, dma_down_qid_s0, dma_down_qid_s3;
-	void *src_data, *cb_stream0, *cb_stream3;
+	struct hltests_monitor_and_fence mon_and_fence_info;
+	struct hltests_cs_chunk execute_arr;
+	struct hltests_pkt_info pkt_info;
+	struct hlthunk_hw_ip_info *hw_ip = &tests_state->hw_ip;
 	int rc, fd = tests_state->fd;
 
-	if (hltests_is_gaudi2(fd) && !hltests_is_legacy_mode_enabled(fd)) {
-		printf("Test is irrelevant when running Gaudi2 in ARC mode, skipping\n");
+	if (hltests_get_parser_mini_suite())
+		skip();
+
+	if (hltests_is_gaudi2(fd)) {
+		printf("Test is irrelevant for Gaudi2, skipping\n");
 		skip();
 	}
 
@@ -524,19 +629,20 @@ VOID test_cs_two_streams_with_fence(void **state)
 		skip();
 	}
 
-	/* SRAM MAP (base + )
-	 * 0x1000 : data
-	 */
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
-	if (!hw_ip.sram_size)
+	if (hw_ip->sram_size) {
+		device_data_address = hw_ip->sram_base_address + 0x1000;
+	} else if (hw_ip->dram_enabled) {
+		dram_ptr = hltests_allocate_device_mem(fd, dma_size, 0, CONTIGUOUS);
+		assert_non_null(dram_ptr);
+		device_data_address = (uint64_t) (uintptr_t) dram_ptr;
+		dma_dir_down = DMA_DIR_HOST_TO_DRAM;
+	} else {
+		printf("No device memory is available so skipping test\n");
 		skip();
+	}
 
 	dma_down_qid_s0 = hltests_get_dma_down_qid(fd, STREAM0);
 	dma_down_qid_s3 = hltests_get_dma_down_qid(fd, STREAM3);
-
-	device_data_address = hw_ip.sram_base_address + 0x1000;
 
 	/* Allocate buffer on host for data transfer */
 	src_data = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE_MAP);
@@ -563,6 +669,7 @@ VOID test_cs_two_streams_with_fence(void **state)
 	mon_and_fence_info.sob_val = 1;
 	mon_and_fence_info.dec_fence = true;
 	mon_and_fence_info.mon_payload = 1;
+	mon_and_fence_info.mon_mode = SOB_EQUAL;
 	cb_stream0_size = hltests_add_monitor_and_fence(fd, cb_stream0,
 					cb_stream0_size, &mon_and_fence_info);
 
@@ -573,7 +680,7 @@ VOID test_cs_two_streams_with_fence(void **state)
 	pkt_info.dma.src_addr = src_data_device_va;
 	pkt_info.dma.dst_addr = device_data_address;
 	pkt_info.dma.size = dma_size;
-	pkt_info.dma.dma_dir = DMA_DIR_HOST_TO_SRAM;
+	pkt_info.dma.dma_dir = dma_dir_down;
 	cb_stream0_size = hltests_add_dma_pkt(fd, cb_stream0, cb_stream0_size,
 						&pkt_info);
 
@@ -592,10 +699,10 @@ VOID test_cs_two_streams_with_fence(void **state)
 						cb_stream3_size, &pkt_info);
 
 	/* First CS: Submit CB of stream 0 */
-	execute_arr[0].cb_ptr = cb_stream0;
-	execute_arr[0].cb_size = cb_stream0_size;
-	execute_arr[0].queue_index = dma_down_qid_s0;
-	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, 0, &seq);
+	execute_arr.cb_ptr = cb_stream0;
+	execute_arr.cb_size = cb_stream0_size;
+	execute_arr.queue_index = dma_down_qid_s0;
+	rc = hltests_submit_cs(fd, NULL, 0, &execute_arr, 1, 0, &seq);
 	assert_int_equal(rc, 0);
 
 	/* Second CS: Submit CB of stream 3 and wait for completion */
@@ -613,6 +720,11 @@ VOID test_cs_two_streams_with_fence(void **state)
 	assert_int_equal(rc, 0);
 	rc = hltests_free_host_mem(fd, src_data);
 	assert_int_equal(rc, 0);
+
+	if (dram_ptr) {
+		rc = hltests_free_device_mem(fd, dram_ptr);
+		assert_int_equal(rc, 0);
+	}
 
 	END_TEST;
 }
@@ -665,6 +777,7 @@ VOID hltests_cs_two_streams_arb_point(int fd,
 	mon_and_fence_info.sob_val = 1;
 	mon_and_fence_info.dec_fence = true;
 	mon_and_fence_info.mon_payload = 1;
+	mon_and_fence_info.mon_mode = SOB_EQUAL;
 	cb_stream_size[0] = hltests_add_monitor_and_fence(fd, cb_stream[0],
 			cb_stream_size[0], &mon_and_fence_info);
 
@@ -740,6 +853,7 @@ VOID hltests_cs_two_streams_arb_point(int fd,
 	mon_and_fence_info.sob_val = 1;
 	mon_and_fence_info.dec_fence = true;
 	mon_and_fence_info.mon_payload = 1;
+	mon_and_fence_info.mon_mode = SOB_EQUAL;
 	cb_stream_size[1] = hltests_add_monitor_and_fence(fd, cb_stream[1],
 				cb_stream_size[1], &mon_and_fence_info);
 
@@ -852,7 +966,7 @@ VOID hltests_cs_two_streams_arb_point(int fd,
 VOID test_cs_two_streams_with_arb(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	struct hlthunk_hw_ip_info hw_ip;
+	struct hlthunk_hw_ip_info *hw_ip = &tests_state->hw_ip;
 	struct hltests_arb_info arb_info;
 	uint64_t data_va[4], src_data_device_va[2], dst_data_device_va[2];
 	uint64_t device_data_address[2];
@@ -861,8 +975,16 @@ VOID test_cs_two_streams_with_arb(void **state)
 	void *data[4], *src_data[2], *dst_data[2];
 	int i, rc, fd = tests_state->fd;
 
+	if (hltests_get_parser_mini_suite())
+		skip();
+
 	if (!hltests_is_legacy_mode_enabled(fd)) {
 		printf("Test is irrelevant when running in ARC mode, skipping\n");
+		skip();
+	}
+
+	if (hltests_is_gaudi2(fd)) {
+		printf("Test is irrelevant for Gaudi2, skipping\n");
 		skip();
 	}
 
@@ -876,14 +998,8 @@ VOID test_cs_two_streams_with_arb(void **state)
 	 * 0x0    : data1
 	 * 0x1000 : data2
 	 */
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
-	if (!hw_ip.sram_size)
-		skip();
-
-	device_data_address[0] = hw_ip.sram_base_address;
-	device_data_address[1] = hw_ip.sram_base_address + 0x1000;
+	device_data_address[0] = hw_ip->sram_base_address;
+	device_data_address[1] = hw_ip->sram_base_address + 0x1000;
 
 	/* Allocate buffers on host for data transfer */
 	for (i = 0 ; i < 4 ; i++) {
@@ -952,7 +1068,7 @@ VOID test_cs_two_streams_with_arb(void **state)
 VOID test_cs_two_streams_with_priority_arb(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	struct hlthunk_hw_ip_info hw_ip;
+	struct hlthunk_hw_ip_info *hw_ip = &tests_state->hw_ip;
 	struct hltests_arb_info arb_info;
 	struct hltests_pkt_info pkt_info;
 	uint64_t data_va[3], src_data_device_va[2], dst_data_device_va;
@@ -961,6 +1077,19 @@ VOID test_cs_two_streams_with_priority_arb(void **state)
 	uint16_t sob, mon[4];
 	void *data[3], *src_data[2], *dst_data, *cb_upstream;
 	int i, rc, fd = tests_state->fd;
+
+	if (hltests_get_parser_mini_suite())
+		skip();
+
+	if (!hltests_is_legacy_mode_enabled(fd)) {
+		printf("Test is irrelevant when running in ARC mode, skipping\n");
+		skip();
+	}
+
+	if (hltests_is_gaudi2(fd)) {
+		printf("Test is irrelevant for Gaudi2, skipping\n");
+		skip();
+	}
 
 	/* Test intermittently fails on Gaudi2 */
 	if (!hltests_is_gaudi(fd)) {
@@ -972,14 +1101,8 @@ VOID test_cs_two_streams_with_priority_arb(void **state)
 	 * 0x0    : data1
 	 * 0x1000 : data2
 	 */
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
-	if (!hw_ip.sram_size)
-		skip();
-
-	device_data_address[0] = hw_ip.sram_base_address;
-	device_data_address[1] = hw_ip.sram_base_address;
+	device_data_address[0] = hw_ip->sram_base_address;
+	device_data_address[1] = hw_ip->sram_base_address;
 
 	/* Allocate buffers on host for data transfer */
 	for (i = 0 ; i < 3 ; i++) {
@@ -1115,7 +1238,7 @@ VOID test_cs_two_streams_with_priority_arb(void **state)
 VOID test_cs_two_streams_with_wrr_arb(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	struct hlthunk_hw_ip_info hw_ip;
+	struct hlthunk_hw_ip_info *hw_ip = &tests_state->hw_ip;
 	struct hltests_arb_info arb_info;
 	uint64_t data_va[4], src_data_device_va[2], dst_data_device_va[2];
 	uint64_t device_data_address[2];
@@ -1124,8 +1247,16 @@ VOID test_cs_two_streams_with_wrr_arb(void **state)
 	void *data[4], *src_data[2], *dst_data[2];
 	int i, rc, fd = tests_state->fd;
 
+	if (hltests_get_parser_mini_suite())
+		skip();
+
 	if (!hltests_is_legacy_mode_enabled(fd)) {
 		printf("Test is irrelevant when running in ARC mode, skipping\n");
+		skip();
+	}
+
+	if (hltests_is_gaudi2(fd)) {
+		printf("Test is irrelevant for Gaudi2, skipping\n");
 		skip();
 	}
 
@@ -1139,14 +1270,8 @@ VOID test_cs_two_streams_with_wrr_arb(void **state)
 	 * 0x0    : data1
 	 * 0x1000 : data2
 	 */
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
-	if (!hw_ip.sram_size)
-		skip();
-
-	device_data_address[0] = hw_ip.sram_base_address;
-	device_data_address[1] = hw_ip.sram_base_address + 0x1000;
+	device_data_address[0] = hw_ip->sram_base_address;
+	device_data_address[1] = hw_ip->sram_base_address + 0x1000;
 
 	/* Allocate buffers on host for data transfer */
 	for (i = 0 ; i < 4 ; i++) {
@@ -1217,10 +1342,18 @@ VOID test_cs_cq_wrap_around(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	uint32_t cq_wrap_around_num_of_cs = 1000;
-	int i;
+	int i, fd = tests_state->fd;
 
-	if (hltests_is_pldm(tests_state->fd))
+	/* There is a dedicated PQM test */
+	if (hltests_is_gaudi3(fd)) {
+		printf("Test is not supported on Gaudi3 (alternative in gaudi3_dma.c)\n");
 		skip();
+	}
+
+	if (hltests_is_pldm(tests_state->fd)) {
+		printf("Test is not supported on PLDM\n");
+		skip();
+	}
 
 	for (i = 0 ; i < cq_wrap_around_num_of_cs ; i++)
 		test_cs_nop(state);
@@ -1240,6 +1373,7 @@ static uint32_t load_predicates_and_test_msg_long(int fd,
 	enum hl_tests_predicates_map pred_map;
 	uint32_t cb_size, value;
 	void *cb;
+	int rc;
 
 	pred_map = is_consecutive_map ? PMAP_CONSECUTIVE : PMAP_NON_CONSECUTIVE;
 
@@ -1248,9 +1382,10 @@ static uint32_t load_predicates_and_test_msg_long(int fd,
 	cb_size = 0;
 
 	/* DMA predicates buffer from host to SRAM */
-	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
+	rc = hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
 				EB_FALSE, MB_FALSE, pred_buf_device_va,
 				pred_buf_sram_addr, 128, DMA_DIR_HOST_TO_SRAM);
+	assert_int_equal(rc, 0);
 
 	/* Initialize the MSG_LONG destination in SRAM */
 	hltests_fill_rand_values(&value, 4);
@@ -1288,9 +1423,10 @@ static uint32_t load_predicates_and_test_msg_long(int fd,
 				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
 
 	/* DMA MSG_LONG destination from SRAM to host */
-	hltests_dma_transfer(fd, hltests_get_dma_up_qid(fd, STREAM0),
+	rc = hltests_dma_transfer(fd, hltests_get_dma_up_qid(fd, STREAM0),
 				EB_FALSE, MB_FALSE, msg_long_dst_sram_addr,
 				host_data_device_va, 4, DMA_DIR_SRAM_TO_HOST);
+	assert_int_equal(rc, 0);
 
 	return value;
 }
@@ -1298,21 +1434,24 @@ static uint32_t load_predicates_and_test_msg_long(int fd,
 VOID test_cs_load_predicates(void **state, bool is_consecutive_map)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	struct hlthunk_hw_ip_info hw_ip;
+	struct hlthunk_hw_ip_info *hw_ip = &tests_state->hw_ip;
 	uint64_t pred_buf_sram_addr, pred_buf_device_va, msg_long_dst_sram_addr,
 			host_data_device_va;
 	uint32_t *host_data, pred_buf_byte_idx, pred_buf_relative_bit, value;
 	uint8_t *pred_buf, pred_id = 10;
-	int rc, fd = tests_state->fd;
+	int fd = tests_state->fd;
+
+	if (hltests_get_parser_mini_suite())
+		skip();
 
 	if (!hltests_is_legacy_mode_enabled(fd)) {
 		printf("Test is not relevant in ARC mode, skipping\n");
 		skip();
 	}
 
-	/* Goya doesn't support LOAD_AND_EXE packets */
-	if (hltests_is_goya(fd)) {
-		printf("Test is not relevant for Goya, skipping\n");
+	/* Goya/Gaudi3(PQM) don't support LOAD_AND_EXE packets */
+	if (hltests_is_goya(fd) || hltests_is_gaudi3(fd)) {
+		printf("Test is not relevant for Goya/Gaudi3, skipping\n");
 		skip();
 	}
 
@@ -1336,14 +1475,8 @@ VOID test_cs_load_predicates(void **state, bool is_consecutive_map)
 	/* Only P1-P31 are valid because LOAD_PRED command doesn't update P0 */
 	assert_in_range(pred_id, 1, 31);
 
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
-	if (!hw_ip.sram_size)
-		skip();
-
-	pred_buf_sram_addr = hw_ip.sram_base_address;
-	msg_long_dst_sram_addr = hw_ip.sram_base_address + 0x1000;
+	pred_buf_sram_addr = hw_ip->sram_base_address;
+	msg_long_dst_sram_addr = hw_ip->sram_base_address + 0x1000;
 
 	/* Check alignment of predicates address to 128B */
 	assert_int_equal((pred_buf_sram_addr & 0x7f), 0);
@@ -1478,10 +1611,11 @@ VOID load_scalars_and_exe_4_rfs(int fd, uint64_t scalar_buf_sram_addr,
 	ddma_cb_size = hltests_add_write_to_sob_pkt(fd, ddma_cb, ddma_cb_size,
 							&pkt_info);
 
-	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
+	rc = hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
 				EB_FALSE, MB_FALSE, ddma_cb_device_va,
 				cb_sram_addr, ddma_cb_size,
 				DMA_DIR_HOST_TO_SRAM);
+	assert_int_equal(rc, 0);
 
 	/* DMA DOWN CB: Fence on SOB0 */
 	dma_down_cb = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
@@ -1497,6 +1631,7 @@ VOID load_scalars_and_exe_4_rfs(int fd, uint64_t scalar_buf_sram_addr,
 	mon_and_fence_info.sob_val = 1;
 	mon_and_fence_info.dec_fence = true;
 	mon_and_fence_info.mon_payload = 1;
+	mon_and_fence_info.mon_mode = SOB_EQUAL;
 	dma_down_cb_size = hltests_add_monitor_and_fence(fd, dma_down_cb,
 							dma_down_cb_size,
 							&mon_and_fence_info);
@@ -1530,7 +1665,7 @@ VOID load_scalars_and_exe_4_rfs(int fd, uint64_t scalar_buf_sram_addr,
 VOID test_cs_load_scalars_exe_4_rfs(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	struct hlthunk_hw_ip_info hw_ip;
+	struct hlthunk_hw_ip_info *hw_ip = &tests_state->hw_ip;
 	struct hltests_pkt_info pkt_info;
 	uint64_t scalar_buf_sram_addr, scalar_buf_device_va, cb_sram_addr,
 			msg_long_dst_sram_addr, host_data_device_va;
@@ -1538,20 +1673,28 @@ VOID test_cs_load_scalars_exe_4_rfs(void **state)
 	uint8_t *scalar_buf;
 	int rc, fd = tests_state->fd;
 
+	if (hltests_get_parser_mini_suite())
+		skip();
+
 	if (!hltests_is_legacy_mode_enabled(fd)) {
 		printf("Test is not relevant in ARC mode, skipping\n");
 		skip();
 	}
 
-	/* Goya doesn't support LOAD_AND_EXE packets */
-	if (hltests_is_goya(fd)) {
-		printf("Test is not relevant for Goya, skipping\n");
+	/* Goya/Gaudi3(PQM) don't support LOAD_AND_EXE packets */
+	if (hltests_is_goya(fd) || hltests_is_gaudi3(fd)) {
+		printf("Test is not relevant for Goya/Gaudi3, skipping\n");
 		skip();
 	}
 
 	/* Skip for Gaudi due to failures which are under debug [H3-2092] */
 	if (hltests_is_gaudi(fd) && !hltests_is_simulator(fd)) {
 		printf("Test currently doesn't support Gaudi ASIC, skipping\n");
+		skip();
+	}
+
+	if (hltests_is_gaudi2(fd)) {
+		printf("EDMA is blocked from accessing the PCIe in Gaudi2\n");
 		skip();
 	}
 
@@ -1571,15 +1714,9 @@ VOID test_cs_load_scalars_exe_4_rfs(void **state)
 	 * 5. Verify that the MSG_LONG destination is updated as expected.
 	 */
 
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
-	if (!hw_ip.sram_size)
-		skip();
-
-	scalar_buf_sram_addr = hw_ip.sram_base_address;
-	msg_long_dst_sram_addr = hw_ip.sram_base_address + 0x1000;
-	cb_sram_addr = hw_ip.sram_base_address + 0x2000;
+	scalar_buf_sram_addr = hw_ip->sram_base_address;
+	msg_long_dst_sram_addr = hw_ip->sram_base_address + 0x1000;
+	cb_sram_addr = hw_ip->sram_base_address + 0x2000;
 
 	/* Check alignment of scalars address to 128B */
 	assert_int_equal((scalar_buf_sram_addr & 0x7f), 0);
@@ -1602,10 +1739,11 @@ VOID test_cs_load_scalars_exe_4_rfs(void **state)
 	pkt_info.msg_long.value = value;
 	hltests_add_msg_long_pkt(fd, scalar_buf, 0, &pkt_info);
 
-	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
+	rc = hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
 				EB_FALSE, MB_FALSE, scalar_buf_device_va,
 				scalar_buf_sram_addr, 16,
 				DMA_DIR_HOST_TO_SRAM);
+	assert_int_equal(rc, 0);
 
 	/* Load and execute in a single packet */
 	load_scalars_and_exe_4_rfs(fd, scalar_buf_sram_addr, cb_sram_addr,
@@ -1680,10 +1818,11 @@ VOID load_scalars_and_exe_2_rfs(int fd, uint64_t scalar_buf_sram_addr,
 								&pkt_info);
 	}
 
-	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
+	rc = hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
 				EB_FALSE, MB_FALSE, ddma_cb_device_va,
 				cb_sram_addr, ddma_cb_size,
 				DMA_DIR_HOST_TO_SRAM);
+	assert_int_equal(rc, 0);
 
 	/* DMA DOWN CB: Fence on SOB0 */
 	dma_down_cb = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
@@ -1699,6 +1838,7 @@ VOID load_scalars_and_exe_2_rfs(int fd, uint64_t scalar_buf_sram_addr,
 	mon_and_fence_info.sob_val = 1;
 	mon_and_fence_info.dec_fence = true;
 	mon_and_fence_info.mon_payload = 1;
+	mon_and_fence_info.mon_mode = SOB_EQUAL;
 	dma_down_cb_size = hltests_add_monitor_and_fence(fd, dma_down_cb,
 							dma_down_cb_size,
 							&mon_and_fence_info);
@@ -1727,7 +1867,7 @@ VOID load_scalars_and_exe_2_rfs(int fd, uint64_t scalar_buf_sram_addr,
 VOID test_cs_load_scalars_exe_2_rfs(void **state, bool is_upper_rfs)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	struct hlthunk_hw_ip_info hw_ip;
+	struct hlthunk_hw_ip_info *hw_ip = &tests_state->hw_ip;
 	struct hltests_pkt_info pkt_info;
 	uint64_t scalar_buf_sram_addr, scalar_buf_device_va, cb_sram_addr;
 	uint32_t scalar_buf_offset;
@@ -1735,14 +1875,22 @@ VOID test_cs_load_scalars_exe_2_rfs(void **state, bool is_upper_rfs)
 	uint8_t *scalar_buf;
 	int rc, fd = tests_state->fd;
 
+	if (hltests_get_parser_mini_suite())
+		skip();
+
 	if (!hltests_is_legacy_mode_enabled(fd)) {
 		printf("Test is not relevant in ARC mode, skipping\n");
 		skip();
 	}
 
-	/* Goya doesn't support LOAD_AND_EXE packets */
-	if (hltests_is_goya(fd)) {
-		printf("Test is not relevant for Goya, skipping\n");
+	/* Goya/Gaudi3(PQM) don't support LOAD_AND_EXE packets */
+	if (hltests_is_goya(fd) || hltests_is_gaudi3(fd)) {
+		printf("Test is not relevant for Goya/Gaudi3, skipping\n");
+		skip();
+	}
+
+	if (hltests_is_gaudi2(fd)) {
+		printf("EDMA is blocked from accessing the PCIe in Gaudi2\n");
 		skip();
 	}
 
@@ -1765,14 +1913,8 @@ VOID test_cs_load_scalars_exe_2_rfs(void **state, bool is_upper_rfs)
 	sob0 = hltests_get_first_avail_sob(fd);
 	mon0 = hltests_get_first_avail_mon(fd);
 
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
-	if (!hw_ip.sram_size)
-		skip();
-
-	scalar_buf_sram_addr = hw_ip.sram_base_address;
-	cb_sram_addr = hw_ip.sram_base_address + 0x1000;
+	scalar_buf_sram_addr = hw_ip->sram_base_address;
+	cb_sram_addr = hw_ip->sram_base_address + 0x1000;
 
 	/* Check alignment of scalars address to 128B */
 	assert_int_equal((scalar_buf_sram_addr & 0x7f), 0);
@@ -1793,10 +1935,11 @@ VOID test_cs_load_scalars_exe_2_rfs(void **state, bool is_upper_rfs)
 	hltests_add_write_to_sob_pkt(fd, scalar_buf, scalar_buf_offset,
 					&pkt_info);
 
-	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
+	rc = hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
 				EB_FALSE, MB_FALSE, scalar_buf_device_va,
 				scalar_buf_sram_addr, 16,
 				DMA_DIR_HOST_TO_SRAM);
+	assert_int_equal(rc, 0);
 
 	/* Load and execute in a single packet */
 	load_scalars_and_exe_2_rfs(fd, scalar_buf_sram_addr, cb_sram_addr, sob0,
@@ -1836,18 +1979,21 @@ VOID test_cs_cb_list(void **state)
 	void *ext_cb[2], *int_cb[CB_LIST_LENGTH], *table;
 	struct hltests_cs_chunk execute_arr[2];
 	struct hltests_pkt_info pkt_info;
-	struct hlthunk_hw_ip_info hw_ip;
+	struct hlthunk_hw_ip_info *hw_ip = &tests_state->hw_ip;
 	int rc, fd = tests_state->fd, i;
 	uint16_t sob0, mon0;
+
+	if (hltests_get_parser_mini_suite())
+		skip();
 
 	if (!hltests_is_legacy_mode_enabled(fd)) {
 		printf("Test is irrelevant when running in ARC mode, skipping\n");
 		skip();
 	}
 
-	/* Goya/Gaudi don't support CB_LIST packets */
-	if (hltests_is_goya(fd) || hltests_is_gaudi(fd)) {
-		printf("Test is not relevant for Goya/Gaudi, skipping\n");
+	/* Goya/Gaudi/Gaudi3(PQM) don't support CB_LIST packets */
+	if (hltests_is_goya(fd) || hltests_is_gaudi(fd) || hltests_is_gaudi3(fd)) {
+		printf("Test is not relevant for Goya/Gaudi/Gaudi3, skipping\n");
 		skip();
 	}
 
@@ -1872,20 +2018,15 @@ VOID test_cs_cb_list(void **state)
 	sob0 = hltests_get_first_avail_sob(fd);
 	mon0 = hltests_get_first_avail_mon(fd);
 
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
-	if (!hw_ip.sram_size)
-		skip();
-
-	index_sram_addr = hw_ip.sram_base_address;
-	table_sram_addr = hw_ip.sram_base_address + 0x1000;
-	cb_sram_addr = hw_ip.sram_base_address + 0x9000;
+	index_sram_addr = hw_ip->sram_base_address;
+	table_sram_addr = hw_ip->sram_base_address + 0x1000;
+	cb_sram_addr = hw_ip->sram_base_address + 0x9000;
 
 	if (size_desc == ENTRY_SIZE_16B)
 		entry_size = 16;
 	else
 		fail_msg("CB_LIST entry size of 32 bytes is not supported");
+
 	/* Verify that CB_LIST table is large enough to hold all entries */
 	table_size = CB_LIST_LENGTH * entry_size * index_factor;
 	assert_true((cb_sram_addr - table_sram_addr) > table_size);
@@ -1936,10 +2077,11 @@ VOID test_cs_cb_list(void **state)
 								&pkt_info);
 		}
 
-		hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
+		rc = hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
 					EB_FALSE, MB_FALSE, int_cb_device_va[i],
 					sram_addr, int_cb_size[i],
 					DMA_DIR_HOST_TO_SRAM);
+		assert_int_equal(rc, 0);
 	}
 
 	/* Prepare CB_LIST table */
@@ -1960,10 +2102,11 @@ VOID test_cs_cb_list(void **state)
 		hltests_add_cp_dma_pkt(fd, table, entry_offset, &pkt_info);
 	}
 
-	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
+	rc = hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
 				EB_FALSE, MB_FALSE, table_device_va,
 				table_sram_addr, table_size,
 				DMA_DIR_HOST_TO_SRAM);
+	assert_int_equal(rc, 0);
 
 	/* Clear SOB0 */
 	hltests_clear_sobs(fd, 1);
@@ -2004,6 +2147,7 @@ VOID test_cs_cb_list(void **state)
 	mon_and_fence_info.sob_val = CB_LIST_LENGTH;
 	mon_and_fence_info.dec_fence = true;
 	mon_and_fence_info.mon_payload = 1;
+	mon_and_fence_info.mon_mode = SOB_EQUAL;
 	ext_cb_size[1] = hltests_add_monitor_and_fence(fd, ext_cb[1],
 							ext_cb_size[1],
 							&mon_and_fence_info);
@@ -2150,6 +2294,7 @@ static void *cb_list_thread_1_start(void *args)
 	mon_and_fence_info.sob_val = sob_target_val;
 	mon_and_fence_info.dec_fence = true;
 	mon_and_fence_info.mon_payload = 1;
+	mon_and_fence_info.mon_mode = SOB_EQUAL;
 	cb_size = hltests_add_monitor_and_fence(fd, cb, cb_size,
 						&mon_and_fence_info);
 
@@ -2193,20 +2338,23 @@ VOID test_cs_cb_list_with_parallel_pqe(void **state)
 	void *int_cb[CB_LIST_LENGTH], *table, *retval;
 	uint32_t cb_list_threads_itr[2] = {100, 150};
 	struct hltests_pkt_info pkt_info;
-	struct hlthunk_hw_ip_info hw_ip;
+	struct hlthunk_hw_ip_info *hw_ip = &tests_state->hw_ip;
 	int rc, fd = tests_state->fd, i;
 	pthread_barrier_t barrier;
 	uint16_t sob[2], mon[2];
 	pthread_t thread_id[2];
+
+	if (hltests_get_parser_mini_suite())
+		skip();
 
 	if (!hltests_is_legacy_mode_enabled(fd)) {
 		printf("Test is irrelevant when running in ARC mode, skipping\n");
 		skip();
 	}
 
-	/* Goya/Gaudi don't support CB_LIST packets */
-	if (hltests_is_goya(fd) || hltests_is_gaudi(fd)) {
-		printf("Test is not relevant for Goya/Gaudi, skipping\n");
+	/* Goya/Gaudi/Gaudi3(PQM) don't support CB_LIST packets */
+	if (hltests_is_goya(fd) || hltests_is_gaudi(fd) || hltests_is_gaudi3(fd)) {
+		printf("Test is not relevant for Goya/Gaudi/Gaudi3, skipping\n");
 		skip();
 	}
 
@@ -2256,20 +2404,15 @@ VOID test_cs_cb_list_with_parallel_pqe(void **state)
 	mon[0] = hltests_get_first_avail_mon(fd);
 	mon[1] = hltests_get_first_avail_mon(fd) + 1;
 
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
-	if (!hw_ip.sram_size)
-		skip();
-
-	index_sram_addr = hw_ip.sram_base_address;
-	table_sram_addr = hw_ip.sram_base_address + 0x1000;
-	cb_sram_addr = hw_ip.sram_base_address + 0x9000;
+	index_sram_addr = hw_ip->sram_base_address;
+	table_sram_addr = hw_ip->sram_base_address + 0x1000;
+	cb_sram_addr = hw_ip->sram_base_address + 0x9000;
 
 	if (size_desc == ENTRY_SIZE_16B)
 		entry_size = 16;
 	else
 		fail_msg("CB_LIST entry size of 32 bytes is not supported");
+
 	/* Verify that CB_LIST table is large enough to hold all entries */
 	table_size = CB_LIST_LENGTH * entry_size * index_factor;
 	assert_true((cb_sram_addr - table_sram_addr) > table_size);
@@ -2343,6 +2486,7 @@ VOID test_cs_cb_list_with_parallel_pqe(void **state)
 			mon_and_fence_info.sob_val = CB_LIST_LENGTH;
 			mon_and_fence_info.dec_fence = true;
 			mon_and_fence_info.mon_payload = 1;
+			mon_and_fence_info.mon_mode = SOB_EQUAL;
 			int_cb_size[i] = hltests_add_monitor_and_fence(fd,
 							int_cb[i],
 							int_cb_size[i],
@@ -2360,10 +2504,11 @@ VOID test_cs_cb_list_with_parallel_pqe(void **state)
 							&pkt_info);
 		}
 
-		hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
+		rc = hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
 					EB_FALSE, MB_FALSE, int_cb_device_va[i],
 					sram_addr, int_cb_size[i],
 					DMA_DIR_HOST_TO_SRAM);
+		assert_int_equal(rc, 0);
 	}
 
 	/* Prepare CB_LIST table */
@@ -2384,10 +2529,11 @@ VOID test_cs_cb_list_with_parallel_pqe(void **state)
 		hltests_add_cp_dma_pkt(fd, table, entry_offset, &pkt_info);
 	}
 
-	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
+	rc = hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
 				EB_FALSE, MB_FALSE, table_device_va,
 				table_sram_addr, table_size,
 				DMA_DIR_HOST_TO_SRAM);
+	assert_int_equal(rc, 0);
 
 	/* Clear SOB0 & SOB1 */
 	hltests_clear_sobs(fd, 2);
@@ -2446,16 +2592,13 @@ VOID test_cs_drop(void **state)
 	struct hlthunk_wait_in wait_in;
 	struct hlthunk_wait_out wait_out;
 	struct hltests_pkt_info pkt_info;
-	struct hlthunk_hw_ip_info hw_ip;
+	struct hlthunk_hw_ip_info *hw_ip = &tests_state->hw_ip;
 	void *src_data, *cb[CS_DROP_NUM_CB_PER_CS];
 	uint64_t drop_cnt, src_data_device_va, device_data_address, seq;
 	uint32_t queue_down, queue_up, cb_size = 0;
 	int rc, i, j, fd = tests_state->fd;
 
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
-	if (!hw_ip.sram_size)
+	if (hltests_get_parser_mini_suite())
 		skip();
 
 	if (hltests_is_simulator(fd)) {
@@ -2484,7 +2627,7 @@ VOID test_cs_drop(void **state)
 	queue_down = hltests_get_dma_down_qid(fd, STREAM0);
 	queue_up = hltests_get_dma_up_qid(fd, STREAM0);
 	src_data = hltests_allocate_host_mem(fd, 0x100000, NOT_HUGE_MAP);
-	device_data_address = hw_ip.sram_base_address + 0x1000;
+	device_data_address = hw_ip->sram_base_address + 0x1000;
 	src_data_device_va = hltests_get_device_va_for_host_ptr(fd, src_data);
 
 	memset(&sig_in, 0, sizeof(sig_in));
@@ -2562,14 +2705,15 @@ VOID test_cs_drop(void **state)
 VOID test_wait_for_cs_with_timestamp(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	uint64_t seq = 0, timestamp[2], timestamp_diff;
 	struct hltests_cs_chunk execute_arr[2];
 	struct hltests_pkt_info pkt_info;
-	uint32_t cb_size = 0;
-	uint32_t status = 0;
-	uint64_t seq = 0;
-	uint64_t timestamp[2];
-	void *cb[2];
+	uint32_t cb_size = 0, status = 0;
 	int rc, i, fd = tests_state->fd;
+	void *cb[2];
+
+	if (hltests_get_parser_mini_suite())
+		skip();
 
 	if (!hltests_is_legacy_mode_enabled(fd)) {
 		printf("Test is irrelevant when running in ARC mode, skipping\n");
@@ -2607,8 +2751,12 @@ VOID test_wait_for_cs_with_timestamp(void **state)
 			sleep(1);
 	}
 
-	assert_in_range((timestamp[1] - timestamp[0]), NANO_ONE_SEC,
-			NANO_TWO_SEC);
+	/* TODO: use 1-2 sec range when interrupts latency issue is resolved (SW-116547) */
+	timestamp_diff = timestamp[1] - timestamp[0];
+	if (timestamp_diff > NANO_TWO_SEC)
+		printf("Timestamps diff is %"PRIu64" nsec, should be in the range of 1-2 sec.\n",
+			timestamp_diff);
+	assert_in_range(timestamp_diff, NANO_ONE_SEC, 5 * NANO_ONE_SEC);
 
 	for (i = 0 ; i < 2 ; i++) {
 		rc = hltests_destroy_cb(fd, cb[i]);
@@ -2629,6 +2777,9 @@ VOID test_wait_for_cs_with_timestamp_status_gone(void **state)
 	uint64_t timestamp[2];
 	void *cb[SZ_32K];
 	int rc, i, fd = tests_state->fd;
+
+	if (hltests_get_parser_mini_suite())
+		skip();
 
 	if (!hltests_is_legacy_mode_enabled(fd)) {
 		printf("Test is irrelevant when running in ARC mode, skipping\n");
@@ -2827,6 +2978,7 @@ static void *test_staged_submission(void *args)
 	mon_and_fence_info.sob_val = 1;
 	mon_and_fence_info.dec_fence = true;
 	mon_and_fence_info.mon_payload = 1;
+	mon_and_fence_info.mon_mode = SOB_EQUAL;
 	cp_dma_cb_size = hltests_add_monitor_and_fence(fd, cp_dma_cb,
 			cp_dma_cb_size, &mon_and_fence_info);
 
@@ -2880,6 +3032,7 @@ static void *test_staged_submission(void *args)
 	mon_and_fence_info.sob_val = 1;
 	mon_and_fence_info.dec_fence = true;
 	mon_and_fence_info.mon_payload = 1;
+	mon_and_fence_info.mon_mode = SOB_EQUAL;
 	cb_size[1] = hltests_add_monitor_and_fence(fd, cb[1], cb_size[1],
 			&mon_and_fence_info);
 
@@ -2933,25 +3086,22 @@ VOID test_staged_submission_256_threads(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct staged_cs_thread_params *thread_params;
-	struct hlthunk_hw_ip_info hw_ip;
+	struct hlthunk_hw_ip_info *hw_ip = &tests_state->hw_ip;
 	int rc, i, fd = tests_state->fd;
 	uint32_t dma_queues_count, sob, mon, dma_size = 0x2000;
 	uint64_t sram_base;
 	pthread_t *thread_id;
 	void *retval;
 
+	if (hltests_get_parser_mini_suite())
+		skip();
+
 	if (!hltests_is_gaudi(fd)) {
 		printf("Test is only relevant for Gaudi, skipping\n");
 		skip();
 	}
 
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
-	if (!hw_ip.sram_size)
-		skip();
-
-	assert_not_in_range(hw_ip.sram_size, 0, dma_size * 4 * NUM_THREADS);
+	assert_not_in_range(hw_ip->sram_size, 0, dma_size * 4 * NUM_THREADS);
 
 	thread_params = hlthunk_malloc(NUM_THREADS * sizeof(*thread_params));
 	assert_non_null(thread_params);
@@ -2966,7 +3116,7 @@ VOID test_staged_submission_256_threads(void **state)
 
 	/* Clear SOBs */
 	hltests_clear_sobs(fd, NUM_THREADS * 2);
-	sram_base = hw_ip.sram_base_address;
+	sram_base = hw_ip->sram_base_address;
 
 	/* Create and execute threads */
 	for (i = 0 ; i < NUM_THREADS ; i++) {
@@ -3007,6 +3157,7 @@ static void prepare_cq_config(int fd, void *cb, uint16_t sob, uint16_t mon, uint
 	dma_qid = hltests_get_dma_down_qid(fd, STREAM0);
 
 	/* Configure CQ */
+	cq_config.fd = fd;
 	cq_config.qid = dma_qid;
 	cq_config.cq_address = cq_device_va;
 	cq_config.cq_size_log2 = 2;
@@ -3041,6 +3192,7 @@ static void prepare_cq_config(int fd, void *cb, uint16_t sob, uint16_t mon, uint
 		mon_info.mon_payload = payload;
 		mon_info.cq_enable = 1;
 		mon_info.cq_id = cq_id;
+		mon_info.mon_mode = SOB_EQUAL;
 		cb_size = hltests_add_monitor(fd, cb, cb_size, &mon_info);
 	}
 
@@ -3108,7 +3260,7 @@ VOID test_wait_for_interrupt_common(void **state, bool direct_cq_en)
 	rc = hltests_destroy_cb(fd, cb);
 	assert_int_equal(rc, 0);
 
-	rc = hltests_munmap(cq_cb->ptr, cq_cb->cb_size);
+	rc = hltests_munmap(fd, cq_cb->ptr, cq_cb->cb_size);
 	assert_int_equal(rc, 0);
 
 	rc = hlthunk_destroy_command_buffer(fd, cq_cb->cb_handle);
@@ -3122,6 +3274,18 @@ VOID test_wait_for_interrupt_common(void **state, bool direct_cq_en)
 VOID test_wait_for_interrupt(void **state)
 {
 	END_TEST_FUNC(test_wait_for_interrupt_common(state, false));
+}
+
+VOID test_wait_for_interrupt_direct_cq(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+
+	if (!hltests_is_gaudi3(tests_state->fd)) {
+		printf("Test relevant for Gaudi3, skipping\n");
+		skip();
+	}
+
+	END_TEST_FUNC(test_wait_for_interrupt_common(state, true));
 }
 
 static inline void timestamp_poll(void *ptr, uint64_t *timestamp)
@@ -3156,7 +3320,10 @@ VOID test_multiple_timestamp_registrations(void **state)
 	void *cb, *ts_user_ptr;
 	int rc, fd = tests_state->fd;
 
-	if (!hltests_is_gaudi2(fd)) {
+	if (hltests_get_parser_mini_suite())
+		skip();
+
+	if (!hltests_is_gaudi2(fd) && !hltests_is_gaudi3(fd)) {
 		printf("Test relevant for Gaudi2 and above, skipping\n");
 		skip();
 	}
@@ -3198,14 +3365,17 @@ VOID test_multiple_timestamp_registrations(void **state)
 	/* Register timestamp record target val 100 */
 	rc = hlthunk_register_timestamp_interrupt(fd, interrupt_id,
 				cq_cb->cb_handle, 0, 100, ts_handle, 0);
+	assert_int_equal(rc, 0);
 
 	/* Register timestamp record target val 200 */
 	rc = hlthunk_register_timestamp_interrupt(fd, interrupt_id,
 				cq_cb->cb_handle, 1, 200, ts_handle, 1);
+	assert_int_equal(rc, 0);
 
 	/* Register timestamp record target val 400 */
 	rc = hlthunk_register_timestamp_interrupt(fd, interrupt_id,
 				cq_cb->cb_handle, 3, 400, ts_handle, 2);
+	assert_int_equal(rc, 0);
 
 	prepare_cq_config(fd, cb, sob0, mon0, cq_id, interrupt_id, 1, 101,
 				cq_device_va, execute_arr, false);
@@ -3257,13 +3427,13 @@ VOID test_multiple_timestamp_registrations(void **state)
 	rc = hltests_destroy_cb(fd, cb);
 	assert_int_equal(rc, 0);
 
-	rc = hltests_munmap(cq_cb->ptr, cq_cb->cb_size);
+	rc = hltests_munmap(fd, cq_cb->ptr, cq_cb->cb_size);
 	assert_int_equal(rc, 0);
 
 	rc = hlthunk_destroy_command_buffer(fd, cq_cb->cb_handle);
 	assert_int_equal(rc, 0);
 
-	rc = hltests_munmap(ts_user_ptr, 10 * sizeof(uint64_t));
+	rc = hltests_munmap(fd, ts_user_ptr, 10 * sizeof(uint64_t));
 	assert_int_equal(rc, 0);
 
 	hlthunk_free(cq_cb);
@@ -3290,8 +3460,11 @@ VOID test_timestamp_registration(void **state)
 	void *cb, *ts_user_ptr;
 	int rc, fd = tests_state->fd;
 
-	if (!hltests_is_gaudi2(fd)) {
-		printf("Test relevant for Gaudi2, skipping\n");
+	if (hltests_get_parser_mini_suite())
+		skip();
+
+	if (!hltests_is_gaudi2(fd) && !hltests_is_gaudi3(fd)) {
+		printf("Test relevant for Gaudi2 and above, skipping\n");
 		skip();
 	}
 
@@ -3335,6 +3508,7 @@ VOID test_timestamp_registration(void **state)
 	/* Register timestamp record */
 	rc = hlthunk_register_timestamp_interrupt(fd, interrupt_id,
 			cq_cb->cb_handle, 0, 100, ts_handle, 0);
+	assert_int_equal(rc, 0);
 
 	rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 1, 0, &seq);
 	assert_int_equal(rc, 0);
@@ -3345,16 +3519,115 @@ VOID test_timestamp_registration(void **state)
 	rc = hltests_destroy_cb(fd, cb);
 	assert_int_equal(rc, 0);
 
-	rc = hltests_munmap(cq_cb->ptr, cq_cb->cb_size);
+	rc = hltests_munmap(fd, cq_cb->ptr, cq_cb->cb_size);
 	assert_int_equal(rc, 0);
 
 	rc = hlthunk_destroy_command_buffer(fd, cq_cb->cb_handle);
 	assert_int_equal(rc, 0);
 
-	rc = hltests_munmap(ts_user_ptr, 10 * sizeof(uint64_t));
+	rc = hltests_munmap(fd, ts_user_ptr, 10 * sizeof(uint64_t));
 	assert_int_equal(rc, 0);
 
 	hlthunk_free(cq_cb);
+
+	END_TEST;
+}
+
+#define RUN_TIMES 1500
+#define DMA_TRANS_SIZE SZ_512M	/* 512M should take ~20-25 miliseconds                */
+#define TIME_UP_LIMIT 80	/* in msec. timestamp above it will be printed as err */
+
+VOID test_multiple_timestamp_cq_interrupts(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct hltests_cs_chunk execute_arr;
+	struct hltests_pkt_info pkt_info;
+	struct hlthunk_hw_ip_info *hw_ip = &tests_state->hw_ip;
+	uint32_t offset = 0, time_elapsed, status;
+	uint64_t seq, host_src_addr, tstamp[2];
+	void *src_addr, *device_addr, *cb;
+	int rc, fd = tests_state->fd, i;
+
+	if (!hw_ip->dram_enabled) {
+		printf("No device memory is available so skipping test\n");
+		skip();
+	}
+
+	/* TODO: enabled it also for Gaudi3 - SW-118698 */
+	if (hltests_is_gaudi3(fd)) {
+		printf("Test is temporarily irrelevant for Gaudi3, skipping\n");
+		skip();
+	}
+
+	if (hltests_is_simulator(fd)) {
+		printf("Test is irrelevant for simulator, skipping\n");
+		skip();
+	}
+
+	if (!hltests_is_legacy_mode_enabled(fd)) {
+		printf("Test is irrelevant for none legacy mode, skipping\n");
+		skip();
+	}
+
+	src_addr = hltests_allocate_host_mem(fd, DMA_TRANS_SIZE, HUGE_MAP);
+	assert_non_null(src_addr);
+
+	memset(src_addr, 0, DMA_TRANS_SIZE);
+	host_src_addr = hltests_get_device_va_for_host_ptr(fd, src_addr);
+
+	device_addr = hltests_allocate_device_mem(fd, DMA_TRANS_SIZE, 0, CONTIGUOUS);
+	assert_non_null(device_addr);
+
+	cb = hltests_create_cb(fd, 0x1000, EXTERNAL, 0);
+	assert_non_null(cb);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.qid = hltests_get_dma_down_qid(fd, STREAM0);
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_TRUE;
+	pkt_info.dma.src_addr = host_src_addr;
+	pkt_info.dma.dst_addr = (uint64_t) (uintptr_t)device_addr;
+	pkt_info.dma.size = DMA_TRANS_SIZE;
+	pkt_info.dma.dma_dir = DMA_DIR_HOST_TO_DRAM;
+	offset = hltests_add_dma_pkt(fd, cb, offset, &pkt_info);
+
+	execute_arr.cb_ptr = cb;
+	execute_arr.cb_size = offset;
+	execute_arr.queue_index = hltests_get_dma_down_qid(fd, STREAM0);
+
+	rc = hltests_submit_cs(fd, NULL, 0, &execute_arr, 1, HL_CS_FLAGS_TIMESTAMP, &seq);
+	assert_int_equal(rc, 0);
+
+	/* Wait for the first command only, make sure it is not lost */
+	do {
+		rc = hlthunk_wait_for_cs_with_timestamp(fd, seq,
+				WAIT_FOR_CS_DEFAULT_TIMEOUT, &status,
+				&tstamp[0]);
+		assert_int_equal(rc, 0);
+	} while (status == HL_WAIT_CS_STATUS_BUSY);
+
+	tstamp[0] /= 1000000;
+	for (i = 1 ; i <= RUN_TIMES ; i++) {
+		rc = hltests_submit_cs(fd, NULL, 0, &execute_arr, 1, HL_CS_FLAGS_TIMESTAMP, &seq);
+		assert_int_equal(rc, 0);
+
+		do {
+			rc = hlthunk_wait_for_cs_with_timestamp(fd, seq,
+					WAIT_FOR_CS_DEFAULT_TIMEOUT, &status,
+					&tstamp[i % 2]);
+			assert_int_equal(rc, 0);
+		} while (status == HL_WAIT_CS_STATUS_BUSY);
+
+		tstamp[i % 2] /= 1000000;
+		time_elapsed = abs((int)(tstamp[0] - tstamp[1]));
+		if (time_elapsed >= TIME_UP_LIMIT)
+			printf("interrupt-%d/%d: long elapsed time=%d msec (should be ~ 22-26)\n",
+				i, RUN_TIMES, time_elapsed);
+	}
+
+	rc = hltests_destroy_cb(fd, cb);
+	hltests_free_device_mem(fd, device_addr);
+	hltests_free_host_mem(fd, src_addr);
 
 	END_TEST;
 }
@@ -3786,7 +4059,7 @@ VOID test_wait_for_multi_cs_multi_thread_common(void **state, bool single_mode)
 
 VOID test_wait_for_multi_cs_multi_thread(void **state)
 {
-	/* Temporarily skip test as it causes driver deadlocks */
+	printf("Temporarily skip test as it causes driver deadlocks\n");
 	skip();
 
 	END_TEST_FUNC(test_wait_for_multi_cs_multi_thread_common(state, false));
@@ -3802,11 +4075,12 @@ VOID test_wait_for_multi_cs_multi_thread_single_mode(void **state)
 {
 	printf("Temporarily skip randomly failing test\n");
 	skip();
+
 	END_TEST_FUNC(test_wait_for_multi_cs_multi_thread_common(state, true));
 }
 
-#define MAX_NUM_OF_TEST_THREADS 64
-#define TARGET_VAL 100
+#define MAX_NUM_OF_TEST_THREADS 32
+#define TARGET_VAL 50
 #define NUM_OF_WAIT_FOR_INTERRUPT_THREADS (TARGET_VAL + 1)
 
 /**
@@ -3871,6 +4145,7 @@ static int mon_config(struct interrupt_params *ip)
 		return -1;
 	}
 
+	ip->cq_config.fd = ip->fd;
 	ip->cq_config.qid = qid;
 	ip->cq_config.cq_address = ip->cq_device_va + (ip->idx * sizeof(uint64_t));
 	ip->cq_config.cq_size_log2 = 3;
@@ -3899,6 +4174,7 @@ static int mon_config(struct interrupt_params *ip)
 	mon_info.mon_payload = 0;
 	mon_info.cq_enable = 1;
 	mon_info.cq_id = ip->cq_id;
+	mon_info.mon_mode = SOB_EQUAL;
 	cb_size = hltests_add_monitor(ip->fd, ip->cb, cb_size, &mon_info);
 
 	execute_arr[0].cb_ptr = ip->cb;
@@ -3978,6 +4254,7 @@ static void *trigger_interrupt_thread(void *data)
 	mon_info.cq_enable = 1;
 	mon_info.cq_id = ip->cq_id;
 	mon_info.mon_payload = 1;
+	mon_info.mon_mode = SOB_EQUAL;
 
 	cb_size = hltests_add_monitor(ip->fd, cb, 0, &mon_info);
 
@@ -4018,6 +4295,7 @@ static int main_interrupt_test(struct interrupt_params *ip)
 	int i, rc;
 	pthread_t wait_thread_id[NUM_OF_WAIT_FOR_INTERRUPT_THREADS];
 	pthread_t trigger_thread_id[TARGET_VAL];
+	pthread_attr_t attr;
 	void *retval;
 
 	/*
@@ -4041,11 +4319,24 @@ static int main_interrupt_test(struct interrupt_params *ip)
 	if (rc)
 		return rc;
 
+	rc = pthread_attr_init(&attr);
+	if (rc) {
+		printf("Error in pthread_attr_init %d. errno: %d\n", rc, errno);
+		return rc;
+	}
+
+	rc = pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN);
+	if (rc) {
+		printf("Error in pthread_attr_setstacksize %d. errno: %d\n", rc, errno);
+		return rc;
+	}
+
 	for (i = 0; i < ip->num_of_wait_threads; i++) {
-		rc = pthread_create(&wait_thread_id[i], NULL, wait_for_interrupt_thread, ip);
+		rc = pthread_create(&wait_thread_id[i], &attr, wait_for_interrupt_thread, ip);
 		if (rc) {
-			printf("Error creating wait_for_interrupt_thread %d\n", rc);
-			return -1;
+			printf("Error creating wait_for_interrupt_thread %d. errno: %d\n",
+						rc, errno);
+			return rc;
 		}
 	}
 
@@ -4053,22 +4344,23 @@ static int main_interrupt_test(struct interrupt_params *ip)
 
 	/* Trigger */
 	for (i = 0; i < ip->target_val; i++) {
-		rc = pthread_create(&trigger_thread_id[i], NULL, trigger_interrupt_thread, ip);
+		rc = pthread_create(&trigger_thread_id[i], &attr, trigger_interrupt_thread, ip);
 		if (rc) {
-			printf("Error creating trigger_interrupt_thread\n");
-			return -1;
+			printf("Error creating trigger_interrupt_thread %d. errno: %d\n",
+						rc, errno);
+			return rc;
 		}
 	}
 
 	for (i = 0; i < ip->target_val; i++) {
 		rc = pthread_join(trigger_thread_id[i], &retval);
 		if (rc) {
-			printf("Error joining trigger_interrupt_thread\n");
-			return -1;
+			printf("Error joining trigger_interrupt_thread %d. errno: %d\n", rc, errno);
+			return rc;
 		}
 		if (ip->trigger_res) {
 			printf("Error trigger result = %d\n", ip->trigger_res);
-			return -1;
+			return rc;
 		}
 	}
 
@@ -4077,7 +4369,7 @@ static int main_interrupt_test(struct interrupt_params *ip)
 		rc = pthread_join(wait_thread_id[i], &retval);
 		if (rc) {
 			printf("Error joining wait_for_interrupt_thread\n");
-			return -1;
+			return rc;
 		}
 	}
 
@@ -4119,13 +4411,7 @@ VOID test_wait_for_interrupt_multi_thread(void **state)
 	uint64_t cq_device_va;
 	void *retval;
 
-	/* Skip test until SW-85257 is resolved */
-	if (!hltests_is_legacy_mode_enabled(fd)) {
-		printf("Temporarely skipping test in ARC mode\n");
-		skip();
-	}
-
-	if (!hltests_is_gaudi2(fd)) {
+	if (!hltests_is_gaudi2(fd) && !hltests_is_gaudi3(fd)) {
 		printf("Test relevant for Gaudi2 and above, skipping\n");
 		skip();
 	}
@@ -4192,13 +4478,54 @@ VOID test_wait_for_interrupt_multi_thread(void **state)
 		assert_non_null(retval);
 	}
 
-	rc = hltests_munmap(cq_cb->ptr, cq_cb->cb_size);
+	rc = hltests_munmap(fd, cq_cb->ptr, cq_cb->cb_size);
 	assert_int_equal(rc, 0);
 
 	rc = hlthunk_destroy_command_buffer(fd, cq_cb->cb_handle);
 	assert_int_equal(rc, 0);
 
 	hlthunk_free(cq_cb);
+
+	END_TEST;
+}
+
+VOID test_tpc_mme_edma_stall_resume(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	uint32_t *engine_ids, engine_ids_size;
+	int rc, fd = tests_state->fd;
+
+	if (hltests_get_parser_mini_suite())
+		skip();
+
+	if (!hltests_get_parser_run_disabled_tests())
+		skip();
+
+	if (!hltests_is_gaudi2(fd) && !hltests_is_gaudi3(fd)) {
+		printf("Test is currently supported only for Gaudi2 & Gaudi3, skipping\n");
+		skip();
+	}
+
+	rc = hltests_edp_get_engines_list(fd, &engine_ids, &engine_ids_size);
+	assert_int_equal(rc, 0);
+
+	rc = hlthunk_engines_command(fd, engine_ids, engine_ids_size, HL_ENGINE_STALL);
+	if (rc) {
+		printf("Failed to stall EDP engines (%d)\n", rc);
+		goto free_engine_ids;
+	}
+
+	rc = hlthunk_engines_command(fd, engine_ids, engine_ids_size, HL_ENGINE_RESUME);
+	if (rc) {
+		printf("Failed to resume EDP engines (%d)\n", rc);
+		goto free_engine_ids;
+	}
+
+free_engine_ids:
+	hlthunk_free(engine_ids);
+
+	if (rc)
+		fail();
 
 	END_TEST;
 }
@@ -4214,6 +4541,8 @@ const struct CMUnitTest cs_tests[] = {
 	cmocka_unit_test_setup(test_cs_nop_48PQE,
 					hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_cs_nop_64PQE,
+					hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_cs_nop_mixed_engines,
 					hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_and_measure_wait_after_submit_cs_nop,
 					hltests_ensure_device_operational),
@@ -4259,6 +4588,8 @@ const struct CMUnitTest cs_tests[] = {
 					hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_wait_for_interrupt,
 					hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_wait_for_interrupt_direct_cq,
+					hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_wait_for_multi_cs_complete,
 					hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_wait_for_multi_cs_poll,
@@ -4272,6 +4603,10 @@ const struct CMUnitTest cs_tests[] = {
 	cmocka_unit_test_setup(test_timestamp_registration,
 					hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_multiple_timestamp_registrations,
+					hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_multiple_timestamp_cq_interrupts,
+					hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_tpc_mme_edma_stall_resume,
 					hltests_ensure_device_operational)
 };
 
@@ -4285,6 +4620,8 @@ int main(int argc, const char **argv)
 	int num_tests = sizeof(cs_tests) / sizeof((cs_tests)[0]);
 
 	hltests_parser(argc, argv, usage, HLTEST_DEVICE_MASK_DONT_CARE, cs_tests, num_tests);
+	hltests_set_capabilities_mask(CAP_ARC_FW_LOAD_SCHED_MASK | CAP_ARC_FW_LOAD_PDMA_MASK |
+					CAP_ARC_FW_LOAD_TPC_MASK);
 	return hltests_run_group_tests("command_submission", cs_tests, num_tests,
 						hltests_setup, hltests_teardown);
 }

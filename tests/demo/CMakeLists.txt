@@ -8,8 +8,12 @@ include_directories(
 )
 
 add_executable (demo main.c)
+add_executable (device_utilization_demo device_utilization.c)
+add_executable (open_after_ports_up_demo open_after_ports_up.c)
 
 set(DEMO_LINK_LIBRARIES
     ${HLTHUNK_TARGET} ${HLTHUNK_TESTS_LIBRARY} ${HLTHUNK_ERR_INJECT_TARGET})
 
 target_link_libraries(demo ${DEMO_LINK_LIBRARIES})
+target_link_libraries(device_utilization_demo ${DEMO_LINK_LIBRARIES} ncurses)
+target_link_libraries(open_after_ports_up_demo ${DEMO_LINK_LIBRARIES})

@@ -3,7 +3,6 @@
 file(GLOB SRC *.c) # compile all files with *.c suffix
 
 include_directories(klib)
-include_directories(/usr/include/drm/)
 
 exec_program(
     "git"

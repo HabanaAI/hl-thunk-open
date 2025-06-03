@@ -1,0 +1,500 @@
+/* SPDX-License-Identifier: MIT
+ *
+ * Copyright 2016-2018 HabanaLabs, Ltd.
+ * All Rights Reserved.
+ *
+ */
+
+/************************************
+ ** This is an auto-generated file **
+ **       DO NOT EDIT BELOW        **
+ ************************************/
+
+#ifndef ASIC_REG_NIC0_QPC0_MASKS_H_
+#define ASIC_REG_NIC0_QPC0_MASKS_H_
+
+/*
+ *****************************************
+ *   NIC0_QPC0 (Prototype: NIC_QPC)
+ *****************************************
+ */
+
+/* NIC0_QPC0_REQ_QPC_CACHE_INVALIDATE */
+
+/* NIC0_QPC0_REQ_QPC_CACHE_INV_STATUS */
+#define NIC0_QPC0_REQ_QPC_CACHE_INV_STATUS_INVALIDATE_DONE_SHIFT     0
+#define NIC0_QPC0_REQ_QPC_CACHE_INV_STATUS_INVALIDATE_DONE_MASK      0x1
+#define NIC0_QPC0_REQ_QPC_CACHE_INV_STATUS_CACHE_IDLE_SHIFT          1
+#define NIC0_QPC0_REQ_QPC_CACHE_INV_STATUS_CACHE_IDLE_MASK           0x2
+
+/* NIC0_QPC0_REQ_STATIC_CONFIG */
+#define NIC0_QPC0_REQ_STATIC_CONFIG_PLRU_EVICTION_SHIFT              0
+#define NIC0_QPC0_REQ_STATIC_CONFIG_PLRU_EVICTION_MASK               0x1
+#define NIC0_QPC0_REQ_STATIC_CONFIG_RELEASE_INVALIDATE_SHIFT         1
+#define NIC0_QPC0_REQ_STATIC_CONFIG_RELEASE_INVALIDATE_MASK          0x2
+#define NIC0_QPC0_REQ_STATIC_CONFIG_LINK_LIST_EN_SHIFT               2
+#define NIC0_QPC0_REQ_STATIC_CONFIG_LINK_LIST_EN_MASK                0x4
+#define NIC0_QPC0_REQ_STATIC_CONFIG_TIMER_EN_SHIFT                   3
+#define NIC0_QPC0_REQ_STATIC_CONFIG_TIMER_EN_MASK                    0x8
+#define NIC0_QPC0_REQ_STATIC_CONFIG_QM_PUSH_TO_ERR_FIFO_NON_V_SHIFT  4
+#define NIC0_QPC0_REQ_STATIC_CONFIG_QM_PUSH_TO_ERR_FIFO_NON_V_MASK   0x10
+#define NIC0_QPC0_REQ_STATIC_CONFIG_TX_PUSH_TO_ERR_FIFO_NON_V_SHIFT  5
+#define NIC0_QPC0_REQ_STATIC_CONFIG_TX_PUSH_TO_ERR_FIFO_NON_V_MASK   0x20
+#define NIC0_QPC0_REQ_STATIC_CONFIG_CACHE_STOP_SHIFT                 6
+#define NIC0_QPC0_REQ_STATIC_CONFIG_CACHE_STOP_MASK                  0x40
+#define NIC0_QPC0_REQ_STATIC_CONFIG_INVALIDATE_WRITEBACK_SHIFT       7
+#define NIC0_QPC0_REQ_STATIC_CONFIG_INVALIDATE_WRITEBACK_MASK        0x80
+#define NIC0_QPC0_REQ_STATIC_CONFIG_QM_PUSH_TO_ERROR_SECURITY_SHIFT  8
+#define NIC0_QPC0_REQ_STATIC_CONFIG_QM_PUSH_TO_ERROR_SECURITY_MASK   0x100
+
+/* NIC0_QPC0_REQ_BASE_ADDRESS_49_18 */
+#define NIC0_QPC0_REQ_BASE_ADDRESS_49_18_R_SHIFT                     0
+#define NIC0_QPC0_REQ_BASE_ADDRESS_49_18_R_MASK                      0xFFFFFFFF
+
+/* NIC0_QPC0_REQ_BASE_ADDRESS_17_7 */
+#define NIC0_QPC0_REQ_BASE_ADDRESS_17_7_R_SHIFT                      0
+#define NIC0_QPC0_REQ_BASE_ADDRESS_17_7_R_MASK                       0x7FF
+
+/* NIC0_QPC0_REQ_CLEAN_LINK_LIST */
+
+/* NIC0_QPC0_REQ_ERR_FIFO_PUSH_63_32 */
+#define NIC0_QPC0_REQ_ERR_FIFO_PUSH_63_32_R_SHIFT                    0
+#define NIC0_QPC0_REQ_ERR_FIFO_PUSH_63_32_R_MASK                     0xFFFFFFFF
+
+/* NIC0_QPC0_REQ_ERR_FIFO_PUSH_31_0 */
+#define NIC0_QPC0_REQ_ERR_FIFO_PUSH_31_0_R_SHIFT                     0
+#define NIC0_QPC0_REQ_ERR_FIFO_PUSH_31_0_R_MASK                      0xFFFFFFFF
+
+/* NIC0_QPC0_REQ_ERR_QP_STATE_63_32 */
+#define NIC0_QPC0_REQ_ERR_QP_STATE_63_32_R_SHIFT                     0
+#define NIC0_QPC0_REQ_ERR_QP_STATE_63_32_R_MASK                      0xFFFFFFFF
+
+/* NIC0_QPC0_REQ_ERR_QP_STATE_31_0 */
+#define NIC0_QPC0_REQ_ERR_QP_STATE_31_0_R_SHIFT                      0
+#define NIC0_QPC0_REQ_ERR_QP_STATE_31_0_R_MASK                       0xFFFFFFFF
+
+/* NIC0_QPC0_RETRY_COUNT_MAX */
+#define NIC0_QPC0_RETRY_COUNT_MAX_TIMEOUT_SHIFT                      0
+#define NIC0_QPC0_RETRY_COUNT_MAX_TIMEOUT_MASK                       0xFF
+#define NIC0_QPC0_RETRY_COUNT_MAX_SEQUENCE_ERROR_SHIFT               8
+#define NIC0_QPC0_RETRY_COUNT_MAX_SEQUENCE_ERROR_MASK                0xFF00
+
+/* NIC0_QPC0_AXI_USER */
+#define NIC0_QPC0_AXI_USER_R_SHIFT                                   0
+#define NIC0_QPC0_AXI_USER_R_MASK                                    0xFFFFFFFF
+
+/* NIC0_QPC0_AXI_PROT */
+#define NIC0_QPC0_AXI_PROT_R_SHIFT                                   0
+#define NIC0_QPC0_AXI_PROT_R_MASK                                    0x7
+
+/* NIC0_QPC0_RES_QPC_CACHE_INVALIDATE */
+
+/* NIC0_QPC0_RES_QPC_CACHE_INV_STATUS */
+#define NIC0_QPC0_RES_QPC_CACHE_INV_STATUS_INVALIDATE_DONE_SHIFT     0
+#define NIC0_QPC0_RES_QPC_CACHE_INV_STATUS_INVALIDATE_DONE_MASK      0x1
+#define NIC0_QPC0_RES_QPC_CACHE_INV_STATUS_CACHE_IDLE_SHIFT          1
+#define NIC0_QPC0_RES_QPC_CACHE_INV_STATUS_CACHE_IDLE_MASK           0x2
+
+/* NIC0_QPC0_RES_STATIC_CONFIG */
+#define NIC0_QPC0_RES_STATIC_CONFIG_PLRU_EVICTION_SHIFT              0
+#define NIC0_QPC0_RES_STATIC_CONFIG_PLRU_EVICTION_MASK               0x1
+#define NIC0_QPC0_RES_STATIC_CONFIG_RELEASE_INVALIDATE_SHIFT         1
+#define NIC0_QPC0_RES_STATIC_CONFIG_RELEASE_INVALIDATE_MASK          0x2
+#define NIC0_QPC0_RES_STATIC_CONFIG_LINK_LIST_EN_SHIFT               2
+#define NIC0_QPC0_RES_STATIC_CONFIG_LINK_LIST_EN_MASK                0x4
+#define NIC0_QPC0_RES_STATIC_CONFIG_RX_PUSH_TO_ERR_FIFO_NON_V_SHIFT  3
+#define NIC0_QPC0_RES_STATIC_CONFIG_RX_PUSH_TO_ERR_FIFO_NON_V_MASK   0x8
+#define NIC0_QPC0_RES_STATIC_CONFIG_TX_PUSH_TO_ERR_FIFO_NON_V_SHIFT  4
+#define NIC0_QPC0_RES_STATIC_CONFIG_TX_PUSH_TO_ERR_FIFO_NON_V_MASK   0x10
+#define NIC0_QPC0_RES_STATIC_CONFIG_CACHE_STOP_SHIFT                 5
+#define NIC0_QPC0_RES_STATIC_CONFIG_CACHE_STOP_MASK                  0x20
+#define NIC0_QPC0_RES_STATIC_CONFIG_INVALIDATE_WRITEBACK_SHIFT       6
+#define NIC0_QPC0_RES_STATIC_CONFIG_INVALIDATE_WRITEBACK_MASK        0x40
+
+/* NIC0_QPC0_RES_BASE_ADDRESS_49_18 */
+#define NIC0_QPC0_RES_BASE_ADDRESS_49_18_R_SHIFT                     0
+#define NIC0_QPC0_RES_BASE_ADDRESS_49_18_R_MASK                      0xFFFFFFFF
+
+/* NIC0_QPC0_RES_BASE_ADDRESS_17_7 */
+#define NIC0_QPC0_RES_BASE_ADDRESS_17_7_R_SHIFT                      0
+#define NIC0_QPC0_RES_BASE_ADDRESS_17_7_R_MASK                       0x7FF
+
+/* NIC0_QPC0_RES_CLEAN_LINK_LIST */
+
+/* NIC0_QPC0_ERR_FIFO_WRITE_INDEX */
+#define NIC0_QPC0_ERR_FIFO_WRITE_INDEX_R_SHIFT                       0
+#define NIC0_QPC0_ERR_FIFO_WRITE_INDEX_R_MASK                        0xFFFFFFFF
+
+/* NIC0_QPC0_ERR_FIFO_PRODUCER_INDEX */
+#define NIC0_QPC0_ERR_FIFO_PRODUCER_INDEX_R_SHIFT                    0
+#define NIC0_QPC0_ERR_FIFO_PRODUCER_INDEX_R_MASK                     0xFFFFFFFF
+
+/* NIC0_QPC0_ERR_FIFO_CONSUMER_INDEX */
+#define NIC0_QPC0_ERR_FIFO_CONSUMER_INDEX_R_SHIFT                    0
+#define NIC0_QPC0_ERR_FIFO_CONSUMER_INDEX_R_MASK                     0xFFFFFFFF
+
+/* NIC0_QPC0_ERR_FIFO_MASK */
+#define NIC0_QPC0_ERR_FIFO_MASK_R_SHIFT                              0
+#define NIC0_QPC0_ERR_FIFO_MASK_R_MASK                               0xFFFFFFFF
+
+/* NIC0_QPC0_ERR_FIFO_CREDIT */
+#define NIC0_QPC0_ERR_FIFO_CREDIT_MAX_CREDIT_SHIFT                   0
+#define NIC0_QPC0_ERR_FIFO_CREDIT_MAX_CREDIT_MASK                    0x1F
+#define NIC0_QPC0_ERR_FIFO_CREDIT_FORCE_FULL_SHIFT                   5
+#define NIC0_QPC0_ERR_FIFO_CREDIT_FORCE_FULL_MASK                    0x20
+
+/* NIC0_QPC0_ERR_FIFO_CFG */
+#define NIC0_QPC0_ERR_FIFO_CFG_ENABLE_SHIFT                          0
+#define NIC0_QPC0_ERR_FIFO_CFG_ENABLE_MASK                           0x1
+#define NIC0_QPC0_ERR_FIFO_CFG_WRAPAROUND_EN_SHIFT                   1
+#define NIC0_QPC0_ERR_FIFO_CFG_WRAPAROUND_EN_MASK                    0x2
+#define NIC0_QPC0_ERR_FIFO_CFG_WRAPAROUND_OCCURRED_SHIFT             2
+#define NIC0_QPC0_ERR_FIFO_CFG_WRAPAROUND_OCCURRED_MASK              0x4
+
+/* NIC0_QPC0_ERR_FIFO_INTR_MASK */
+#define NIC0_QPC0_ERR_FIFO_INTR_MASK_R_SHIFT                         0
+#define NIC0_QPC0_ERR_FIFO_INTR_MASK_R_MASK                          0x1
+
+/* NIC0_QPC0_ERR_FIFO_BASE_ADDR_49_18 */
+#define NIC0_QPC0_ERR_FIFO_BASE_ADDR_49_18_R_SHIFT                   0
+#define NIC0_QPC0_ERR_FIFO_BASE_ADDR_49_18_R_MASK                    0xFFFFFFFF
+
+/* NIC0_QPC0_ERR_FIFO_BASE_ADDR_17_7 */
+#define NIC0_QPC0_ERR_FIFO_BASE_ADDR_17_7_R_SHIFT                    7
+#define NIC0_QPC0_ERR_FIFO_BASE_ADDR_17_7_R_MASK                     0x3FF80
+
+/* NIC0_QPC0_GW_BUSY */
+#define NIC0_QPC0_GW_BUSY_R_SHIFT                                    0
+#define NIC0_QPC0_GW_BUSY_R_MASK                                     0x1
+
+/* NIC0_QPC0_GW_CTRL */
+#define NIC0_QPC0_GW_CTRL_QPN_SHIFT                                  0
+#define NIC0_QPC0_GW_CTRL_QPN_MASK                                   0xFFFFFF
+#define NIC0_QPC0_GW_CTRL_REQUESTER_SHIFT                            24
+#define NIC0_QPC0_GW_CTRL_REQUESTER_MASK                             0x1000000
+#define NIC0_QPC0_GW_CTRL_DOORBELL_MASK_SHIFT                        25
+#define NIC0_QPC0_GW_CTRL_DOORBELL_MASK_MASK                         0x2000000
+#define NIC0_QPC0_GW_CTRL_DOORBELL_FORCE_SHIFT                       26
+#define NIC0_QPC0_GW_CTRL_DOORBELL_FORCE_MASK                        0x4000000
+
+/* NIC0_QPC0_GW_DATA */
+#define NIC0_QPC0_GW_DATA_R_SHIFT                                    0
+#define NIC0_QPC0_GW_DATA_R_MASK                                     0xFFFFFFFF
+
+/* NIC0_QPC0_GW_MASK */
+#define NIC0_QPC0_GW_MASK_R_SHIFT                                    0
+#define NIC0_QPC0_GW_MASK_R_MASK                                     0xFFFFFFFF
+
+/* NIC0_QPC0_CC_WINDOW_INC_EN */
+#define NIC0_QPC0_CC_WINDOW_INC_EN_THERSHOLD_SHIFT                   0
+#define NIC0_QPC0_CC_WINDOW_INC_EN_THERSHOLD_MASK                    0x3FFFFF
+
+/* NIC0_QPC0_CC_TICK_WRAP */
+#define NIC0_QPC0_CC_TICK_WRAP_R_SHIFT                               0
+#define NIC0_QPC0_CC_TICK_WRAP_R_MASK                                0xFFFF
+
+/* NIC0_QPC0_CC_ROLLBACK */
+#define NIC0_QPC0_CC_ROLLBACK_MANTISSA_SHIFT                         0
+#define NIC0_QPC0_CC_ROLLBACK_MANTISSA_MASK                          0x3FFFFF
+#define NIC0_QPC0_CC_ROLLBACK_EXPONENT_SHIFT                         22
+#define NIC0_QPC0_CC_ROLLBACK_EXPONENT_MASK                          0x7C00000
+#define NIC0_QPC0_CC_ROLLBACK_HW_EN_SHIFT                            27
+#define NIC0_QPC0_CC_ROLLBACK_HW_EN_MASK                             0x8000000
+#define NIC0_QPC0_CC_ROLLBACK_SW_EN_SHIFT                            28
+#define NIC0_QPC0_CC_ROLLBACK_SW_EN_MASK                             0x10000000
+
+/* NIC0_QPC0_CC_MAX_WINDOW_SIZE */
+#define NIC0_QPC0_CC_MAX_WINDOW_SIZE_R_SHIFT                         0
+#define NIC0_QPC0_CC_MAX_WINDOW_SIZE_R_MASK                          0x3FFFFF
+
+/* NIC0_QPC0_CC_MIN_WINDOW_SIZE */
+#define NIC0_QPC0_CC_MIN_WINDOW_SIZE_R_SHIFT                         0
+#define NIC0_QPC0_CC_MIN_WINDOW_SIZE_R_MASK                          0x3FFFFF
+
+/* NIC0_QPC0_CC_ALPHA_LINEAR */
+#define NIC0_QPC0_CC_ALPHA_LINEAR_MANTISSA_SHIFT                     0
+#define NIC0_QPC0_CC_ALPHA_LINEAR_MANTISSA_MASK                      0x3FFFFF
+#define NIC0_QPC0_CC_ALPHA_LINEAR_EXPONENT_SHIFT                     22
+#define NIC0_QPC0_CC_ALPHA_LINEAR_EXPONENT_MASK                      0x7C00000
+
+/* NIC0_QPC0_CC_ALPHA_LOG */
+#define NIC0_QPC0_CC_ALPHA_LOG_MANTISSA_SHIFT                        0
+#define NIC0_QPC0_CC_ALPHA_LOG_MANTISSA_MASK                         0x3FFFFF
+#define NIC0_QPC0_CC_ALPHA_LOG_EXPONENT_SHIFT                        22
+#define NIC0_QPC0_CC_ALPHA_LOG_EXPONENT_MASK                         0x7C00000
+
+/* NIC0_QPC0_CC_ALPHA_LOG_THRESHOLD */
+#define NIC0_QPC0_CC_ALPHA_LOG_THRESHOLD_R_SHIFT                     0
+#define NIC0_QPC0_CC_ALPHA_LOG_THRESHOLD_R_MASK                      0x1F
+
+/* NIC0_QPC0_CC_WINDOW_INC */
+#define NIC0_QPC0_CC_WINDOW_INC_R_SHIFT                              0
+#define NIC0_QPC0_CC_WINDOW_INC_R_MASK                               0x3FFFFF
+
+/* NIC0_QPC0_CC_WINDOW_IN_THRESHOLD */
+#define NIC0_QPC0_CC_WINDOW_IN_THRESHOLD_R_SHIFT                     0
+#define NIC0_QPC0_CC_WINDOW_IN_THRESHOLD_R_MASK                      0x1FFFFFF
+
+/* NIC0_QPC0_CC_LOG_QPC */
+#define NIC0_QPC0_CC_LOG_QPC_QPN_SHIFT                               0
+#define NIC0_QPC0_CC_LOG_QPC_QPN_MASK                                0xFFFFFF
+#define NIC0_QPC0_CC_LOG_QPC_VALID_SHIFT                             24
+#define NIC0_QPC0_CC_LOG_QPC_VALID_MASK                              0x1000000
+#define NIC0_QPC0_CC_LOG_QPC_READY_SHIFT                             25
+#define NIC0_QPC0_CC_LOG_QPC_READY_MASK                              0x2000000
+
+/* NIC0_QPC0_CC_LOG_TX */
+#define NIC0_QPC0_CC_LOG_TX_TIME_COUNT_SHIFT                         0
+#define NIC0_QPC0_CC_LOG_TX_TIME_COUNT_MASK                          0x1FFFFFF
+#define NIC0_QPC0_CC_LOG_TX_VALID_SHIFT                              25
+#define NIC0_QPC0_CC_LOG_TX_VALID_MASK                               0x2000000
+
+/* NIC0_QPC0_CC_LOG_LATENCY */
+#define NIC0_QPC0_CC_LOG_LATENCY_TIME_COUNT_SHIFT                    0
+#define NIC0_QPC0_CC_LOG_LATENCY_TIME_COUNT_MASK                     0x1FFFFFF
+#define NIC0_QPC0_CC_LOG_LATENCY_VALID_SHIFT                         25
+#define NIC0_QPC0_CC_LOG_LATENCY_VALID_MASK                          0x2000000
+
+/* NIC0_QPC0_CC_LOG_RX */
+#define NIC0_QPC0_CC_LOG_RX_TIME_COUNT_SHIFT                         0
+#define NIC0_QPC0_CC_LOG_RX_TIME_COUNT_MASK                          0x1FFFFFF
+#define NIC0_QPC0_CC_LOG_RX_VALID_SHIFT                              25
+#define NIC0_QPC0_CC_LOG_RX_VALID_MASK                               0x2000000
+
+/* NIC0_QPC0_CC_LOG_WINDOW_SIZE */
+#define NIC0_QPC0_CC_LOG_WINDOW_SIZE_R_SHIFT                         0
+#define NIC0_QPC0_CC_LOG_WINDOW_SIZE_R_MASK                          0x3FFFFF
+
+/* NIC0_QPC0_DBG_COUNT_SELECT */
+#define NIC0_QPC0_DBG_COUNT_SELECT_R_SHIFT                           0
+#define NIC0_QPC0_DBG_COUNT_SELECT_R_MASK                            0x3F
+
+/* NIC0_QPC0_UNSECURED_DOORBELL_QPN */
+#define NIC0_QPC0_UNSECURED_DOORBELL_QPN_QPN_SHIFT                   0
+#define NIC0_QPC0_UNSECURED_DOORBELL_QPN_QPN_MASK                    0xFFFFFF
+#define NIC0_QPC0_UNSECURED_DOORBELL_QPN_BUSY_SHIFT                  31
+#define NIC0_QPC0_UNSECURED_DOORBELL_QPN_BUSY_MASK                   0x80000000
+
+/* NIC0_QPC0_UNSECURED_DOORBELL_PI */
+#define NIC0_QPC0_UNSECURED_DOORBELL_PI_R_SHIFT                      0
+#define NIC0_QPC0_UNSECURED_DOORBELL_PI_R_MASK                       0x3FFFFF
+
+/* NIC0_QPC0_SECURED_DOORBELL_QPN */
+#define NIC0_QPC0_SECURED_DOORBELL_QPN_QPN_SHIFT                     0
+#define NIC0_QPC0_SECURED_DOORBELL_QPN_QPN_MASK                      0xFFFFFF
+#define NIC0_QPC0_SECURED_DOORBELL_QPN_BUSY_SHIFT                    31
+#define NIC0_QPC0_SECURED_DOORBELL_QPN_BUSY_MASK                     0x80000000
+
+/* NIC0_QPC0_SECURED_DOORBELL_PI */
+#define NIC0_QPC0_SECURED_DOORBELL_PI_R_SHIFT                        0
+#define NIC0_QPC0_SECURED_DOORBELL_PI_R_MASK                         0x3FFFFF
+
+/* NIC0_QPC0_PRIVILEGE_DOORBELL_QPN */
+#define NIC0_QPC0_PRIVILEGE_DOORBELL_QPN_QPN_SHIFT                   0
+#define NIC0_QPC0_PRIVILEGE_DOORBELL_QPN_QPN_MASK                    0xFFFFFF
+#define NIC0_QPC0_PRIVILEGE_DOORBELL_QPN_BUSY_SHIFT                  31
+#define NIC0_QPC0_PRIVILEGE_DOORBELL_QPN_BUSY_MASK                   0x80000000
+
+/* NIC0_QPC0_PRIVILEGE_DOORBELL_PI */
+#define NIC0_QPC0_PRIVILEGE_DOORBELL_PI_R_SHIFT                      0
+#define NIC0_QPC0_PRIVILEGE_DOORBELL_PI_R_MASK                       0x3FFFFF
+
+/* NIC0_QPC0_DOORBELL_SECURITY */
+#define NIC0_QPC0_DOORBELL_SECURITY_QMAN_SHIFT                       0
+#define NIC0_QPC0_DOORBELL_SECURITY_QMAN_MASK                        0x3
+#define NIC0_QPC0_DOORBELL_SECURITY_UNSECURED_SHIFT                  2
+#define NIC0_QPC0_DOORBELL_SECURITY_UNSECURED_MASK                   0xC
+#define NIC0_QPC0_DOORBELL_SECURITY_SECURED_SHIFT                    4
+#define NIC0_QPC0_DOORBELL_SECURITY_SECURED_MASK                     0x30
+#define NIC0_QPC0_DOORBELL_SECURITY_PRIVILEGE_SHIFT                  6
+#define NIC0_QPC0_DOORBELL_SECURITY_PRIVILEGE_MASK                   0xC0
+
+/* NIC0_QPC0_DGB_TRIG */
+#define NIC0_QPC0_DGB_TRIG_R_SHIFT                                   0
+#define NIC0_QPC0_DGB_TRIG_R_MASK                                    0x1F
+
+/* NIC0_QPC0_RES_RING0_PI */
+#define NIC0_QPC0_RES_RING0_PI_R_SHIFT                               0
+#define NIC0_QPC0_RES_RING0_PI_R_MASK                                0x3FFFFFFF
+
+/* NIC0_QPC0_RES_RING0_CI */
+#define NIC0_QPC0_RES_RING0_CI_R_SHIFT                               0
+#define NIC0_QPC0_RES_RING0_CI_R_MASK                                0x3FFFFFFF
+
+/* NIC0_QPC0_RES_RING0_CFG */
+#define NIC0_QPC0_RES_RING0_CFG_QPN_SHIFT                            0
+#define NIC0_QPC0_RES_RING0_CFG_QPN_MASK                             0xFFFFFF
+#define NIC0_QPC0_RES_RING0_CFG_WRAPAROUND_SHIFT                     31
+#define NIC0_QPC0_RES_RING0_CFG_WRAPAROUND_MASK                      0x80000000
+
+/* NIC0_QPC0_RES_RING1_PI */
+#define NIC0_QPC0_RES_RING1_PI_R_SHIFT                               0
+#define NIC0_QPC0_RES_RING1_PI_R_MASK                                0x3FFFFFFF
+
+/* NIC0_QPC0_RES_RING1_CI */
+#define NIC0_QPC0_RES_RING1_CI_R_SHIFT                               0
+#define NIC0_QPC0_RES_RING1_CI_R_MASK                                0x3FFFFFFF
+
+/* NIC0_QPC0_RES_RING1_CFG */
+#define NIC0_QPC0_RES_RING1_CFG_QPN_SHIFT                            0
+#define NIC0_QPC0_RES_RING1_CFG_QPN_MASK                             0xFFFFFF
+#define NIC0_QPC0_RES_RING1_CFG_WRAPAROUND_SHIFT                     31
+#define NIC0_QPC0_RES_RING1_CFG_WRAPAROUND_MASK                      0x80000000
+
+/* NIC0_QPC0_RES_RING2_PI */
+#define NIC0_QPC0_RES_RING2_PI_R_SHIFT                               0
+#define NIC0_QPC0_RES_RING2_PI_R_MASK                                0x3FFFFFFF
+
+/* NIC0_QPC0_RES_RING2_CI */
+#define NIC0_QPC0_RES_RING2_CI_R_SHIFT                               0
+#define NIC0_QPC0_RES_RING2_CI_R_MASK                                0x3FFFFFFF
+
+/* NIC0_QPC0_RES_RING2_CFG */
+#define NIC0_QPC0_RES_RING2_CFG_QPN_SHIFT                            0
+#define NIC0_QPC0_RES_RING2_CFG_QPN_MASK                             0xFFFFFF
+#define NIC0_QPC0_RES_RING2_CFG_WRAPAROUND_SHIFT                     24
+#define NIC0_QPC0_RES_RING2_CFG_WRAPAROUND_MASK                      0x1000000
+
+/* NIC0_QPC0_RES_RING3_PI */
+#define NIC0_QPC0_RES_RING3_PI_R_SHIFT                               0
+#define NIC0_QPC0_RES_RING3_PI_R_MASK                                0x3FFFFFFF
+
+/* NIC0_QPC0_RES_RING3_CI */
+#define NIC0_QPC0_RES_RING3_CI_R_SHIFT                               0
+#define NIC0_QPC0_RES_RING3_CI_R_MASK                                0x3FFFFFFF
+
+/* NIC0_QPC0_RES_RING3_CFG */
+#define NIC0_QPC0_RES_RING3_CFG_QPN_SHIFT                            0
+#define NIC0_QPC0_RES_RING3_CFG_QPN_MASK                             0xFFFFFF
+#define NIC0_QPC0_RES_RING3_CFG_WRAPAROUND_SHIFT                     24
+#define NIC0_QPC0_RES_RING3_CFG_WRAPAROUND_MASK                      0x1000000
+
+/* NIC0_QPC0_REQ_RING0_CI */
+#define NIC0_QPC0_REQ_RING0_CI_R_SHIFT                               0
+#define NIC0_QPC0_REQ_RING0_CI_R_MASK                                0x3FFFFF
+
+/* NIC0_QPC0_REQ_RING1_CI */
+#define NIC0_QPC0_REQ_RING1_CI_R_SHIFT                               0
+#define NIC0_QPC0_REQ_RING1_CI_R_MASK                                0x3FFFFF
+
+/* NIC0_QPC0_REQ_RING2_CI */
+#define NIC0_QPC0_REQ_RING2_CI_R_SHIFT                               0
+#define NIC0_QPC0_REQ_RING2_CI_R_MASK                                0x3FFFFF
+
+/* NIC0_QPC0_REQ_RING3_CI */
+#define NIC0_QPC0_REQ_RING3_CI_R_SHIFT                               0
+#define NIC0_QPC0_REQ_RING3_CI_R_MASK                                0x3FFFFF
+
+/* NIC0_QPC0_INTERRUPT_CAUSE */
+#define NIC0_QPC0_INTERRUPT_CAUSE_R_SHIFT                            0
+#define NIC0_QPC0_INTERRUPT_CAUSE_R_MASK                             0x1FF
+
+/* NIC0_QPC0_INTERRUPT_MASK */
+#define NIC0_QPC0_INTERRUPT_MASK_R_SHIFT                             0
+#define NIC0_QPC0_INTERRUPT_MASK_R_MASK                              0x1FF
+
+/* NIC0_QPC0_INTERRUPT_CLR */
+
+/* NIC0_QPC0_INTERRUPT_EN */
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT0_WIRE_EN_SHIFT              0
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT0_WIRE_EN_MASK               0x1
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT0_MSI_EN_SHIFT               1
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT0_MSI_EN_MASK                0x2
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT1_WIRE_EN_SHIFT              2
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT1_WIRE_EN_MASK               0x4
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT1_MSI_EN_SHIFT               3
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT1_MSI_EN_MASK                0x8
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT2_WIRE_EN_SHIFT              4
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT2_WIRE_EN_MASK               0x10
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT2_MSI_EN_SHIFT               5
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT2_MSI_EN_MASK                0x20
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT3_WIRE_EN_SHIFT              6
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT3_WIRE_EN_MASK               0x40
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT3_MSI_EN_SHIFT               7
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT3_MSI_EN_MASK                0x80
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT4_WIRE_EN_SHIFT              8
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT4_WIRE_EN_MASK               0x100
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT4_MSI_EN_SHIFT               9
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT4_MSI_EN_MASK                0x200
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT5_WIRE_EN_SHIFT              10
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT5_WIRE_EN_MASK               0x400
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT5_MSI_EN_SHIFT               11
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT5_MSI_EN_MASK                0x800
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT6_WIRE_EN_SHIFT              12
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT6_WIRE_EN_MASK               0x1000
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT6_MSI_EN_SHIFT               13
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT6_MSI_EN_MASK                0x2000
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT7_WIRE_EN_SHIFT              14
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT7_WIRE_EN_MASK               0x4000
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT7_MSI_EN_SHIFT               15
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT7_MSI_EN_MASK                0x8000
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT8_WIRE_EN_SHIFT              16
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT8_WIRE_EN_MASK               0x10000
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT8_MSI_EN_SHIFT               17
+#define NIC0_QPC0_INTERRUPT_EN_INTERRUPT8_MSI_EN_MASK                0x20000
+
+/* NIC0_QPC0_INTERRUPT_BASE */
+#define NIC0_QPC0_INTERRUPT_BASE_R_SHIFT                             0
+#define NIC0_QPC0_INTERRUPT_BASE_R_MASK                              0x3FFFFFF
+
+/* NIC0_QPC0_INTERRUPT_DATA */
+#define NIC0_QPC0_INTERRUPT_DATA_R_SHIFT                             0
+#define NIC0_QPC0_INTERRUPT_DATA_R_MASK                              0xFFFFFFFF
+
+/* NIC0_QPC0_INTERRUPT_PROT */
+#define NIC0_QPC0_INTERRUPT_PROT_R_SHIFT                             0
+#define NIC0_QPC0_INTERRUPT_PROT_R_MASK                              0x7
+
+/* NIC0_QPC0_INTERRUPT_USER */
+#define NIC0_QPC0_INTERRUPT_USER_R_SHIFT                             0
+#define NIC0_QPC0_INTERRUPT_USER_R_MASK                              0xFFFFFFFF
+
+/* NIC0_QPC0_INTERRUPT_CFG */
+#define NIC0_QPC0_INTERRUPT_CFG_INTERRUPT0_EACH_UPDATE_SHIFT         0
+#define NIC0_QPC0_INTERRUPT_CFG_INTERRUPT0_EACH_UPDATE_MASK          0x1
+#define NIC0_QPC0_INTERRUPT_CFG_INTERRUPT1_EACH_UPDATE_SHIFT         1
+#define NIC0_QPC0_INTERRUPT_CFG_INTERRUPT1_EACH_UPDATE_MASK          0x2
+#define NIC0_QPC0_INTERRUPT_CFG_INTERRUPT2_EACH_UPDATE_SHIFT         2
+#define NIC0_QPC0_INTERRUPT_CFG_INTERRUPT2_EACH_UPDATE_MASK          0x4
+#define NIC0_QPC0_INTERRUPT_CFG_INTERRUPT3_EACH_UPDATE_SHIFT         3
+#define NIC0_QPC0_INTERRUPT_CFG_INTERRUPT3_EACH_UPDATE_MASK          0x8
+#define NIC0_QPC0_INTERRUPT_CFG_INTERRUPT4_EACH_UPDATE_SHIFT         4
+#define NIC0_QPC0_INTERRUPT_CFG_INTERRUPT4_EACH_UPDATE_MASK          0x10
+#define NIC0_QPC0_INTERRUPT_CFG_INTERRUPT5_EACH_UPDATE_SHIFT         5
+#define NIC0_QPC0_INTERRUPT_CFG_INTERRUPT5_EACH_UPDATE_MASK          0x20
+#define NIC0_QPC0_INTERRUPT_CFG_INTERRUPT6_EACH_UPDATE_SHIFT         6
+#define NIC0_QPC0_INTERRUPT_CFG_INTERRUPT6_EACH_UPDATE_MASK          0x40
+#define NIC0_QPC0_INTERRUPT_CFG_INTERRUPT7_EACH_UPDATE_SHIFT         7
+#define NIC0_QPC0_INTERRUPT_CFG_INTERRUPT7_EACH_UPDATE_MASK          0x80
+#define NIC0_QPC0_INTERRUPT_CFG_INTERRUPT8_EACH_UPDATE_SHIFT         8
+#define NIC0_QPC0_INTERRUPT_CFG_INTERRUPT8_EACH_UPDATE_MASK          0x100
+
+/* NIC0_QPC0_INTERRUPT_RESP_ERR_CAUSE */
+#define NIC0_QPC0_INTERRUPT_RESP_ERR_CAUSE_R_SHIFT                   0
+#define NIC0_QPC0_INTERRUPT_RESP_ERR_CAUSE_R_MASK                    0x3F
+
+/* NIC0_QPC0_INTRRRUPT_RESP_ERR_MASK */
+#define NIC0_QPC0_INTRRRUPT_RESP_ERR_MASK_R_SHIFT                    0
+#define NIC0_QPC0_INTRRRUPT_RESP_ERR_MASK_R_MASK                     0x3F
+
+/* NIC0_QPC0_INTERRUPR_RESP_ERR_CLR */
+
+/* NIC0_QPC0_TMR_GW_VALID */
+#define NIC0_QPC0_TMR_GW_VALID_R_SHIFT                               0
+#define NIC0_QPC0_TMR_GW_VALID_R_MASK                                0x1
+
+/* NIC0_QPC0_TMR_GW_DATA0 */
+#define NIC0_QPC0_TMR_GW_DATA0_OPCODE_SHIFT                          0
+#define NIC0_QPC0_TMR_GW_DATA0_OPCODE_MASK                           0x3
+
+/* NIC0_QPC0_TMR_GW_DATA1 */
+#define NIC0_QPC0_TMR_GW_DATA1_QPN_SHIFT                             0
+#define NIC0_QPC0_TMR_GW_DATA1_QPN_MASK                              0xFFFFFF
+#define NIC0_QPC0_TMR_GW_DATA1_TIMER_GRANULARITY_SHIFT               24
+#define NIC0_QPC0_TMR_GW_DATA1_TIMER_GRANULARITY_MASK                0x7F000000
+
+/* NIC0_QPC0_RNR_RETRY_COUNT_EN */
+#define NIC0_QPC0_RNR_RETRY_COUNT_EN_R_SHIFT                         0
+#define NIC0_QPC0_RNR_RETRY_COUNT_EN_R_MASK                          0x1
+
+#endif /* ASIC_REG_NIC0_QPC0_MASKS_H_ */

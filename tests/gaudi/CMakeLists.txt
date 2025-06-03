@@ -4,6 +4,7 @@ project(gauditests C)
 
 set(GAUDI_UNIT_TESTS
     gaudi_dma
+    gaudi_debug
     gaudi_root
     gaudi_root_debug
     gaudi_mme_conv

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0
+/* SPDX-License-Identifier: MIT
  *
  * Copyright 2020 HabanaLabs, Ltd.
  * All Rights Reserved.
@@ -40,6 +40,34 @@
 #include "pdma0_qm_masks.h"
 #include "arc_farm_arc0_aux_masks.h"
 #include "arc_farm_arc0_acp_eng_regs.h"
+
+#include "nic0_qm0_regs.h"
+#include "nic1_qm0_regs.h"
+#include "nic2_qm0_regs.h"
+#include "nic3_qm0_regs.h"
+#include "nic4_qm0_regs.h"
+#include "nic5_qm0_regs.h"
+#include "nic6_qm0_regs.h"
+#include "nic7_qm0_regs.h"
+#include "nic8_qm0_regs.h"
+#include "nic9_qm0_regs.h"
+#include "nic10_qm0_regs.h"
+#include "nic11_qm0_regs.h"
+
+#include "nic0_qm1_regs.h"
+#include "nic1_qm1_regs.h"
+#include "nic2_qm1_regs.h"
+#include "nic3_qm1_regs.h"
+#include "nic4_qm1_regs.h"
+#include "nic5_qm1_regs.h"
+#include "nic6_qm1_regs.h"
+#include "nic7_qm1_regs.h"
+#include "nic8_qm1_regs.h"
+#include "nic9_qm1_regs.h"
+#include "nic10_qm1_regs.h"
+#include "nic11_qm1_regs.h"
+
+#include "nic0_qpc0_regs.h"
 
 #include "arc_farm_arc0_dup_eng_regs.h"
 #include "arc_farm_arc1_dup_eng_regs.h"

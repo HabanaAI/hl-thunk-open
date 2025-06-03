@@ -34,17 +34,17 @@ enum hlthunk_node_type {
 
 enum hlthunk_device_name {
 	HLTHUNK_DEVICE_GOYA = 0,
-	HLTHUNK_DEVICE_PLACEHOLDER1 = 1,
+	HLTHUNK_DEVICE_GRECO = 1,
 	HLTHUNK_DEVICE_GAUDI = 2,
 	HLTHUNK_DEVICE_INVALID = 3,
 	HLTHUNK_DEVICE_DONT_CARE = 4,
 	HLTHUNK_DEVICE_GAUDI2 = 5,
-	HLTHUNK_DEVICE_PLACEHOLDER2 = 6,
-	HLTHUNK_DEVICE_PLACEHOLDER3 = 7,
-	HLTHUNK_DEVICE_PLACEHOLDER4 = 8,
-	HLTHUNK_DEVICE_PLACEHOLDER5 = 9,
-	HLTHUNK_DEVICE_PLACEHOLDER6 = 10,
-	HLTHUNK_DEVICE_PLACEHOLDER7 = 11,
+	HLTHUNK_DEVICE_GAUDI_HL2000M = 6,
+	HLTHUNK_DEVICE_GAUDI3 = 7,
+	HLTHUNK_DEVICE_GAUDI2B = 8,
+	HLTHUNK_DEVICE_GAUDI2C = 10,
+	HLTHUNK_DEVICE_GAUDI2D = 11,
+	HLTHUNK_DEVICE_GAUDI3D = 12,
 	HLTHUNK_DEVICE_MAX
 };
 
@@ -97,15 +97,26 @@ enum hlthunk_event_record_id {
  *                     Relevant for Gaudi2 and later.
  * @server_type: Server type that the Gaudi ASIC is currently installed in.
  *               The value is according to enum hl_server_type
+ * @pdma_user_owned_ch_mask: Bit-mask that represents which PDMA channels are
+ *                     enabled and can be used by the user.
+ *                     Relevant for Gaudi3 and later.
  * @number_of_user_interrupts: The number of interrupts that are available to the userspace
  *                             application to use. Relevant for Gaudi2 and later.
  * @device_mem_alloc_default_page_size: default page size used in device memory allocation.
+ * @nic_ports_mask: Bit-mask that represents the nic ports that are enabled.
+ * @interposer_version: Interposer version.
+ * @substrate_version: Substrate version.
+ * @nic_ports_external_mask: Bit mask that represents the nic ports that are external - used for
+ *                           scale-out and are exposed to Linux as network devices.
+ * @mme_enabled_mask: Bit-mask that represents which MMEs are enabled.
+ * @odp_supported: true if ODP is supported, otherwise false.
  * @security_enabled: true if security is enabled on device.
  * @revision_id: PCI revision ID of the ASIC.
  * @tpc_interrupt_id: interrupt id for TPC to use in order to raise events toward host.
  * @engine_core_interrupt_reg_addr: interrupt register address for engine core to use
  *                                  in order to raise events toward FW.
  * @rotator_enabled_mask: Bit-mask that represents which rotators are enabled.
+ * @sched_arc_enabled_mask: Bit-mask that represents which arc sched are enabled.
  * @reserved_dram_size: DRAM size reserved for driver and firmware.
  */
 struct hlthunk_hw_ip_info {
@@ -132,27 +143,36 @@ struct hlthunk_hw_ip_info {
 	uint16_t first_available_interrupt_id;
 	uint32_t edma_enabled_mask;
 	uint16_t server_type;
-	uint64_t reserved1;
+	uint64_t pdma_user_owned_ch_mask;
 	uint16_t number_of_user_interrupts;
 	uint64_t device_mem_alloc_default_page_size;
-	uint64_t reserved2;
-	uint8_t reserved3;
-	uint8_t reserved4;
-	uint64_t reserved5;
-	uint32_t reserved6;
-	uint8_t reserved7;
+	uint64_t nic_ports_mask;
+	uint8_t interposer_version;
+	uint8_t substrate_version;
+	uint64_t nic_ports_external_mask;
+	uint32_t mme_enabled_mask;
+	uint8_t odp_supported;
 	uint8_t security_enabled;
 	uint8_t revision_id;
 	uint16_t tpc_interrupt_id;
 	uint64_t engine_core_interrupt_reg_addr;
 	uint32_t rotator_enabled_mask;
-	uint32_t reserved8;
+	uint32_t sched_arc_enabled_mask;
 	uint64_t reserved_dram_size;
 };
 
 struct hlthunk_dram_usage_info {
 	uint64_t dram_free_mem;
 	uint64_t ctx_dram_mem;
+};
+
+struct hlthunk_mac_addr {
+	uint8_t addr[ETH_ALEN];
+};
+
+struct hlthunk_mac_addr_info {
+	struct hlthunk_mac_addr array[HL_INFO_MAC_ADDR_MAX_NUM];
+	uint64_t mask[2];
 };
 
 struct hlthunk_engines_idle_info {
@@ -276,6 +296,171 @@ struct hlthunk_wait_out {
 	uint32_t status;
 };
 
+enum wq_types {
+	WQ_WRITE = 1,
+	WQ_RENDEZVOUS_READ = 2,
+	WQ_RENDEZVOUS_WRITE = 3
+};
+
+/**
+ * struct hlthunk_requester_conn_ctx - set up a requester connection context
+ * @dst_ip_addr: Destination IP address in native endianness
+ * @dst_conn_id: Destination connection ID
+ * @last_index: Index of last entry [2..(2^22)-1]. NOTE: relevant for Gaudi1 (only)
+ * @dst_mac_addr: Destination MAC address
+ * @priority: Connection priority [0..3]
+ * @timer_granularity: Timer granularity [0..127]
+ * @swq_granularity: SWQ granularity [0 for 32B or 1 for 64B]
+ * @wq_type: Work queue type [1..3]
+ * @cq_number: Completion queue number
+ * @wq_remote_log_size: Remote Work queue log size [2^QPC] Rendezvous
+ * @congestion_wnd: Congestion-Window size
+ * @mtu: Max Transmit Unit
+ * @congestion_en: Enable/disable Congestion-Control
+ * @encap_en: used as boolean; indicates if this QP has encapsulation support
+ * @encap_id: Encapsulation-id; valid only if 'encap_en' is set
+ * @loopback: used as boolean; indicates if this QP used for loopback mode.
+ * @wq_size: Max number of elements in the work queue. NOTE: relevant for Gaudi2 (or higher)
+ * @coll_lag_idx: (Gaudi3 and above) The index of the specific NIC within the LAG. Note that the
+ *                advanced flag must be enabled in case it's being set.
+ * @coll_last_in_lag: (Gaudi3 and above) Is the specific NIC the last one within the collective LAG.
+ *                    Note that the advanced flag must be enabled in case it's being set.
+ * @compression_en: Enable compression
+ * @remote_key: Remote-key to be used to generate on outgoing packets
+ * @sack_en: (Gaudi3 and above) Enable Selective Acknowlegment (SACK)
+ */
+struct hlthunk_requester_conn_ctx {
+	uint32_t deprecated;
+	uint32_t dst_ip_addr;
+	uint32_t dst_conn_id;
+	uint32_t deprecated1;
+	uint32_t last_index;
+	uint8_t dst_mac_addr[ETH_ALEN];
+	uint8_t deprecated2;
+	uint8_t priority;
+	uint8_t deprecated3;
+	uint8_t timer_granularity;
+	uint8_t swq_granularity;
+	uint8_t wq_type;
+	uint8_t deprecated4;
+	uint8_t cq_number;
+	uint8_t wq_remote_log_size;
+	uint32_t congestion_wnd;
+	uint16_t mtu;
+	uint8_t congestion_en;
+	uint8_t encap_en;
+	uint8_t encap_id;
+	uint8_t loopback;
+	uint32_t wq_size;
+	uint8_t coll_lag_idx;
+	uint8_t coll_last_in_lag;
+	uint8_t compression_en;
+	uint32_t remote_key;
+	uint8_t sack_en;
+};
+
+struct hlthunk_requester_conn_ctx_out {
+	uint64_t swq_mem_handle;
+	uint64_t rwq_mem_handle;
+};
+
+/**
+ * struct hlthunk_responder_conn_ctx - set up a responder connection context
+ * @dst_ip_addr: Destination IP address in native endianness
+ * @dst_conn_id: Destination connection ID
+ * @port: NIC port ID
+ * @conn_id: Connection ID
+ * @dst_mac_addr: Destination MAC address
+ * @priority: Connection priority [0..3]
+ * @wq_peer_granularity: Work queue granularity
+ * @cq_number: Completion queue number
+ * @conn_peer: Connection peer
+ * @rdv: used as boolean; indicates if this QP is RDV (WRITE or READ)
+ * @loopback: used as boolean; indicates if this QP used for loopback mode.
+ * @wq_peer_size: size of the peer Work queue
+ * @encap_en: used as boolean; indicates if this QP has encapsulation support
+ * @encap_id: Encapsulation-id; valid only if 'encap_en' is set
+ * @local_key: Local-key to be used to validate against incoming packets
+ * @sack_en: (Gaudi3 and above) Enable Selective Acknowlegment (SACK)
+ */
+struct hlthunk_responder_conn_ctx {
+	uint32_t deprecated;
+	uint32_t dst_ip_addr;
+	uint32_t dst_conn_id;
+	uint8_t dst_mac_addr[ETH_ALEN];
+	uint8_t priority;
+	uint8_t deprecated1;
+	uint8_t deprecated2;
+	uint8_t wq_peer_granularity;
+	uint8_t cq_number;
+	uint8_t deprecated3;
+	uint32_t conn_peer;
+	uint8_t rdv;
+	uint8_t loopback;
+	uint32_t wq_peer_size;
+	uint8_t encap_en;
+	uint8_t encap_id;
+	uint32_t local_key;
+	uint8_t sack_en;
+};
+
+struct hlthunk_nic_wq_arr_set_in {
+	uint32_t port;
+	uint64_t addr;
+	uint32_t num_of_wqs;
+	uint32_t num_of_wq_entries;
+	uint32_t type;
+	enum hl_nic_mem_id mem_id;
+	uint8_t swq_granularity;
+};
+
+struct hlthunk_nic_wq_arr_set_out {
+	uint64_t handle;
+};
+
+struct hlthunk_nic_user_cq_id_alloc_in {
+	uint32_t port;
+};
+
+struct hlthunk_nic_user_cq_id_alloc_out {
+	uint32_t id;
+};
+
+struct hlthunk_nic_user_cq_id_set_in {
+	uint32_t port;
+	uint32_t num_of_cqes;
+	uint32_t id;
+};
+
+struct hlthunk_nic_user_cq_id_set_out {
+	uint64_t mem_handle;
+	uint64_t pi_handle;
+	uint64_t regs_handle;
+	uint32_t regs_offset;
+};
+
+struct hlthunk_nic_user_cq_id_unset_in {
+	uint32_t port;
+	uint64_t id;
+};
+
+struct hlthunk_nic_alloc_coll_conn_in {
+	uint8_t is_scale_out;
+};
+
+struct hlthunk_encap_cfg {
+	uintptr_t tnl_hdr_ptr;
+	uint32_t tnl_hdr_size;
+	uint32_t port;
+	uint32_t id;
+	uint32_t src_ipv4_addr;
+	enum hl_nic_encap_type encap_type;
+	union {
+		uint16_t udp_dst_port;
+		uint16_t ip_proto;
+	};
+};
+
 struct hlthunk_open_stats_info {
 	uint64_t open_counter;
 	uint64_t last_open_period_ms;
@@ -293,6 +478,43 @@ struct hlthunk_hw_asic_status {
 	uint8_t valid;
 };
 
+/**
+ * struct hlthunk_nic_user_set_app_params_in -Allow the user application to set general parameters
+ *                                        regarding the RDMA nic operation. These parameters stay
+ *                                        in effect until the application releases the device.
+ * @advanced: A boolean that indicates whether this WQ should support advanced operations, such as
+ *            RDV, QMan, WTD, etc.
+ * @bp_offs: Offsets in NIC memory to signal a back pressure. Note that the advanced flag
+ *              must be enabled in case it's being set.
+ * @fna_mask_size: Determines the width of the completion value.
+ * @fna_fifo_offs: SRAM/DCCM addresses provided to the HW by the user when FnA completion is
+ *              configured in the SRAM/DDCM.
+ */
+struct hlthunk_nic_user_set_app_params_in {
+	__u8 advanced;
+	__u32 bp_offs[HL_NIC_USER_BP_OFFS_MAX];
+	__u8 deprecated;
+	__u8 fna_mask_size;
+	__u32 fna_fifo_offs[HL_NIC_FNA_CMPL_ADDR_NUM];
+};
+
+struct hlthunk_nic_user_get_app_params_out {
+	uint32_t max_num_of_qps;
+	uint32_t num_allocated_qps;
+	uint32_t max_allocated_qp_idx;
+	uint32_t max_cq_size;
+	uint8_t advanced;
+	uint8_t max_num_of_cqs;
+	uint8_t max_num_of_db_fifos;
+	uint8_t max_num_of_encaps;
+	uint32_t speed;
+	uint32_t max_num_of_coll_qps;
+	uint32_t coll_qps_offset;
+	uint32_t base_coll_qp_idx;
+	uint32_t base_scale_out_coll_qp_idx;
+	uint32_t max_num_of_scale_out_coll_qps;
+};
+
 struct hlthunk_wait_multi_cs_in {
 	uint64_t *seq;
 	uint64_t timeout_us;
@@ -303,6 +525,67 @@ struct hlthunk_wait_multi_cs_out {
 	uint32_t status;
 	uint32_t seq_set;
 	uint8_t completed;
+};
+
+struct hlthunk_nic_eq_poll_out {
+	/* holds HL_NIC_EQ_POLL_STATUS_* */
+	uint32_t poll_status;
+	uint32_t idx;
+	uint32_t ev_data;
+	/* holds HL_NIC_EQ_EVENT_TYPE_* */
+	uint8_t ev_type;
+};
+
+/**
+ * struct hlthunk_get_habana_link_state_in - get PCS link state of Habana link internal port.
+ * @port: the port to probe.
+ */
+struct hlthunk_get_habana_link_state_in {
+	uint32_t port;
+	uint32_t pad;
+};
+
+/**
+ * struct hlthunk_get_habana_link_state_out - PCS link state of the probed Habana link internal
+ * port.
+ * @up: state of the PCS link.
+ */
+struct hlthunk_get_habana_link_state_out {
+	uint8_t up;
+	uint8_t pad[7];
+};
+
+/**
+ * struct hlthunk_get_habana_link_stat_in - info for getting a Habana link internal port statistics.
+ * @port: the port to probe.
+ */
+struct hlthunk_get_habana_link_stat_in {
+	uint32_t port;
+};
+
+/**
+ * struct hlthunk_get_habana_link_stat_out - info for result of getting a Habana link internal port
+ * statistics.
+ * @str_buf: buffer allocated by the user to be filled with the counters names. Recommended size is
+ *           HABANA_LINK_STR_LEN * HABANA_LINK_CNT_MAX_NUM.
+ * @val_buf: buffer allocated by the user to be filled with the counters values. Recommended size is
+ *           sizeof(__u64) * HABANA_LINK_CNT_MAX_NUM.
+ * @num_of_stat: the actual number of counters that were retrieved.
+ */
+struct hlthunk_get_habana_link_stat_out {
+	uint8_t *str_buf;
+	uint64_t *val_buf;
+	uint32_t num_of_stat;
+};
+
+/**
+ * struct hlthunk_nic_get_ports_masks_out - ports mask info.
+ * @ports_mask: Mask of available ports.
+ * @ext_ports_mask: Mask of external ports (subset of ports_mask).
+ */
+struct hlthunk_nic_get_ports_masks_out {
+	uint64_t ports_mask;
+	uint64_t ext_ports_mask;
 };
 
 /* DRAM replaced rows related data structures */
@@ -353,6 +636,59 @@ struct hlthunk_event_record_cs_timeout {
 	uint64_t seq;
 };
 
+/**
+ * struct hlthunk_nic_user_ccq_set_in - info for cc-q creation
+ * @port: the port associated with this ccq
+ * @num_of_entries: number of entries in the CCQ buffer
+ */
+struct hlthunk_nic_user_ccq_set_in {
+	uint32_t port;
+	uint32_t num_of_entries;
+};
+
+/**
+ * struct hlthunk_nic_user_ccq_set_out - info for mapping ccq
+ * @ccq_handle: handle for mapping NIC CCQ buffer
+ * @ccq_pi_handle: handle for mapping NIC CCQ pi
+ */
+struct hlthunk_nic_user_ccq_set_out {
+	uint64_t ccq_handle;
+	uint64_t ccq_pi_handle;
+};
+
+/**
+ * struct hlthunk_nic_user_db_fifo_set_in - ioctl in param
+ * @port: nic port id
+ * @id: nic db-fifo id
+ * @base_sob_addr: base address of Sync Object
+ * @num_sobs: number of Sobs should be used by NIC
+ * @mode: represents desired mode of operation for provided FIFO, according to hl_nic_db_fifo_type
+ * @dir_dup_ports_mask: ports for which the hw should duplicate the direct patcher descriptor
+ */
+struct hlthunk_nic_user_db_fifo_set_in {
+	uint32_t port;
+	uint32_t id;
+	uint32_t base_sob_addr;
+	uint32_t num_sobs;
+	uint8_t mode;
+	uint8_t dir_dup_ports_mask;
+};
+
+/**
+ * struct hlthunk_nic_user_db_fifo_set_out - ioctl out param
+ * @ci_handle: handle of db-fifo consumer index memory buffer
+ * @regs_handle: handle of db-fifo registers base-address
+ * @fifo_size: Fifo size allocated by the driver
+ * @fifo_bp_thresh: fifo back pressure threshold programmed by the driver
+ * @regs_offset: offset to the db-fifo registers
+ */
+struct hlthunk_nic_user_db_fifo_set_out {
+	uint64_t ci_handle;
+	uint64_t regs_handle;
+	uint32_t fifo_size;
+	uint32_t fifo_bp_thresh;
+	uint32_t regs_offset;
+};
 
 /**
  * struct hlthunk_event_record_razwi_event - razwi information.
@@ -854,6 +1190,17 @@ hlthunk_public int hlthunk_get_dram_usage(int fd,
 hlthunk_public int hlthunk_get_device_status_info(int fd);
 
 /**
+ * This function retrieves the status of a specific device with an option to stall any upcoming
+ * soft resets. It is useful to ensure that the status will remain the same for a certain amount
+ * of time after polling.
+ * @param fd file descriptor handle of habanalabs main device
+ * @param soft_reset_stall whether to stall any upcoming soft reset after the polling
+ * @return enum value that represents the device's status in case it was acquired,
+ * otherwise - returns Linux error code.
+ */
+hlthunk_public int hlthunk_get_device_status_info_telemetry(int fd, bool soft_reset_stall);
+
+/**
  * This function checks whether a specific device is idle
  * @param fd file descriptor handle of habanalabs main device
  * @return true if the acquired device is idle, false otherwise
@@ -868,6 +1215,14 @@ hlthunk_public bool hlthunk_is_device_idle(int fd);
  */
 hlthunk_public int hlthunk_get_busy_engines_mask(int fd,
 					struct hlthunk_engines_idle_info *info);
+
+/**
+ * This function retrieves MAC addresses information for a specific device
+ * @param fd file descriptor handle of habanalabs main device
+ * @param info pointer to MAC addresses information structure
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_get_mac_addr_info(int fd, struct hlthunk_mac_addr_info *info);
 
 /**
  * This function retrieves the PLL frequency of a specific device.
@@ -1488,6 +1843,355 @@ hlthunk_public int hlthunk_get_hw_block(int fd, uint64_t block_address,
 hlthunk_public int hlthunk_debug(int fd, struct hl_debug_args *debug);
 
 /**
+ * This function allocates connection ID for a specific port of a specific
+ * device
+ * @param fd file descriptor handle of habanalabs main device
+ * @param port port number
+ * @param conn_id pointer to uint32_t to store the connection ID
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_alloc_conn(int fd, uint32_t port, uint32_t *conn_id);
+
+/**
+ * This function allocates collective connection ID for a specific device
+ * @param fd file descriptor handle of habanalabs main device
+ * @param in pointer to alloc collective connection input structure
+ * @param conn_id pointer to uint32_t to store the collective connection ID
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_alloc_coll_conn(int fd, struct hlthunk_nic_alloc_coll_conn_in *in,
+						uint32_t *conn_id);
+
+/**
+ * This function sets up a requester connection context for a specific port of a
+ * specific device
+ * @param fd file descriptor handle of habanalabs main device
+ * @param port port number
+ * @param conn_id connection ID
+ * @param in pointer to requester context input structure
+ * @param out pointer to requester context output structure
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_set_requester_conn_ctx(int fd, uint32_t port,
+				uint32_t conn_id,
+				const struct hlthunk_requester_conn_ctx *in,
+				struct hlthunk_requester_conn_ctx_out *out);
+
+/**
+ * This function sets up a responder connection context for a specific port of a
+ * specific device
+ * @param fd file descriptor handle of habanalabs main device
+ * @param port port number
+ * @param conn_id connection ID
+ * @param ctx pointer to responder context structure
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_set_responder_conn_ctx(int fd, uint32_t port,
+				uint32_t conn_id,
+				const struct hlthunk_responder_conn_ctx *ctx);
+
+/**
+ * This function destroys connection ID for a specific port of a specific device
+ * @param fd file descriptor handle of habanalabs main device
+ * @param port port number
+ * @param conn_id connection ID
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_destroy_conn(int fd, uint32_t port,
+					uint32_t conn_id);
+
+/**
+ * This function creates a NIC CQ on a specific device
+ * @param fd file descriptor of the device with the NIC CQ to create
+ * @param num_of_entries number of entries in the CQ buffer
+ * @param handle pointer to the returned handle of NIC CQ buffer
+ * @return 0 on success or negative value in case of error
+ */
+hlthunk_public int hlthunk_nic_cq_create(int fd, uint32_t num_of_entries,
+					uint64_t *handle);
+
+/**
+ * This function destroys a NIC CQ on a specific device
+ * @param fd file descriptor of the device with NIC CQ to destroy
+ * @param handle identifier handle of NIC CQ
+ * @return 0 on success or negative value in case of error
+ */
+hlthunk_public int hlthunk_nic_cq_destroy(int fd, uint64_t handle);
+
+/**
+ * This function waits on the NIC CQ until there are available CQEs
+ * @param fd file descriptor of the device with the NIC CQ to wait on
+ * @param handle identifier handle of NIC CQ
+ * @param status current status of the NIC CQ
+ * @param pi pointer to the returned producer index to return, meaning the first
+ * available CQE
+ * @param num_of_cqes pointer to the returned number of available CQEs to
+ * consume starting from the CQE at pi
+ * @param timeout_us timeout for waiting on the CQ in microseconds
+ * @return 0 on success or negative value in case of error
+ */
+hlthunk_public int hlthunk_nic_cq_wait(int fd, uint64_t handle,
+					uint32_t *status, uint32_t *pi,
+					uint32_t *num_of_cqes,
+					uint64_t timeout_us);
+
+/**
+ * This function updates the number of consumed CQEs by the user
+ * @param fd file descriptor of the device with the NIC CQ to update
+ * @param handle identifier handle of NIC CQ
+ * @param num_of_consumed_entries number of consumed CQEs by the user
+ * @return 0 on success or negative value in case of error
+ */
+hlthunk_public int hlthunk_nic_cq_update_consumed_entries(int fd,
+					uint64_t handle,
+					uint32_t num_of_consumed_entries);
+
+/**
+ * This function sets a NIC Congestion Control Completion Queue on a specific device
+ * @param fd file descriptor of the device with the NIC CCQ to create
+ * @param in input info for ccq creation
+ * @param out output info for ccq mapping
+ * @return 0 on success or negative value in case of error
+ */
+hlthunk_public int hlthunk_nic_user_ccq_set(int fd, struct hlthunk_nic_user_ccq_set_in *in,
+		struct hlthunk_nic_user_ccq_set_out *out);
+
+/**
+ * This function unsets a NIC CCQ on a specific device
+ * @param fd file descriptor of the device with NIC CCQ to destroy
+ * @param port the port associated with this ccq
+ * @return 0 on success or negative value in case of error
+ */
+hlthunk_public int hlthunk_nic_user_ccq_unset(int fd, uint32_t port);
+
+/**
+ * This function sets a NIC WQ array on a specific device
+ * @param fd file descriptor of the device with the NIC WQ array to set
+ * @param in pointer to WQ array set input structure
+ * @param out pointer to WQ array set output structure
+ * @return 0 on success or negative value in case of error
+ */
+hlthunk_public int hlthunk_nic_wq_arr_set(int fd,
+					struct hlthunk_nic_wq_arr_set_in *in,
+					struct hlthunk_nic_wq_arr_set_out *out);
+
+/**
+ * This function unsets a NIC WQ array on a specific device
+ * @param fd file descriptor of the device with the NIC WQ array to unset
+ * @param port the NIC port to unset the WQ array on
+ * @param type sender/receiver
+ * @return 0 on success or negative value in case of error
+ */
+hlthunk_public int hlthunk_nic_wq_arr_unset(int fd, uint32_t port,
+					uint32_t type);
+
+/**
+ * This function sets a NIC user CQ on a specific device
+ * @param fd file descriptor of the device with the NIC user CQ to set
+ * @param port the NIC port to set the user CQ on
+ * @param addr the base virtual address of the user CQ to set
+ * @param num_of_cqes number of CQ entries for each user CQ
+ * @return 0 on success or negative value in case of error
+ */
+hlthunk_public int hlthunk_nic_user_cq_set(int fd, uint32_t port, uint64_t addr,
+					uint32_t num_of_cqes);
+
+/**
+ * This function unsets a NIC user CQ on a specific device
+ * @param fd file descriptor of the device with the NIC user CQ to unset
+ * @param port the NIC port to unset the user CQ on
+ * @return 0 on success or negative value in case of error
+ */
+hlthunk_public int hlthunk_nic_user_cq_unset(int fd, uint32_t port);
+
+/**
+ * This function updates the user CQ consumer index of the buffer
+ * @param fd file descriptor of the device with the NIC user CQ to update
+ * @param num_of_consumed_entries number of consumed CQEs by the user
+ * @return 0 on success or negative value in case of error
+ */
+hlthunk_public int hlthunk_nic_user_cq_update_ci(int fd, uint32_t port, uint32_t ci);
+
+/**
+ * This function allocates a NIC user CQ on a specific device
+ * @param fd file descriptor of the device with the NIC user CQ to allocate
+ * @param in pointer to user CQ alloc input structure
+ * @param out pointer to user CQ alloc output structure
+ * @return 0 on success or negative value in case of error
+ */
+hlthunk_public int hlthunk_nic_user_cq_id_alloc(int fd, struct hlthunk_nic_user_cq_id_alloc_in *in,
+						struct hlthunk_nic_user_cq_id_alloc_out *out);
+
+/**
+ * This function sets a NIC user CQ on a specific device
+ * @param fd file descriptor of the device with the NIC user CQ to set
+ * @param in pointer to user CQ set input structure
+ * @param out pointer to user CQ set output structure
+ * @return 0 on success or negative value in case of error
+ */
+hlthunk_public int hlthunk_nic_user_cq_id_set(int fd, struct hlthunk_nic_user_cq_id_set_in *in,
+						struct hlthunk_nic_user_cq_id_set_out *out);
+
+/**
+ * This function unsets a NIC user CQ on a specific device
+ * @param fd file descriptor of the device with the NIC user CQ to unset
+ * @param in pointer to user CQ unset input structure
+ * @return 0 on success or negative value in case of error
+ */
+hlthunk_public int hlthunk_nic_user_cq_id_unset(int fd, struct hlthunk_nic_user_cq_id_unset_in *in);
+
+/**
+ * This function checks if the port its going to use has advanced features.
+ * @param fd file descriptor of the device used by the application
+ * @param port the port this application is associated with
+ * @return 0 application and port support advanced features
+ *  non-zero application and/or port do not support advanced features.
+ */
+hlthunk_public int hlthunk_nic_user_set_app_params(
+		int fd, uint32_t port,
+		const struct hlthunk_nic_user_set_app_params_in *in);
+
+/**
+ * This function retrieve port resources and configurations.
+ * @param fd file descriptor of the device that is used by the application
+ * @param port the port for which to get the params
+ * @param out holds the nic's retrieved resources and configurations.
+ * @return 0 application and port support advanced features
+ *  non-zero application and/or port do not support advanced features.
+ */
+hlthunk_public int hlthunk_nic_user_get_app_params(
+		int fd, uint32_t port,
+		struct hlthunk_nic_user_get_app_params_out *out);
+
+/**
+ * This function reads a single event from the driver-maintained event queue
+ * associated with the given fd.
+ * @param fd file descriptor of the device that is used by the application
+ * @param port the port for which to get the event from
+ * @param out holds the nic's retrieved event.
+ * @return 0 successfully accessed the associated event-queue and retrieved
+ *  a valid entry, negative value in case of an error or if the queue is empty.
+ */
+hlthunk_public int hlthunk_nic_eq_poll(
+				int fd, uint32_t port,
+				struct hlthunk_nic_eq_poll_out *out);
+
+/**
+ * This function allocates doorbell fifo ID
+ * @param fd file descriptor of the device
+ * @param port NIC port we are working with
+ * @param id allocated db fifo ID
+ * @return 0 successfully allocated db fifo ID
+ *  non-zero failed to allocate db fifo ID
+ */
+hlthunk_public int
+hlthunk_nic_alloc_user_db_fifo(int fd, uint32_t port, uint32_t *id);
+
+/**
+ * This function configures doorbell fifo
+ * @param fd file descriptor of the device
+ * @param in struct parameter with the needed info for setting db fifo
+ * @param out struct parameter with the needed info for mapping db fifo
+ * @return 0 successfully configured db fifo
+ *  non-zero failed to configure db fifo
+ */
+hlthunk_public int
+hlthunk_nic_user_db_fifo_set(int fd, struct hlthunk_nic_user_db_fifo_set_in *in,
+		struct hlthunk_nic_user_db_fifo_set_out *out);
+
+/**
+ * This function destroys doorbell fifo.
+ * @param fd file descriptor of the device.
+ * @param port NIC port we are working with.
+ * @param id allocated db fifo ID
+ * @return 0 successfully destroyed db fifo
+ *  non-zero failed to destroy db fifo
+ */
+hlthunk_public int
+hlthunk_nic_user_db_fifo_unset(int fd, uint32_t port, uint32_t id);
+
+/**
+ * This function retrieves the internal port PCS link up/down status
+ * @param fd file descriptor of the device with the Habana link port to probe
+ * @param in struct parameter with the needed info for getting the link state
+ * @param out struct parameter with info of the result of getting the link state
+ * @return 0 on success or negative value in case of error
+ */
+hlthunk_public int hlthunk_get_habana_link_state(int fd,
+						struct hlthunk_get_habana_link_state_in *in,
+						struct hlthunk_get_habana_link_state_out *out);
+
+/**
+ * This function retrieves the internal port statistics
+ * @param fd file descriptor of the device with the Habana link port to probe
+ * @param in struct parameter with the needed info for getting the statistics
+ * @param out struct parameter with info of the result of getting the statistics
+ * @return 0 on success or negative value in case of error
+ */
+hlthunk_public int hlthunk_get_habana_link_statistics(int fd,
+						struct hlthunk_get_habana_link_stat_in *in,
+						struct hlthunk_get_habana_link_stat_out *out);
+
+/**
+ * This function allocates NIC encapsulation ID.
+ * @param fd file descriptor of the device that is used by the application.
+ * @param port NIC port for which to get the params.
+ * @param encap_id holds allocated encapsulation ID.
+ * @return 0 if success. Non-zero for any error.
+ */
+hlthunk_public int hlthunk_nic_user_encap_alloc(
+		int fd, uint32_t port, uint32_t *encap_id);
+
+/**
+ * This function configures NIC HW to start encapsulation.
+ * @param fd file descriptor of the device that is used by the application.
+ * @param encap_cfg holds encapsulation parameters.
+ * @return 0 if success. Non-zero for any error.
+ */
+hlthunk_public int hlthunk_nic_user_encap_set(
+		int fd, const struct hlthunk_encap_cfg *encap_cfg);
+
+/**
+ * This function de-allocates ID and stops encapsulation.
+ * @param fd file descriptor of the device that is used by the application.
+ * @param port NIC port for which to get the params.
+ * @param encap_id holds encapsulation ID to be de-allocated.
+ * @return 0 if success. Non-zero for any error.
+ */
+hlthunk_public int hlthunk_nic_user_encap_unset(
+		int fd, uint32_t port, uint32_t encap_id);
+
+/**
+ * This function retrieves QPC dump for a given QP of a given NIC port.
+ * @param fd file descriptor handle of habanalabs main device.
+ * @param port NIC port which holds that QP.
+ * @param qpn QP number.
+ * @param req true for requester dump, false for responder dump.
+ * @param buf buffer to hold the dump.
+ * @param buf_size size of the buffer to hold the dump.
+ * @return 0 if success. Non-zero for any error.
+ */
+hlthunk_public int hlthunk_nic_dump_qp(int fd, uint32_t port, uint32_t qpn, uint32_t req,
+					char *buf, uint32_t buf_size);
+
+/**
+ * This function retrieves the NIC ports enabled ports masks. This function is common for all ASICs.
+ * @param fd file descriptor handle of habanalabs main device.
+ * @param mask returned masks.
+ * @return 0 if success. Non-zero for any error.
+ */
+hlthunk_public int hlthunk_nic_get_enabled_ports_mask(int fd, uint64_t *mask);
+
+/**
+ * This function retrieves the NIC ports and external ports masks. This function shall be used
+ * only for Gaudi2 and later ASICs.
+ * @param fd file descriptor handle of habanalabs main device.
+ * @param out struct parameter with returned masks.
+ * @return 0 if success. Non-zero for any error.
+ */
+hlthunk_public int hlthunk_nic_get_ports_masks(int fd, struct hlthunk_nic_get_ports_masks_out *out);
+
+/**
  * This function retrieves information of recorded events.
  * @param fd file descriptor of the device that is used by the application.
  * @param event_id event id to retrieve its data.
@@ -1869,6 +2573,20 @@ hlthunk_public int hlthunk_engines_command(int fd, const uint32_t *engine_ids,
  */
 hlthunk_public int hlthunk_get_device_count(enum hlthunk_device_name device_name);
 
+/**
+ * This function reads a memory block from the device. The function is experimental which
+ * means, it can be deprecated without providing backward compatibility and/or alternative
+ * solution. Please take that into account when using this function.
+ * @param fd file descriptor handle of habanalabs main device
+ * @param buff buffer for retrieved the read memory
+ * @param 64-bits block_address the device starting address to read from
+ * @param block_size the request to read. max size - 16KB
+ * @param flags indicates flags option for the read block opeartion. Not in used
+ * @return 0 for success, a negative value for failure
+ */
+hlthunk_public int hlthunk_device_memory_read_block_experimental(int fd, uint32_t *buff,
+				uint64_t block_address, uint32_t block_size, uint32_t flags);
+
 hlthunk_public int hlthunk_deprecated_func1(int fd, uint64_t seq,
 					uint64_t timeout_us, uint32_t *status,
 					uint64_t *timestamp);
@@ -1917,6 +2635,16 @@ hlthunk_public int hlthunk_get_dev_info_signed(int fd, uint32_t nonce,
  */
 hlthunk_public int hlthunk_get_time_sync_per_die_info(int fd, uint32_t die_index,
 					struct hlthunk_time_sync_info *info);
+
+/**
+ * This function reports the user’s memory consumption in bytes alongside timestamp in seconds.
+ * @param fd file descriptor handle of habanalabs main device
+ * @param used_mem_bytes device used memory in bytes
+ * @param timestamp_sec time stamp in seconds
+ * @return 0 for success, negative value for failure
+ */
+hlthunk_public int hlthunk_set_memory_consumption(int fd, uint64_t used_mem_bytes,
+						  uint64_t timestamp_sec);
 
 #ifdef __cplusplus
 }   //extern "C"

@@ -1,0 +1,27 @@
+[e2e]
+ports=1
+dst_macs=b0:fd:0b:0c:f4:01
+dst_ips=10.10.10.10
+src_ip=10.10.10.9
+encap_type=none
+qps_per_port=1
+dst_conn_ids=1
+;remote_sob_idx=0 1
+;remote_addr_idx=0 1
+user_cq_buf_len_shift=13
+data_size_shift=16
+wqe_size_shift=12
+cmpl=sob
+print_data=no
+seed=6119
+iterations=1
+wait_for_cleanup=no
+sleep_before_cleanup=0
+lazy=no
+doorbell_to=0
+rand_data=yes
+data_cmp=yes
+cleanup=yes
+wq_loc=host
+verbose=2
+mtu=8192

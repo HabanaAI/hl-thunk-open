@@ -5,11 +5,21 @@ project(libhl-thunk-tests C)
 set(HLTHUNK_TESTS_LIBRARY hl-thunk-tests)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")
 
+set(hbldv $ENV{RDMA_CORE_ROOT}/build/lib/libhbl.so)
+set(ibverbs $ENV{RDMA_CORE_ROOT}/build/lib/libibverbshl.so)
+include_directories($ENV{RDMA_CORE_ROOT}/build/include)
+
 add_definitions(-DHLTHUNK_BUILD_PATH="${CMAKE_BUILD_PATH}")
+add_definitions(-DHLTESTS_ENG_ARC_IMG_DCCM_SIZE="${HLTESTS_ENG_ARC_IMG_DCCM_SIZE}")
+add_definitions(-DHLTESTS_SCHED_ARC_IMG_DCCM_SIZE="${HLTESTS_SCHED_ARC_IMG_DCCM_SIZE}")
 
 if (SANITIZE_ON)
     add_definitions(-DHLTHUNK_TESTS_SANITIZER)
 endif()
+
+find_package(Boost
+    REQUIRED
+)
 
 if (HLTESTS_LIB_MODE)
     include_directories(
@@ -23,13 +33,14 @@ if (HLTESTS_LIB_MODE)
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/argparse
         ${CMAKE_CURRENT_SOURCE_DIR}/inih
+        ${Boost_INCLUDE_DIRS}
     )
 
     set(HLTHUNK_TESTS_LINK_LIBRARIES
         ${HLTHUNK_TARGET})
 
-    file(GLOB SRC common/*.c gaudi/*.c gaudi2/*.c goya/*.c
-	inih/*.c mersenne-twister/*.c argparse/*.c) # compile all files with *.c suffix
+    file(GLOB SRC common/*.c gaudi/*.c gaudi2/*.c gaudi3/*.c goya/*.c
+	inih/*.c mersenne-twister/*.c argparse/*.c config_iterator/*.c) # compile all files with *.c suffix
 
     exec_program(
         "git"
@@ -53,16 +64,22 @@ if (HLTESTS_LIB_MODE)
         VISIBILITY_INLINES_HIDDEN NO
     )
 
-    target_link_libraries(${HLTHUNK_TESTS_LIBRARY} ${HLTHUNK_TESTS_LINK_LIBRARIES})
+    target_link_libraries(${HLTHUNK_TESTS_LIBRARY} ${HLTHUNK_TESTS_LINK_LIBRARIES} m)
+    target_link_libraries(${HLTHUNK_TESTS_LIBRARY} ${ibverbs} ${hbldv})
 
     add_library(${HLTHUNK_TESTS_LIBRARY}-static STATIC ${SRC} ${CMAKE_CURRENT_BINARY_DIR}/version.c)
 
     target_link_libraries(${HLTHUNK_TESTS_LIBRARY}-static ${HLTHUNK_TESTS_LINK_LIBRARIES})
+    target_link_libraries(${HLTHUNK_TESTS_LIBRARY}-static ${ibverbs} ${hbldv})
 
     # Copy executable files to a "bin/lib_mode" sub-directory
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/lib_mode")
 
-    add_subdirectory(demo)
+    if (HLTESTS_BUILD_DEMOS)
+
+        add_subdirectory(demo)
+
+    endif()
 
 else ()
     include_directories(
@@ -77,6 +94,7 @@ else ()
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/argparse
         ${CMAKE_CURRENT_SOURCE_DIR}/inih
+        ${Boost_INCLUDE_DIRS}
     )
 
     set(HLTHUNK_TESTS_LINK_LIBRARIES
@@ -86,15 +104,30 @@ else ()
     # create test library
     add_library(${HLTHUNK_TESTS_LIBRARY}-static-internal
         STATIC
+        argparse/argparse.c
+        common/hlthunk_completion.c
+        common/hlthunk_nic_tests.c
         common/hlthunk_tests.c
-        goya/hlthunk_tests_goya.c
+        common/hlthunk_tests_arc.c
+        common/nic_atomic_fna.c
+        common/nic_basic.c
+        common/nic_bp_offs.c
+        common/nic_collective.c
+        common/nic_common.c
+        common/nic_eq.c
+        common/reduction_test.c
+        config_iterator/config_iterator.c
+        common/nic_dna.c
         gaudi/hlthunk_tests_gaudi.c
         gaudi2/hlthunk_tests_gaudi2.c
+        gaudi3/hlthunk_tests_gaudi3.c
+        goya/hlthunk_tests_goya.c
+        inih/ini.c
         mersenne-twister/mersenne-twister.c
-        argparse/argparse.c
-        inih/ini.c)
+    )
 
     target_link_libraries(${HLTHUNK_TESTS_LIBRARY}-static-internal ${HLTHUNK_TESTS_LINK_LIBRARIES})
+    target_link_libraries(${HLTHUNK_TESTS_LIBRARY}-static-internal ${ibverbs} ${hbldv})
 
     set(TEST_TARGET_LIBRARIES
         ${HLTHUNK_TESTS_LIBRARY}-static-internal
@@ -107,5 +140,6 @@ else ()
     add_subdirectory(goya)
     add_subdirectory(gaudi)
     add_subdirectory(gaudi2)
+    add_subdirectory(gaudi3)
 
 endif ()

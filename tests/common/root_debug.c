@@ -192,15 +192,15 @@ VOID test_lbw_scan(void **state)
 
 			if (cfg.ranges_block[i].write_then_read) {
 				if (cfg.ranges_block[i].data64)
-					WREG64(addr, cfg.ranges_block[i].value);
+					WRITE64(addr, cfg.ranges_block[i].value);
 				else
-					WREG32(addr, cfg.ranges_block[i].value);
+					WRITE32(addr, cfg.ranges_block[i].value);
 			}
 
 			if (cfg.ranges_block[i].data64)
-				val = RREG64(addr);
+				val = READ64(addr);
 			else
-				val = RREG32(addr);
+				val = READ32(addr);
 
 			if (cfg.ranges_block[i].write_then_read)
 				assert_int_equal
@@ -234,10 +234,13 @@ int main(int argc, const char **argv)
 	hltests_parser(argc, argv, usage, HLTEST_DEVICE_MASK_DONT_CARE, debug_tests,
 			num_tests);
 
-	if (access("/sys/kernel/debug", R_OK)) {
-		printf("This executable need to be run with sudo\n");
+	if (!hltests_get_parser_run_disabled_tests()) {
+		printf("root_debug tests should run with --disabled option\n");
 		return 0;
 	}
+
+	if (!can_open_debugfs(true))
+		return 0;
 
 	return hltests_run_group_tests("debug", debug_tests, num_tests,
 			hltests_root_debug_setup, hltests_root_debug_teardown);

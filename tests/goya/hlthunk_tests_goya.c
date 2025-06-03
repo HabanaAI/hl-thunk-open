@@ -385,7 +385,7 @@ static uint32_t goya_add_monitor(void *buffer, uint32_t buf_off,
 	pkt_info.eb = EB_FALSE;
 	pkt_info.mb = MB_TRUE;
 	pkt_info.arm_monitor.address = msg_addr_offset;
-	pkt_info.arm_monitor.mon_mode = EQUAL;
+	pkt_info.arm_monitor.mon_mode = SOB_EQUAL;
 	pkt_info.arm_monitor.sob_val = mon_info->sob_val;
 	pkt_info.arm_monitor.sob_id = mon_info->sob_id;
 	buf_off = goya_add_arm_monitor_pkt(buffer, buf_off, &pkt_info);
@@ -531,6 +531,11 @@ static uint64_t goya_get_sob_base_addr(int fd)
 	return CFG_BASE + mmSYNC_MNGR_SOB_OBJ_0;
 }
 
+static uint64_t goya_get_any_mappable_hw_block_base_addr(int fd)
+{
+	return 0;
+}
+
 static int goya_asic_priv_init(struct hltests_device *hdev)
 {
 	return 0;
@@ -544,11 +549,21 @@ static void goya_asic_priv_fini(struct hltests_device *hdev)
 static int goya_dram_pool_alloc(struct hltests_device *hdev, uint64_t size,
 				uint64_t *return_addr)
 {
-	return -EFAULT;
+	return -EOPNOTSUPP;
 }
 
 static void goya_dram_pool_free(struct hltests_device *hdev, uint64_t addr,
 					uint64_t size)
+{
+
+}
+
+static int goya_va_pool_alloc(struct hltests_device *hdev, uint64_t size, uint64_t *return_addr)
+{
+	return -EOPNOTSUPP;
+}
+
+static void goya_va_pool_free(struct hltests_device *hdev, uint64_t addr, uint64_t size)
 {
 
 }
@@ -708,6 +723,7 @@ static uint32_t goya_get_max_pkt_size(int fd, bool mb, bool eb, uint32_t qid)
 static const struct hltests_asic_funcs goya_funcs = {
 	.add_arb_en_pkt = goya_add_arb_en_pkt,
 	.add_cq_config_pkt = goya_add_cq_config_pkt,
+	.add_pdma_ch_bw_config_pkt = NULL,
 	.add_monitor_and_fence = goya_add_monitor_and_fence,
 	.add_monitor = goya_add_monitor,
 	.get_fence_addr = goya_get_fence_addr,
@@ -736,10 +752,13 @@ static const struct hltests_asic_funcs goya_funcs = {
 	.get_first_avail_mon = goya_get_first_avail_mon,
 	.get_first_avail_cq = goya_get_first_avail_cq,
 	.get_sob_base_addr = goya_get_sob_base_addr,
+	.get_any_mappable_hw_block_base_addr = goya_get_any_mappable_hw_block_base_addr,
 	.asic_priv_init = goya_asic_priv_init,
 	.asic_priv_fini = goya_asic_priv_fini,
 	.dram_pool_alloc = goya_dram_pool_alloc,
 	.dram_pool_free = goya_dram_pool_free,
+	.va_pool_alloc = goya_va_pool_alloc,
+	.va_pool_free = goya_va_pool_free,
 	.submit_cs = goya_submit_cs,
 	.wait_for_cs = goya_wait_for_cs,
 	.wait_for_cs_until_not_busy = goya_wait_for_cs_until_not_busy,
@@ -750,7 +769,45 @@ static const struct hltests_asic_funcs goya_funcs = {
 	.get_dram_va_reserved_addr_start = goya_get_dram_va_reserved_addr_start,
 	.get_sob_id = goya_get_sob_id,
 	.get_mon_cnt_per_dcore = goya_get_mon_cnt_per_dcore,
-	.get_stream_master_qid_arr = goya_get_stream_master_qid_arr
+	.get_stream_master_qid_arr = goya_get_stream_master_qid_arr,
+	.add_sched_arc_nop_cmd = NULL,
+	.add_sched_arc_dispatch_static_ecb_list = NULL,
+	.get_arc_cb_suffix_size = NULL,
+	.arc_get_max_cpuid = NULL,
+	.arc_get_va_range_host_start = NULL,
+	.arc_get_va_range_dram_start = NULL,
+	.arc_get_sched_cpuid_range = NULL,
+	.arc_get_engine_cpuid_range = NULL,
+	.set_arc_asic_fw_load_params = NULL,
+	.asic_load_fw_to_arcs = NULL,
+	.arc_set_regions = NULL,
+	.arc_set_config = NULL,
+	.arc_map_lbw_blocks = NULL,
+	.arc_get_num_schedulers = NULL,
+	.wait_arc_run_done = NULL,
+	.arc_activate = NULL,
+	.arc_unmap_lbw_blocks = NULL,
+	.arc_set_enabled_cores = NULL,
+	.arc_configure_scheduler_streams = NULL,
+	.pdma_get_max_ch_id = NULL,
+	.pdma_map_lbw_blocks = NULL,
+	.pdma_unmap_lbw_blocks = NULL,
+	.pdma_config_ch_blocks = NULL,
+	.arc_get_cpu_id_eng_group = NULL,
+	.get_tc_base_addr = NULL,
+	.get_async_event_id = goya_get_async_event_id,
+	.get_cq_patch_size = goya_get_cq_patch_size,
+	.get_max_pkt_size = goya_get_max_pkt_size,
+	.add_direct_write_cq_pkt = NULL,
+	.monitor_dma_test_progress = NULL,
+	.cq_db_get_available_sob = NULL,
+	.cq_db_get_available_mon = NULL,
+	.cq_db_get_available_cq = NULL,
+	.mme_dma_init = NULL,
+	.prepare_mme_dma_req = NULL,
+	.get_nic_qid = NULL,
+	.get_razwi_addr = NULL,
+	.get_pb_secured_addr = NULL,
 };
 
 void goya_tests_set_asic_funcs(struct hltests_device *hdev)

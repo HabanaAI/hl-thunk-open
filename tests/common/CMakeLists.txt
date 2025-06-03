@@ -18,13 +18,22 @@ set(COMMON_UNIT_TESTS
     dma_sram
     dma_dram
     dma_perf
+    dmabuf
+    dma_buf
+    dma_all2all
     debug
     profiling
     control_device
     error_injection
     root_debug
+    tc
+    nic_root
     debugfs
+    nic
     cpucp
+    odp
+    negative_tests
+    dfa
 )
 
 foreach(_UNIT_TEST ${COMMON_UNIT_TESTS})

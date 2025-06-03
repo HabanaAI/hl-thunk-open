@@ -1,0 +1,160 @@
+-- The C compiler identification is GNU 11.4.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Found Boost: /usr/lib/x86_64-linux-gnu/cmake/Boost-1.74.0/BoostConfig.cmake (found version "1.74.0")  
+-- Configuring done
+-- Generating done
+CMake Warning:
+  Manually-specified variables were not used by the project:
+
+    HLTESTS_IB
+
+
+-- Build files have been written to: /opt/habanalabs/src/hl-thunk/build
+[  0%] Building C object src/CMakeFiles/hl-thunk.dir/libhlthunk.c.o
+[  1%] Building C object src/CMakeFiles/hl-thunk.dir/libhlthunk_nic.c.o
+[  1%] Building C object src/CMakeFiles/hl-thunk-static.dir/libhlthunk.c.o
+[  2%] Building C object src/CMakeFiles/hl-thunk.dir/version.c.o
+[  4%] Building C object src/CMakeFiles/hl-thunk-static.dir/libhlthunk_nic.c.o
+[  5%] Building C object err_inject/CMakeFiles/hl-thunk-err_injection.dir/libhlthunk_asic_goya.c.o
+[  5%] Building C object err_inject/CMakeFiles/hl-thunk-err_injection.dir/libhlthunk_asic_gaudi.c.o
+[  6%] Building C object err_inject/CMakeFiles/hl-thunk-err_injection-static.dir/libhlthunk_asic_gaudi.c.o
+[  7%] Building C object src/CMakeFiles/hl-thunk-static.dir/version.c.o
+[  8%] Building C object err_inject/CMakeFiles/hl-thunk-err_injection.dir/libhlthunk_err_inject.c.o
+[  8%] Building C object err_inject/CMakeFiles/hl-thunk-err_injection.dir/libhlthunk_supp.c.o
+[  8%] Building C object err_inject/CMakeFiles/hl-thunk-err_injection-static.dir/libhlthunk_asic_goya.c.o
+[  9%] Building C object err_inject/CMakeFiles/hl-thunk-err_injection-static.dir/libhlthunk_err_inject.c.o
+[ 10%] Building C object err_inject/CMakeFiles/hl-thunk-err_injection-static.dir/libhlthunk_supp.c.o
+[ 11%] Linking C shared library ../lib/libhl-thunk-err_injection.so
+[ 11%] Built target hl-thunk-err_injection
+[ 12%] Linking C static library ../lib/libhl-thunk-err_injection-static.a
+[ 12%] Built target hl-thunk-err_injection-static
+[ 13%] Linking C static library ../lib/libhl-thunk-static.a
+[ 13%] Linking C shared library ../lib/libhl-thunk.so
+[ 13%] Built target hl-thunk-static
+[ 13%] Built target hl-thunk
+[ 14%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/argparse/argparse.c.o
+[ 14%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/argparse/argparse.c.o
+[ 14%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/command_buffer.c.o
+[ 15%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/command_buffer.c.o
+[ 16%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/command_submission.c.o
+[ 16%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/control_device.c.o
+[ 18%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/control_device.c.o
+[ 18%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/command_submission.c.o
+[ 19%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/cpucp.c.o
+[ 20%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/cpucp.c.o
+[ 21%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/debug.c.o
+[ 21%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/debug.c.o
+[ 21%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/dfa.c.o
+[ 23%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/debugfs.c.o
+[ 23%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/debugfs.c.o
+[ 24%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/dfa.c.o
+[ 25%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/dma.c.o
+[ 26%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/dma.c.o
+[ 27%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/dma_all2all.c.o
+[ 27%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/dma_all2all.c.o
+[ 28%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/dma_buf.c.o
+[ 29%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/dma_buf.c.o
+[ 29%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/dma_dram.c.o
+[ 30%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/dma_perf.c.o
+[ 32%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/dma_sram.c.o
+[ 32%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/dma_dram.c.o
+[ 32%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/dma_perf.c.o
+[ 33%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/dma_sram.c.o
+[ 33%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/dmabuf.c.o
+[ 34%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/dmabuf.c.o
+[ 35%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/error_injection.c.o
+[ 36%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/error_injection.c.o
+[ 37%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/hlthunk_completion.c.o
+[ 37%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/hlthunk_completion.c.o
+[ 38%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/hlthunk_nic_tests.c.o
+[ 38%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/hlthunk_tests.c.o
+[ 39%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/hlthunk_nic_tests.c.o
+[ 40%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/hlthunk_tests.c.o
+[ 41%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/hlthunk_tests_arc.c.o
+[ 42%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/hlthunk_tests_arc.c.o
+[ 43%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/memory.c.o
+[ 43%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/memory.c.o
+[ 43%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/negative_tests.c.o
+[ 44%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/negative_tests.c.o
+[ 45%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/nic.c.o
+[ 46%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/nic.c.o
+[ 47%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/nic_atomic_fna.c.o
+[ 48%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/nic_basic.c.o
+[ 48%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/nic_atomic_fna.c.o
+[ 49%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/nic_basic.c.o
+[ 49%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/nic_bp_offs.c.o
+[ 50%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/nic_collective.c.o
+[ 51%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/nic_bp_offs.c.o
+[ 52%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/nic_common.c.o
+[ 53%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/nic_collective.c.o
+[ 53%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/nic_common.c.o
+[ 54%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/nic_dna.c.o
+[ 55%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/nic_dna.c.o
+[ 55%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/nic_eq.c.o
+[ 56%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/nic_eq.c.o
+[ 57%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/nic_root.c.o
+[ 58%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/nic_root.c.o
+[ 58%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/odp.c.o
+[ 59%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/odp.c.o
+[ 59%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/open_close.c.o
+[ 60%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/open_close.c.o
+[ 61%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/profiling.c.o
+[ 62%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/reduction_test.c.o
+[ 63%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/profiling.c.o
+[ 64%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/root_debug.c.o
+[ 64%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/sync_manager.c.o
+[ 64%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/reduction_test.c.o
+[ 65%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/common/tc.c.o
+[ 66%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/root_debug.c.o
+[ 67%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/config_iterator/config_iterator.c.o
+[ 68%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/sync_manager.c.o
+[ 69%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/common/tc.c.o
+[ 70%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/gaudi/gaudi_debug.c.o
+[ 70%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/config_iterator/config_iterator.c.o
+[ 70%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/gaudi/gaudi_dma.c.o
+[ 71%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/gaudi/gaudi_debug.c.o
+[ 72%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/gaudi/gaudi_mme_conv.c.o
+[ 73%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/gaudi/gaudi_dma.c.o
+[ 74%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/gaudi/gaudi_root.c.o
+[ 74%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/gaudi/gaudi_mme_conv.c.o
+[ 74%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/gaudi/gaudi_root_debug.c.o
+[ 75%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/gaudi/hlthunk_tests_gaudi.c.o
+[ 76%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/gaudi/gaudi_root.c.o
+[ 77%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/gaudi/gaudi_root_debug.c.o
+[ 78%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/gaudi2/gaudi2_root.c.o
+[ 79%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/gaudi/hlthunk_tests_gaudi.c.o
+[ 80%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/gaudi2/hlthunk_tests_gaudi2.c.o
+[ 80%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/gaudi2/gaudi2_root.c.o
+[ 81%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/gaudi2/hlthunk_tests_gaudi2.c.o
+[ 82%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/gaudi3/gaudi3_cbc.c.o
+[ 82%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/gaudi3/gaudi3_cbc.c.o
+[ 83%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/gaudi3/gaudi3_dma.c.o
+[ 83%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/gaudi3/gaudi3_hldio.c.o
+[ 84%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/gaudi3/gaudi3_dma.c.o
+[ 85%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/gaudi3/gaudi3_root.c.o
+[ 86%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/gaudi3/gaudi3_sm.c.o
+[ 87%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/gaudi3/gaudi3_hldio.c.o
+[ 87%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/gaudi3/hlthunk_tests_gaudi3.c.o
+[ 88%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/gaudi3/gaudi3_root.c.o
+[ 89%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/goya/goya_dma.c.o
+[ 90%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/goya/goya_root.c.o
+[ 90%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/gaudi3/gaudi3_sm.c.o
+[ 91%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/goya/hlthunk_tests_goya.c.o
+[ 91%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/inih/ini.c.o
+[ 92%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/gaudi3/hlthunk_tests_gaudi3.c.o
+[ 93%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/mersenne-twister/mersenne-twister.c.o
+[ 94%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/goya/goya_dma.c.o
+[ 95%] Building C object tests/CMakeFiles/hl-thunk-tests-static.dir/version.c.o
+[ 95%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/goya/goya_root.c.o
+[ 96%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/goya/hlthunk_tests_goya.c.o
+[ 97%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/inih/ini.c.o
+[ 98%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/mersenne-twister/mersenne-twister.c.o
+[ 98%] Building C object tests/CMakeFiles/hl-thunk-tests.dir/version.c.o
+[ 99%] Linking C static library ../lib/libhl-thunk-tests-static.a
+[ 99%] Built target hl-thunk-tests-static
+[100%] Linking C shared library ../lib/libhl-thunk-tests.so
+[100%] Built target hl-thunk-tests

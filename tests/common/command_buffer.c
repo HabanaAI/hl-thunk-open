@@ -20,14 +20,16 @@
 /* number of msg_long packets and single msg_short (signal SOB) */
 #define CB_LEN         (NUM_OF_PKTS * 16 + 8)
 
-VOID cb_create_mmap_unmap_destroy(void **state, uint32_t size,
-					bool unmap, bool destroy)
+VOID cb_create_mmap_unmap_destroy(void **state, uint32_t size, bool munmap, uint32_t destroy_num)
 {
 	struct hltests_state *tests_state =
 					(struct hltests_state *) *state;
 	uint64_t cb_handle;
 	void *ptr;
-	int rc;
+	int rc, i;
+
+	if (hltests_get_parser_mini_suite())
+		skip();
 
 	rc = hlthunk_request_command_buffer(tests_state->fd, size, &cb_handle);
 	assert_int_equal(rc, 0);
@@ -35,14 +37,22 @@ VOID cb_create_mmap_unmap_destroy(void **state, uint32_t size,
 	ptr = hltests_mmap(tests_state->fd, size, cb_handle);
 	assert_ptr_not_equal(ptr, MAP_FAILED);
 
-	if (unmap) {
-		rc = hltests_munmap(ptr, size);
+	if (munmap) {
+		rc = hltests_munmap(tests_state->fd, ptr, size);
 		assert_int_equal(rc, 0);
 	}
 
-	if (destroy) {
+	for (i = 0 ; i < destroy_num ; ++i) {
 		rc = hlthunk_destroy_command_buffer(tests_state->fd, cb_handle);
-		assert_int_equal(rc, 0);
+
+		/* CB handle can be destroyed only once.
+		 * Not using if-else due to a build error in library mode when not using braces, and
+		 * a checkpatch warning when using braces.
+		 */
+		if (i == 0)
+			assert_int_equal(rc, 0);
+		if (i != 0)
+			assert_int_not_equal(rc, 0);
 	}
 
 	END_TEST;
@@ -50,34 +60,37 @@ VOID cb_create_mmap_unmap_destroy(void **state, uint32_t size,
 
 VOID test_cb_mmap(void **state)
 {
-	END_TEST_FUNC(cb_create_mmap_unmap_destroy(state, 0x100000, true,
-								true));
+	END_TEST_FUNC(cb_create_mmap_unmap_destroy(state, 0x100000, true, 1));
 }
 
 VOID test_cb_unaligned_size(void **state)
 {
-	END_TEST_FUNC(cb_create_mmap_unmap_destroy(state, 5000, true, true));
+	END_TEST_FUNC(cb_create_mmap_unmap_destroy(state, 5000, true, 1));
 }
 
 VOID test_cb_small_unaligned_odd_size(void **state)
 {
-	END_TEST_FUNC(cb_create_mmap_unmap_destroy(state, 77, true, true));
+	END_TEST_FUNC(cb_create_mmap_unmap_destroy(state, 77, true, 1));
 }
 
 VOID test_cb_unaligned_odd_size(void **state)
 {
-	END_TEST_FUNC(cb_create_mmap_unmap_destroy(state, 92517, true, true));
+	END_TEST_FUNC(cb_create_mmap_unmap_destroy(state, 92517, true, 1));
 }
 
 VOID test_cb_skip_unmap(void **state)
 {
-	END_TEST_FUNC(cb_create_mmap_unmap_destroy(state, 92517, false, true));
+	END_TEST_FUNC(cb_create_mmap_unmap_destroy(state, 92517, false, 1));
 }
 
 VOID test_cb_skip_unmap_and_destroy(void **state)
 {
-	END_TEST_FUNC(cb_create_mmap_unmap_destroy(state, 92517, false,
-								false));
+	END_TEST_FUNC(cb_create_mmap_unmap_destroy(state, 92517, false, 0));
+}
+
+VOID test_cb_skip_unmap_and_redundant_destroy(void **state)
+{
+	END_TEST_FUNC(cb_create_mmap_unmap_destroy(state, SZ_16K, false, 2));
 }
 
 static int submit_unalign_device_cb(int fd, uint64_t host_buf_va,
@@ -127,12 +140,13 @@ static int submit_unalign_device_cb(int fd, uint64_t host_buf_va,
 	 * the cb info, into the device memory.
 	 * DMA: host->device
 	 */
-	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
+	rc = hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
 				EB_FALSE, MB_TRUE,
 				cb_device_va,
 				(uint64_t) device_addr,
 				CB_LEN,
 				DMA_DIR_HOST_TO_SRAM);
+	assert_int_equal(rc, 0);
 
 	if (sram_test) {
 		hltests_submit_and_wait_cs(fd, cb, cb_size,
@@ -209,31 +223,27 @@ static int submit_unalign_host_cb(int fd, uint64_t host_buf_va,
 VOID test_cb_unalign(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	struct hlthunk_hw_ip_info hw_ip;
 	void *host_buf;
 	uint32_t cmp_buf[NUM_OF_PKTS];
 	int rc, i, len = sizeof(cmp_buf), fd = tests_state->fd;
 	uint64_t host_buf_va;
+
+	if (hltests_get_parser_mini_suite())
+		skip();
 
 	if (!hltests_is_legacy_mode_enabled(fd)) {
 		printf("Test is not relevant in ARC mode, skipping\n");
 		skip();
 	}
 
-	if (!tests_state->mmu) {
-		printf("MMU must be enabled for this test, skipping.\n");
-		skip();
-	}
-
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
-	if (!hw_ip.sram_size)
-		skip();
-
 	/* Test only asic which supports unaligned cb */
 	if (hltests_is_goya(fd) || hltests_is_gaudi(fd)) {
 		printf("Test is not supported in Goya and Gaudi1, skipping.\n");
+		skip();
+	}
+
+	if (hltests_is_gaudi2(fd)) {
+		printf("EDMA is blocked from accessing the PCIe in Gaudi2\n");
 		skip();
 	}
 
@@ -349,12 +359,13 @@ VOID submit_unalign_device_common_cb(int fd, void *upper_cb,
 	 * the cb info, into the device memory.
 	 * DMA: host->device
 	 */
-	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
+	rc = hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
 				EB_FALSE, MB_TRUE,
 				cb_device_va,
 				(uint64_t) device_addr,
 				CB_LEN,
 				DMA_DIR_HOST_TO_SRAM);
+	assert_int_equal(rc, 0);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
 	pkt_info.eb = EB_TRUE;
@@ -375,6 +386,7 @@ VOID submit_unalign_device_common_cb(int fd, void *upper_cb,
 	mon_and_fence_info.sob_val = 1;
 	mon_and_fence_info.dec_fence = true;
 	mon_and_fence_info.mon_payload = 1;
+	mon_and_fence_info.mon_mode = SOB_EQUAL;
 	cb_size = hltests_add_monitor_and_fence(fd, upper_cb, cb_size,
 							&mon_and_fence_info);
 
@@ -469,6 +481,7 @@ VOID submit_unalign_host_common_cb(int fd, void *upper_cb,
 	mon_and_fence_info.sob_val = 1;
 	mon_and_fence_info.dec_fence = true;
 	mon_and_fence_info.mon_payload = 1;
+	mon_and_fence_info.mon_mode = SOB_EQUAL;
 	cb_size = hltests_add_monitor_and_fence(fd, upper_cb, cb_size,
 							&mon_and_fence_info);
 
@@ -487,31 +500,27 @@ VOID submit_unalign_host_common_cb(int fd, void *upper_cb,
 VOID test_common_cb_unalign(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	struct hlthunk_hw_ip_info hw_ip;
 	void *upper_cb, *host_buf;
 	uint32_t cmp_buf[NUM_OF_PKTS];
 	uint64_t host_buf_va;
 	int rc, i, len = sizeof(cmp_buf), fd = tests_state->fd;
+
+	if (hltests_get_parser_mini_suite())
+		skip();
 
 	if (!hltests_is_legacy_mode_enabled(fd)) {
 		printf("Test is not relevant in ARC mode, skipping\n");
 		skip();
 	}
 
-	if (!tests_state->mmu) {
-		printf("MMU must be enabled for this test, skipping.\n");
-		skip();
-	}
-
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
-	if (!hw_ip.sram_size)
-		skip();
-
 	/* Test only asic which supports unaligned cb */
 	if (hltests_is_goya(fd) || hltests_is_gaudi(fd)) {
 		printf("Test is supported in Goya and Gaudi1, skipping.\n");
+		skip();
+	}
+
+	if (hltests_is_gaudi2(fd)) {
+		printf("EDMA is blocked from accessing the PCIe in Gaudi2\n");
 		skip();
 	}
 
@@ -532,7 +541,7 @@ VOID test_common_cb_unalign(void **state)
 	/* Test unaligned common CB in HOST memory */
 	memset(host_buf, 0, len);
 	submit_unalign_host_common_cb(fd, upper_cb, host_buf_va,
-						UNALIGN_OFFSET);
+			UNALIGN_OFFSET);
 
 	rc = hltests_mem_compare(cmp_buf, host_buf, len);
 	assert_int_equal(rc, 0);
@@ -572,15 +581,12 @@ VOID test_cb_kernel_mapped(void **state)
 	int rc, fd = tests_state->fd;
 	void *cb;
 
+	if (hltests_get_parser_mini_suite())
+		skip();
+
 	/* Mapping a kernel CB is not supported for Goya and Gaudi */
 	if (hltests_is_goya(fd) || hltests_is_gaudi(fd)) {
 		printf("Test is not relevant for Goya/Gaudi, skipping\n");
-		skip();
-	}
-
-	/* Mapping a kernel CB is not supported when MMU is disabled */
-	if (!tests_state->mmu) {
-		printf("Test is skipped when MMU is disabled\n");
 		skip();
 	}
 
@@ -630,6 +636,8 @@ const struct CMUnitTest cb_tests[] = {
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_cb_skip_unmap_and_destroy,
 				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_cb_skip_unmap_and_redundant_destroy,
+				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_cb_unalign,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_common_cb_unalign,
@@ -649,7 +657,9 @@ int main(int argc, const char **argv)
 
 	hltests_parser(argc, argv, usage, HLTEST_DEVICE_MASK_DONT_CARE, cb_tests,
 			num_tests);
-
+	hltests_set_capabilities_mask(CAP_ARC_FW_LOAD_SCHED_MASK |
+				CAP_ARC_FW_LOAD_PDMA_MASK |
+				CAP_ARC_FW_LOAD_EDMA_MASK);
 	return hltests_run_group_tests("command_buffer", cb_tests, num_tests,
 					hltests_setup, hltests_teardown);
 }

@@ -19,7 +19,7 @@
 VOID test_dma_4_queues_goya(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	struct hlthunk_hw_ip_info hw_ip;
+	struct hlthunk_hw_ip_info *hw_ip = &tests_state->hw_ip;
 	struct hltests_cs_chunk execute_arr[4];
 	struct hltests_pkt_info pkt_info;
 	struct hltests_monitor_and_fence mon_and_fence_info;
@@ -62,14 +62,8 @@ VOID test_dma_4_queues_goya(void **state)
 		assert_non_null(dram_addr[i]);
 	}
 
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
-	if (!hw_ip.sram_size)
-		skip();
-
-	assert_int_equal(hw_ip.dram_enabled, 1);
-	sram_addr = hw_ip.sram_base_address + 0x1000;
+	assert_int_equal(hw_ip->dram_enabled, 1);
+	sram_addr = hw_ip->sram_base_address + 0x1000;
 
 
 	/* Setup CB: clear SOB 0-2 */

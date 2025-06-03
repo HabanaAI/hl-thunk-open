@@ -2,7 +2,7 @@
 
 cmake_minimum_required(VERSION 3.0.1 FATAL_ERROR)
 
-# Specify search path for CMake modules to be loaded by include() 
+# Specify search path for CMake modules to be loaded by include()
 # and find_package()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
@@ -48,7 +48,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_FLAGS "-fPIC -W -Werror -Wall -Wextra -Wno-unused-parameter")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-missing-field-initializers -Wno-type-limits")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-function -Wno-sign-compare")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-sign-compare")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-result")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-strict-aliasing")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wformat-security -Wswitch-default -Wundef")
@@ -78,7 +78,11 @@ endif()
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SANITIZE}")
 
-include_directories(include)
+include_directories(include
+                    /usr/include/drm
+                    /usr/include/libdrm)
+
+include_directories($ENV{HABANALABS_ROOT}/include/uapi)
 
 add_subdirectory(src)
 

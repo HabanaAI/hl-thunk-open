@@ -36,10 +36,10 @@
 #define FUSE_DELAY_US			100
 #define FUSE_RETRIES			(FUSE_TIMEOUT_US / FUSE_DELAY_US)
 
-#define RREG32_MASK(reg, mask) ((RREG32(reg) & mask) >> (ffs(mask) - 1))
+#define RREG32_MASK(reg, mask) ((READ32(reg) & mask) >> (ffs(mask) - 1))
 
-#define RL_WREG32(reg, val) WREG32(CFG_BASE + reg, val)
-#define RL_RREG32(reg) RREG32(CFG_BASE + reg)
+#define RL_WREG32(reg, val) WRITE32(CFG_BASE + reg, val)
+#define RL_RREG32(reg) READ32(CFG_BASE + reg)
 
 enum ieee1500_instruction {
 	ieee1500_bypass = 0x00,
@@ -101,26 +101,26 @@ static void ieee1500_inst(struct hltests_state *tests_state, int device,
 	 */
 
 	/* Configure WDR length */
-	WREG32(base + 0x9020, ieee_wdr_len_t[instruction] - 1);
+	WRITE32(base + 0x9020, ieee_wdr_len_t[instruction] - 1);
 
 	/* Configure WIR
 	 * {ch, instruction} - ch may be 0xF to indicate ALL channels
 	 */
 	wir = (instruction & 0xFF) | ((ch & 0xF) << 8);
-	WREG32(base + 0x9024, wir);
+	WRITE32(base + 0x9024, wir);
 
 	/* Send WIR and write/read WDR */
 	op = write ? 0x6 : 0x5;
-	WREG32(base + 0x9028, op);
+	WRITE32(base + 0x9028, op);
 
 	/* Poll for MLB interrupt */
 	do {
 		usleep(100);
-		status = RREG32(base + 0x9034);
+		status = READ32(base + 0x9034);
 	} while (status != op);
 
 	/* Clear MLB interrupts */
-	WREG32(base + 0x9034, 0);
+	WRITE32(base + 0x9034, 0);
 }
 
 VOID test_hbm_read_temperature(void **state)
@@ -136,7 +136,7 @@ VOID test_hbm_read_temperature(void **state)
 
 		ieee1500_inst(tests_state, device, ignore, ieee1500_temperature,
 				GAUDI_HBM_IEEE1500_READ_INST);
-		rdata = RREG32(base + GAUDI_HBM_CENTER_CHANNEL * 0x1000 +
+		rdata = READ32(base + GAUDI_HBM_CENTER_CHANNEL * 0x1000 +
 									0x800);
 		invalid = (rdata >> 7) & 1;
 		temp = rdata & 0x7F;
@@ -179,11 +179,11 @@ VOID test_hbm_read_interrupts(void **state)
 					(val >> 1) & 0x1, (val >> 2) & 0x1,
 					(val >> 3) & 0x1, (val >> 4) & 0x1);
 
-				val2 = RREG32(base + ch * 0x1000 + 0x060);
+				val2 = READ32(base + ch * 0x1000 + 0x060);
 				printf(
 					"HBM%d pc%d ECC info: 1ST_ERR_ADDR=0x%x, 1ST_ERR_TYPE=%d, SEC_CONT_CNT=%d, SEC_CNT=%d, DED_CNT=%d\n",
 					device, ch * 2,
-					RREG32(base + ch * 0x1000 + 0x064),
+					READ32(base + ch * 0x1000 + 0x064),
 					(val2 & 0x200) >> 9,
 					(val2 & 0xFC00) >> 10,
 					(val2 & 0xFF0000) >> 16,
@@ -200,11 +200,11 @@ VOID test_hbm_read_interrupts(void **state)
 					(val >> 1) & 0x1, (val >> 2) & 0x1,
 					(val >> 3) & 0x1, (val >> 4) & 0x1);
 
-				val2 = RREG32(base + ch * 0x1000 + 0x070);
+				val2 = READ32(base + ch * 0x1000 + 0x070);
 				printf(
 					"HBM%d pc%d ECC info: 1ST_ERR_ADDR=0x%x, 1ST_ERR_TYPE=%d, SEC_CONT_CNT=%d, SEC_CNT=%d, DED_CNT=%d\n",
 					device, ch * 2 + 1,
-					RREG32(base + ch * 0x1000 + 0x074),
+					READ32(base + ch * 0x1000 + 0x074),
 					(val2 & 0x200) >> 9,
 					(val2 & 0xFC00) >> 10,
 					(val2 & 0xFF0000) >> 16,
@@ -212,27 +212,63 @@ VOID test_hbm_read_interrupts(void **state)
 			}
 
 			/* Clear interrupts */
-			WREG32(base + (ch * 0x1000) + 0x060, 0x1C8);
-			WREG32(base + (ch * 0x1000) + 0x070, 0x1C8);
-			WREG32(base + (ch * 0x1000) + 0x06C, 0x1F1F);
-			WREG32(base + (ch * 0x1000) + 0x07C, 0x1F1F);
-			WREG32(base + (ch * 0x1000) + 0x060, 0x0);
-			WREG32(base + (ch * 0x1000) + 0x070, 0x0);
+			WRITE32(base + (ch * 0x1000) + 0x060, 0x1C8);
+			WRITE32(base + (ch * 0x1000) + 0x070, 0x1C8);
+			WRITE32(base + (ch * 0x1000) + 0x06C, 0x1F1F);
+			WRITE32(base + (ch * 0x1000) + 0x07C, 0x1F1F);
+			WRITE32(base + (ch * 0x1000) + 0x060, 0x0);
+			WRITE32(base + (ch * 0x1000) + 0x070, 0x0);
 		}
 
-		val = RREG32(base + 0x8F30);
-		val2 = RREG32(base + 0x8F34);
+		val = READ32(base + 0x8F30);
+		val2 = READ32(base + 0x8F34);
 		if (val | val2)
 			printf(
 				"MC SRAM SERR dev=%d: Reg 0x8F30=0x%x, Reg 0x8F34=0x%x\n",
 				device, val, val2);
-		val = RREG32(base + 0x8F40);
-		val2 = RREG32(base + 0x8F44);
+		val = READ32(base + 0x8F40);
+		val2 = READ32(base + 0x8F44);
 		if (val | val2)
 			printf(
 				"MC SRAM DERR dev=%d: Reg 0x8F40=0x%x, Reg 0x8F44=0x%x\n",
 				device, val, val2);
 	}
+
+	END_TEST;
+}
+
+VOID test_print_asic_rev(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	uint32_t val;
+	char ver;
+	int i;
+
+	WRITE32(CFG_BASE + mmPSOC_EFUSE_READ, 1);
+
+	for (i = 0 ; i < FUSE_RETRIES ; i++) {
+		if (!(READ32(CFG_BASE + mmPSOC_EFUSE_READ)))
+			break;
+
+		usleep(FUSE_DELAY_US);
+	}
+
+	if (i == FUSE_RETRIES) {
+		printf("Failed to read from eFuse\n");
+		fail();
+	}
+
+	val = READ32(CFG_BASE + mmPSOC_EFUSE_DATA_2);
+	ver = (char) ((val >> 24) & 0xFF);
+	if (!ver)
+		ver = '0';
+
+	if ((char) ((val >> 16) & 0xFF) == 'B')
+		printf("Found Gaudi Rev. B%c\n", ver);
+	else if ((char) ((val >> 16) & 0xFF) == 'A')
+		printf("Found Gaudi Rev. A%c\n", ver);
+	else
+		printf("Found Gaudi without eFuse information\n");
 
 	END_TEST;
 }
@@ -248,7 +284,7 @@ VOID test_read_every_4KB_registers_block(void **state)
 	while (addr < end) {
 		if (!(addr & 0xFFFF))
 			printf("Reading 0x%lx\n", addr);
-		val = RREG32(addr);
+		val = READ32(addr);
 		addr += 0x1000;
 	}
 
@@ -309,9 +345,9 @@ VOID test_read_through_pci(void **state)
 		fail_msg("jump can't be 0\n");
 
 	/* make PCI non-secured to make sure we hit RR protection */
-	prot = RREG32(mmPCIE_WRAP_LBW_PROT_OVR);
-	WREG32(mmPCIE_WRAP_LBW_PROT_OVR, 0);
-	val = RREG32(mmPCIE_WRAP_LBW_PROT_OVR);
+	prot = READ32(mmPCIE_WRAP_LBW_PROT_OVR);
+	WRITE32(mmPCIE_WRAP_LBW_PROT_OVR, 0);
+	val = READ32(mmPCIE_WRAP_LBW_PROT_OVR);
 	sleep(1);
 
 	addr = cfg.start_address;
@@ -319,11 +355,52 @@ VOID test_read_through_pci(void **state)
 	while (addr < end) {
 		if (!(addr & (cfg.print_delta - 1)))
 			printf("Reading 0x%lx\n", addr);
-		val = RREG32(addr);
+		val = READ32(addr);
 		addr += cfg.jump;
 	}
 
-	WREG32(mmPCIE_WRAP_LBW_PROT_OVR, prot);
+	WRITE32(mmPCIE_WRAP_LBW_PROT_OVR, prot);
+
+	END_TEST;
+}
+
+VOID test_nic_read_interrupts(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	int i, j;
+	uint64_t nic_offset;
+	uint32_t val;
+
+	for (i = 0 ; i < NIC_NUMBER_OF_MACROS; i++) {
+		nic_offset = i * 0x40000;
+
+		val = RL_RREG32(mmNIC0_RXB_DBG_SEI_INTR + nic_offset);
+		if (val & 1)
+			printf("NIC %d, RXB = 0x%x\n", i * 2, val);
+
+		for (j = 0 ; j < 2 ; j++) {
+			nic_offset += j * 0x1000;
+
+			val = RL_RREG32(mmNIC0_RXE0_SEI_CAUSE + nic_offset);
+			if (val)
+				printf("NIC %d, RXE = 0x%x\n", i * 2 + j, val);
+
+			val = RL_RREG32(mmNIC0_TXS0_INTERRUPT_CAUSE +
+					nic_offset);
+			if (val)
+				printf("NIC %d, TXS = 0x%x\n", i * 2 + j, val);
+
+			val = RL_RREG32(mmNIC0_TXE0_INERRUPT_CAUSE +
+					nic_offset);
+			if (val)
+				printf("NIC %d, TXE = 0x%x\n", i * 2 + j, val);
+
+			val = RL_RREG32(mmNIC0_QPC0_INTERRUPT_RESP_ERR_CAUSE +
+					nic_offset);
+			if (val)
+				printf("NIC %d, QPC = 0x%x\n", i * 2 + j, val);
+		}
+	}
 
 	END_TEST;
 }
@@ -339,22 +416,22 @@ VOID test_read_e2e_rl_cfg(void **state)
 			mmSIF_RTR_CTRL_0_E2E_HBM_WR_SIZE;
 
 	for (i = 0 ; i < 8; i++) {
-		val = RREG32(CFG_BASE + mmSIF_RTR_CTRL_0_E2E_HBM_WR_SIZE + block_offset * i);
+		val = READ32(CFG_BASE + mmSIF_RTR_CTRL_0_E2E_HBM_WR_SIZE + block_offset * i);
 		printf("SIF RTR %d E2E HBM WR SIZE = 0x%x\n", i, val);
 
-		val = RREG32(CFG_BASE + mmSIF_RTR_CTRL_0_E2E_HBM_RD_SIZE + block_offset * i);
+		val = READ32(CFG_BASE + mmSIF_RTR_CTRL_0_E2E_HBM_RD_SIZE + block_offset * i);
 		printf("SIF RTR %d E2E HBM RD SIZE = 0x%x\n", i, val);
 
-		val = RREG32(CFG_BASE + mmSIF_RTR_CTRL_0_E2E_PCI_WR_SIZE + block_offset * i);
+		val = READ32(CFG_BASE + mmSIF_RTR_CTRL_0_E2E_PCI_WR_SIZE + block_offset * i);
 		printf("SIF RTR %d E2E PCI WR SIZE = 0x%x\n", i, val);
 
-		val = RREG32(CFG_BASE + mmSIF_RTR_CTRL_0_E2E_PCI_RD_SIZE + block_offset * i);
+		val = READ32(CFG_BASE + mmSIF_RTR_CTRL_0_E2E_PCI_RD_SIZE + block_offset * i);
 		printf("SIF RTR %d E2E PCI RD SIZE = 0x%x\n", i, val);
 
-		val = RREG32(CFG_BASE + mmSIF_RTR_CTRL_0_E2E_HBM_EN + block_offset * i);
+		val = READ32(CFG_BASE + mmSIF_RTR_CTRL_0_E2E_HBM_EN + block_offset * i);
 		printf("SIF RTR %d E2E HBM EN = %d\n", i, val);
 
-		val = RREG32(CFG_BASE + mmSIF_RTR_CTRL_0_E2E_PCI_EN + block_offset * i);
+		val = READ32(CFG_BASE + mmSIF_RTR_CTRL_0_E2E_PCI_EN + block_offset * i);
 		printf("SIF RTR %d E2E PCI EN = %d\n", i, val);
 	}
 
@@ -362,22 +439,22 @@ VOID test_read_e2e_rl_cfg(void **state)
 			mmNIF_RTR_CTRL_0_E2E_HBM_WR_SIZE;
 
 	for (i = 0 ; i < 8; i++) {
-		val = RREG32(CFG_BASE + mmNIF_RTR_CTRL_0_E2E_HBM_WR_SIZE + block_offset * i);
+		val = READ32(CFG_BASE + mmNIF_RTR_CTRL_0_E2E_HBM_WR_SIZE + block_offset * i);
 		printf("NIF RTR %d E2E HBM WR SIZE = 0x%x\n", i, val);
 
-		val = RREG32(CFG_BASE + mmNIF_RTR_CTRL_0_E2E_HBM_RD_SIZE + block_offset * i);
+		val = READ32(CFG_BASE + mmNIF_RTR_CTRL_0_E2E_HBM_RD_SIZE + block_offset * i);
 		printf("NIF RTR %d E2E HBM RD SIZE = 0x%x\n", i, val);
 
-		val = RREG32(CFG_BASE + mmNIF_RTR_CTRL_0_E2E_PCI_WR_SIZE + block_offset * i);
+		val = READ32(CFG_BASE + mmNIF_RTR_CTRL_0_E2E_PCI_WR_SIZE + block_offset * i);
 		printf("NIF RTR %d E2E PCI WR SIZE = 0x%x\n", i, val);
 
-		val = RREG32(CFG_BASE + mmNIF_RTR_CTRL_0_E2E_PCI_RD_SIZE + block_offset * i);
+		val = READ32(CFG_BASE + mmNIF_RTR_CTRL_0_E2E_PCI_RD_SIZE + block_offset * i);
 		printf("NIF RTR %d E2E PCI RD SIZE = 0x%x\n", i, val);
 
-		val = RREG32(CFG_BASE + mmNIF_RTR_CTRL_0_E2E_HBM_EN + block_offset * i);
+		val = READ32(CFG_BASE + mmNIF_RTR_CTRL_0_E2E_HBM_EN + block_offset * i);
 		printf("NIF RTR %d E2E HBM EN = %d\n", i, val);
 
-		val = RREG32(CFG_BASE + mmNIF_RTR_CTRL_0_E2E_PCI_EN + block_offset * i);
+		val = READ32(CFG_BASE + mmNIF_RTR_CTRL_0_E2E_PCI_EN + block_offset * i);
 		printf("NIF RTR %d E2E PCI EN = %d\n", i, val);
 	}
 
@@ -385,22 +462,22 @@ VOID test_read_e2e_rl_cfg(void **state)
 			mmDMA_IF_E_N_DOWN_CH0_E2E_HBM_WR_SIZE;
 
 	for (i = 0 ; i < 2; i++) {
-		val = RREG32(CFG_BASE + mmDMA_IF_E_N_DOWN_CH0_E2E_HBM_WR_SIZE + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_E_N_DOWN_CH0_E2E_HBM_WR_SIZE + block_offset * i);
 		printf("DMA IF E_N CH %d E2E HBM WR SIZE = 0x%x\n", i, val);
 
-		val = RREG32(CFG_BASE + mmDMA_IF_E_N_DOWN_CH0_E2E_HBM_RD_SIZE + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_E_N_DOWN_CH0_E2E_HBM_RD_SIZE + block_offset * i);
 		printf("DMA IF E_N CH %d E2E HBM RD SIZE = 0x%x\n", i, val);
 
-		val = RREG32(CFG_BASE + mmDMA_IF_E_N_DOWN_CH0_E2E_PCI_WR_SIZE + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_E_N_DOWN_CH0_E2E_PCI_WR_SIZE + block_offset * i);
 		printf("DMA IF E_N CH %d E2E PCI WR SIZE = 0x%x\n", i, val);
 
-		val = RREG32(CFG_BASE + mmDMA_IF_E_N_DOWN_CH0_E2E_PCI_RD_SIZE + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_E_N_DOWN_CH0_E2E_PCI_RD_SIZE + block_offset * i);
 		printf("DMA IF E_N CH %d E2E PCI RD SIZE = 0x%x\n", i, val);
 
-		val = RREG32(CFG_BASE + mmDMA_IF_E_N_DOWN_CH0_E2E_HBM_EN + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_E_N_DOWN_CH0_E2E_HBM_EN + block_offset * i);
 		printf("DMA IF E_N CH %d E2E HBM EN = %d\n", i, val);
 
-		val = RREG32(CFG_BASE + mmDMA_IF_E_N_DOWN_CH0_E2E_PCI_EN + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_E_N_DOWN_CH0_E2E_PCI_EN + block_offset * i);
 		printf("DMA IF E_N CH %d E2E PCI EN = %d\n", i, val);
 	}
 
@@ -408,22 +485,22 @@ VOID test_read_e2e_rl_cfg(void **state)
 			mmDMA_IF_E_S_DOWN_CH0_E2E_HBM_WR_SIZE;
 
 	for (i = 0 ; i < 2; i++) {
-		val = RREG32(CFG_BASE + mmDMA_IF_E_S_DOWN_CH0_E2E_HBM_WR_SIZE + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_E_S_DOWN_CH0_E2E_HBM_WR_SIZE + block_offset * i);
 		printf("DMA IF E_S CH %d E2E HBM WR SIZE = 0x%x\n", i, val);
 
-		val = RREG32(CFG_BASE + mmDMA_IF_E_S_DOWN_CH0_E2E_HBM_RD_SIZE + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_E_S_DOWN_CH0_E2E_HBM_RD_SIZE + block_offset * i);
 		printf("DMA IF E_S CH %d E2E HBM RD SIZE = 0x%x\n", i, val);
 
-		val = RREG32(CFG_BASE + mmDMA_IF_E_S_DOWN_CH0_E2E_PCI_WR_SIZE + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_E_S_DOWN_CH0_E2E_PCI_WR_SIZE + block_offset * i);
 		printf("DMA IF E_S CH %d E2E PCI WR SIZE = 0x%x\n", i, val);
 
-		val = RREG32(CFG_BASE + mmDMA_IF_E_S_DOWN_CH0_E2E_PCI_RD_SIZE + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_E_S_DOWN_CH0_E2E_PCI_RD_SIZE + block_offset * i);
 		printf("DMA IF E_S CH %d E2E PCI RD SIZE = 0x%x\n", i, val);
 
-		val = RREG32(CFG_BASE + mmDMA_IF_E_S_DOWN_CH0_E2E_HBM_EN + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_E_S_DOWN_CH0_E2E_HBM_EN + block_offset * i);
 		printf("DMA IF E_S CH %d E2E HBM EN = %d\n", i, val);
 
-		val = RREG32(CFG_BASE + mmDMA_IF_E_S_DOWN_CH0_E2E_PCI_EN + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_E_S_DOWN_CH0_E2E_PCI_EN + block_offset * i);
 		printf("DMA IF E_S CH %d E2E PCI EN = %d\n", i, val);
 	}
 
@@ -431,22 +508,22 @@ VOID test_read_e2e_rl_cfg(void **state)
 			mmDMA_IF_W_S_DOWN_CH0_E2E_HBM_WR_SIZE;
 
 	for (i = 0 ; i < 2; i++) {
-		val = RREG32(CFG_BASE + mmDMA_IF_W_S_DOWN_CH0_E2E_HBM_WR_SIZE + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_W_S_DOWN_CH0_E2E_HBM_WR_SIZE + block_offset * i);
 		printf("DMA IF W_S CH %d E2E HBM WR SIZE = 0x%x\n", i, val);
 
-		val = RREG32(CFG_BASE + mmDMA_IF_W_S_DOWN_CH0_E2E_HBM_RD_SIZE + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_W_S_DOWN_CH0_E2E_HBM_RD_SIZE + block_offset * i);
 		printf("DMA IF W_S CH %d E2E HBM RD SIZE = 0x%x\n", i, val);
 
-		val = RREG32(CFG_BASE + mmDMA_IF_W_S_DOWN_CH0_E2E_PCI_WR_SIZE + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_W_S_DOWN_CH0_E2E_PCI_WR_SIZE + block_offset * i);
 		printf("DMA IF W_S CH %d E2E PCI WR SIZE = 0x%x\n", i, val);
 
-		val = RREG32(CFG_BASE + mmDMA_IF_W_S_DOWN_CH0_E2E_PCI_RD_SIZE + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_W_S_DOWN_CH0_E2E_PCI_RD_SIZE + block_offset * i);
 		printf("DMA IF W_S CH %d E2E PCI RD SIZE = 0x%x\n", i, val);
 
-		val = RREG32(CFG_BASE + mmDMA_IF_W_S_DOWN_CH0_E2E_HBM_EN + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_W_S_DOWN_CH0_E2E_HBM_EN + block_offset * i);
 		printf("DMA IF W_S CH %d E2E HBM EN = %d\n", i, val);
 
-		val = RREG32(CFG_BASE + mmDMA_IF_W_S_DOWN_CH0_E2E_PCI_EN + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_W_S_DOWN_CH0_E2E_PCI_EN + block_offset * i);
 		printf("DMA IF W_S CH %d E2E PCI EN = %d\n", i, val);
 	}
 
@@ -454,36 +531,36 @@ VOID test_read_e2e_rl_cfg(void **state)
 			mmDMA_IF_W_N_DOWN_CH0_E2E_HBM_WR_SIZE;
 
 	for (i = 0 ; i < 2; i++) {
-		val = RREG32(CFG_BASE + mmDMA_IF_W_N_DOWN_CH0_E2E_HBM_WR_SIZE + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_W_N_DOWN_CH0_E2E_HBM_WR_SIZE + block_offset * i);
 		printf("DMA IF W_N CH %d E2E HBM WR SIZE = 0x%x\n", i, val);
 
-		val = RREG32(CFG_BASE + mmDMA_IF_W_N_DOWN_CH0_E2E_HBM_RD_SIZE + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_W_N_DOWN_CH0_E2E_HBM_RD_SIZE + block_offset * i);
 		printf("DMA IF W_N CH %d E2E HBM RD SIZE = 0x%x\n", i, val);
 
-		val = RREG32(CFG_BASE + mmDMA_IF_W_N_DOWN_CH0_E2E_PCI_WR_SIZE + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_W_N_DOWN_CH0_E2E_PCI_WR_SIZE + block_offset * i);
 		printf("DMA IF W_N CH %d E2E PCI WR SIZE = 0x%x\n", i, val);
 
-		val = RREG32(CFG_BASE + mmDMA_IF_W_N_DOWN_CH0_E2E_PCI_RD_SIZE + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_W_N_DOWN_CH0_E2E_PCI_RD_SIZE + block_offset * i);
 		printf("DMA IF W_N CH %d E2E PCI RD SIZE = 0x%x\n", i, val);
 
-		val = RREG32(CFG_BASE + mmDMA_IF_W_N_DOWN_CH0_E2E_HBM_EN + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_W_N_DOWN_CH0_E2E_HBM_EN + block_offset * i);
 		printf("DMA IF W_N CH %d E2E HBM EN = %d\n", i, val);
 
-		val = RREG32(CFG_BASE + mmDMA_IF_W_N_DOWN_CH0_E2E_PCI_EN + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_W_N_DOWN_CH0_E2E_PCI_EN + block_offset * i);
 		printf("DMA IF W_N CH %d E2E PCI EN = %d\n", i, val);
 	}
 
 	block_offset = mmNIF_RTR_CTRL_1_SCRAM_SRAM_EN - mmNIF_RTR_CTRL_0_SCRAM_SRAM_EN;
 
 	for (i = 0 ; i < 8; i++) {
-		val = RREG32(CFG_BASE + mmNIF_RTR_CTRL_0_SCRAM_SRAM_EN + block_offset * i);
+		val = READ32(CFG_BASE + mmNIF_RTR_CTRL_0_SCRAM_SRAM_EN + block_offset * i);
 		printf("NIF RTR %d SRAM SCRAMBLER EN = %d\n", i, val);
 	}
 
 	block_offset = mmSIF_RTR_CTRL_1_SCRAM_SRAM_EN - mmSIF_RTR_CTRL_0_SCRAM_SRAM_EN;
 
 	for (i = 0 ; i < 8; i++) {
-		val = RREG32(CFG_BASE + mmSIF_RTR_CTRL_0_SCRAM_SRAM_EN + block_offset * i);
+		val = READ32(CFG_BASE + mmSIF_RTR_CTRL_0_SCRAM_SRAM_EN + block_offset * i);
 		printf("SIF RTR %d SRAM SCRAMBLER EN = %d\n", i, val);
 	}
 
@@ -491,7 +568,7 @@ VOID test_read_e2e_rl_cfg(void **state)
 			mmDMA_IF_E_N_DOWN_CH0_SCRAM_SRAM_EN;
 
 	for (i = 0 ; i < 2; i++) {
-		val = RREG32(CFG_BASE + mmDMA_IF_E_N_DOWN_CH0_E2E_HBM_EN + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_E_N_DOWN_CH0_E2E_HBM_EN + block_offset * i);
 		printf("DMA IF E_N CH %d SRAM SCRAMBLER EN = %d\n", i, val);
 	}
 
@@ -499,7 +576,7 @@ VOID test_read_e2e_rl_cfg(void **state)
 			mmDMA_IF_E_S_DOWN_CH0_SCRAM_SRAM_EN;
 
 	for (i = 0 ; i < 2; i++) {
-		val = RREG32(CFG_BASE + mmDMA_IF_E_S_DOWN_CH0_E2E_HBM_EN + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_E_S_DOWN_CH0_E2E_HBM_EN + block_offset * i);
 		printf("DMA IF E_S CH %d SRAM SCRAMBLER EN = %d\n", i, val);
 	}
 
@@ -507,7 +584,7 @@ VOID test_read_e2e_rl_cfg(void **state)
 			mmDMA_IF_W_S_DOWN_CH0_SCRAM_SRAM_EN;
 
 	for (i = 0 ; i < 2; i++) {
-		val = RREG32(CFG_BASE + mmDMA_IF_W_S_DOWN_CH0_E2E_HBM_EN + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_W_S_DOWN_CH0_E2E_HBM_EN + block_offset * i);
 		printf("DMA IF W_S CH %d SRAM SCRAMBLER EN = %d\n", i, val);
 	}
 
@@ -515,40 +592,40 @@ VOID test_read_e2e_rl_cfg(void **state)
 			mmDMA_IF_W_N_DOWN_CH0_SCRAM_SRAM_EN;
 
 	for (i = 0 ; i < 2; i++) {
-		val = RREG32(CFG_BASE + mmDMA_IF_W_N_DOWN_CH0_E2E_HBM_EN + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_W_N_DOWN_CH0_E2E_HBM_EN + block_offset * i);
 		printf("DMA IF W_N CH %d SRAM SCRAMBLER EN = %d\n", i, val);
 	}
 
-	val = RREG32(CFG_BASE + mmDMA_IF_E_N_DOWN_RSP_MID_WGHT_0);
+	val = READ32(CFG_BASE + mmDMA_IF_E_N_DOWN_RSP_MID_WGHT_0);
 	printf("DMA IF E_N DOWN RSP MID WGHT 0 = 0x%x\n", val);
-	val = RREG32(CFG_BASE + mmDMA_IF_E_N_DOWN_RSP_MID_WGHT_1);
+	val = READ32(CFG_BASE + mmDMA_IF_E_N_DOWN_RSP_MID_WGHT_1);
 	printf("DMA IF E_N DOWN RSP MID WGHT 1 = 0x%x\n", val);
-	val = RREG32(CFG_BASE + mmDMA_IF_E_S_DOWN_RSP_MID_WGHT_0);
+	val = READ32(CFG_BASE + mmDMA_IF_E_S_DOWN_RSP_MID_WGHT_0);
 	printf("DMA IF E_S DOWN RSP MID WGHT 0 = 0x%x\n", val);
-	val = RREG32(CFG_BASE + mmDMA_IF_E_S_DOWN_RSP_MID_WGHT_1);
+	val = READ32(CFG_BASE + mmDMA_IF_E_S_DOWN_RSP_MID_WGHT_1);
 	printf("DMA IF E_S DOWN RSP MID WGHT 1 = 0x%x\n", val);
-	val = RREG32(CFG_BASE + mmDMA_IF_W_S_DOWN_RSP_MID_WGHT_0);
+	val = READ32(CFG_BASE + mmDMA_IF_W_S_DOWN_RSP_MID_WGHT_0);
 	printf("DMA IF W_S DOWN RSP MID WGHT 0 = 0x%x\n", val);
-	val = RREG32(CFG_BASE + mmDMA_IF_W_S_DOWN_RSP_MID_WGHT_1);
+	val = READ32(CFG_BASE + mmDMA_IF_W_S_DOWN_RSP_MID_WGHT_1);
 	printf("DMA IF W_S DOWN RSP MID WGHT 1 = 0x%x\n", val);
-	val = RREG32(CFG_BASE + mmDMA_IF_W_N_DOWN_RSP_MID_WGHT_0);
+	val = READ32(CFG_BASE + mmDMA_IF_W_N_DOWN_RSP_MID_WGHT_0);
 	printf("DMA IF W_N DOWN RSP MID WGHT 0 = 0x%x\n", val);
-	val = RREG32(CFG_BASE + mmDMA_IF_W_N_DOWN_RSP_MID_WGHT_1);
+	val = READ32(CFG_BASE + mmDMA_IF_W_N_DOWN_RSP_MID_WGHT_1);
 	printf("DMA IF W_N DOWN RSP MID WGHT 1 = 0x%x\n", val);
 
 	block_offset = mmDMA_IF_E_N_DOWN_CH1_RL_HBM_EN -
 			mmDMA_IF_E_N_DOWN_CH0_RL_HBM_EN;
 
 	for (i = 0 ; i < 2; i++) {
-		val = RREG32(CFG_BASE + mmDMA_IF_E_N_DOWN_CH0_RL_HBM_EN + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_E_N_DOWN_CH0_RL_HBM_EN + block_offset * i);
 		printf("DMA IF E_N CH %d RL HBM EN = %d\n", i, val);
-		val = RREG32(CFG_BASE + mmDMA_IF_E_N_DOWN_CH0_RL_SRAM_EN + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_E_N_DOWN_CH0_RL_SRAM_EN + block_offset * i);
 		printf("DMA IF E_N CH %d RL SRAM EN = %d\n", i, val);
-		val = RREG32(CFG_BASE + mmDMA_IF_E_N_DOWN_CH0_RL_SRAM_SAT + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_E_N_DOWN_CH0_RL_SRAM_SAT + block_offset * i);
 		printf("DMA IF E_N CH %d RL SRAM SAT = %d\n", i, val);
-		val = RREG32(CFG_BASE + mmDMA_IF_E_N_DOWN_CH0_RL_SRAM_RST + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_E_N_DOWN_CH0_RL_SRAM_RST + block_offset * i);
 		printf("DMA IF E_N CH %d RL SRAM RST = %d\n", i, val);
-		val = RREG32(CFG_BASE + mmDMA_IF_E_N_DOWN_CH0_RL_SRAM_TIMEOUT + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_E_N_DOWN_CH0_RL_SRAM_TIMEOUT + block_offset * i);
 		printf("DMA IF E_N CH %d RL SRAM TIMEOUT = %d\n", i, val);
 	}
 
@@ -556,15 +633,15 @@ VOID test_read_e2e_rl_cfg(void **state)
 			mmDMA_IF_E_S_DOWN_CH0_RL_HBM_EN;
 
 	for (i = 0 ; i < 2; i++) {
-		val = RREG32(CFG_BASE + mmDMA_IF_E_S_DOWN_CH0_RL_HBM_EN + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_E_S_DOWN_CH0_RL_HBM_EN + block_offset * i);
 		printf("DMA IF E_S CH %d RL HBM EN = %d\n", i, val);
-		val = RREG32(CFG_BASE + mmDMA_IF_E_S_DOWN_CH0_RL_SRAM_EN + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_E_S_DOWN_CH0_RL_SRAM_EN + block_offset * i);
 		printf("DMA IF E_S CH %d RL SRAM EN = %d\n", i, val);
-		val = RREG32(CFG_BASE + mmDMA_IF_E_S_DOWN_CH0_RL_SRAM_SAT + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_E_S_DOWN_CH0_RL_SRAM_SAT + block_offset * i);
 		printf("DMA IF E_S CH %d RL SRAM SAT = %d\n", i, val);
-		val = RREG32(CFG_BASE + mmDMA_IF_E_S_DOWN_CH0_RL_SRAM_RST + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_E_S_DOWN_CH0_RL_SRAM_RST + block_offset * i);
 		printf("DMA IF E_S CH %d RL SRAM RST = %d\n", i, val);
-		val = RREG32(CFG_BASE + mmDMA_IF_E_S_DOWN_CH0_RL_SRAM_TIMEOUT + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_E_S_DOWN_CH0_RL_SRAM_TIMEOUT + block_offset * i);
 		printf("DMA IF E_S CH %d RL SRAM TIMEOUT = %d\n", i, val);
 	}
 
@@ -572,15 +649,15 @@ VOID test_read_e2e_rl_cfg(void **state)
 			mmDMA_IF_W_S_DOWN_CH0_RL_HBM_EN;
 
 	for (i = 0 ; i < 2; i++) {
-		val = RREG32(CFG_BASE + mmDMA_IF_W_S_DOWN_CH0_RL_HBM_EN + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_W_S_DOWN_CH0_RL_HBM_EN + block_offset * i);
 		printf("DMA IF W_S CH %d RL HBM EN = %d\n", i, val);
-		val = RREG32(CFG_BASE + mmDMA_IF_W_S_DOWN_CH0_RL_SRAM_EN + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_W_S_DOWN_CH0_RL_SRAM_EN + block_offset * i);
 		printf("DMA IF W_S CH %d RL SRAM EN = %d\n", i, val);
-		val = RREG32(CFG_BASE + mmDMA_IF_W_S_DOWN_CH0_RL_SRAM_SAT + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_W_S_DOWN_CH0_RL_SRAM_SAT + block_offset * i);
 		printf("DMA IF W_S CH %d RL SRAM SAT = %d\n", i, val);
-		val = RREG32(CFG_BASE + mmDMA_IF_W_S_DOWN_CH0_RL_SRAM_RST + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_W_S_DOWN_CH0_RL_SRAM_RST + block_offset * i);
 		printf("DMA IF W_S CH %d RL SRAM RST = %d\n", i, val);
-		val = RREG32(CFG_BASE + mmDMA_IF_W_S_DOWN_CH0_RL_SRAM_TIMEOUT + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_W_S_DOWN_CH0_RL_SRAM_TIMEOUT + block_offset * i);
 		printf("DMA IF W_S CH %d RL SRAM TIMEOUT = %d\n", i, val);
 	}
 
@@ -588,15 +665,15 @@ VOID test_read_e2e_rl_cfg(void **state)
 			mmDMA_IF_W_N_DOWN_CH0_RL_HBM_EN;
 
 	for (i = 0 ; i < 2; i++) {
-		val = RREG32(CFG_BASE + mmDMA_IF_W_N_DOWN_CH0_RL_HBM_EN + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_W_N_DOWN_CH0_RL_HBM_EN + block_offset * i);
 		printf("DMA IF W_N CH %d RL HBM EN = %d\n", i, val);
-		val = RREG32(CFG_BASE + mmDMA_IF_W_N_DOWN_CH0_RL_SRAM_EN + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_W_N_DOWN_CH0_RL_SRAM_EN + block_offset * i);
 		printf("DMA IF W_N CH %d RL SRAM EN = %d\n", i, val);
-		val = RREG32(CFG_BASE + mmDMA_IF_W_N_DOWN_CH0_RL_SRAM_SAT + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_W_N_DOWN_CH0_RL_SRAM_SAT + block_offset * i);
 		printf("DMA IF W_N CH %d RL SRAM SAT = %d\n", i, val);
-		val = RREG32(CFG_BASE + mmDMA_IF_W_N_DOWN_CH0_RL_SRAM_RST + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_W_N_DOWN_CH0_RL_SRAM_RST + block_offset * i);
 		printf("DMA IF W_N CH %d RL SRAM RST = %d\n", i, val);
-		val = RREG32(CFG_BASE + mmDMA_IF_W_N_DOWN_CH0_RL_SRAM_TIMEOUT + block_offset * i);
+		val = READ32(CFG_BASE + mmDMA_IF_W_N_DOWN_CH0_RL_SRAM_TIMEOUT + block_offset * i);
 		printf("DMA IF W_N CH %d RL SRAM TIMEOUT = %d\n", i, val);
 	}
 
@@ -608,8 +685,10 @@ VOID test_read_e2e_rl_cfg(void **state)
 const struct CMUnitTest gaudi_root_debug_tests[] = {
 	cmocka_unit_test(test_hbm_read_interrupts),
 	cmocka_unit_test(test_hbm_read_temperature),
+	cmocka_unit_test(test_print_asic_rev),
 	cmocka_unit_test(test_read_every_4KB_registers_block),
 	cmocka_unit_test(test_read_through_pci),
+	cmocka_unit_test(test_nic_read_interrupts),
 	cmocka_unit_test(test_read_e2e_rl_cfg)
 };
 
@@ -626,15 +705,11 @@ int main(int argc, const char **argv)
 	hltests_parser(argc, argv, usage, HLTEST_DEVICE_MASK_GAUDI_ALL,
 			gaudi_root_debug_tests, num_tests);
 
-	if (access("/sys/kernel/debug", R_OK)) {
-		printf("This executable need to be run with sudo\n");
+	if (!can_open_debugfs(true))
 		return 0;
-	}
 
-	if (!hltests_get_parser_run_disabled_tests()) {
-		printf("This executable need to be run with -d flag\n");
+	if (!hltests_get_parser_run_disabled_tests())
 		return 0;
-	}
 
 	return hltests_run_group_tests("gaudi_root_debug",
 			gaudi_root_debug_tests, num_tests,

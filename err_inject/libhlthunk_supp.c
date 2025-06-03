@@ -55,6 +55,7 @@ struct hlthunk_asic_funcs *hlthunk_get_asic_funcs(int fd)
 	case HLTHUNK_DEVICE_GOYA:
 		return get_asic_funcs_goya();
 	case HLTHUNK_DEVICE_GAUDI:
+	case HLTHUNK_DEVICE_GAUDI_HL2000M:
 		return get_asic_funcs_gaudi();
 	default:
 		return NULL;

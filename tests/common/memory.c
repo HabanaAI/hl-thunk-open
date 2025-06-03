@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #define is_power_of_2(x) (				\
 {							\
@@ -41,6 +42,15 @@ struct hints_addr_cfg {
 	uint32_t blocks_count;
 };
 
+struct mmu_inv_thread_params {
+	pthread_barrier_t *barrier;
+	uint16_t num_of_inv;
+	uint32_t dma_size;
+	uint8_t thread_id;
+	bool is_pmmu;
+	int fd;
+};
+
 /**
  * This test checks that a mapping of more than 4GB is successful. This big size
  * enforces the driver to store it in a u64 variable rather than u32 variable.
@@ -52,37 +62,29 @@ struct hints_addr_cfg {
 VOID test_map_bigger_than_4GB(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	struct hlthunk_hw_ip_info hw_ip;
+	struct hlthunk_hw_ip_info *hw_ip = &tests_state->hw_ip;
 	void *device_addr, *src_ptr, *dst_ptr;
 	uint64_t host_src_addr, host_dst_addr, total_size = (1ull << 30) * 5,
-		dma_size = 1 << 26, offset = 0;
+		dma_size = BIT_ULL(26), offset = 0;
 	uint32_t dma_dir_down, dma_dir_up;
 	int rc, fd = tests_state->fd;
 
 	if (hltests_is_pldm(fd))
 		skip();
 
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
-	if (!hw_ip.dram_enabled) {
+	if (!hw_ip->dram_enabled) {
 		printf("DRAM is disabled so skipping test\n");
 		skip();
 	}
 
-	if (!tests_state->mmu) {
-		printf("MMU is disabled so skipping test\n");
-		skip();
-	}
-
-	if (hltests_is_simulator(fd) && dma_size > hw_ip.dram_size) {
+	if (hltests_is_simulator(fd) && dma_size > hw_ip->dram_size) {
 		printf(
 			"SIM's DRAM (%lu[B]) is smaller than required allocation (%lu[B]) so skipping test\n",
-			hw_ip.dram_size, dma_size);
+			hw_ip->dram_size, dma_size);
 		skip();
 	}
 
-	assert_in_range(dma_size, 1, hw_ip.dram_size);
+	assert_in_range(dma_size, 1, hw_ip->dram_size);
 
 	device_addr = hltests_allocate_device_mem(fd, dma_size, 0, NOT_CONTIGUOUS);
 	assert_non_null(device_addr);
@@ -105,18 +107,20 @@ VOID test_map_bigger_than_4GB(void **state)
 	 */
 	while (offset < total_size) {
 		/* DMA: host->device */
-		hltests_dma_transfer(fd,
+		rc = hltests_dma_transfer(fd,
 				hltests_get_dma_down_qid(fd, STREAM0),
 				EB_FALSE, MB_TRUE, (host_src_addr + offset),
 				(uint64_t) (uintptr_t) device_addr, dma_size,
 				dma_dir_down);
+		assert_int_equal(rc, 0);
 
 		/* DMA: device->host */
-		hltests_dma_transfer(fd,
+		rc = hltests_dma_transfer(fd,
 				hltests_get_dma_up_qid(fd, STREAM0),
 				EB_FALSE, MB_TRUE,
 				(uint64_t) (uintptr_t) device_addr,
 				host_dst_addr, dma_size, dma_dir_up);
+		assert_int_equal(rc, 0);
 
 		/* Compare host memories */
 		rc = hltests_mem_compare(
@@ -139,14 +143,42 @@ VOID test_map_bigger_than_4GB(void **state)
 	END_TEST;
 }
 
+
+VOID test_alloc_device_mem_until_full_common(void **state, enum hltests_contiguous contigouos)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	uint8_t i, page_size_arr_size;
+	int fd = tests_state->fd;
+	uint64_t *page_size_arr;
+
+	CALL_HELPER_FUNC(hltests_build_memalloc_page_size_array(fd, &page_size_arr,
+									&page_size_arr_size));
+
+	if (!page_size_arr) {
+		CALL_HELPER_FUNC(hltests_allocate_device_mem_until_full(state, 0,
+										contigouos, false));
+		EXIT_FROM_TEST;
+	}
+
+	for (i = 0; i < page_size_arr_size; i++) {
+		verbose_printf("page size: %#lx\n", page_size_arr[i]);
+		CALL_HELPER_FUNC(hltests_allocate_device_mem_until_full(state, page_size_arr[i],
+										contigouos, false));
+	}
+
+	hltests_destroy_memalloc_page_size_array(page_size_arr);
+
+	END_TEST;
+}
+
 VOID test_alloc_device_mem_until_full(void **state)
 {
-	END_TEST_FUNC(hltests_allocate_device_mem_until_full(state, 0, NOT_CONTIGUOUS, false));
+	END_TEST_FUNC(test_alloc_device_mem_until_full_common(state, NOT_CONTIGUOUS));
 }
 
 VOID test_alloc_device_mem_until_full_contiguous(void **state)
 {
-	END_TEST_FUNC(hltests_allocate_device_mem_until_full(state, 0, CONTIGUOUS, false));
+	END_TEST_FUNC(test_alloc_device_mem_until_full_common(state, CONTIGUOUS));
 }
 
 VOID test_alloc_device_mem_mixed_until_full(void **state)
@@ -158,26 +190,21 @@ VOID test_alloc_device_mem_mixed_until_full(void **state)
 VOID test_submit_after_unmap(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	struct hlthunk_hw_ip_info hw_ip;
+	struct hlthunk_hw_ip_info *hw_ip = &tests_state->hw_ip;
 	void *device_addr, *src_ptr;
 	uint64_t host_src_addr, size;
 	int rc, fd = tests_state->fd;
 
-	if (!hltests_get_parser_run_disabled_tests()) {
-		printf("This test need to be run with -d flag\n");
+	if (!hltests_get_parser_run_disabled_tests())
 		skip();
-	}
 
 	size = 0x1000;
 
 	/* Sanity and memory allocation */
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
-	if (!hw_ip.sram_size)
+	if (!hw_ip->sram_size)
 		skip();
 
-	device_addr = (void *) (uintptr_t) hw_ip.sram_base_address;
+	device_addr = (void *) (uintptr_t) hw_ip->sram_base_address;
 
 	src_ptr = hltests_allocate_host_mem(fd, size, false);
 	assert_non_null(src_ptr);
@@ -202,26 +229,21 @@ VOID test_submit_and_close(void **state)
 	uint64_t seq, host_src_addr, size, cb_size, device_addr;
 	struct hltests_cs_chunk execute_arr;
 	struct hltests_pkt_info pkt_info;
-	struct hlthunk_hw_ip_info hw_ip;
+	struct hlthunk_hw_ip_info *hw_ip = &tests_state->hw_ip;
 	int i, rc, fd = tests_state->fd;
 	uint32_t cb_offset = 0, dma_qid;
 	void *src_ptr, *cb;
 
-	if (!hltests_get_parser_run_disabled_tests()) {
-		printf("This test need to be run with -d flag\n");
+	if (!hltests_get_parser_run_disabled_tests())
 		skip();
-	}
 
 	size = 0x1000;
 
 	/* Sanity and memory allocation */
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
-	if (!hw_ip.sram_size)
+	if (!hw_ip->sram_size)
 		skip();
 
-	device_addr = hw_ip.sram_base_address;
+	device_addr = hw_ip->sram_base_address;
 
 	src_ptr = hltests_allocate_host_mem(fd, size, false);
 	assert_non_null(src_ptr);
@@ -322,10 +344,8 @@ VOID test_hint_addresses(void **state)
 
 	memset((void *) &cfg, 0, sizeof(struct hints_addr_cfg));
 
-	if (!hltests_get_parser_run_disabled_tests()) {
-		printf("hints memory test need to be run with -d flag\n");
+	if (!hltests_get_parser_run_disabled_tests())
 		skip();
-	}
 
 	if (!config_filename)
 		fail_msg("User didn't supply a configuration file name!\n");
@@ -427,33 +447,26 @@ VOID test_hint_addresses(void **state)
 
 VOID test_dmmu_hint_address(void **state)
 {
-	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct hltests_state *tests_state = *state;
 	uint64_t dram_base_address, dram_page_size;
-	struct hlthunk_hw_ip_info hw_ip;
+	struct hlthunk_hw_ip_info *hw_ip;
 	int rc, fd = tests_state->fd;
 
-	if (!tests_state->mmu) {
-		printf("Test can't run in case MMU is disabled, skipping "
-		       "test\n");
-		skip();
-	}
+	hw_ip = &tests_state->hw_ip;
 
 	if (hltests_is_gaudi(fd)) {
 		printf("Test can't run on Gaudi, skipping test\n");
 		skip();
 	}
 
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
-	if (!hw_ip.dram_enabled) {
+	if (!hw_ip->dram_enabled) {
 		printf("DRAM is disabled, skipping test\n");
 		skip();
 	}
 
 	/* The dram_base_address is used for the hint address */
-	dram_base_address = hw_ip.dram_base_address;
-	dram_page_size = hw_ip.dram_page_size;
+	dram_base_address = hw_ip->dram_base_address;
+	dram_page_size = hw_ip->device_mem_alloc_default_page_size;
 
 	/* Test with a non page aligned hint address */
 	rc = hltests_mmu_hint_address(fd, dram_page_size, dram_base_address,
@@ -474,12 +487,6 @@ VOID test_pmmu_hint_address(void **state, bool is_huge)
 	uint64_t page_size, device_map_addr, buf_size = SZ_16K;
 	int rc, fd = tests_state->fd;
 	void *host_ptr;
-
-	if (!tests_state->mmu) {
-		printf("Test can't run in case MMU is disabled, skipping "
-		       "test\n");
-		skip();
-	}
 
 	page_size = is_huge ? SZ_2M : SZ_4K;
 
@@ -534,7 +541,7 @@ VOID test_pdma_cache_lines_inconsistency(void **state)
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hltests_cs_chunk cs[1];
 	struct hltests_pkt_info pkt_info;
-	struct hlthunk_hw_ip_info hw_ip;
+	struct hlthunk_hw_ip_info *hw_ip = &tests_state->hw_ip;
 	uint64_t host_va, dram_va, p1_va, p2_va, p3_va, seq;
 	uint32_t host_page_size = 0x1000, cb_size, dma_qid,
 		p1_off = 0, p2_off = host_page_size, p3_off = host_page_size * 2;
@@ -546,19 +553,16 @@ VOID test_pdma_cache_lines_inconsistency(void **state)
 		skip();
 	}
 
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
 	/* Prepare device memory */
-	if (hw_ip.dram_enabled) {
+	if (hw_ip->dram_enabled) {
 		dram_ptr = hltests_allocate_device_mem(fd, host_page_size, 0, CONTIGUOUS);
 		assert_non_null(dram_ptr);
 		dram_va = (uint64_t)(uintptr_t)dram_ptr;
 	} else {
-		if (!hw_ip.sram_size)
+		if (!hw_ip->sram_size)
 			skip();
 
-		dram_va = hw_ip.sram_base_address;
+		dram_va = hw_ip->sram_base_address;
 	}
 
 	/* Prepare command buffers, must be first */
@@ -681,7 +685,7 @@ VOID test_pdma_cache_lines_inconsistency(void **state)
 	/* Cleanup */
 	rc = hltests_destroy_cb(fd, cb);
 	assert_int_equal(rc, 0);
-	if (hw_ip.dram_enabled) {
+	if (hw_ip->dram_enabled) {
 		rc = hltests_free_device_mem(fd, dram_ptr);
 		assert_int_equal(rc, 0);
 	}
@@ -694,6 +698,284 @@ VOID test_pdma_cache_lines_inconsistency(void **state)
 	munmap(p1, host_page_size);
 	munmap(p2, host_page_size);
 	munmap(p3, host_page_size);
+
+	END_TEST;
+}
+
+VOID test_set_illegal_device_alloc_page_size(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	uint64_t page_size, page_order_bitmask;
+	int i, rc, fd = tests_state->fd;
+	struct hlthunk_hw_ip_info *hw_ip = &tests_state->hw_ip;
+	void *device_addr;
+
+	if (!hw_ip->dram_enabled) {
+		printf("DRAM is disabled so skipping test\n");
+		skip();
+	}
+
+	rc = hlthunk_get_dev_memalloc_page_orders(fd, &page_order_bitmask);
+	assert_int_equal(rc, 0);
+
+	if (!page_order_bitmask) {
+		printf("ASIC does not support multiple page size, skipping\n");
+		skip();
+	}
+
+	for (i = 0 ; i < sizeof(page_order_bitmask) * CHAR_BIT ; i++) {
+		page_size = BIT_ULL(i);
+
+		/* skip legal page sizes */
+		if (page_size & page_order_bitmask)
+			continue;
+		printf("page_size: %#lx\n", page_size);
+		device_addr = hltests_allocate_device_mem(fd, SZ_1K, page_size, NOT_CONTIGUOUS);
+		assert_null(device_addr);
+	}
+
+	END_TEST;
+}
+
+static void *test_mmu_cache_inv(void *args)
+{
+	struct mmu_inv_thread_params *params = args;
+	void *host_va, *dram_device_va = NULL;
+	struct hlthunk_hw_ip_info hw_ip;
+	int i, rc, fd = params->fd;
+
+	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
+	if (rc)
+		return NULL;
+
+	/*
+	 * PTHREAD_BARRIER_SERIAL_THREAD is returned to one unspecified thread
+	 * and zero is returned to each of the remaining threads.
+	 */
+	rc = pthread_barrier_wait(params->barrier);
+	if (rc && rc != PTHREAD_BARRIER_SERIAL_THREAD)
+		return NULL;
+
+	if (params->is_pmmu) {
+		for (i = 0 ; i < params->num_of_inv ; ++i) {
+			/* Allocate (and map) buffer on host to trigger PMMU cache invalidation */
+			host_va = hltests_allocate_host_mem(fd, params->dma_size, NOT_HUGE_MAP);
+			if (!host_va) {
+				printf("Thread #%u: failed to allocate host mem\n",
+						params->thread_id);
+				return NULL;
+			}
+
+			rc = hltests_free_host_mem(fd, host_va);
+			if (rc) {
+				printf("Thread #%u: failed to free host mem\n",
+						params->thread_id);
+				return NULL;
+			}
+		}
+	} else if (hw_ip.dram_enabled) { /* HMMU test */
+		for (i = 0 ; i < params->num_of_inv ; ++i) {
+			dram_device_va = hltests_allocate_device_mem(fd,
+					params->dma_size, 0, CONTIGUOUS);
+			if (!dram_device_va) {
+				printf("Thread #%u: failed to allocate device DRAM mem\n",
+						params->thread_id);
+				return NULL;
+			}
+
+			rc = hltests_free_device_mem(fd, dram_device_va);
+			if (rc) {
+				printf("Thread #%u: failed to free device DRAM mem\n",
+						params->thread_id);
+				return NULL;
+			}
+		}
+	} else {
+		printf("No device memory is available so skipping HMMU test\n");
+		return args;
+	}
+
+	return args;
+}
+
+VOID test_pmmu_hmmu_concurrent_cache_inv(void **state)
+{
+	uint32_t dma_size = SZ_2K, num_of_threads = 64, num_of_inv = 128;
+	struct mmu_inv_thread_params *thread_params;
+	struct hltests_state *tests_state = *state;
+	int rc, i, fd = tests_state->fd;
+	pthread_barrier_t barrier;
+	pthread_t *thread_id;
+	bool is_pmmu = true;
+	void *retval;
+
+	if (hltests_is_pldm(fd) || hltests_is_simulator(fd)) {
+		num_of_threads = 32;
+		num_of_inv = 32;
+		/* TODO - remove once SW-116555 is resolved */
+		if (hltests_is_simulator(fd) && hltests_is_gaudi2(fd))
+			num_of_threads = 4;
+	}
+
+	thread_params = hlthunk_malloc(num_of_threads * sizeof(*thread_params));
+	assert_non_null(thread_params);
+
+	/* Allocate arrays for threads management */
+	thread_id = hlthunk_malloc(num_of_threads * sizeof(*thread_id));
+	assert_non_null(thread_id);
+
+	rc = pthread_barrier_init(&barrier, NULL, num_of_threads);
+	assert_int_equal(rc, 0);
+
+	/* Create and execute threads */
+	for (i = 0 ; i < num_of_threads ; i++) {
+		thread_params[i].barrier = &barrier;
+		thread_params[i].num_of_inv = num_of_inv;
+		thread_params[i].dma_size = dma_size;
+		thread_params[i].thread_id = i;
+		thread_params[i].is_pmmu = is_pmmu;
+		thread_params[i].fd = fd;
+
+		rc = pthread_create(&thread_id[i], NULL, test_mmu_cache_inv,
+					&thread_params[i]);
+		assert_int_equal(rc, 0);
+		is_pmmu = !is_pmmu;
+	}
+
+	/* Wait for the termination of the threads */
+	for (i = 0 ; i < num_of_threads ; i++) {
+		rc = pthread_join(thread_id[i], &retval);
+		assert_int_equal(rc, 0);
+		assert_non_null(retval);
+	}
+
+	hlthunk_free(thread_params);
+	hlthunk_free(thread_id);
+
+	END_TEST;
+}
+
+VOID test_close_without_unmap_hw_block(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct hlthunk_open_stats_info info;
+	int fdc, fd = tests_state->fd;
+	uint32_t blk_sz;
+	char *blk;
+
+	if (hltests_is_simulator(fd)) {
+		printf("Test is not supported on simulator, skipping.\n");
+		skip();
+	}
+
+	if (!hltests_get_any_mappable_hw_block_base_addr(fd)) {
+		printf("Test is not supported on this asic, skipping.\n");
+		skip();
+	}
+
+	blk = hltests_map_hw_block(fd, hltests_get_any_mappable_hw_block_base_addr(fd), &blk_sz);
+	assert_non_null(blk);
+
+	info.is_compute_ctx_active = 0;
+	assert_int_equal(hlthunk_get_open_stats(fd, &info), 0);
+	assert_true(info.is_compute_ctx_active);
+	assert_true(info.compute_ctx_has_mapped_resources);
+
+	hltests_teardown(state);
+
+	fdc = hlthunk_open_control(0, 0);
+	assert_in_range(fdc, 0, INT_MAX);
+	info.is_compute_ctx_active = 0;
+	assert_int_equal(hlthunk_get_open_stats(fdc, &info), 0);
+	assert_true(info.is_compute_ctx_active);
+	assert_true(info.compute_ctx_has_mapped_resources);
+
+	munmap(blk, blk_sz);
+
+	assert_int_equal(hlthunk_get_open_stats(fdc, &info), 0);
+	assert_false(info.is_compute_ctx_active);
+	assert_false(info.compute_ctx_has_mapped_resources);
+
+	/* Recovery */
+	hltests_setup(state);
+
+	/* Sanity check after the recovery */
+	fd = tests_state->fd;
+	assert_true(hlthunk_is_device_idle(fd));
+
+	END_TEST;
+}
+
+VOID test_close_without_unmap_cb_and_ts(void **state)
+{
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	struct hlthunk_open_stats_info info;
+	int rc, fdc, fd = tests_state->fd;
+	uint64_t ts_handle, cq_device_va;
+	struct hltests_cb *cq_cb;
+	void *cb, *ts_user_ptr;
+
+	if (hltests_is_simulator(fd)) {
+		printf("Test is not supported on simulator, skipping.\n");
+		skip();
+	}
+
+	if (!hltests_is_gaudi2(fd) && !hltests_is_gaudi3(fd)) {
+		printf("Test relevant for Gaudi2 and above, skipping\n");
+		skip();
+	}
+
+	cb = hltests_create_cb(fd, 0x1000, EXTERNAL, 0);
+	assert_non_null(cb);
+
+	cq_cb = hlthunk_malloc(sizeof(struct hltests_cb));
+	assert_non_null(cq_cb);
+
+	cq_cb->cb_size = sizeof(uint64_t);
+
+	rc = hlthunk_request_mapped_command_buffer(fd, cq_cb->cb_size, &cq_cb->cb_handle);
+	assert_int_equal(rc, 0);
+
+	cq_cb->ptr = hltests_mmap(fd, cq_cb->cb_size, cq_cb->cb_handle);
+	assert_ptr_not_equal(cq_cb->ptr, MAP_FAILED);
+
+	rc = hlthunk_get_mapped_cb_device_va_by_handle(fd, cq_cb->cb_handle, &cq_device_va);
+	assert_int_equal(rc, 0);
+
+	rc = hlthunk_allocate_timestamp_elements(fd, 10, &ts_handle);
+	assert_int_equal(rc, 0);
+
+	ts_user_ptr = hltests_mmap(fd, 10 * sizeof(uint64_t), ts_handle);
+	assert_ptr_not_equal(ts_user_ptr, MAP_FAILED);
+
+	info.is_compute_ctx_active = 0;
+	assert_int_equal(hlthunk_get_open_stats(fd, &info), 0);
+	assert_true(info.is_compute_ctx_active);
+	assert_true(info.compute_ctx_has_mapped_resources);
+
+	hltests_teardown(state);
+
+	fdc = hlthunk_open_control(0, 0);
+	assert_in_range(fdc, 0, INT_MAX);
+	info.is_compute_ctx_active = 0;
+	assert_int_equal(hlthunk_get_open_stats(fdc, &info), 0);
+	assert_true(info.is_compute_ctx_active);
+	assert_true(info.compute_ctx_has_mapped_resources);
+
+	munmap(cq_cb->ptr, cq_cb->cb_size);
+	munmap(ts_user_ptr, 10 * sizeof(uint64_t));
+	hlthunk_free(cq_cb);
+
+	assert_int_equal(hlthunk_get_open_stats(fdc, &info), 0);
+	assert_false(info.is_compute_ctx_active);
+	assert_false(info.compute_ctx_has_mapped_resources);
+
+	/* Recovery */
+	hltests_setup(state);
+
+	/* Sanity check after the recovery */
+	fd = tests_state->fd;
+	assert_true(hlthunk_is_device_idle(fd));
 
 	END_TEST;
 }
@@ -723,6 +1005,14 @@ const struct CMUnitTest memory_tests[] = {
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_pdma_cache_lines_inconsistency,
 				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_set_illegal_device_alloc_page_size,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_pmmu_hmmu_concurrent_cache_inv,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_close_without_unmap_hw_block,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_close_without_unmap_cb_and_ts,
+				hltests_ensure_device_operational),
 };
 
 static const char *const usage[] = {
@@ -736,7 +1026,8 @@ int main(int argc, const char **argv)
 
 	hltests_parser(argc, argv, usage, HLTEST_DEVICE_MASK_DONT_CARE,
 			memory_tests, num_tests);
-
+	hltests_set_capabilities_mask(CAP_ARC_FW_LOAD_SCHED_MASK |
+				CAP_ARC_FW_LOAD_PDMA_MASK);
 	return hltests_run_group_tests("memory", memory_tests, num_tests,
 					hltests_setup, hltests_teardown);
 }
