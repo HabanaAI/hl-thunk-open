@@ -1,0 +1,307 @@
+/* SPDX-License-Identifier: MIT
+ *
+ * Copyright 2016-2021 HabanaLabs, Ltd.
+ * All Rights Reserved.
+ *
+ */
+
+/************************************
+ ** This is an auto-generated file **
+ **       DO NOT EDIT BELOW        **
+ ************************************/
+
+#ifndef ASIC_REG_TPC_REGS_H_
+#define ASIC_REG_TPC_REGS_H_
+
+/*
+ *****************************************
+ *   TPC
+ *   (Prototype: TPC)
+ *****************************************
+ */
+
+#define mmTPC_CCL_RANGE_DIS 0xBAC
+
+#define mmTPC_CCL_SCRAM_POLY_MATRIX_0 0xBB0
+
+#define mmTPC_CCL_SCRAM_POLY_MATRIX_1 0xBB4
+
+#define mmTPC_CCL_SCRAM_POLY_MATRIX_2 0xBB8
+
+#define mmTPC_CCL_SCRAM_POLY_MATRIX_3 0xBBC
+
+#define mmTPC_CCL_SCRAM_POLY_MATRIX_4 0xBC0
+
+#define mmTPC_CCL_SCRAM_POLY_MATRIX_5 0xBC4
+
+#define mmTPC_CCL_SCRAM_POLY_MATRIX_6 0xBC8
+
+#define mmTPC_CCL_SCRAM_POLY_MATRIX_7 0xBCC
+
+#define mmTPC_CCL_SCRAM_POLY_MATRIX_8 0xBD0
+
+#define mmTPC_CCL_SCRAM_POLY_MATRIX_9 0xBD4
+
+#define mmTPC_CCL_SCRAM_POLY_MATRIX_10 0xBD8
+
+#define mmTPC_CCL_SCRAM_POLY_MATRIX_11 0xBDC
+
+#define mmTPC_CCL_SCRAM_POLY_MATRIX_12 0xBE0
+
+#define mmTPC_CCL_SCRAM_POLY_MATRIX_13 0xBE4
+
+#define mmTPC_CCL_SCRAM_POLY_MATRIX_14 0xBE8
+
+#define mmTPC_CCL_SCRAM_POLY_MATRIX_15 0xBEC
+
+#define mmTPC_CCL_SCRAM_CFG 0xBF0
+
+#define mmTPC_VPU_ONGOING_KERNEL_ID 0xBF4
+
+#define mmTPC_DCACH_MEM_ERR_KERNEL_ID 0xBF8
+
+#define mmTPC_WQ_MEM_ERR_KERNEL_ID 0xBFC
+
+#define mmTPC_TSB_MEM_ERR_KERNEL_ID 0xC00
+
+#define mmTPC_SPMU_THRD_MSK 0xC04
+
+#define mmTPC_STALL_ON_ERR_MASK_0 0xC08
+
+#define mmTPC_STALL_ON_ERR_MASK_1 0xC0C
+
+#define mmTPC_TPC_INTR_CAUSE_1 0xC10
+
+#define mmTPC_TPC_INTR_MASK_1 0xC14
+
+#define mmTPC_TPC_COUNT 0xC18
+
+#define mmTPC_STALL_ON_ERR 0xC20
+
+#define mmTPC_CLK_EN 0xC24
+
+#define mmTPC_IQ_RL_EN 0xC28
+
+#define mmTPC_IQ_RL_SAT 0xC2C
+
+#define mmTPC_IQ_RL_RST_TOKEN 0xC30
+
+#define mmTPC_IQ_RL_TIMEOUT 0xC34
+
+#define mmTPC_TSB_CFG_MTRR_2_0 0xC38
+
+#define mmTPC_TSB_CFG_MTRR_2_1 0xC3C
+
+#define mmTPC_TSB_CFG_MTRR_2_2 0xC40
+
+#define mmTPC_TSB_CFG_MTRR_2_3 0xC44
+
+#define mmTPC_IQ_LBW_CLK_EN 0xC48
+
+#define mmTPC_TPC_LOCK_VALUE_0 0xC4C
+
+#define mmTPC_TPC_LOCK_VALUE_1 0xC50
+
+#define mmTPC_TPC_LOCK_VALUE_2 0xC54
+
+#define mmTPC_TPC_LOCK_VALUE_3 0xC58
+
+#define mmTPC_TPC_LOCK_0 0xC5C
+
+#define mmTPC_TPC_LOCK_1 0xC60
+
+#define mmTPC_TPC_LOCK_2 0xC64
+
+#define mmTPC_TPC_LOCK_3 0xC68
+
+#define mmTPC_CGU_SB 0xC6C
+
+#define mmTPC_CGU_CNT 0xC70
+
+#define mmTPC_CGU_CPE_0 0xC74
+
+#define mmTPC_CGU_CPE_1 0xC78
+
+#define mmTPC_CGU_CPE_2 0xC7C
+
+#define mmTPC_CGU_CPE_3 0xC80
+
+#define mmTPC_CGU_CPE_4 0xC84
+
+#define mmTPC_CGU_CPE_5 0xC88
+
+#define mmTPC_CGU_CPE_6 0xC8C
+
+#define mmTPC_CGU_CPE_7 0xC90
+
+#define mmTPC_TPC_SB_L0CD 0xC94
+
+#define mmTPC_TSB_OCCUPANCY 0xC98
+
+#define mmTPC_TSB_DATA_OCCUPANCY 0xC9C
+
+#define mmTPC_TSB_MD_OCCUPANCY 0xCA0
+
+#define mmTPC_SMT_CAUSE0_ALL_THRD 0xCA4
+
+#define mmTPC_SMT_CAUSE1_ALL_THRD 0xCA8
+
+#define mmTPC_SQZ_OOB_PROTECTION 0xCAC
+
+#define mmTPC_ARB_QNT_HBW_WEIGHT 0xCB0
+
+#define mmTPC_ARB_QNT_LBW_WEIGHT 0xCB4
+
+#define mmTPC_ARB_CNT_HBW_WEIGHT 0xCB8
+
+#define mmTPC_ARB_CNT_LBW_WEIGHT 0xCBC
+
+#define mmTPC_LUT_FUNC32_BASE2_ADDR_LO 0xCC0
+
+#define mmTPC_LUT_FUNC32_BASE2_ADDR_HI 0xCC4
+
+#define mmTPC_LUT_FUNC64_BASE2_ADDR_LO 0xCC8
+
+#define mmTPC_LUT_FUNC64_BASE2_ADDR_HI 0xCCC
+
+#define mmTPC_LUT_FUNC128_BASE2_ADDR_LO 0xCD0
+
+#define mmTPC_LUT_FUNC128_BASE2_ADDR_HI 0xCD4
+
+#define mmTPC_LUT_FUNC256_BASE2_ADDR_LO 0xCD8
+
+#define mmTPC_LUT_FUNC256_BASE2_ADDR_HI 0xCDC
+
+#define mmTPC_TENSOR_SMT_PRIV 0xCE0
+
+#define mmTPC_TSB_CFG_MTRR_GLBL 0xCE4
+
+#define mmTPC_TSB_CFG_MTRR_0 0xCE8
+
+#define mmTPC_TSB_CFG_MTRR_1 0xCEC
+
+#define mmTPC_TSB_CFG_MTRR_2 0xCF0
+
+#define mmTPC_TSB_CFG_MTRR_3 0xCF4
+
+#define mmTPC_TSB_CFG_MTRR_MASK_LO_0 0xCF8
+
+#define mmTPC_TSB_CFG_MTRR_MASK_LO_1 0xCFC
+
+#define mmTPC_TSB_CFG_MTRR_MASK_LO_2 0xD00
+
+#define mmTPC_TSB_CFG_MTRR_MASK_LO_3 0xD04
+
+#define mmTPC_TSB_CFG_MTRR_MASK_HI_0 0xD08
+
+#define mmTPC_TSB_CFG_MTRR_MASK_HI_1 0xD0C
+
+#define mmTPC_TSB_CFG_MTRR_MASK_HI_2 0xD10
+
+#define mmTPC_TSB_CFG_MTRR_MASK_HI_3 0xD14
+
+#define mmTPC_HBW_AWLEN_MAX 0xD1C
+
+#define mmTPC_TPC_TIES 0xD20
+
+#define mmTPC_CCL_ID_TH 0xD24
+
+#define mmTPC_ALLOCDH_EXC 0xD28
+
+#define mmTPC_ALLOCKDH_L2_PREF 0xD2C
+
+#define mmTPC_CCL_STS 0xD30
+
+#define mmTPC_CCL_FL_STS 0xD34
+
+#define mmTPC_CCL_STL_ADDR_EVEN_LO_STS 0xD38
+
+#define mmTPC_CCL_STL_ADDR_EVEN_HI_STS 0xD3C
+
+#define mmTPC_CCL_STL_ADDR_ODD_LO_STS 0xD40
+
+#define mmTPC_CCL_STL_ADDR_ODD_HI_STS 0xD44
+
+#define mmTPC_CCL_STL_CNT_STS 0xD48
+
+#define mmTPC_HB_PROT_BIT0 0xD5C
+
+#define mmTPC_HB_PROT_BIT1 0xD60
+
+#define mmTPC_HB_PROT_BIT2 0xD64
+
+#define mmTPC_LB_PROT_BIT0 0xD68
+
+#define mmTPC_LB_PROT_BIT1 0xD6C
+
+#define mmTPC_LB_PROT_BIT2 0xD70
+
+#define mmTPC_ICACHE_CFG 0xD74
+
+#define mmTPC_CFG_AXI_128BYTE 0xD78
+
+#define mmTPC_TSB_PAD_VAL_64B_HIGH 0xD7C
+
+#define mmTPC_STATUS 0xD84
+
+#define mmTPC_CFG_BASE_ADDRESS_HIGH 0xD88
+
+#define mmTPC_CFG_SUBTRACT_VALUE 0xD8C
+
+#define mmTPC_SM_BASE_ADDRESS_HIGH 0xD90
+
+#define mmTPC_TPC_CMD 0xD94
+
+#define mmTPC_TPC_EXECUTE 0xD98
+
+#define mmTPC_TPC_STALL 0xD9C
+
+#define mmTPC_ICACHE_BASE_ADDERESS_LOW 0xDA0
+
+#define mmTPC_ICACHE_BASE_ADDERESS_HIGH 0xDA4
+
+#define mmTPC_RD_RATE_LIMIT 0xDA8
+
+#define mmTPC_WR_RATE_LIMIT 0xDAC
+
+#define mmTPC_MSS_CONFIG 0xDB0
+
+#define mmTPC_TPC_INTR_CAUSE_0 0xDB4
+
+#define mmTPC_TPC_INTR_MASK_0 0xDB8
+
+#define mmTPC_WQ_CREDITS 0xDBC
+
+#define mmTPC_OPCODE_EXEC 0xDC0
+
+#define mmTPC_LUT_FUNC32_BASE_ADDR_LO 0xDC4
+
+#define mmTPC_LUT_FUNC32_BASE_ADDR_HI 0xDC8
+
+#define mmTPC_LUT_FUNC64_BASE_ADDR_LO 0xDCC
+
+#define mmTPC_LUT_FUNC64_BASE_ADDR_HI 0xDD0
+
+#define mmTPC_LUT_FUNC128_BASE_ADDR_LO 0xDD4
+
+#define mmTPC_LUT_FUNC128_BASE_ADDR_HI 0xDD8
+
+#define mmTPC_LUT_FUNC256_BASE_ADDR_LO 0xDDC
+
+#define mmTPC_LUT_FUNC256_BASE_ADDR_HI 0xDE0
+
+#define mmTPC_TSB_CFG_MAX_SIZE 0xDE4
+
+#define mmTPC_TSB_CFG 0xDE8
+
+#define mmTPC_TSB_INFLIGHT_CNTR 0xDEC
+
+#define mmTPC_WQ_INFLIGHT_CNTR 0xDF0
+
+#define mmTPC_WQ_LBW_TOTAL_CNTR 0xDF4
+
+#define mmTPC_WQ_HBW_TOTAL_CNTR 0xDF8
+
+#define mmTPC_IRQ_OCCOUPY_CNTR 0xDFC
+
+#endif /* ASIC_REG_TPC_REGS_H_ */

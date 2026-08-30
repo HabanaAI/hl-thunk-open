@@ -1,0 +1,354 @@
+/* SPDX-License-Identifier: MIT
+ *
+ * Copyright 2016-2018 HabanaLabs, Ltd.
+ * All Rights Reserved.
+ *
+ */
+
+/************************************
+ ** This is an auto-generated file **
+ **       DO NOT EDIT BELOW        **
+ ************************************/
+
+#ifndef ASIC_REG_NIC0_RXE0_MASKS_H_
+#define ASIC_REG_NIC0_RXE0_MASKS_H_
+
+/*
+ *****************************************
+ *   NIC0_RXE0 (Prototype: NIC_RXE)
+ *****************************************
+ */
+
+/* NIC0_RXE0_CONTROL */
+#define NIC0_RXE0_CONTROL_SCATTER_BARRIER_SHIFT                      0
+#define NIC0_RXE0_CONTROL_SCATTER_BARRIER_MASK                       0x1
+#define NIC0_RXE0_CONTROL_IGNORE_RNR_NAK_SHIFT                       1
+#define NIC0_RXE0_CONTROL_IGNORE_RNR_NAK_MASK                        0x2
+#define NIC0_RXE0_CONTROL_SPARE0_SHIFT                               2
+#define NIC0_RXE0_CONTROL_SPARE0_MASK                                0xFFFC
+#define NIC0_RXE0_CONTROL_SPARE1_SHIFT                               16
+#define NIC0_RXE0_CONTROL_SPARE1_MASK                                0xFFFF0000
+
+/* NIC0_RXE0_LBW_BASE_LO */
+#define NIC0_RXE0_LBW_BASE_LO_LBW_BASE_ADDR_LO_SHIFT                 0
+#define NIC0_RXE0_LBW_BASE_LO_LBW_BASE_ADDR_LO_MASK                  0xFFFFFFFF
+
+/* NIC0_RXE0_LBW_BASE_HI */
+#define NIC0_RXE0_LBW_BASE_HI_LBW_BASE_ADDR_HI_SHIFT                 0
+#define NIC0_RXE0_LBW_BASE_HI_LBW_BASE_ADDR_HI_MASK                  0x3FFFF
+#define NIC0_RXE0_LBW_BASE_HI_LBW_LOG_SIZE_SHIFT                     24
+#define NIC0_RXE0_LBW_BASE_HI_LBW_LOG_SIZE_MASK                      0x3F000000
+
+/* NIC0_RXE0_PKT_DROP */
+#define NIC0_RXE0_PKT_DROP_ERR_QP_INVALID_SHIFT                      0
+#define NIC0_RXE0_PKT_DROP_ERR_QP_INVALID_MASK                       0x1
+#define NIC0_RXE0_PKT_DROP_ERR_TS_MISMATCH_SHIFT                     1
+#define NIC0_RXE0_PKT_DROP_ERR_TS_MISMATCH_MASK                      0x2
+#define NIC0_RXE0_PKT_DROP_ERR_CS_INVALID_SHIFT                      2
+#define NIC0_RXE0_PKT_DROP_ERR_CS_INVALID_MASK                       0x4
+#define NIC0_RXE0_PKT_DROP_ERR_REQ_PSN_INVALID_SHIFT                 3
+#define NIC0_RXE0_PKT_DROP_ERR_REQ_PSN_INVALID_MASK                  0x8
+#define NIC0_RXE0_PKT_DROP_ERR_RES_RKEY_INVALID_SHIFT                4
+#define NIC0_RXE0_PKT_DROP_ERR_RES_RKEY_INVALID_MASK                 0x10
+#define NIC0_RXE0_PKT_DROP_ERR_RES_RESYNC_INVALID_SHIFT              5
+#define NIC0_RXE0_PKT_DROP_ERR_RES_RESYNC_INVALID_MASK               0x20
+#define NIC0_RXE0_PKT_DROP_ERR_INV_OPCODE_SHIFT                      6
+#define NIC0_RXE0_PKT_DROP_ERR_INV_OPCODE_MASK                       0x40
+#define NIC0_RXE0_PKT_DROP_ERR_INV_SYNDROME_SHIFT                    7
+#define NIC0_RXE0_PKT_DROP_ERR_INV_SYNDROME_MASK                     0x80
+#define NIC0_RXE0_PKT_DROP_ERR_INV_RAW_SIZE_SHIFT                    8
+#define NIC0_RXE0_PKT_DROP_ERR_INV_RAW_SIZE_MASK                     0x100
+
+/* NIC0_RXE0_RAW_QPN_P0 */
+#define NIC0_RXE0_RAW_QPN_P0_RAW_QPN_P0_SHIFT                        0
+#define NIC0_RXE0_RAW_QPN_P0_RAW_QPN_P0_MASK                         0xFFFFFF
+
+/* NIC0_RXE0_RAW_BASE_LO_P0 */
+#define NIC0_RXE0_RAW_BASE_LO_P0_RAW_BASE_ADDR_LO_P0_SHIFT           0
+#define NIC0_RXE0_RAW_BASE_LO_P0_RAW_BASE_ADDR_LO_P0_MASK            0xFFFFFFFF
+
+/* NIC0_RXE0_RAW_BASE_HI_P0 */
+#define NIC0_RXE0_RAW_BASE_HI_P0_RAW_BASE_ADDR_HI_P0_SHIFT           0
+#define NIC0_RXE0_RAW_BASE_HI_P0_RAW_BASE_ADDR_HI_P0_MASK            0x3FFFF
+#define NIC0_RXE0_RAW_BASE_HI_P0_LOG_RAW_ENTRY_SIZE_P0_SHIFT         18
+#define NIC0_RXE0_RAW_BASE_HI_P0_LOG_RAW_ENTRY_SIZE_P0_MASK          0x3C0000
+#define NIC0_RXE0_RAW_BASE_HI_P0_RAW_REDUC_OP_P0_SHIFT               23
+#define NIC0_RXE0_RAW_BASE_HI_P0_RAW_REDUC_OP_P0_MASK                0xFF800000
+
+/* NIC0_RXE0_RAW_QPN_P1 */
+#define NIC0_RXE0_RAW_QPN_P1_RAW_QPN_P1_SHIFT                        0
+#define NIC0_RXE0_RAW_QPN_P1_RAW_QPN_P1_MASK                         0xFFFFFF
+
+/* NIC0_RXE0_RAW_BASE_LO_P1 */
+#define NIC0_RXE0_RAW_BASE_LO_P1_RAW_BASE_ADDR_LO_P1_SHIFT           0
+#define NIC0_RXE0_RAW_BASE_LO_P1_RAW_BASE_ADDR_LO_P1_MASK            0xFFFFFFFF
+
+/* NIC0_RXE0_RAW_BASE_HI_P1 */
+#define NIC0_RXE0_RAW_BASE_HI_P1_RAW_BASE_ADDR_HI_P1_SHIFT           0
+#define NIC0_RXE0_RAW_BASE_HI_P1_RAW_BASE_ADDR_HI_P1_MASK            0x3FFFF
+#define NIC0_RXE0_RAW_BASE_HI_P1_LOG_RAW_ENTRY_SIZE_P1_SHIFT         18
+#define NIC0_RXE0_RAW_BASE_HI_P1_LOG_RAW_ENTRY_SIZE_P1_MASK          0x3C0000
+#define NIC0_RXE0_RAW_BASE_HI_P1_RAW_REDUC_OP_P1_SHIFT               23
+#define NIC0_RXE0_RAW_BASE_HI_P1_RAW_REDUC_OP_P1_MASK                0xFF800000
+
+/* NIC0_RXE0_RAW_QPN_P2 */
+#define NIC0_RXE0_RAW_QPN_P2_RAW_QPN_P2_SHIFT                        0
+#define NIC0_RXE0_RAW_QPN_P2_RAW_QPN_P2_MASK                         0xFFFFFF
+
+/* NIC0_RXE0_RAW_BASE_LO_P2 */
+#define NIC0_RXE0_RAW_BASE_LO_P2_RAW_BASE_ADDR_LO_P2_SHIFT           0
+#define NIC0_RXE0_RAW_BASE_LO_P2_RAW_BASE_ADDR_LO_P2_MASK            0xFFFFFFFF
+
+/* NIC0_RXE0_RAW_BASE_HI_P2 */
+#define NIC0_RXE0_RAW_BASE_HI_P2_RAW_BASE_ADDR_HI_P2_SHIFT           0
+#define NIC0_RXE0_RAW_BASE_HI_P2_RAW_BASE_ADDR_HI_P2_MASK            0x3FFFF
+#define NIC0_RXE0_RAW_BASE_HI_P2_LOG_RAW_ENTRY_SIZE_P2_SHIFT         18
+#define NIC0_RXE0_RAW_BASE_HI_P2_LOG_RAW_ENTRY_SIZE_P2_MASK          0x3C0000
+#define NIC0_RXE0_RAW_BASE_HI_P2_RAW_REDUC_OP_P2_SHIFT               23
+#define NIC0_RXE0_RAW_BASE_HI_P2_RAW_REDUC_OP_P2_MASK                0xFF800000
+
+/* NIC0_RXE0_RAW_QPN_P3 */
+#define NIC0_RXE0_RAW_QPN_P3_RAW_QPN_P3_SHIFT                        0
+#define NIC0_RXE0_RAW_QPN_P3_RAW_QPN_P3_MASK                         0xFFFFFF
+
+/* NIC0_RXE0_RAW_BASE_LO_P3 */
+#define NIC0_RXE0_RAW_BASE_LO_P3_RAW_BASE_ADDR_LO_P3_SHIFT           0
+#define NIC0_RXE0_RAW_BASE_LO_P3_RAW_BASE_ADDR_LO_P3_MASK            0xFFFFFFFF
+
+/* NIC0_RXE0_RAW_BASE_HI_P3 */
+#define NIC0_RXE0_RAW_BASE_HI_P3_RAW_BASE_ADDR_HI_P3_SHIFT           0
+#define NIC0_RXE0_RAW_BASE_HI_P3_RAW_BASE_ADDR_HI_P3_MASK            0x3FFFF
+#define NIC0_RXE0_RAW_BASE_HI_P3_LOG_RAW_ENTRY_SIZE_P3_SHIFT         18
+#define NIC0_RXE0_RAW_BASE_HI_P3_LOG_RAW_ENTRY_SIZE_P3_MASK          0x3C0000
+#define NIC0_RXE0_RAW_BASE_HI_P3_RAW_REDUC_OP_P3_SHIFT               23
+#define NIC0_RXE0_RAW_BASE_HI_P3_RAW_REDUC_OP_P3_MASK                0xFF800000
+
+/* NIC0_RXE0_DBG_INV_OP_0 */
+#define NIC0_RXE0_DBG_INV_OP_0_DBG_INV_OP_PSN_SHIFT                  0
+#define NIC0_RXE0_DBG_INV_OP_0_DBG_INV_OP_PSN_MASK                   0xFFFFFF
+#define NIC0_RXE0_DBG_INV_OP_0_DBG_INV_OP_LATCHED_SHIFT              31
+#define NIC0_RXE0_DBG_INV_OP_0_DBG_INV_OP_LATCHED_MASK               0x80000000
+
+/* NIC0_RXE0_DBG_INV_OP_1 */
+#define NIC0_RXE0_DBG_INV_OP_1_DBG_INV_OP_QPN_SHIFT                  0
+#define NIC0_RXE0_DBG_INV_OP_1_DBG_INV_OP_QPN_MASK                   0xFFFFFF
+#define NIC0_RXE0_DBG_INV_OP_1_DBG_INV_OP_OPCODE_SHIFT               24
+#define NIC0_RXE0_DBG_INV_OP_1_DBG_INV_OP_OPCODE_MASK                0xFF000000
+
+/* NIC0_RXE0_DBG_AXI_ERR */
+#define NIC0_RXE0_DBG_AXI_ERR_DBG_RRESP_ERR_LATCHED_SHIFT            0
+#define NIC0_RXE0_DBG_AXI_ERR_DBG_RRESP_ERR_LATCHED_MASK             0xFFFF
+#define NIC0_RXE0_DBG_AXI_ERR_DBG_BRESP_ERR_LATCHED_SHIFT            16
+#define NIC0_RXE0_DBG_AXI_ERR_DBG_BRESP_ERR_LATCHED_MASK             0xFFFF0000
+
+/* NIC0_RXE0_ARUSER_HBW_10_0 */
+#define NIC0_RXE0_ARUSER_HBW_10_0_ARUSER_HBW_10_0_SHIFT              0
+#define NIC0_RXE0_ARUSER_HBW_10_0_ARUSER_HBW_10_0_MASK               0x7FF
+
+/* NIC0_RXE0_ARUSER_HBW_31_11 */
+#define NIC0_RXE0_ARUSER_HBW_31_11_ARUSER_HBW_31_11_SHIFT            11
+#define NIC0_RXE0_ARUSER_HBW_31_11_ARUSER_HBW_31_11_MASK             0xFFFFF800
+
+/* NIC0_RXE0_AWUSER_LBW_10_0 */
+#define NIC0_RXE0_AWUSER_LBW_10_0_AWUSER_LBW_10_0_SHIFT              0
+#define NIC0_RXE0_AWUSER_LBW_10_0_AWUSER_LBW_10_0_MASK               0x7FF
+
+/* NIC0_RXE0_AWUSER_LBW_31_11 */
+#define NIC0_RXE0_AWUSER_LBW_31_11_AWUSER_LBW_31_11_SHIFT            11
+#define NIC0_RXE0_AWUSER_LBW_31_11_AWUSER_LBW_31_11_MASK             0xFFFFF800
+
+/* NIC0_RXE0_ARPROT_HBW */
+#define NIC0_RXE0_ARPROT_HBW_ARPROT_HBW_UNSECURED_SHIFT              0
+#define NIC0_RXE0_ARPROT_HBW_ARPROT_HBW_UNSECURED_MASK               0x7
+#define NIC0_RXE0_ARPROT_HBW_ARPROT_HBW_SECURED_SHIFT                4
+#define NIC0_RXE0_ARPROT_HBW_ARPROT_HBW_SECURED_MASK                 0x70
+#define NIC0_RXE0_ARPROT_HBW_ARPROT_HBW_PRIVILEGED_SHIFT             8
+#define NIC0_RXE0_ARPROT_HBW_ARPROT_HBW_PRIVILEGED_MASK              0x700
+
+/* NIC0_RXE0_AWPROT_LBW */
+#define NIC0_RXE0_AWPROT_LBW_AWPROT_LBW_UNSECURED_SHIFT              0
+#define NIC0_RXE0_AWPROT_LBW_AWPROT_LBW_UNSECURED_MASK               0x7
+#define NIC0_RXE0_AWPROT_LBW_AWPROT_LBW_SECURED_SHIFT                4
+#define NIC0_RXE0_AWPROT_LBW_AWPROT_LBW_SECURED_MASK                 0x70
+#define NIC0_RXE0_AWPROT_LBW_AWPROT_LBW_PRIVILEGED_SHIFT             8
+#define NIC0_RXE0_AWPROT_LBW_AWPROT_LBW_PRIVILEGED_MASK              0x700
+
+/* NIC0_RXE0_WIN0_WQ_BASE_LO */
+#define NIC0_RXE0_WIN0_WQ_BASE_LO_WQ_BASE_ADDR_LO_SHIFT              0
+#define NIC0_RXE0_WIN0_WQ_BASE_LO_WQ_BASE_ADDR_LO_MASK               0xFFFFFFFF
+
+/* NIC0_RXE0_WIN0_WQ_BASE_HI */
+#define NIC0_RXE0_WIN0_WQ_BASE_HI_WQ_BASE_ADDR_HI_SHIFT              0
+#define NIC0_RXE0_WIN0_WQ_BASE_HI_WQ_BASE_ADDR_HI_MASK               0x3FFFF
+#define NIC0_RXE0_WIN0_WQ_BASE_HI_LOG_MAX_WQ_SIZE_SHIFT              24
+#define NIC0_RXE0_WIN0_WQ_BASE_HI_LOG_MAX_WQ_SIZE_MASK               0x1F000000
+
+/* NIC0_RXE0_WIN1_WQ_BASE_LO */
+#define NIC0_RXE0_WIN1_WQ_BASE_LO_WQ_BASE_ADDR_LO_SHIFT              0
+#define NIC0_RXE0_WIN1_WQ_BASE_LO_WQ_BASE_ADDR_LO_MASK               0xFFFFFFFF
+
+/* NIC0_RXE0_WIN1_WQ_BASE_HI */
+#define NIC0_RXE0_WIN1_WQ_BASE_HI_WQ_BASE_ADDR_HI_SHIFT              0
+#define NIC0_RXE0_WIN1_WQ_BASE_HI_WQ_BASE_ADDR_HI_MASK               0x3FFFF
+#define NIC0_RXE0_WIN1_WQ_BASE_HI_LOG_MAX_WQ_SIZE_SHIFT              24
+#define NIC0_RXE0_WIN1_WQ_BASE_HI_LOG_MAX_WQ_SIZE_MASK               0x1F000000
+
+/* NIC0_RXE0_WIN2_WQ_BASE_LO */
+#define NIC0_RXE0_WIN2_WQ_BASE_LO_WQ_BASE_ADDR_LO_SHIFT              0
+#define NIC0_RXE0_WIN2_WQ_BASE_LO_WQ_BASE_ADDR_LO_MASK               0xFFFFFFFF
+
+/* NIC0_RXE0_WIN2_WQ_BASE_HI */
+#define NIC0_RXE0_WIN2_WQ_BASE_HI_WQ_BASE_ADDR_HI_SHIFT              0
+#define NIC0_RXE0_WIN2_WQ_BASE_HI_WQ_BASE_ADDR_HI_MASK               0x3FFFF
+#define NIC0_RXE0_WIN2_WQ_BASE_HI_LOG_MAX_WQ_SIZE_SHIFT              24
+#define NIC0_RXE0_WIN2_WQ_BASE_HI_LOG_MAX_WQ_SIZE_MASK               0x1F000000
+
+/* NIC0_RXE0_WIN3_WQ_BASE_LO */
+#define NIC0_RXE0_WIN3_WQ_BASE_LO_WQ_BASE_ADDR_LO_SHIFT              0
+#define NIC0_RXE0_WIN3_WQ_BASE_LO_WQ_BASE_ADDR_LO_MASK               0xFFFFFFFF
+
+/* NIC0_RXE0_WIN3_WQ_BASE_HI */
+#define NIC0_RXE0_WIN3_WQ_BASE_HI_WQ_BASE_ADDR_HI_SHIFT              0
+#define NIC0_RXE0_WIN3_WQ_BASE_HI_WQ_BASE_ADDR_HI_MASK               0x3FFFF
+#define NIC0_RXE0_WIN3_WQ_BASE_HI_LOG_MAX_WQ_SIZE_SHIFT              24
+#define NIC0_RXE0_WIN3_WQ_BASE_HI_LOG_MAX_WQ_SIZE_MASK               0x1F000000
+
+/* NIC0_RXE0_WQ_BASE_WINDOW_SEL */
+#define NIC0_RXE0_WQ_BASE_WINDOW_SEL_WQ_BASE_WINDOW_SEL_SHIFT        0
+#define NIC0_RXE0_WQ_BASE_WINDOW_SEL_WQ_BASE_WINDOW_SEL_MASK         0x1F
+
+/* NIC0_RXE0_SEI_CAUSE */
+#define NIC0_RXE0_SEI_CAUSE_STTS_HBW_RRESP_ERR_SHIFT                 0
+#define NIC0_RXE0_SEI_CAUSE_STTS_HBW_RRESP_ERR_MASK                  0x1
+#define NIC0_RXE0_SEI_CAUSE_STTS_LBW_BRESP_ERR_SHIFT                 1
+#define NIC0_RXE0_SEI_CAUSE_STTS_LBW_BRESP_ERR_MASK                  0x2
+#define NIC0_RXE0_SEI_CAUSE_STTS_HBW_BRESP_ERR_SHIFT                 2
+#define NIC0_RXE0_SEI_CAUSE_STTS_HBW_BRESP_ERR_MASK                  0x4
+
+/* NIC0_RXE0_SEI_MASK */
+#define NIC0_RXE0_SEI_MASK_MASK_HBW_RRESP_ERR_SHIFT                  0
+#define NIC0_RXE0_SEI_MASK_MASK_HBW_RRESP_ERR_MASK                   0x1
+#define NIC0_RXE0_SEI_MASK_MASK_LBW_BRESP_ERR_SHIFT                  1
+#define NIC0_RXE0_SEI_MASK_MASK_LBW_BRESP_ERR_MASK                   0x2
+#define NIC0_RXE0_SEI_MASK_MASK_HBW_BRESP_ERR_SHIFT                  2
+#define NIC0_RXE0_SEI_MASK_MASK_HBW_BRESP_ERR_MASK                   0x4
+
+/* NIC0_RXE0_SPI_CAUSE */
+#define NIC0_RXE0_SPI_CAUSE_STTS_INV_RAW_SIZE_SHIFT                  1
+#define NIC0_RXE0_SPI_CAUSE_STTS_INV_RAW_SIZE_MASK                   0x2
+#define NIC0_RXE0_SPI_CAUSE_STTS_INV_OPCODE_SHIFT                    2
+#define NIC0_RXE0_SPI_CAUSE_STTS_INV_OPCODE_MASK                     0x4
+#define NIC0_RXE0_SPI_CAUSE_STTS_INV_SYNDROME_SHIFT                  3
+#define NIC0_RXE0_SPI_CAUSE_STTS_INV_SYNDROME_MASK                   0x8
+#define NIC0_RXE0_SPI_CAUSE_STTS_BAD_FORMAT_SHIFT                    4
+#define NIC0_RXE0_SPI_CAUSE_STTS_BAD_FORMAT_MASK                     0x10
+#define NIC0_RXE0_SPI_CAUSE_STTS_QP_INVALID_SHIFT                    5
+#define NIC0_RXE0_SPI_CAUSE_STTS_QP_INVALID_MASK                     0x20
+#define NIC0_RXE0_SPI_CAUSE_STTS_TS_MISMATCH_SHIFT                   6
+#define NIC0_RXE0_SPI_CAUSE_STTS_TS_MISMATCH_MASK                    0x40
+#define NIC0_RXE0_SPI_CAUSE_STTS_CS_INVALID_SHIFT                    7
+#define NIC0_RXE0_SPI_CAUSE_STTS_CS_INVALID_MASK                     0x80
+#define NIC0_RXE0_SPI_CAUSE_STTS_REQ_PSN_INVALID_SHIFT               8
+#define NIC0_RXE0_SPI_CAUSE_STTS_REQ_PSN_INVALID_MASK                0x100
+#define NIC0_RXE0_SPI_CAUSE_STTS_RES_RKEY_INVALID_SHIFT              9
+#define NIC0_RXE0_SPI_CAUSE_STTS_RES_RKEY_INVALID_MASK               0x200
+#define NIC0_RXE0_SPI_CAUSE_STTS_RES_RESYNC_INVALID_SHIFT            10
+#define NIC0_RXE0_SPI_CAUSE_STTS_RES_RESYNC_INVALID_MASK             0x400
+
+/* NIC0_RXE0_SPI_MASK */
+#define NIC0_RXE0_SPI_MASK_MASK_INV_RAW_SIZE_SHIFT                   1
+#define NIC0_RXE0_SPI_MASK_MASK_INV_RAW_SIZE_MASK                    0x2
+#define NIC0_RXE0_SPI_MASK_MASK_INV_OPCODE_SHIFT                     2
+#define NIC0_RXE0_SPI_MASK_MASK_INV_OPCODE_MASK                      0x4
+#define NIC0_RXE0_SPI_MASK_MASK_INV_SYNDROME_SHIFT                   3
+#define NIC0_RXE0_SPI_MASK_MASK_INV_SYNDROME_MASK                    0x8
+#define NIC0_RXE0_SPI_MASK_MASK_BAD_FORMAT_SHIFT                     4
+#define NIC0_RXE0_SPI_MASK_MASK_BAD_FORMAT_MASK                      0x10
+#define NIC0_RXE0_SPI_MASK_MASK_QP_INVALID_SHIFT                     5
+#define NIC0_RXE0_SPI_MASK_MASK_QP_INVALID_MASK                      0x20
+#define NIC0_RXE0_SPI_MASK_MASK_TS_MISMATCH_SHIFT                    6
+#define NIC0_RXE0_SPI_MASK_MASK_TS_MISMATCH_MASK                     0x40
+#define NIC0_RXE0_SPI_MASK_MASK_CS_INVALID_SHIFT                     7
+#define NIC0_RXE0_SPI_MASK_MASK_CS_INVALID_MASK                      0x80
+#define NIC0_RXE0_SPI_MASK_MASK_REQ_PSN_INVALID_SHIFT                8
+#define NIC0_RXE0_SPI_MASK_MASK_REQ_PSN_INVALID_MASK                 0x100
+#define NIC0_RXE0_SPI_MASK_MASK_RES_RKEY_INVALID_SHIFT               9
+#define NIC0_RXE0_SPI_MASK_MASK_RES_RKEY_INVALID_MASK                0x200
+#define NIC0_RXE0_SPI_MASK_MASK_RES_RESYNC_INVALID_SHIFT             10
+#define NIC0_RXE0_SPI_MASK_MASK_RES_RESYNC_INVALID_MASK              0x400
+
+/* NIC0_RXE0_CQ_CFG0 */
+#define NIC0_RXE0_CQ_CFG0_ENABLE_SHIFT                               0
+#define NIC0_RXE0_CQ_CFG0_ENABLE_MASK                                0x1
+#define NIC0_RXE0_CQ_CFG0_INTERRUPT_MASK_SHIFT                       8
+#define NIC0_RXE0_CQ_CFG0_INTERRUPT_MASK_MASK                        0x100
+#define NIC0_RXE0_CQ_CFG0_CREDIT_SHIFT                               16
+#define NIC0_RXE0_CQ_CFG0_CREDIT_MASK                                0xF0000
+#define NIC0_RXE0_CQ_CFG0_CREDIT_FORCE_FULL_SHIFT                    21
+#define NIC0_RXE0_CQ_CFG0_CREDIT_FORCE_FULL_MASK                     0x200000
+#define NIC0_RXE0_CQ_CFG0_WRAPAROUND_EN_SHIFT                        22
+#define NIC0_RXE0_CQ_CFG0_WRAPAROUND_EN_MASK                         0x400000
+#define NIC0_RXE0_CQ_CFG0_SOB_CQ_MUTEX_SHIFT                         23
+#define NIC0_RXE0_CQ_CFG0_SOB_CQ_MUTEX_MASK                          0x800000
+#define NIC0_RXE0_CQ_CFG0_CQ_SELECT_SHIFT                            24
+#define NIC0_RXE0_CQ_CFG0_CQ_SELECT_MASK                             0x1F000000
+
+/* NIC0_RXE0_CQ_CFG1 */
+#define NIC0_RXE0_CQ_CFG1_INTERRUPT_EACH_UPDATE_SHIFT                0
+#define NIC0_RXE0_CQ_CFG1_INTERRUPT_EACH_UPDATE_MASK                 0x1
+
+/* NIC0_RXE0_CQ_BASE_ADDR_31_7 */
+#define NIC0_RXE0_CQ_BASE_ADDR_31_7_R_SHIFT                          7
+#define NIC0_RXE0_CQ_BASE_ADDR_31_7_R_MASK                           0xFFFFFF80
+
+/* NIC0_RXE0_CA_BASE_ADDR_49_32 */
+#define NIC0_RXE0_CA_BASE_ADDR_49_32_R_SHIFT                         0
+#define NIC0_RXE0_CA_BASE_ADDR_49_32_R_MASK                          0x3FFFF
+
+/* NIC0_RXE0_CQ_WRITE_INDEX */
+#define NIC0_RXE0_CQ_WRITE_INDEX_R_SHIFT                             0
+#define NIC0_RXE0_CQ_WRITE_INDEX_R_MASK                              0xFFFFFFFF
+
+/* NIC0_RXE0_CQ_PRODUCER_INDEX */
+#define NIC0_RXE0_CQ_PRODUCER_INDEX_R_SHIFT                          0
+#define NIC0_RXE0_CQ_PRODUCER_INDEX_R_MASK                           0xFFFFFFFF
+
+/* NIC0_RXE0_CQ_CONSUMER_INDEX */
+#define NIC0_RXE0_CQ_CONSUMER_INDEX_R_SHIFT                          0
+#define NIC0_RXE0_CQ_CONSUMER_INDEX_R_MASK                           0xFFFFFFFF
+
+/* NIC0_RXE0_CQ_MASK */
+#define NIC0_RXE0_CQ_MASK_R_SHIFT                                    0
+#define NIC0_RXE0_CQ_MASK_R_MASK                                     0xFFFFFFFF
+
+/* NIC0_RXE0_CQ_INTER_MODERATION_EN */
+#define NIC0_RXE0_CQ_INTER_MODERATION_EN_R_SHIFT                     0
+#define NIC0_RXE0_CQ_INTER_MODERATION_EN_R_MASK                      0x1
+
+/* NIC0_RXE0_CQ_INTER_MODERATION_CNT */
+#define NIC0_RXE0_CQ_INTER_MODERATION_CNT_R_SHIFT                    0
+#define NIC0_RXE0_CQ_INTER_MODERATION_CNT_R_MASK                     0xFF
+
+/* NIC0_RXE0_CQ_MSI_CAUSE_CLR */
+
+/* NIC0_RXE0_CQ_MSI_ADDR */
+#define NIC0_RXE0_CQ_MSI_ADDR_R_SHIFT                                0
+#define NIC0_RXE0_CQ_MSI_ADDR_R_MASK                                 0x3FFFFFF
+
+/* NIC0_RXE0_CQ_MSI_DATA */
+#define NIC0_RXE0_CQ_MSI_DATA_R_SHIFT                                0
+#define NIC0_RXE0_CQ_MSI_DATA_R_MASK                                 0xFFFFFFFF
+
+/* NIC0_RXE0_CQ_MSI_TRUSTED */
+#define NIC0_RXE0_CQ_MSI_TRUSTED_R_SHIFT                             0
+#define NIC0_RXE0_CQ_MSI_TRUSTED_R_MASK                              0x3
+
+/* NIC0_RXE0_MSI_CAUSE */
+#define NIC0_RXE0_MSI_CAUSE_R_SHIFT                                  0
+#define NIC0_RXE0_MSI_CAUSE_R_MASK                                   0x3
+
+/* NIC0_RXE0_MSI_CASUE_MASK */
+#define NIC0_RXE0_MSI_CASUE_MASK_R_SHIFT                             0
+#define NIC0_RXE0_MSI_CASUE_MASK_R_MASK                              0x3
+
+#endif /* ASIC_REG_NIC0_RXE0_MASKS_H_ */

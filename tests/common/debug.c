@@ -17,32 +17,6 @@
 #include <errno.h>
 #include <unistd.h>
 
-VOID test_tdr_deadlock(void **state)
-{
-	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	struct hltests_pkt_info pkt_info;
-	void *ptr;
-	uint32_t offset = 0;
-	int fd = tests_state->fd;
-
-	ptr = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
-	assert_non_null(ptr);
-	memset(&pkt_info, 0, sizeof(pkt_info));
-	pkt_info.eb = EB_FALSE;
-	pkt_info.mb = MB_FALSE;
-	pkt_info.fence.dec_val = 1;
-	pkt_info.fence.gate_val = 1;
-	pkt_info.fence.fence_id = 0;
-	offset = hltests_add_fence_pkt(fd, ptr, offset, &pkt_info);
-
-	hltests_submit_and_wait_cs(fd, ptr, offset,
-				hltests_get_dma_down_qid(fd, STREAM0),
-				DESTROY_CB_FALSE, HL_WAIT_CS_STATUS_TIMEDOUT);
-
-	/* no need to destroy the CB because the device is in reset */
-	END_TEST;
-}
-
 VOID test_endless_memory_ioctl(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
@@ -95,7 +69,7 @@ static int dma_custom_parsing_handler(void *user, const char *section,
 	} else if (MATCH("dma_custom_test", "size")) {
 		cfg->size = strtoul(value, NULL, 0);
 	} else if (MATCH("dma_custom_test", "chunk_size")) {
-		cfg->chunk_size = strtoul(value, NULL, 0);
+		str_to_u32_safe_ret_on_err(cfg->chunk_size, value, 0, 1);
 	} else if (MATCH("dma_custom_test", "sequential")) {
 		tmp = strdup(value);
 		if (!tmp)
@@ -113,12 +87,12 @@ static int dma_custom_parsing_handler(void *user, const char *section,
 		cfg->stop_on_err = strcmp("true", tmp) ? false : true;
 		free(tmp);
 	} else if (MATCH("dma_custom_test", "value")) {
-		cfg->value = strtoul(value, NULL, 0);
+		str_to_u32_safe_ret_on_err(cfg->value, value, 0, 1);
 		cfg->random = false;
 	} else if (MATCH("dma_custom_test", "read_cnt")) {
-		cfg->read_cnt = strtoul(value, NULL, 0);
+		str_to_u32_safe_ret_on_err(cfg->read_cnt, value, 0, 1);
 	} else if (MATCH("dma_custom_test", "write_cnt")) {
-		cfg->write_cnt = strtoul(value, NULL, 0);
+		str_to_u32_safe_ret_on_err(cfg->write_cnt, value, 0, 1);
 	} else if (MATCH("dma_custom_test", "zero_before_write")) {
 		tmp = strdup(value);
 		if (!tmp)
@@ -127,7 +101,7 @@ static int dma_custom_parsing_handler(void *user, const char *section,
 		cfg->zero_before_write = strcmp("true", tmp) ? false : true;
 		free(tmp);
 	} else if (MATCH("dma_custom_test", "write_to_read_delay_ms")) {
-		cfg->write_to_read_delay_ms = strtoul(value, NULL, 0);
+		str_to_u32_safe_ret_on_err(cfg->write_to_read_delay_ms, value, 0, 1);
 	} else {
 		return 0; /* unknown section/name, error */
 	}
@@ -139,14 +113,14 @@ VOID test_dma_custom(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	const char *config_filename = hltests_get_config_filename();
-	struct hlthunk_hw_ip_info hw_ip;
+	struct hlthunk_hw_ip_info *hw_ip = &tests_state->hw_ip;
 	struct dma_custom_cfg cfg;
 	void *device_ptr = NULL, *src_ptr, *dst_ptr, *zero_ptr = NULL;
 	uint64_t device_addr, host_src_addr, host_dst_addr, host_zero_addr = 0;
-	uint32_t dma_dir_down, dma_dir_up, read_cnt, write_cnt;
+	uint32_t dma_dir_down, dma_dir_up, read_cnt, write_cnt, i;
 	uint64_t offset = 0;
 	bool is_error;
-	int i, rc, fd = tests_state->fd;
+	int rc, fd = tests_state->fd;
 
 	if (!config_filename)
 		fail_msg("User didn't supply a configuration file name!\n");
@@ -165,11 +139,11 @@ VOID test_dma_custom(void **state)
 	printf("dma_dir = %d, dst_addr = 0x%lx, size = %lu, chunk size = %u\n",
 		cfg.dma_dir, cfg.dst_addr, cfg.size, cfg.chunk_size);
 	printf(
-		"read cnt = %d, write cnt = %d, stop on err = %s, zero before write = %s\n",
+		"read cnt = %u, write cnt = %u, stop on err = %s, zero before write = %s\n",
 		cfg.read_cnt, cfg.write_cnt,
 		(cfg.stop_on_err ? "true" : "false"),
 		(cfg.zero_before_write ? "true" : "false"));
-	printf("write_to_read_delay_ms = %d\n", cfg.write_to_read_delay_ms);
+	printf("write_to_read_delay_ms = %u\n", cfg.write_to_read_delay_ms);
 
 	if (cfg.random) {
 		printf("random values\n\n");
@@ -185,21 +159,18 @@ VOID test_dma_custom(void **state)
 				"be divisible by 4\n");
 	}
 
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
 	assert_int_not_equal(cfg.size, 0);
 	assert_in_range(cfg.chunk_size, 1, UINT_MAX);
 
 	dma_dir_down = cfg.dma_dir;
 	switch (cfg.dma_dir) {
 	case DMA_DIR_HOST_TO_DRAM:
-		assert_int_equal(hw_ip.dram_enabled, 1);
+		assert_int_equal(hw_ip->dram_enabled, 1);
 		dma_dir_up = DMA_DIR_DRAM_TO_HOST;
-		device_ptr = hltests_allocate_device_mem(fd, hw_ip.dram_size, 0, CONTIGUOUS);
+		device_ptr = hltests_allocate_device_mem(fd, hw_ip->dram_size, 0, CONTIGUOUS);
 		assert_non_null(device_ptr);
 		device_addr = (uint64_t) (uintptr_t) device_ptr;
-		device_addr += (cfg.dst_addr - hw_ip.dram_base_address);
+		device_addr += (cfg.dst_addr - hw_ip->dram_base_address);
 		break;
 	case DMA_DIR_HOST_TO_SRAM:
 		dma_dir_up = DMA_DIR_SRAM_TO_HOST;
@@ -211,7 +182,7 @@ VOID test_dma_custom(void **state)
 	}
 
 	if (cfg.chunk_size > cfg.size)
-		cfg.chunk_size = cfg.size;
+		cfg.chunk_size = (uint32_t)cfg.size;
 
 	src_ptr = hltests_allocate_host_mem(fd, cfg.chunk_size, NOT_HUGE_MAP);
 	assert_non_null(src_ptr);
@@ -240,21 +211,24 @@ VOID test_dma_custom(void **state)
 	host_dst_addr = hltests_get_device_va_for_host_ptr(fd, dst_ptr);
 
 	do {
-		if (cfg.zero_before_write)
-			hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd,
+		if (cfg.zero_before_write) {
+			rc = hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd,
 					STREAM0), EB_FALSE, MB_TRUE,
 					host_zero_addr, device_addr + offset,
 					cfg.chunk_size, dma_dir_down);
+			assert_int_equal(rc, 0);
+		}
 
 		/* DMA: host->device */
 		for (write_cnt = 0 ; write_cnt < cfg.write_cnt ; write_cnt++) {
 			if (cfg.random)
 				hltests_fill_rand_values(src_ptr,
 							cfg.chunk_size);
-			hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd,
+			rc = hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd,
 					STREAM0), EB_FALSE, MB_TRUE,
 					host_src_addr, device_addr + offset,
 					cfg.chunk_size, dma_dir_down);
+			assert_int_equal(rc, 0);
 		}
 
 		/* DMA: device->host */
@@ -264,15 +238,16 @@ VOID test_dma_custom(void **state)
 			usleep((uint64_t) cfg.write_to_read_delay_ms * 1000);
 
 		for (read_cnt = 0 ; read_cnt < cfg.read_cnt ; read_cnt++) {
-			hltests_dma_transfer(fd,
+			rc = hltests_dma_transfer(fd,
 				hltests_get_dma_up_qid(fd, STREAM0),
 				EB_FALSE, MB_TRUE, device_addr + offset,
 				host_dst_addr, cfg.chunk_size, dma_dir_up);
+			assert_int_equal(rc, 0);
 
 			/* Compare host memories */
 			rc = hltests_mem_compare_with_stop(src_ptr, dst_ptr,
 							cfg.chunk_size,
-							cfg.stop_on_err);
+							cfg.stop_on_err, NULL);
 			if (rc) {
 				printf("Failed comparison, read iteration %d\n",
 					read_cnt);
@@ -292,7 +267,7 @@ VOID test_dma_custom(void **state)
 		cfg.size -= cfg.chunk_size;
 
 		if (cfg.chunk_size > cfg.size)
-			cfg.chunk_size = cfg.size;
+			cfg.chunk_size = (uint32_t)cfg.size;
 
 	} while (cfg.size > 0);
 
@@ -322,8 +297,9 @@ VOID test_transfer_bigger_than_alloc(void **state)
 	uint64_t device_addr, host_src_addr;
 	uint64_t device_alloc_size = 2 * 1024 * 1024; /* 2MB */
 	uint64_t host_alloc_size = 8;
-	uint64_t transfer_size = 5000;
+	uint32_t transfer_size = 5000;
 	int fd = tests_state->fd;
+	int rc;
 
 	device_ptr = hltests_allocate_device_mem(fd, device_alloc_size, 0, CONTIGUOUS);
 	assert_non_null(device_ptr);
@@ -333,9 +309,10 @@ VOID test_transfer_bigger_than_alloc(void **state)
 	assert_non_null(src_ptr);
 	host_src_addr = hltests_get_device_va_for_host_ptr(fd, src_ptr);
 
-	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0), EB_FALSE,
+	rc = hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0), EB_FALSE,
 			MB_FALSE, host_src_addr, device_addr, transfer_size,
 			DMA_DIR_HOST_TO_DRAM);
+	assert_int_equal(rc, 0);
 
 	/* no need to clean up because the device is in reset */
 	END_TEST;
@@ -381,10 +358,10 @@ VOID test_map_custom(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	const char *config_filename = hltests_get_config_filename();
-	struct hlthunk_hw_ip_info hw_ip;
+	struct hlthunk_hw_ip_info *hw_ip = &tests_state->hw_ip;
 	struct map_custom_cfg cfg;
 	void *dram_addr, *host_addr;
-	int i, rc, fd = tests_state->fd;
+	int i, fd = tests_state->fd;
 
 	memset(&cfg, 0, sizeof(struct map_custom_cfg));
 	cfg.dram_num_of_alloc = 1;
@@ -404,11 +381,8 @@ VOID test_map_custom(void **state)
 		cfg.dram_num_of_alloc, cfg.host_num_of_alloc);
 	printf("create tdr = %d\n", cfg.create_tdr);
 
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
 	if (cfg.dram_num_of_alloc)
-		assert_int_equal(hw_ip.dram_enabled, 1);
+		assert_int_equal(hw_ip->dram_enabled, 1);
 
 	for (i = 0 ; i < cfg.dram_num_of_alloc ; i++) {
 		dram_addr = hltests_allocate_device_mem(fd, cfg.dram_size, 0, CONTIGUOUS);
@@ -429,7 +403,7 @@ VOID test_map_custom(void **state)
 
 	printf("Creating TDR...\n");
 
-	test_tdr_deadlock(state);
+	hltests_tdr_deadlock_test(state, false);
 
 	END_TEST;
 }
@@ -437,16 +411,12 @@ VOID test_map_custom(void **state)
 VOID test_loop_map_work_unmap(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	struct hlthunk_hw_ip_info hw_ip;
 	struct hltests_pkt_info pkt_info;
 	void *src_ptr, *dram_ptr;
-	uint64_t host_src_addr, total_size = 100 * SZ_1M;
-	uint32_t cb_size = 0;
+	uint64_t host_src_addr;
+	uint32_t cb_size = 0, total_size = 100 * SZ_1M;
 	void *cb;
 	int i, rc, fd = tests_state->fd;
-
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
 
 	cb = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(cb);
@@ -564,17 +534,14 @@ VOID test_duplicate_file_descriptor(void **state)
 VOID test_page_miss(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	struct hlthunk_hw_ip_info hw_ip;
+	struct hlthunk_hw_ip_info *hw_ip = &tests_state->hw_ip;
 	void *device_addr, *src_ptr, *dst_ptr;
 	uint64_t host_src_addr, host_dst_addr;
 	uint32_t size = 0x100000;
 	int rc, fd = tests_state->fd;
 
 	/* Sanity and memory allocation */
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
-	device_addr = (void *) (uintptr_t) hw_ip.sram_base_address;
+	device_addr = (void *) (uintptr_t) hw_ip->sram_base_address;
 
 	src_ptr = malloc(size);
 	assert_non_null(src_ptr);
@@ -587,15 +554,17 @@ VOID test_page_miss(void **state)
 	host_dst_addr = (uint64_t) (uintptr_t) dst_ptr;
 
 	/* DMA: host->device */
-	hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
+	rc = hltests_dma_transfer(fd, hltests_get_dma_down_qid(fd, STREAM0),
 			EB_FALSE, MB_TRUE, host_src_addr,
 			(uint64_t) (uintptr_t) device_addr,
 			size, DMA_DIR_HOST_TO_SRAM);
+	assert_int_equal(rc, 0);
 
 	/* DMA: device->host */
-	hltests_dma_transfer(fd, hltests_get_dma_up_qid(fd, STREAM0),
+	rc = hltests_dma_transfer(fd, hltests_get_dma_up_qid(fd, STREAM0),
 				0, 1, (uint64_t) (uintptr_t) device_addr,
 				host_dst_addr, size, DMA_DIR_SRAM_TO_HOST);
+	assert_int_equal(rc, 0);
 
 	/* Compare host memories */
 	rc = hltests_mem_compare(src_ptr, dst_ptr, size);
@@ -625,9 +594,9 @@ static int register_security_parsing_handler(void *user, const char *section,
 	if (MATCH("register_security_cfg", "reg_addr")) {
 		cfg->reg_addr = strtoul(value, NULL, 0);
 	} else if (MATCH("register_security_cfg", "value")) {
-		cfg->value = strtoul(value, NULL, 0);
+		str_to_u32_safe_ret_on_err(cfg->value, value, 0, 1);
 	} else if (MATCH("register_security_cfg", "qid")) {
-		cfg->qid = strtoul(value, NULL, 0);
+		str_to_u32_safe_ret_on_err(cfg->qid, value, 0, 1);
 	} else if (MATCH("register_security_cfg", "use_wreg")) {
 		tmp = strdup(value);
 		if (!tmp)
@@ -646,12 +615,11 @@ VOID test_register_security(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	const char *config_filename = hltests_get_config_filename();
-	struct hlthunk_hw_ip_info hw_ip;
 	struct register_security_cfg cfg;
 	struct hltests_pkt_info pkt_info;
 	uint32_t cb_size;
 	void *cb;
-	int rc, fd = tests_state->fd;
+	int fd = tests_state->fd;
 
 	memset(&cfg, 0, sizeof(struct register_security_cfg));
 
@@ -665,11 +633,8 @@ VOID test_register_security(void **state)
 	printf("Configuration loaded from %s:\n", config_filename);
 	printf("register address = 0x%lx, value = 0x%x\n",
 		cfg.reg_addr, cfg.value);
-	printf("use_wreg = %d, qid = %d\n",
+	printf("use_wreg = %d, qid = %u\n",
 		cfg.use_wreg, cfg.qid);
-
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
 
 	cb = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(cb);
@@ -729,7 +694,7 @@ static int scan_with_sm_parsing_handler(void *user, const char *section,
 			cfg->random = false;
 		free(tmp);
 	} else if (MATCH("scan_with_sm", "value")) {
-		cfg->value = strtoul(value, NULL, 0);
+		str_to_u32_safe_ret_on_err(cfg->value, value, 0, 1);
 		cfg->random = false;
 	} else {
 		return 0; /* unknown section/name, error */
@@ -744,12 +709,11 @@ VOID test_scan_with_sm(void **state)
 	const char *config_filename = hltests_get_config_filename();
 	struct hltests_monitor mon_info;
 	struct hltests_pkt_info write_to_sob, clear_sob;
-	struct hlthunk_hw_ip_info hw_ip;
 	uint16_t sob_id, mon_per_dcore;
-	int rc, fd = tests_state->fd;
+	int fd = tests_state->fd;
 	struct scan_with_sm_cfg cfg;
-	uint32_t cb_size, seq_val;
-	uint64_t cur_addr, qid;
+	uint32_t cb_size, seq_val, qid;
+	uint64_t cur_addr;
 	void *cb;
 
 	if (!config_filename)
@@ -772,9 +736,6 @@ VOID test_scan_with_sm(void **state)
 		printf("fixed fill value = 0x%x\n\n", cfg.value);
 
 	assert_in_range(cfg.start_addr, 0, cfg.end_addr - 4);
-
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
 
 	cb = hltests_create_cb(fd, HL_MAX_CB_SIZE, EXTERNAL, 0);
 	assert_non_null(cb);
@@ -817,7 +778,7 @@ VOID test_scan_with_sm(void **state)
 		else
 			mon_info.mon_payload = cfg.value;
 
-
+		mon_info.mon_mode = SOB_EQUAL;
 		cb_size = hltests_add_monitor(fd, cb, cb_size, &mon_info);
 
 		mon_info.mon_id++;
@@ -840,11 +801,78 @@ VOID test_scan_with_sm(void **state)
 	END_TEST;
 }
 
+VOID test_page_fault_and_recovery(void **state)
+{
+	uint64_t dram_addr, bad_dram_addr, host_device_va, bad_host_device_va, seq, expected_events;
+	struct hltests_state *tests_state = (struct hltests_state *) *state;
+	uint32_t dma_size = SZ_4K, queue_index, cb_size;
+	struct hltests_cs_chunk execute_arr;
+	void *host_ptr, *dram_ptr, *cb_ptr;
+	struct hltests_pkt_info pkt_info;
+	int rc, fd = tests_state->fd;
+
+	dram_ptr = hltests_allocate_device_mem(fd, dma_size, 0, CONTIGUOUS);
+	assert_non_null(dram_ptr);
+	dram_addr = (uint64_t) (uintptr_t) dram_ptr;
+
+	host_ptr = hltests_allocate_host_mem(fd, dma_size, NOT_HUGE_MAP);
+	assert_non_null(host_ptr);
+	host_device_va = hltests_get_device_va_for_host_ptr(fd, host_ptr);
+
+	/* Generate a page fault */
+	bad_dram_addr = dram_addr + SZ_1G;
+	bad_host_device_va = host_device_va + SZ_1G;
+
+	cb_ptr = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
+	assert_non_null(cb_ptr);
+	cb_size = 0;
+
+	queue_index = hltests_get_dma_down_qid(fd, STREAM0);
+
+	memset(&pkt_info, 0, sizeof(pkt_info));
+	pkt_info.qid = queue_index;
+	pkt_info.eb = EB_FALSE;
+	pkt_info.mb = MB_FALSE;
+	pkt_info.dma.src_addr = bad_host_device_va;
+	pkt_info.dma.dst_addr = bad_dram_addr;
+	pkt_info.dma.size = dma_size;
+	pkt_info.dma.dma_dir = DMA_DIR_HOST_TO_DRAM;
+	cb_size = hltests_add_dma_pkt(fd, cb_ptr, cb_size, &pkt_info);
+
+	execute_arr.cb_ptr = cb_ptr;
+	execute_arr.cb_size = cb_size;
+	execute_arr.queue_index = queue_index;
+
+	rc = hltests_submit_cs(fd, NULL, 0, &execute_arr, 1, 0, &seq);
+	assert_int_equal(rc, 0);
+
+	/* Verify that the expected events are received */
+	expected_events = HL_NOTIFIER_EVENT_PAGE_FAULT | HL_NOTIFIER_EVENT_DEVICE_RESET;
+	rc = hltests_wait_for_events(tests_state, 0, expected_events, NULL);
+	assert_int_equal(rc, 0);
+
+	/* Cleanup */
+	rc = hltests_destroy_cb(fd, cb_ptr);
+	assert_int_equal(rc, 0);
+	rc = hltests_free_host_mem(fd, host_ptr);
+	assert_int_equal(rc, 0);
+	rc = hltests_free_device_mem(fd, dram_ptr);
+	assert_int_equal(rc, 0);
+
+	/* Recovery */
+	rc = hltests_teardown_and_setup(tests_state);
+	assert_int_equal(rc, 0);
+
+	/* Sanity check after the recovery */
+	fd = tests_state->fd;
+	assert_true(hlthunk_is_device_idle(fd));
+
+	END_TEST;
+}
+
 #ifndef HLTESTS_LIB_MODE
 
 const struct CMUnitTest debug_tests[] = {
-	cmocka_unit_test_setup(test_tdr_deadlock,
-				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_endless_memory_ioctl,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_dma_custom,
@@ -862,6 +890,8 @@ const struct CMUnitTest debug_tests[] = {
 	cmocka_unit_test_setup(test_register_security,
 				hltests_ensure_device_operational),
 	cmocka_unit_test_setup(test_scan_with_sm,
+				hltests_ensure_device_operational),
+	cmocka_unit_test_setup(test_page_fault_and_recovery,
 				hltests_ensure_device_operational)
 };
 
@@ -872,16 +902,18 @@ static const char *const usage[] = {
 
 int main(int argc, const char **argv)
 {
-	int num_tests = sizeof(debug_tests) / sizeof((debug_tests)[0]);
+	size_t num_tests = sizeof(debug_tests) / sizeof((debug_tests)[0]);
 
 	hltests_parser(argc, argv, usage, HLTEST_DEVICE_MASK_DONT_CARE, debug_tests,
-			num_tests);
+			(int)num_tests);
 
 	if (!hltests_get_parser_run_disabled_tests()) {
-		printf("This executable need to be run with -d flag\n");
+		printf("debug tests should run with --disabled option\n");
 		return 0;
 	}
 
+	hltests_set_capabilities_mask(CAP_ARC_FW_LOAD_SCHED_MASK |
+				CAP_ARC_FW_LOAD_PDMA_MASK);
 	return hltests_run_group_tests("debug", debug_tests, num_tests,
 					hltests_setup, hltests_teardown);
 }

@@ -3,7 +3,7 @@
 project(gaudi2tests C)
 
 set(GAUDI2_UNIT_TESTS
-    gaudi2_dma
+    gaudi2_root
 )
 
 foreach(_UNIT_TEST ${GAUDI2_UNIT_TESTS})

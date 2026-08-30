@@ -1,0 +1,1207 @@
+/* SPDX-License-Identifier: MIT
+ *
+ * Copyright 2016-2021 HabanaLabs, Ltd.
+ * All Rights Reserved.
+ *
+ */
+
+/************************************
+ ** This is an auto-generated file **
+ **       DO NOT EDIT BELOW        **
+ ************************************/
+
+#ifndef ASIC_REG_SOB_GLBL_REGS_H_
+#define ASIC_REG_SOB_GLBL_REGS_H_
+
+/*
+ *****************************************
+ *   SOB_GLBL
+ *   (Prototype: SOB_GLBL)
+ *****************************************
+ */
+
+#define mmSOB_GLBL_SM_SEI_MASK 0x0
+
+#define mmSOB_GLBL_SM_SEI_CAUSE 0x4
+
+#define mmSOB_GLBL_L2H_CPMR_L 0x8
+
+#define mmSOB_GLBL_L2H_CPMR_H 0xC
+
+#define mmSOB_GLBL_L2H_MASK_L 0x10
+
+#define mmSOB_GLBL_L2H_MASK_H 0x14
+
+#define mmSOB_GLBL_LBW_DELAY 0x24
+
+#define mmSOB_GLBL_PI_SIZE 0x28
+
+#define mmSOB_GLBL_CQ_INTR 0x2C
+
+#define mmSOB_GLBL_PI_INC_MODE_SIZE 0x30
+
+#define mmSOB_GLBL_CQ_SEC_PROT_0 0x34
+
+#define mmSOB_GLBL_CQ_SEC_PROT_1 0x38
+
+#define mmSOB_GLBL_CQ_SEC_OVRD_0 0x3C
+
+#define mmSOB_GLBL_CQ_SEC_OVRD_1 0x40
+
+#define mmSOB_GLBL_CQ_SEC_PRV_0 0x44
+
+#define mmSOB_GLBL_CQ_SEC_PRV_1 0x48
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_0 0x50
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_1 0x54
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_2 0x58
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_3 0x5C
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_4 0x60
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_5 0x64
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_6 0x68
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_7 0x6C
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_8 0x70
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_9 0x74
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_10 0x78
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_11 0x7C
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_12 0x80
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_13 0x84
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_14 0x88
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_15 0x8C
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_16 0x90
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_17 0x94
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_18 0x98
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_19 0x9C
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_20 0xA0
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_21 0xA4
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_22 0xA8
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_23 0xAC
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_24 0xB0
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_25 0xB4
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_26 0xB8
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_27 0xBC
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_28 0xC0
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_29 0xC4
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_30 0xC8
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_31 0xCC
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_32 0xD0
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_33 0xD4
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_34 0xD8
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_35 0xDC
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_36 0xE0
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_37 0xE4
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_38 0xE8
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_39 0xEC
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_40 0xF0
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_41 0xF4
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_42 0xF8
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_43 0xFC
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_44 0x100
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_45 0x104
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_46 0x108
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_47 0x10C
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_48 0x110
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_49 0x114
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_50 0x118
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_51 0x11C
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_52 0x120
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_53 0x124
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_54 0x128
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_55 0x12C
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_56 0x130
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_57 0x134
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_58 0x138
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_59 0x13C
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_60 0x140
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_61 0x144
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_62 0x148
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_L_63 0x14C
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_0 0x150
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_1 0x154
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_2 0x158
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_3 0x15C
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_4 0x160
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_5 0x164
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_6 0x168
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_7 0x16C
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_8 0x170
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_9 0x174
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_10 0x178
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_11 0x17C
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_12 0x180
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_13 0x184
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_14 0x188
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_15 0x18C
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_16 0x190
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_17 0x194
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_18 0x198
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_19 0x19C
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_20 0x1A0
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_21 0x1A4
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_22 0x1A8
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_23 0x1AC
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_24 0x1B0
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_25 0x1B4
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_26 0x1B8
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_27 0x1BC
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_28 0x1C0
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_29 0x1C4
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_30 0x1C8
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_31 0x1CC
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_32 0x1D0
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_33 0x1D4
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_34 0x1D8
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_35 0x1DC
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_36 0x1E0
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_37 0x1E4
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_38 0x1E8
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_39 0x1EC
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_40 0x1F0
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_41 0x1F4
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_42 0x1F8
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_43 0x1FC
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_44 0x200
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_45 0x204
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_46 0x208
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_47 0x20C
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_48 0x210
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_49 0x214
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_50 0x218
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_51 0x21C
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_52 0x220
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_53 0x224
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_54 0x228
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_55 0x22C
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_56 0x230
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_57 0x234
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_58 0x238
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_59 0x23C
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_60 0x240
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_61 0x244
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_62 0x248
+
+#define mmSOB_GLBL_CQ_BASE_ADDR_H_63 0x24C
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_0 0x250
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_1 0x254
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_2 0x258
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_3 0x25C
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_4 0x260
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_5 0x264
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_6 0x268
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_7 0x26C
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_8 0x270
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_9 0x274
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_10 0x278
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_11 0x27C
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_12 0x280
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_13 0x284
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_14 0x288
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_15 0x28C
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_16 0x290
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_17 0x294
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_18 0x298
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_19 0x29C
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_20 0x2A0
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_21 0x2A4
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_22 0x2A8
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_23 0x2AC
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_24 0x2B0
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_25 0x2B4
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_26 0x2B8
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_27 0x2BC
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_28 0x2C0
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_29 0x2C4
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_30 0x2C8
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_31 0x2CC
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_32 0x2D0
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_33 0x2D4
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_34 0x2D8
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_35 0x2DC
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_36 0x2E0
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_37 0x2E4
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_38 0x2E8
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_39 0x2EC
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_40 0x2F0
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_41 0x2F4
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_42 0x2F8
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_43 0x2FC
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_44 0x300
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_45 0x304
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_46 0x308
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_47 0x30C
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_48 0x310
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_49 0x314
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_50 0x318
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_51 0x31C
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_52 0x320
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_53 0x324
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_54 0x328
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_55 0x32C
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_56 0x330
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_57 0x334
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_58 0x338
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_59 0x33C
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_60 0x340
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_61 0x344
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_62 0x348
+
+#define mmSOB_GLBL_CQ_SIZE_LOG2_63 0x34C
+
+#define mmSOB_GLBL_CQ_PI_0 0x350
+
+#define mmSOB_GLBL_CQ_PI_1 0x354
+
+#define mmSOB_GLBL_CQ_PI_2 0x358
+
+#define mmSOB_GLBL_CQ_PI_3 0x35C
+
+#define mmSOB_GLBL_CQ_PI_4 0x360
+
+#define mmSOB_GLBL_CQ_PI_5 0x364
+
+#define mmSOB_GLBL_CQ_PI_6 0x368
+
+#define mmSOB_GLBL_CQ_PI_7 0x36C
+
+#define mmSOB_GLBL_CQ_PI_8 0x370
+
+#define mmSOB_GLBL_CQ_PI_9 0x374
+
+#define mmSOB_GLBL_CQ_PI_10 0x378
+
+#define mmSOB_GLBL_CQ_PI_11 0x37C
+
+#define mmSOB_GLBL_CQ_PI_12 0x380
+
+#define mmSOB_GLBL_CQ_PI_13 0x384
+
+#define mmSOB_GLBL_CQ_PI_14 0x388
+
+#define mmSOB_GLBL_CQ_PI_15 0x38C
+
+#define mmSOB_GLBL_CQ_PI_16 0x390
+
+#define mmSOB_GLBL_CQ_PI_17 0x394
+
+#define mmSOB_GLBL_CQ_PI_18 0x398
+
+#define mmSOB_GLBL_CQ_PI_19 0x39C
+
+#define mmSOB_GLBL_CQ_PI_20 0x3A0
+
+#define mmSOB_GLBL_CQ_PI_21 0x3A4
+
+#define mmSOB_GLBL_CQ_PI_22 0x3A8
+
+#define mmSOB_GLBL_CQ_PI_23 0x3AC
+
+#define mmSOB_GLBL_CQ_PI_24 0x3B0
+
+#define mmSOB_GLBL_CQ_PI_25 0x3B4
+
+#define mmSOB_GLBL_CQ_PI_26 0x3B8
+
+#define mmSOB_GLBL_CQ_PI_27 0x3BC
+
+#define mmSOB_GLBL_CQ_PI_28 0x3C0
+
+#define mmSOB_GLBL_CQ_PI_29 0x3C4
+
+#define mmSOB_GLBL_CQ_PI_30 0x3C8
+
+#define mmSOB_GLBL_CQ_PI_31 0x3CC
+
+#define mmSOB_GLBL_CQ_PI_32 0x3D0
+
+#define mmSOB_GLBL_CQ_PI_33 0x3D4
+
+#define mmSOB_GLBL_CQ_PI_34 0x3D8
+
+#define mmSOB_GLBL_CQ_PI_35 0x3DC
+
+#define mmSOB_GLBL_CQ_PI_36 0x3E0
+
+#define mmSOB_GLBL_CQ_PI_37 0x3E4
+
+#define mmSOB_GLBL_CQ_PI_38 0x3E8
+
+#define mmSOB_GLBL_CQ_PI_39 0x3EC
+
+#define mmSOB_GLBL_CQ_PI_40 0x3F0
+
+#define mmSOB_GLBL_CQ_PI_41 0x3F4
+
+#define mmSOB_GLBL_CQ_PI_42 0x3F8
+
+#define mmSOB_GLBL_CQ_PI_43 0x3FC
+
+#define mmSOB_GLBL_CQ_PI_44 0x400
+
+#define mmSOB_GLBL_CQ_PI_45 0x404
+
+#define mmSOB_GLBL_CQ_PI_46 0x408
+
+#define mmSOB_GLBL_CQ_PI_47 0x40C
+
+#define mmSOB_GLBL_CQ_PI_48 0x410
+
+#define mmSOB_GLBL_CQ_PI_49 0x414
+
+#define mmSOB_GLBL_CQ_PI_50 0x418
+
+#define mmSOB_GLBL_CQ_PI_51 0x41C
+
+#define mmSOB_GLBL_CQ_PI_52 0x420
+
+#define mmSOB_GLBL_CQ_PI_53 0x424
+
+#define mmSOB_GLBL_CQ_PI_54 0x428
+
+#define mmSOB_GLBL_CQ_PI_55 0x42C
+
+#define mmSOB_GLBL_CQ_PI_56 0x430
+
+#define mmSOB_GLBL_CQ_PI_57 0x434
+
+#define mmSOB_GLBL_CQ_PI_58 0x438
+
+#define mmSOB_GLBL_CQ_PI_59 0x43C
+
+#define mmSOB_GLBL_CQ_PI_60 0x440
+
+#define mmSOB_GLBL_CQ_PI_61 0x444
+
+#define mmSOB_GLBL_CQ_PI_62 0x448
+
+#define mmSOB_GLBL_CQ_PI_63 0x44C
+
+#define mmSOB_GLBL_LBW_ADDR_L_0 0x450
+
+#define mmSOB_GLBL_LBW_ADDR_L_1 0x454
+
+#define mmSOB_GLBL_LBW_ADDR_L_2 0x458
+
+#define mmSOB_GLBL_LBW_ADDR_L_3 0x45C
+
+#define mmSOB_GLBL_LBW_ADDR_L_4 0x460
+
+#define mmSOB_GLBL_LBW_ADDR_L_5 0x464
+
+#define mmSOB_GLBL_LBW_ADDR_L_6 0x468
+
+#define mmSOB_GLBL_LBW_ADDR_L_7 0x46C
+
+#define mmSOB_GLBL_LBW_ADDR_L_8 0x470
+
+#define mmSOB_GLBL_LBW_ADDR_L_9 0x474
+
+#define mmSOB_GLBL_LBW_ADDR_L_10 0x478
+
+#define mmSOB_GLBL_LBW_ADDR_L_11 0x47C
+
+#define mmSOB_GLBL_LBW_ADDR_L_12 0x480
+
+#define mmSOB_GLBL_LBW_ADDR_L_13 0x484
+
+#define mmSOB_GLBL_LBW_ADDR_L_14 0x488
+
+#define mmSOB_GLBL_LBW_ADDR_L_15 0x48C
+
+#define mmSOB_GLBL_LBW_ADDR_L_16 0x490
+
+#define mmSOB_GLBL_LBW_ADDR_L_17 0x494
+
+#define mmSOB_GLBL_LBW_ADDR_L_18 0x498
+
+#define mmSOB_GLBL_LBW_ADDR_L_19 0x49C
+
+#define mmSOB_GLBL_LBW_ADDR_L_20 0x4A0
+
+#define mmSOB_GLBL_LBW_ADDR_L_21 0x4A4
+
+#define mmSOB_GLBL_LBW_ADDR_L_22 0x4A8
+
+#define mmSOB_GLBL_LBW_ADDR_L_23 0x4AC
+
+#define mmSOB_GLBL_LBW_ADDR_L_24 0x4B0
+
+#define mmSOB_GLBL_LBW_ADDR_L_25 0x4B4
+
+#define mmSOB_GLBL_LBW_ADDR_L_26 0x4B8
+
+#define mmSOB_GLBL_LBW_ADDR_L_27 0x4BC
+
+#define mmSOB_GLBL_LBW_ADDR_L_28 0x4C0
+
+#define mmSOB_GLBL_LBW_ADDR_L_29 0x4C4
+
+#define mmSOB_GLBL_LBW_ADDR_L_30 0x4C8
+
+#define mmSOB_GLBL_LBW_ADDR_L_31 0x4CC
+
+#define mmSOB_GLBL_LBW_ADDR_L_32 0x4D0
+
+#define mmSOB_GLBL_LBW_ADDR_L_33 0x4D4
+
+#define mmSOB_GLBL_LBW_ADDR_L_34 0x4D8
+
+#define mmSOB_GLBL_LBW_ADDR_L_35 0x4DC
+
+#define mmSOB_GLBL_LBW_ADDR_L_36 0x4E0
+
+#define mmSOB_GLBL_LBW_ADDR_L_37 0x4E4
+
+#define mmSOB_GLBL_LBW_ADDR_L_38 0x4E8
+
+#define mmSOB_GLBL_LBW_ADDR_L_39 0x4EC
+
+#define mmSOB_GLBL_LBW_ADDR_L_40 0x4F0
+
+#define mmSOB_GLBL_LBW_ADDR_L_41 0x4F4
+
+#define mmSOB_GLBL_LBW_ADDR_L_42 0x4F8
+
+#define mmSOB_GLBL_LBW_ADDR_L_43 0x4FC
+
+#define mmSOB_GLBL_LBW_ADDR_L_44 0x500
+
+#define mmSOB_GLBL_LBW_ADDR_L_45 0x504
+
+#define mmSOB_GLBL_LBW_ADDR_L_46 0x508
+
+#define mmSOB_GLBL_LBW_ADDR_L_47 0x50C
+
+#define mmSOB_GLBL_LBW_ADDR_L_48 0x510
+
+#define mmSOB_GLBL_LBW_ADDR_L_49 0x514
+
+#define mmSOB_GLBL_LBW_ADDR_L_50 0x518
+
+#define mmSOB_GLBL_LBW_ADDR_L_51 0x51C
+
+#define mmSOB_GLBL_LBW_ADDR_L_52 0x520
+
+#define mmSOB_GLBL_LBW_ADDR_L_53 0x524
+
+#define mmSOB_GLBL_LBW_ADDR_L_54 0x528
+
+#define mmSOB_GLBL_LBW_ADDR_L_55 0x52C
+
+#define mmSOB_GLBL_LBW_ADDR_L_56 0x530
+
+#define mmSOB_GLBL_LBW_ADDR_L_57 0x534
+
+#define mmSOB_GLBL_LBW_ADDR_L_58 0x538
+
+#define mmSOB_GLBL_LBW_ADDR_L_59 0x53C
+
+#define mmSOB_GLBL_LBW_ADDR_L_60 0x540
+
+#define mmSOB_GLBL_LBW_ADDR_L_61 0x544
+
+#define mmSOB_GLBL_LBW_ADDR_L_62 0x548
+
+#define mmSOB_GLBL_LBW_ADDR_L_63 0x54C
+
+#define mmSOB_GLBL_LBW_ADDR_H_0 0x550
+
+#define mmSOB_GLBL_LBW_ADDR_H_1 0x554
+
+#define mmSOB_GLBL_LBW_ADDR_H_2 0x558
+
+#define mmSOB_GLBL_LBW_ADDR_H_3 0x55C
+
+#define mmSOB_GLBL_LBW_ADDR_H_4 0x560
+
+#define mmSOB_GLBL_LBW_ADDR_H_5 0x564
+
+#define mmSOB_GLBL_LBW_ADDR_H_6 0x568
+
+#define mmSOB_GLBL_LBW_ADDR_H_7 0x56C
+
+#define mmSOB_GLBL_LBW_ADDR_H_8 0x570
+
+#define mmSOB_GLBL_LBW_ADDR_H_9 0x574
+
+#define mmSOB_GLBL_LBW_ADDR_H_10 0x578
+
+#define mmSOB_GLBL_LBW_ADDR_H_11 0x57C
+
+#define mmSOB_GLBL_LBW_ADDR_H_12 0x580
+
+#define mmSOB_GLBL_LBW_ADDR_H_13 0x584
+
+#define mmSOB_GLBL_LBW_ADDR_H_14 0x588
+
+#define mmSOB_GLBL_LBW_ADDR_H_15 0x58C
+
+#define mmSOB_GLBL_LBW_ADDR_H_16 0x590
+
+#define mmSOB_GLBL_LBW_ADDR_H_17 0x594
+
+#define mmSOB_GLBL_LBW_ADDR_H_18 0x598
+
+#define mmSOB_GLBL_LBW_ADDR_H_19 0x59C
+
+#define mmSOB_GLBL_LBW_ADDR_H_20 0x5A0
+
+#define mmSOB_GLBL_LBW_ADDR_H_21 0x5A4
+
+#define mmSOB_GLBL_LBW_ADDR_H_22 0x5A8
+
+#define mmSOB_GLBL_LBW_ADDR_H_23 0x5AC
+
+#define mmSOB_GLBL_LBW_ADDR_H_24 0x5B0
+
+#define mmSOB_GLBL_LBW_ADDR_H_25 0x5B4
+
+#define mmSOB_GLBL_LBW_ADDR_H_26 0x5B8
+
+#define mmSOB_GLBL_LBW_ADDR_H_27 0x5BC
+
+#define mmSOB_GLBL_LBW_ADDR_H_28 0x5C0
+
+#define mmSOB_GLBL_LBW_ADDR_H_29 0x5C4
+
+#define mmSOB_GLBL_LBW_ADDR_H_30 0x5C8
+
+#define mmSOB_GLBL_LBW_ADDR_H_31 0x5CC
+
+#define mmSOB_GLBL_LBW_ADDR_H_32 0x5D0
+
+#define mmSOB_GLBL_LBW_ADDR_H_33 0x5D4
+
+#define mmSOB_GLBL_LBW_ADDR_H_34 0x5D8
+
+#define mmSOB_GLBL_LBW_ADDR_H_35 0x5DC
+
+#define mmSOB_GLBL_LBW_ADDR_H_36 0x5E0
+
+#define mmSOB_GLBL_LBW_ADDR_H_37 0x5E4
+
+#define mmSOB_GLBL_LBW_ADDR_H_38 0x5E8
+
+#define mmSOB_GLBL_LBW_ADDR_H_39 0x5EC
+
+#define mmSOB_GLBL_LBW_ADDR_H_40 0x5F0
+
+#define mmSOB_GLBL_LBW_ADDR_H_41 0x5F4
+
+#define mmSOB_GLBL_LBW_ADDR_H_42 0x5F8
+
+#define mmSOB_GLBL_LBW_ADDR_H_43 0x5FC
+
+#define mmSOB_GLBL_LBW_ADDR_H_44 0x600
+
+#define mmSOB_GLBL_LBW_ADDR_H_45 0x604
+
+#define mmSOB_GLBL_LBW_ADDR_H_46 0x608
+
+#define mmSOB_GLBL_LBW_ADDR_H_47 0x60C
+
+#define mmSOB_GLBL_LBW_ADDR_H_48 0x610
+
+#define mmSOB_GLBL_LBW_ADDR_H_49 0x614
+
+#define mmSOB_GLBL_LBW_ADDR_H_50 0x618
+
+#define mmSOB_GLBL_LBW_ADDR_H_51 0x61C
+
+#define mmSOB_GLBL_LBW_ADDR_H_52 0x620
+
+#define mmSOB_GLBL_LBW_ADDR_H_53 0x624
+
+#define mmSOB_GLBL_LBW_ADDR_H_54 0x628
+
+#define mmSOB_GLBL_LBW_ADDR_H_55 0x62C
+
+#define mmSOB_GLBL_LBW_ADDR_H_56 0x630
+
+#define mmSOB_GLBL_LBW_ADDR_H_57 0x634
+
+#define mmSOB_GLBL_LBW_ADDR_H_58 0x638
+
+#define mmSOB_GLBL_LBW_ADDR_H_59 0x63C
+
+#define mmSOB_GLBL_LBW_ADDR_H_60 0x640
+
+#define mmSOB_GLBL_LBW_ADDR_H_61 0x644
+
+#define mmSOB_GLBL_LBW_ADDR_H_62 0x648
+
+#define mmSOB_GLBL_LBW_ADDR_H_63 0x64C
+
+#define mmSOB_GLBL_LBW_DATA_0 0x650
+
+#define mmSOB_GLBL_LBW_DATA_1 0x654
+
+#define mmSOB_GLBL_LBW_DATA_2 0x658
+
+#define mmSOB_GLBL_LBW_DATA_3 0x65C
+
+#define mmSOB_GLBL_LBW_DATA_4 0x660
+
+#define mmSOB_GLBL_LBW_DATA_5 0x664
+
+#define mmSOB_GLBL_LBW_DATA_6 0x668
+
+#define mmSOB_GLBL_LBW_DATA_7 0x66C
+
+#define mmSOB_GLBL_LBW_DATA_8 0x670
+
+#define mmSOB_GLBL_LBW_DATA_9 0x674
+
+#define mmSOB_GLBL_LBW_DATA_10 0x678
+
+#define mmSOB_GLBL_LBW_DATA_11 0x67C
+
+#define mmSOB_GLBL_LBW_DATA_12 0x680
+
+#define mmSOB_GLBL_LBW_DATA_13 0x684
+
+#define mmSOB_GLBL_LBW_DATA_14 0x688
+
+#define mmSOB_GLBL_LBW_DATA_15 0x68C
+
+#define mmSOB_GLBL_LBW_DATA_16 0x690
+
+#define mmSOB_GLBL_LBW_DATA_17 0x694
+
+#define mmSOB_GLBL_LBW_DATA_18 0x698
+
+#define mmSOB_GLBL_LBW_DATA_19 0x69C
+
+#define mmSOB_GLBL_LBW_DATA_20 0x6A0
+
+#define mmSOB_GLBL_LBW_DATA_21 0x6A4
+
+#define mmSOB_GLBL_LBW_DATA_22 0x6A8
+
+#define mmSOB_GLBL_LBW_DATA_23 0x6AC
+
+#define mmSOB_GLBL_LBW_DATA_24 0x6B0
+
+#define mmSOB_GLBL_LBW_DATA_25 0x6B4
+
+#define mmSOB_GLBL_LBW_DATA_26 0x6B8
+
+#define mmSOB_GLBL_LBW_DATA_27 0x6BC
+
+#define mmSOB_GLBL_LBW_DATA_28 0x6C0
+
+#define mmSOB_GLBL_LBW_DATA_29 0x6C4
+
+#define mmSOB_GLBL_LBW_DATA_30 0x6C8
+
+#define mmSOB_GLBL_LBW_DATA_31 0x6CC
+
+#define mmSOB_GLBL_LBW_DATA_32 0x6D0
+
+#define mmSOB_GLBL_LBW_DATA_33 0x6D4
+
+#define mmSOB_GLBL_LBW_DATA_34 0x6D8
+
+#define mmSOB_GLBL_LBW_DATA_35 0x6DC
+
+#define mmSOB_GLBL_LBW_DATA_36 0x6E0
+
+#define mmSOB_GLBL_LBW_DATA_37 0x6E4
+
+#define mmSOB_GLBL_LBW_DATA_38 0x6E8
+
+#define mmSOB_GLBL_LBW_DATA_39 0x6EC
+
+#define mmSOB_GLBL_LBW_DATA_40 0x6F0
+
+#define mmSOB_GLBL_LBW_DATA_41 0x6F4
+
+#define mmSOB_GLBL_LBW_DATA_42 0x6F8
+
+#define mmSOB_GLBL_LBW_DATA_43 0x6FC
+
+#define mmSOB_GLBL_LBW_DATA_44 0x700
+
+#define mmSOB_GLBL_LBW_DATA_45 0x704
+
+#define mmSOB_GLBL_LBW_DATA_46 0x708
+
+#define mmSOB_GLBL_LBW_DATA_47 0x70C
+
+#define mmSOB_GLBL_LBW_DATA_48 0x710
+
+#define mmSOB_GLBL_LBW_DATA_49 0x714
+
+#define mmSOB_GLBL_LBW_DATA_50 0x718
+
+#define mmSOB_GLBL_LBW_DATA_51 0x71C
+
+#define mmSOB_GLBL_LBW_DATA_52 0x720
+
+#define mmSOB_GLBL_LBW_DATA_53 0x724
+
+#define mmSOB_GLBL_LBW_DATA_54 0x728
+
+#define mmSOB_GLBL_LBW_DATA_55 0x72C
+
+#define mmSOB_GLBL_LBW_DATA_56 0x730
+
+#define mmSOB_GLBL_LBW_DATA_57 0x734
+
+#define mmSOB_GLBL_LBW_DATA_58 0x738
+
+#define mmSOB_GLBL_LBW_DATA_59 0x73C
+
+#define mmSOB_GLBL_LBW_DATA_60 0x740
+
+#define mmSOB_GLBL_LBW_DATA_61 0x744
+
+#define mmSOB_GLBL_LBW_DATA_62 0x748
+
+#define mmSOB_GLBL_LBW_DATA_63 0x74C
+
+#define mmSOB_GLBL_CQ_INC_MODE_0 0x750
+
+#define mmSOB_GLBL_CQ_INC_MODE_1 0x754
+
+#define mmSOB_GLBL_CQ_INC_MODE_2 0x758
+
+#define mmSOB_GLBL_CQ_INC_MODE_3 0x75C
+
+#define mmSOB_GLBL_CQ_INC_MODE_4 0x760
+
+#define mmSOB_GLBL_CQ_INC_MODE_5 0x764
+
+#define mmSOB_GLBL_CQ_INC_MODE_6 0x768
+
+#define mmSOB_GLBL_CQ_INC_MODE_7 0x76C
+
+#define mmSOB_GLBL_CQ_INC_MODE_8 0x770
+
+#define mmSOB_GLBL_CQ_INC_MODE_9 0x774
+
+#define mmSOB_GLBL_CQ_INC_MODE_10 0x778
+
+#define mmSOB_GLBL_CQ_INC_MODE_11 0x77C
+
+#define mmSOB_GLBL_CQ_INC_MODE_12 0x780
+
+#define mmSOB_GLBL_CQ_INC_MODE_13 0x784
+
+#define mmSOB_GLBL_CQ_INC_MODE_14 0x788
+
+#define mmSOB_GLBL_CQ_INC_MODE_15 0x78C
+
+#define mmSOB_GLBL_CQ_INC_MODE_16 0x790
+
+#define mmSOB_GLBL_CQ_INC_MODE_17 0x794
+
+#define mmSOB_GLBL_CQ_INC_MODE_18 0x798
+
+#define mmSOB_GLBL_CQ_INC_MODE_19 0x79C
+
+#define mmSOB_GLBL_CQ_INC_MODE_20 0x7A0
+
+#define mmSOB_GLBL_CQ_INC_MODE_21 0x7A4
+
+#define mmSOB_GLBL_CQ_INC_MODE_22 0x7A8
+
+#define mmSOB_GLBL_CQ_INC_MODE_23 0x7AC
+
+#define mmSOB_GLBL_CQ_INC_MODE_24 0x7B0
+
+#define mmSOB_GLBL_CQ_INC_MODE_25 0x7B4
+
+#define mmSOB_GLBL_CQ_INC_MODE_26 0x7B8
+
+#define mmSOB_GLBL_CQ_INC_MODE_27 0x7BC
+
+#define mmSOB_GLBL_CQ_INC_MODE_28 0x7C0
+
+#define mmSOB_GLBL_CQ_INC_MODE_29 0x7C4
+
+#define mmSOB_GLBL_CQ_INC_MODE_30 0x7C8
+
+#define mmSOB_GLBL_CQ_INC_MODE_31 0x7CC
+
+#define mmSOB_GLBL_CQ_INC_MODE_32 0x7D0
+
+#define mmSOB_GLBL_CQ_INC_MODE_33 0x7D4
+
+#define mmSOB_GLBL_CQ_INC_MODE_34 0x7D8
+
+#define mmSOB_GLBL_CQ_INC_MODE_35 0x7DC
+
+#define mmSOB_GLBL_CQ_INC_MODE_36 0x7E0
+
+#define mmSOB_GLBL_CQ_INC_MODE_37 0x7E4
+
+#define mmSOB_GLBL_CQ_INC_MODE_38 0x7E8
+
+#define mmSOB_GLBL_CQ_INC_MODE_39 0x7EC
+
+#define mmSOB_GLBL_CQ_INC_MODE_40 0x7F0
+
+#define mmSOB_GLBL_CQ_INC_MODE_41 0x7F4
+
+#define mmSOB_GLBL_CQ_INC_MODE_42 0x7F8
+
+#define mmSOB_GLBL_CQ_INC_MODE_43 0x7FC
+
+#define mmSOB_GLBL_CQ_INC_MODE_44 0x800
+
+#define mmSOB_GLBL_CQ_INC_MODE_45 0x804
+
+#define mmSOB_GLBL_CQ_INC_MODE_46 0x808
+
+#define mmSOB_GLBL_CQ_INC_MODE_47 0x80C
+
+#define mmSOB_GLBL_CQ_INC_MODE_48 0x810
+
+#define mmSOB_GLBL_CQ_INC_MODE_49 0x814
+
+#define mmSOB_GLBL_CQ_INC_MODE_50 0x818
+
+#define mmSOB_GLBL_CQ_INC_MODE_51 0x81C
+
+#define mmSOB_GLBL_CQ_INC_MODE_52 0x820
+
+#define mmSOB_GLBL_CQ_INC_MODE_53 0x824
+
+#define mmSOB_GLBL_CQ_INC_MODE_54 0x828
+
+#define mmSOB_GLBL_CQ_INC_MODE_55 0x82C
+
+#define mmSOB_GLBL_CQ_INC_MODE_56 0x830
+
+#define mmSOB_GLBL_CQ_INC_MODE_57 0x834
+
+#define mmSOB_GLBL_CQ_INC_MODE_58 0x838
+
+#define mmSOB_GLBL_CQ_INC_MODE_59 0x83C
+
+#define mmSOB_GLBL_CQ_INC_MODE_60 0x840
+
+#define mmSOB_GLBL_CQ_INC_MODE_61 0x844
+
+#define mmSOB_GLBL_CQ_INC_MODE_62 0x848
+
+#define mmSOB_GLBL_CQ_INC_MODE_63 0x84C
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_0 0x850
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_1 0x854
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_2 0x858
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_3 0x85C
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_4 0x860
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_5 0x864
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_6 0x868
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_7 0x86C
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_8 0x870
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_9 0x874
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_10 0x878
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_11 0x87C
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_12 0x880
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_13 0x884
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_14 0x888
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_15 0x88C
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_16 0x890
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_17 0x894
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_18 0x898
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_19 0x89C
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_20 0x8A0
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_21 0x8A4
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_22 0x8A8
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_23 0x8AC
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_24 0x8B0
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_25 0x8B4
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_26 0x8B8
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_27 0x8BC
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_28 0x8C0
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_29 0x8C4
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_30 0x8C8
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_31 0x8CC
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_32 0x8D0
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_33 0x8D4
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_34 0x8D8
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_35 0x8DC
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_36 0x8E0
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_37 0x8E4
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_38 0x8E8
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_39 0x8EC
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_40 0x8F0
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_41 0x8F4
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_42 0x8F8
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_43 0x8FC
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_44 0x900
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_45 0x904
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_46 0x908
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_47 0x90C
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_48 0x910
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_49 0x914
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_50 0x918
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_51 0x91C
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_52 0x920
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_53 0x924
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_54 0x928
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_55 0x92C
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_56 0x930
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_57 0x934
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_58 0x938
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_59 0x93C
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_60 0x940
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_61 0x944
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_62 0x948
+
+#define mmSOB_GLBL_CQ_DIR_LBW_EN_63 0x94C
+
+#endif /* ASIC_REG_SOB_GLBL_REGS_H_ */

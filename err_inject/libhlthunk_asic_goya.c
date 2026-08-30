@@ -44,9 +44,9 @@ static uint32_t goya_add_fence_pkt(void *buffer, uint32_t buf_off,
 
 	memset(&packet, 0, sizeof(packet));
 	packet.opcode = PACKET_FENCE;
-	packet.dec_val = pkt_info->fence.dec_val;
+	packet.dec_val = (__u32)(pkt_info->fence.dec_val & BITMASK(4));
 	packet.gate_val = pkt_info->fence.gate_val;
-	packet.id = pkt_info->fence.fence_id;
+	packet.id = (__u32)(pkt_info->fence.fence_id & BITMASK(2));
 	packet.eng_barrier = pkt_info->eb ? 1 : 0;
 	packet.msg_barrier = pkt_info->mb ? 1 : 0;
 	packet.reg_barrier = 1;
@@ -75,7 +75,7 @@ static int goya_generate_non_fatal_event(int fd, int *event_num)
 		return -ENOTSUP;
 
 	*event_num = GOYA_ASYNC_EVENT_ID_TPC0_DEC;
-	rc = hlthunk_debugfs_write(&debugfs, GOYA_EVENT_GEN_REG, *event_num);
+	rc = hlthunk_debugfs_write(&debugfs, GOYA_EVENT_GEN_REG, (uint32_t)*event_num);
 	hlthunk_debugfs_close(&debugfs);
 
 	return rc;
@@ -85,7 +85,7 @@ static int goya_generate_fatal_event(struct hlthunk_debugfs *debugfs,
 					int *event_num)
 {
 	*event_num = GOYA_ASYNC_EVENT_ID_TPC0_ECC;
-	return hlthunk_debugfs_write(debugfs, GOYA_EVENT_GEN_REG, *event_num);
+	return hlthunk_debugfs_write(debugfs, GOYA_EVENT_GEN_REG, (uint32_t)*event_num);
 }
 
 static int goya_halt_cpu(struct hlthunk_debugfs *debugfs)

@@ -27,6 +27,7 @@ enum hl_revision_id {
 	REV_ID_B				= 0x02,
 	REV_ID_C				= 0x03,
 	REV_ID_D				= 0x04,
+	REV_ID_E				= 0x05,
 };
 
 #endif /* INCLUDE_PCI_GENERAL_H_ */

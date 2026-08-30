@@ -1,0 +1,73 @@
+[lpbk]
+qps_per_port=8
+iterations_mem=1
+iterations_db=1
+cq_buf_len_shift=24
+user_cq_buf_len_shift=12
+data_loc=dram
+cmpl=cq_usr
+data_size_shift=19
+wqe_size_shift=14
+data_cmp=yes
+single_alloc=no
+cleanup=yes
+wait_for_cleanup=no
+verbose=1
+db_qman=no
+wtd_en=no
+eq_poll=yes
+wq_loc=device
+user_db=yes
+mtu=8192
+coll_op=multi_context
+;3 types of transfers are allowed
+;test_opcode=write or wr-rdv or rd-rdv
+test_opcode=wr-rdv
+;------valid values for reduction test------
+;reduction_en=yes/no
+;red_op=add or sub or max or min
+;red_dt=int8 or bf16 or fp32 or downscale or upscale or down_and_up
+reduction_en=yes
+red_dt=upscale
+red_op=max
+
+[common]
+qps_per_port=0
+lpbk_qps_per_port=0
+runtime_iterations=1
+data_loc=dram
+cmpl=cq
+data_size_shift=19
+wqe_size_shift=14
+data_cmp=yes
+single_alloc=no
+cleanup=yes
+wait_for_cleanup=no
+verbose=1
+wtd_en=no
+eq_poll=yes
+wq_loc=device
+user_fifo=yes
+mtu=8192
+test_opcode=wr-rdv
+;------valid values for reduction test------
+;reduction_en=yes/no
+;red_op=add or sub or max or min
+;red_dt=int8 or bf16 or fp32 or downscale or upscale or down_and_up
+reduction_en=yes
+red_dt=upscale
+red_op=max
+
+[collective]
+scale_up_coll_qps=0
+scale_up_coll_lpbk_qps=0
+scale_out_coll_qps=8
+scale_out_coll_lpbk_qps=0
+coll_type=context
+coll_op=multi_context
+coll_patcher_op=gen
+
+;irrelevant for this test
+;coll_data_type=reduction
+;coll_rank_axis=x
+;coll_ranks_num=3

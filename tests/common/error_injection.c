@@ -134,17 +134,14 @@ VOID test_error_injection_non_fatal_event(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_reset_count_info pre, post;
-	struct hlthunk_hw_ip_info hw_ip;
-	uint32_t *pre_hw_events, *post_hw_events;
-	int event_num = 0, rc, fd = tests_state->fd, hw_arr_size;
-
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
+	struct hlthunk_hw_ip_info *hw_ip = &tests_state->hw_ip;
+	uint32_t *pre_hw_events, *post_hw_events, hw_arr_size;
+	int event_num = 0, rc, fd = tests_state->fd;
 
 	rc = hlthunk_get_reset_count_info(fd, &pre);
 	assert_int_equal(rc, 0);
 
-	hw_arr_size = hw_ip.num_of_events * sizeof(uint32_t);
+	hw_arr_size = hw_ip->num_of_events * sizeof(uint32_t);
 	pre_hw_events = hlthunk_malloc(hw_arr_size);
 	assert_non_null(pre_hw_events);
 
@@ -159,7 +156,7 @@ VOID test_error_injection_non_fatal_event(void **state)
 	if (rc)
 		goto exit;
 
-	if (event_num >= hw_ip.num_of_events || event_num < 0)
+	if (event_num >= hw_ip->num_of_events || event_num < 0)
 		goto exit;
 
 	rc = hlthunk_get_hw_events_arr(fd, true, hw_arr_size, post_hw_events);
@@ -182,7 +179,7 @@ exit:
 	hlthunk_free(pre_hw_events);
 	hlthunk_free(post_hw_events);
 	assert_int_equal(rc, 0);
-	assert_false(event_num >= hw_ip.num_of_events || event_num < 0);
+	assert_false(event_num >= hw_ip->num_of_events || event_num < 0);
 
 	END_TEST;
 }
@@ -191,21 +188,18 @@ VOID test_error_injection_fatal_event(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	struct hlthunk_reset_count_info pre, post;
-	struct hlthunk_hw_ip_info hw_ip;
-	uint32_t *pre_hw_events, *post_hw_events;
-	int event_num = 0, rc, fd = tests_state->fd, hw_arr_size;
+	struct hlthunk_hw_ip_info *hw_ip = &tests_state->hw_ip;
+	uint32_t *pre_hw_events, *post_hw_events, hw_arr_size;
+	int event_num = 0, rc, fd = tests_state->fd;
 	char pci_bus_id[13];
 
 	rc = hlthunk_get_pci_bus_id_from_fd(fd, pci_bus_id, sizeof(pci_bus_id));
 	assert_int_equal(rc, 0);
 
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
 	rc = hlthunk_get_reset_count_info(fd, &pre);
 	assert_int_equal(rc, 0);
 
-	hw_arr_size = hw_ip.num_of_events * sizeof(uint32_t);
+	hw_arr_size = hw_ip->num_of_events * sizeof(uint32_t);
 	pre_hw_events = hlthunk_malloc(hw_arr_size);
 	assert_non_null(pre_hw_events);
 
@@ -222,7 +216,7 @@ VOID test_error_injection_fatal_event(void **state)
 	if (rc)
 		goto exit;
 
-	if (event_num >= hw_ip.num_of_events || event_num < 0)
+	if (event_num >= hw_ip->num_of_events || event_num < 0)
 		goto exit;
 
 	tests_state->fd = fd = hlthunk_open(HLTHUNK_DEVICE_DONT_CARE,
@@ -252,7 +246,7 @@ exit:
 	hlthunk_free(pre_hw_events);
 	hlthunk_free(post_hw_events);
 	assert_int_equal(rc, 0);
-	assert_false(event_num >= hw_ip.num_of_events || event_num < 0);
+	assert_false(event_num >= hw_ip->num_of_events || event_num < 0);
 	assert_in_range(fd, 0, INT_MAX);
 
 	END_TEST;
@@ -345,21 +339,21 @@ static const char *const usage[] = {
 
 int main(int argc, const char **argv)
 {
-	int num_tests = sizeof(ei_tests) / sizeof((ei_tests)[0]);
+	size_t num_tests = sizeof(ei_tests) / sizeof((ei_tests)[0]);
 
 	hltests_parser(argc, argv, usage, HLTEST_DEVICE_MASK_DONT_CARE, ei_tests,
-			num_tests);
+			(int)num_tests);
 
-	if (access("/sys/kernel/debug", R_OK)) {
-		printf("This executable need to be run with sudo\n");
+	if (!can_open_debugfs(true))
 		return 0;
-	}
 
 	if (!hltests_get_parser_run_disabled_tests()) {
-		printf("This executable need to be run with -d flag\n");
+		printf("error injection tests should run with --disabled option\n");
 		return 0;
 	}
 
+	hltests_set_capabilities_mask(CAP_ARC_FW_LOAD_SCHED_MASK |
+				CAP_ARC_FW_LOAD_PDMA_MASK);
 	return hltests_run_group_tests("error_injection", ei_tests, num_tests,
 					hltests_setup, hltests_teardown);
 }

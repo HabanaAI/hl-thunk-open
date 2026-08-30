@@ -112,20 +112,21 @@ static int test_lbw_scan_parsing_handler(void *user, const char *section,
 		cfg->range_config_params_count++;
 		free(tmp);
 	} else if (MATCH("lbw_scan_test", "value")) {
-		cfg->ranges_block[cfg->ranges_block_idx].value =
-				strtoul(value, NULL, 0);
+		str_to_u32_safe_ret_on_err(cfg->ranges_block[cfg->ranges_block_idx].value,
+					   value, 0, 1);
 		cfg->ranges_block[cfg->ranges_block_idx].valid_mask |=
 					BIT(RANGE_VALUE_SHIFT);
 		cfg->range_config_params_count++;
 	} else if (MATCH("lbw_scan_test", "print_freq")) {
-		cfg->ranges_block[cfg->ranges_block_idx].print_addr_freq =
-			strtoul(value, NULL, 0);
+		str_to_u32_safe_ret_on_err(
+				cfg->ranges_block[cfg->ranges_block_idx].print_addr_freq,
+				value, 0, 1);
 		cfg->ranges_block[cfg->ranges_block_idx].valid_mask |=
 					BIT(RANGE_PRINT_SHIFT);
 		cfg->range_config_params_count++;
 	} else if (MATCH("lbw_scan_test", "reg_offset")) {
-		cfg->ranges_block[cfg->ranges_block_idx].reg_offset =
-			strtoul(value, NULL, 0);
+		str_to_u32_safe_ret_on_err(cfg->ranges_block[cfg->ranges_block_idx].reg_offset,
+					   value, 0, 1);
 		cfg->ranges_block[cfg->ranges_block_idx].valid_mask |=
 					BIT(RANGE_REG_OFF_SHIFT);
 		cfg->range_config_params_count++;
@@ -192,15 +193,15 @@ VOID test_lbw_scan(void **state)
 
 			if (cfg.ranges_block[i].write_then_read) {
 				if (cfg.ranges_block[i].data64)
-					WREG64(addr, cfg.ranges_block[i].value);
+					WRITE64(addr, cfg.ranges_block[i].value);
 				else
-					WREG32(addr, cfg.ranges_block[i].value);
+					WRITE32(addr, cfg.ranges_block[i].value);
 			}
 
 			if (cfg.ranges_block[i].data64)
-				val = RREG64(addr);
+				val = READ64(addr);
 			else
-				val = RREG32(addr);
+				val = READ32(addr);
 
 			if (cfg.ranges_block[i].write_then_read)
 				assert_int_equal
@@ -229,15 +230,18 @@ static const char *const usage[] = {
 
 int main(int argc, const char **argv)
 {
-	int num_tests = sizeof(debug_tests) / sizeof((debug_tests)[0]);
+	size_t num_tests = sizeof(debug_tests) / sizeof((debug_tests)[0]);
 
 	hltests_parser(argc, argv, usage, HLTEST_DEVICE_MASK_DONT_CARE, debug_tests,
-			num_tests);
+			(int)num_tests);
 
-	if (access("/sys/kernel/debug", R_OK)) {
-		printf("This executable need to be run with sudo\n");
+	if (!hltests_get_parser_run_disabled_tests()) {
+		printf("root_debug tests should run with --disabled option\n");
 		return 0;
 	}
+
+	if (!can_open_debugfs(true))
+		return 0;
 
 	return hltests_run_group_tests("debug", debug_tests, num_tests,
 			hltests_root_debug_setup, hltests_root_debug_teardown);

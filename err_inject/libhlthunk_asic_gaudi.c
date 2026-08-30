@@ -42,9 +42,9 @@ static uint32_t gaudi_add_fence_pkt(void *buffer, uint32_t buf_off,
 
 	memset(&packet, 0, sizeof(packet));
 	packet.opcode = PACKET_FENCE;
-	packet.dec_val = pkt_info->fence.dec_val;
+	packet.dec_val = (__u32)(pkt_info->fence.dec_val & BITMASK(4));
 	packet.target_val = pkt_info->fence.gate_val;
-	packet.id = pkt_info->fence.fence_id;
+	packet.id = (__u32)(pkt_info->fence.fence_id & BITMASK(2));
 	packet.pred = 0;
 	packet.eng_barrier = pkt_info->eb;
 	packet.msg_barrier = pkt_info->mb;
@@ -74,7 +74,7 @@ static int gaudi_generate_non_fatal_event(int fd, int *event_num)
 		return -ENOTSUP;
 
 	*event_num = GAUDI_EVENT_TPC0_SERR;
-	rc = hlthunk_debugfs_write(&debugfs, GAUDI_EVENT_GEN_REG, *event_num);
+	rc = hlthunk_debugfs_write(&debugfs, GAUDI_EVENT_GEN_REG, (uint32_t)*event_num);
 	hlthunk_debugfs_close(&debugfs);
 
 	return rc;
@@ -84,7 +84,7 @@ static int gaudi_generate_fatal_event(struct hlthunk_debugfs *debugfs,
 					int *event_num)
 {
 	*event_num = GAUDI_EVENT_TPC0_DERR;
-	return hlthunk_debugfs_write(debugfs, GAUDI_EVENT_GEN_REG, *event_num);
+	return hlthunk_debugfs_write(debugfs, GAUDI_EVENT_GEN_REG, (uint32_t)*event_num);
 }
 
 static int gaudi_halt_cpu(struct hlthunk_debugfs *debugfs)

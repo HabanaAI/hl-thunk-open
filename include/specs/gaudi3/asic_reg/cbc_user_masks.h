@@ -1,0 +1,67 @@
+/* SPDX-License-Identifier: MIT
+ *
+ * Copyright 2016-2021 HabanaLabs, Ltd.
+ * All Rights Reserved.
+ *
+ */
+
+/************************************
+ ** This is an auto-generated file **
+ **       DO NOT EDIT BELOW        **
+ ************************************/
+
+#ifndef ASIC_REG_CBC_USER_MASKS_H_
+#define ASIC_REG_CBC_USER_MASKS_H_
+
+/*
+ *****************************************
+ *   CBC_USER
+ *   (Prototype: CBC_USER)
+ *****************************************
+ */
+
+/* CBC_USER_CBC_RANGE_EN */
+#define CBC_USER_CBC_RANGE_EN_VAL_S 0
+#define CBC_USER_CBC_RANGE_EN_VAL_M 0x1
+
+/* CBC_USER_CBC_RANGE_MIN_LO */
+#define CBC_USER_CBC_RANGE_MIN_LO_VAL_S 0
+#define CBC_USER_CBC_RANGE_MIN_LO_VAL_M 0xFFFFFFFF
+
+/* CBC_USER_CBC_RANGE_MIN_HI */
+#define CBC_USER_CBC_RANGE_MIN_HI_VAL_S 0
+#define CBC_USER_CBC_RANGE_MIN_HI_VAL_M 0xFFFFFFFF
+
+/* CBC_USER_CBC_RANGE_MAX_LO */
+#define CBC_USER_CBC_RANGE_MAX_LO_VAL_S 0
+#define CBC_USER_CBC_RANGE_MAX_LO_VAL_M 0xFFFFFFFF
+
+/* CBC_USER_CBC_RANGE_MAX_HI */
+#define CBC_USER_CBC_RANGE_MAX_HI_VAL_S 0
+#define CBC_USER_CBC_RANGE_MAX_HI_VAL_M 0xFFFFFFFF
+
+/* CBC_USER_INVALID_EN */
+#define CBC_USER_INVALID_EN_VAL_S 0
+#define CBC_USER_INVALID_EN_VAL_M 0x1
+
+/* CBC_USER_INVALID_CTRL */
+#define CBC_USER_INVALID_CTRL_ALL_S 0
+#define CBC_USER_INVALID_CTRL_ALL_M 0x1
+#define CBC_USER_INVALID_CTRL_RANGE_S 4
+#define CBC_USER_INVALID_CTRL_RANGE_M 0x30
+
+/* CBC_USER_INVALID_STATUS */
+#define CBC_USER_INVALID_STATUS_STAT_S 0
+#define CBC_USER_INVALID_STATUS_STAT_M 0x7
+#define CBC_USER_INVALID_STATUS_B2B_S 4
+#define CBC_USER_INVALID_STATUS_B2B_M 0x10
+
+/* CBC_USER_LBW_ADDR */
+#define CBC_USER_LBW_ADDR_VAL_S 0
+#define CBC_USER_LBW_ADDR_VAL_M 0x1FFFFFFF
+
+/* CBC_USER_LBW_DATA */
+#define CBC_USER_LBW_DATA_VAL_S 0
+#define CBC_USER_LBW_DATA_VAL_M 0xFFFFFFFF
+
+#endif /* ASIC_REG_CBC_USER_MASKS_H_ */

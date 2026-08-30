@@ -1,8 +1,8 @@
 # COPYRIGHT (c) 2019-2021 Habanalabs Ltd. See COPYING.md file
 
-cmake_minimum_required(VERSION 3.0.1 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 
-# Specify search path for CMake modules to be loaded by include() 
+# Specify search path for CMake modules to be loaded by include()
 # and find_package()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
@@ -46,18 +46,29 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 
 set(CMAKE_C_STANDARD 11)
-set(CMAKE_C_FLAGS "-fPIC -W -Werror -Wall -Wextra -Wno-unused-parameter")
+set(CMAKE_C_FLAGS "-W -Werror -Wall -Wextra -Wno-unused-parameter")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-missing-field-initializers -Wno-type-limits")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-function -Wno-sign-compare")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-sign-compare")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-result")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-strict-aliasing")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wformat-security -Wswitch-default -Wundef")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fcf-protection=branch")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fstack-protector-strong -fstack-clash-protection")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wformat -Wformat-security -Werror=format-security")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wswitch-default -Wundef -Wimplicit-fallthrough")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wshadow -Wpointer-arith -Wcast-qual")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wstrict-prototypes -Wredundant-decls")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunreachable-code -fvisibility=hidden")
+
 # -Wl,--no-as-needed -ldl flag is needed for dynamic library loading (for profiler use)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,--no-as-needed -ldl")
+# Security linker flags - apply to both libraries and executables
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-as-needed -ldl -Wl,-z,noexecstack,-z,relro,-z,now")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--no-as-needed -ldl -Wl,-z,noexecstack,-z,relro,-z,now")
 if (CMAKE_C_COMPILER_ID MATCHES "GNU")
+    if (CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL 11.2)
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wconversion")
+    endif()
+
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-but-set-variable -Wlogical-op")
     if (NOT CMAKE_C_COMPILER_VERSION VERSION_LESS 7.0)
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-stringop-truncation -Wno-format-truncation")
@@ -77,21 +88,30 @@ if (SANITIZE_ON)
 endif()
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SANITIZE}")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${SANITIZE}")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${SANITIZE}")
 
-include_directories(include)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+include_directories(include
+                    /usr/include/drm
+                    /usr/include/libdrm)
+
+include_directories($ENV{HABANALABS_ROOT}/include/uapi)
 
 add_subdirectory(src)
 
 add_subdirectory(err_inject)
 
 if (HLTESTS_LIB_MODE)
-
     add_definitions(-DHLTESTS_LIB_MODE)
     add_subdirectory(tests)
 
 else ()
 
 if (UNIT_TESTING)
+    add_compile_options(-fPIE)
+    add_link_options(-pie)
     find_package(CMocka 1.1.3 REQUIRED)
     include(AddCMockaTest)
     add_subdirectory(tests)

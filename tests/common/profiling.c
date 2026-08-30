@@ -71,12 +71,11 @@ VOID test_debug_mode(void **state)
  * @param i index to start the search from
  * @param mapped search criteria - whether to match mapped elements or unmapped.
  */
-static struct hltests_memory *hltest_host_map_kv_fetch(void *kv, int i,
-							bool mapped)
+static struct hltests_memory *hltest_host_map_kv_fetch(void *kv, size_t i, bool mapped)
 {
 	kvec_t(struct hltests_memory *) *allocs = kv;
 	struct hltests_memory *mem;
-	int j;
+	size_t j;
 
 	mem = kv_A(*allocs, i);
 	if (!!mem->device_virt_addr == !!mapped)
@@ -147,8 +146,9 @@ hltest_bench_host_map_one_iter(struct hltests_state *tests_state,
 	struct hltests_memory *mem;
 	struct timespec t_start, t_end;
 	uint64_t n_currently_mapped = 0, host_page_size, pages_required,
-		pages_available;
-	int i, rc, fd = tests_state->fd;
+		pages_available, i;
+	int64_t dt;
+	int rc, fd = tests_state->fd;
 
 	kvec_t(struct hltests_memory *) allocs;
 
@@ -179,7 +179,7 @@ hltest_bench_host_map_one_iter(struct hltests_state *tests_state,
 			"Invalid input n_maps=%lu, n_unmaps=%lu, n_allocs=%lu",
 			n_maps, n_unmaps, n_allocs);
 
-	/* Start by allocatin host memory, as much as requested. */
+	/* Start by allocating host memory, as much as requested. */
 	kv_init(allocs);
 	for (i = 0; i < n_allocs; ++i) {
 		mem = hltests_allocate_host_mem_nomap(alloc_size, huge);
@@ -198,8 +198,12 @@ hltest_bench_host_map_one_iter(struct hltests_state *tests_state,
 		n_currently_mapped = n_unmaps - n_maps;
 	}
 
-	/* Benchmark starts HERE */
-	clock_gettime(CLOCK_REALTIME, &t_start);
+	/*
+	 * Benchmark starts HERE
+	 *
+	 * Use CLOCK_MONOTONIC for timestamp as it cannot move backwards (e.g., NTP adjustments).
+	 */
+	clock_gettime(CLOCK_MONOTONIC, &t_start);
 
 	if (random) {
 		/* Running in random mode. */
@@ -252,7 +256,7 @@ hltest_bench_host_map_one_iter(struct hltests_state *tests_state,
 	}
 
 	/* Benchmark ends HERE */
-	clock_gettime(CLOCK_REALTIME, &t_end);
+	clock_gettime(CLOCK_MONOTONIC, &t_end);
 
 	/* Cleanup, in case n_maps > n_unmaps we will have some maps left. */
 	for (i = 0; i < n_allocs; ++i) {
@@ -269,9 +273,11 @@ hltest_bench_host_map_one_iter(struct hltests_state *tests_state,
 	}
 	kv_destroy(allocs);
 
-	*measure_ns = (t_end.tv_sec - t_start.tv_sec) * 1000000000 +
-		(t_end.tv_nsec - t_start.tv_nsec);
+	dt = ((int64_t)t_end.tv_sec - (int64_t)t_start.tv_sec) * 1000000000LL +
+		((int64_t)t_end.tv_nsec - (int64_t)t_start.tv_nsec);
+	assert_true(dt >= 0);
 
+	*measure_ns = (uint64_t)dt;
 	return 0;
 }
 
@@ -332,7 +338,7 @@ static int asic_benchmark_exp_parsing_handler(void *user,
 
 	snprintf(exp_section, sizeof(exp_section), "%s_%s_exp_timing",
 		asic_names[cfg->device_name], cfg->test_name);
-	exp_section[0] = tolower(exp_section[0]);
+	exp_section[0] = (char)tolower((unsigned char)exp_section[0]);
 
 	if (MATCH(exp_section, "timing_max"))
 		cfg->timing_max = strtoul(value, NULL, 0);
@@ -376,11 +382,8 @@ VOID hltest_bench_host_map_expected(struct hltests_state *tests_state,
 	uint64_t t_ns = 0;
 	int rc;
 
-	/* Check if tests is disable by default and requires explicit enable */
-	if (disabled_test && !hltests_get_parser_run_disabled_tests()) {
-		printf("This test need to be run with -d flag\n");
+	if (disabled_test && !hltests_get_parser_run_disabled_tests())
 		skip();
-	}
 
 	/* Geting exp results from config */
 	if (validate_exp) {
@@ -543,7 +546,7 @@ static int bench_mappings_custom_parsing_handler(void *user,
 	else if (MATCH("bench_mappings_custom", "random"))
 		cfg->random = strcmp("true", value) ? false : true;
 	else if (MATCH("bench_mappings_custom", "n_iter"))
-		cfg->n_iter = strtoul(value, NULL, 0);
+		str_to_u32_safe_ret_on_err(cfg->n_iter, value, 0, 0);
 	else
 		return 0; /* unknown section/name, error */
 
@@ -557,10 +560,8 @@ VOID test_bench_mappings_custom(void **state)
 	uint64_t t_ns = 0;
 	int rc;
 
-	if (!hltests_get_parser_run_disabled_tests()) {
-		print_message("This test need to be run with -d flag\n");
+	if (!hltests_get_parser_run_disabled_tests())
 		skip();
-	}
 
 	if (!config_filename)
 		fail_msg("User didn't supply a configuration file name!\n");
@@ -628,11 +629,12 @@ static const char *const usage[] = {
 
 int main(int argc, const char **argv)
 {
-	int num_tests = sizeof(profiling_tests) / sizeof((profiling_tests)[0]);
+	size_t num_tests = sizeof(profiling_tests) / sizeof((profiling_tests)[0]);
 
 	hltests_parser(argc, argv, usage, HLTEST_DEVICE_MASK_DONT_CARE,
-			profiling_tests, num_tests);
-
+			profiling_tests, (int)num_tests);
+	hltests_set_capabilities_mask(CAP_ARC_FW_LOAD_SCHED_MASK |
+				CAP_ARC_FW_LOAD_PDMA_MASK);
 	return hltests_run_group_tests("profiling", profiling_tests,
 				num_tests, hltests_setup, hltests_teardown);
 }

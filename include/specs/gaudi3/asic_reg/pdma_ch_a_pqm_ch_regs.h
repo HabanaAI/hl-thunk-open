@@ -1,0 +1,267 @@
+/* SPDX-License-Identifier: MIT
+ *
+ * Copyright 2016-2021 HabanaLabs, Ltd.
+ * All Rights Reserved.
+ *
+ */
+
+/************************************
+ ** This is an auto-generated file **
+ **       DO NOT EDIT BELOW        **
+ ************************************/
+
+#ifndef ASIC_REG_PDMA_CH_A_PQM_CH_REGS_H_
+#define ASIC_REG_PDMA_CH_A_PQM_CH_REGS_H_
+
+/*
+ *****************************************
+ *   PDMA_CH_A_PQM_CH
+ *   (Prototype: PQM_CH_A)
+ *****************************************
+ */
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_HI_0 0x0
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_HI_1 0x4
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_HI_2 0x8
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_HI_3 0xC
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_HI_4 0x10
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_HI_5 0x14
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_HI_6 0x18
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_HI_7 0x1C
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_HI_8 0x20
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_HI_9 0x24
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_HI_10 0x28
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_HI_11 0x2C
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_HI_12 0x30
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_HI_13 0x34
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_HI_14 0x38
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_HI_15 0x3C
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_HI_16 0x40
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_HI_17 0x44
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_HI_18 0x48
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_HI_19 0x4C
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_HI_20 0x50
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_HI_21 0x54
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_HI_22 0x58
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_HI_23 0x5C
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_HI_24 0x60
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_HI_25 0x64
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_HI_26 0x68
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_HI_27 0x6C
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_HI_28 0x70
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_HI_29 0x74
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_HI_30 0x78
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_HI_31 0x7C
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_LO_0 0x80
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_LO_1 0x84
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_LO_2 0x88
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_LO_3 0x8C
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_LO_4 0x90
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_LO_5 0x94
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_LO_6 0x98
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_LO_7 0x9C
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_LO_8 0xA0
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_LO_9 0xA4
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_LO_10 0xA8
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_LO_11 0xAC
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_LO_12 0xB0
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_LO_13 0xB4
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_LO_14 0xB8
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_LO_15 0xBC
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_LO_16 0xC0
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_LO_17 0xC4
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_LO_18 0xC8
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_LO_19 0xCC
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_LO_20 0xD0
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_LO_21 0xD4
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_LO_22 0xD8
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_LO_23 0xDC
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_LO_24 0xE0
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_LO_25 0xE4
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_LO_26 0xE8
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_LO_27 0xEC
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_LO_28 0xF0
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_LO_29 0xF4
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_LO_30 0xF8
+
+#define mmPDMA_CH_A_PQM_CH_ADDR_LO_31 0xFC
+
+#define mmPDMA_CH_A_PQM_CH_CTRL_0 0x100
+
+#define mmPDMA_CH_A_PQM_CH_CTRL_1 0x104
+
+#define mmPDMA_CH_A_PQM_CH_CTRL_2 0x108
+
+#define mmPDMA_CH_A_PQM_CH_CTRL_3 0x10C
+
+#define mmPDMA_CH_A_PQM_CH_CTRL_4 0x110
+
+#define mmPDMA_CH_A_PQM_CH_CTRL_5 0x114
+
+#define mmPDMA_CH_A_PQM_CH_CTRL_6 0x118
+
+#define mmPDMA_CH_A_PQM_CH_CTRL_7 0x11C
+
+#define mmPDMA_CH_A_PQM_CH_CTRL_8 0x120
+
+#define mmPDMA_CH_A_PQM_CH_CTRL_9 0x124
+
+#define mmPDMA_CH_A_PQM_CH_CTRL_10 0x128
+
+#define mmPDMA_CH_A_PQM_CH_CTRL_11 0x12C
+
+#define mmPDMA_CH_A_PQM_CH_CTRL_12 0x130
+
+#define mmPDMA_CH_A_PQM_CH_CTRL_13 0x134
+
+#define mmPDMA_CH_A_PQM_CH_CTRL_14 0x138
+
+#define mmPDMA_CH_A_PQM_CH_CTRL_15 0x13C
+
+#define mmPDMA_CH_A_PQM_CH_CTRL_16 0x140
+
+#define mmPDMA_CH_A_PQM_CH_CTRL_17 0x144
+
+#define mmPDMA_CH_A_PQM_CH_CTRL_18 0x148
+
+#define mmPDMA_CH_A_PQM_CH_CTRL_19 0x14C
+
+#define mmPDMA_CH_A_PQM_CH_CTRL_20 0x150
+
+#define mmPDMA_CH_A_PQM_CH_CTRL_21 0x154
+
+#define mmPDMA_CH_A_PQM_CH_CTRL_22 0x158
+
+#define mmPDMA_CH_A_PQM_CH_CTRL_23 0x15C
+
+#define mmPDMA_CH_A_PQM_CH_CTRL_24 0x160
+
+#define mmPDMA_CH_A_PQM_CH_CTRL_25 0x164
+
+#define mmPDMA_CH_A_PQM_CH_CTRL_26 0x168
+
+#define mmPDMA_CH_A_PQM_CH_CTRL_27 0x16C
+
+#define mmPDMA_CH_A_PQM_CH_CTRL_28 0x170
+
+#define mmPDMA_CH_A_PQM_CH_CTRL_29 0x174
+
+#define mmPDMA_CH_A_PQM_CH_CTRL_30 0x178
+
+#define mmPDMA_CH_A_PQM_CH_CTRL_31 0x17C
+
+#define mmPDMA_CH_A_PQM_CH_PI 0x180
+
+#define mmPDMA_CH_A_PQM_CH_CI 0x184
+
+#define mmPDMA_CH_A_PQM_CH_CP_PRED 0x1B0
+
+#define mmPDMA_CH_A_PQM_CH_DESC_SUBMIT_FIFO_CFG 0x1B4
+
+#define mmPDMA_CH_A_PQM_CH_DESC_PTR_RLS_CFG 0x1B8
+
+#define mmPDMA_CH_A_PQM_CH_DESC_PTR_RLS_MSG_ADDR_L 0x1BC
+
+#define mmPDMA_CH_A_PQM_CH_DESC_PTR_RLS_MSG_ADDR_H 0x1C0
+
+#define mmPDMA_CH_A_PQM_CH_DESC_PTR_RLS_MSG_FREQ 0x1C4
+
+#define mmPDMA_CH_A_PQM_CH_DESC_PTR_RLS_MSG_PAYLOAD 0x1C8
+
+#define mmPDMA_CH_A_PQM_CH_FENCE_INC_0 0x1CC
+
+#define mmPDMA_CH_A_PQM_CH_FENCE_INC_1 0x1D0
+
+#define mmPDMA_CH_A_PQM_CH_FENCE_INC_2 0x1D4
+
+#define mmPDMA_CH_A_PQM_CH_FENCE_INC_3 0x1D8
+
+#define mmPDMA_CH_A_PQM_CH_FENCE_CNT_0 0x1DC
+
+#define mmPDMA_CH_A_PQM_CH_FENCE_CNT_1 0x1E0
+
+#define mmPDMA_CH_A_PQM_CH_FENCE_CNT_2 0x1E4
+
+#define mmPDMA_CH_A_PQM_CH_FENCE_CNT_3 0x1E8
+
+#define mmPDMA_CH_A_PQM_CH_MSQ_BASE_H 0x1EC
+
+#define mmPDMA_CH_A_PQM_CH_MSQ_BASE_L 0x1F0
+
+#define mmPDMA_CH_A_PQM_CH_MSQ_SIZE 0x1F4
+
+#define mmPDMA_CH_A_PQM_CH_MSQ_PI 0x1F8
+
+#define mmPDMA_CH_A_PQM_CH_MSQ_CI 0x1FC
+
+#define mmPDMA_CH_A_PQM_CH_DESC_SUBMIT_PUSH_REG2 0x200
+
+#define mmPDMA_CH_A_PQM_CH_DESC_SUBMIT_PUSH_REG1 0x204
+
+#define mmPDMA_CH_A_PQM_CH_DESC_SUBMIT_PUSH_REG0 0x208
+
+#define mmPDMA_CH_A_PQM_CH_CQ_RECONFIG 0x20C
+
+#endif /* ASIC_REG_PDMA_CH_A_PQM_CH_REGS_H_ */

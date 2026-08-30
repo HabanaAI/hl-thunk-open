@@ -1,0 +1,61 @@
+[lpbk]
+qps_per_port=128
+iterations_mem=2
+iterations_db=1
+cq_buf_len_shift=24
+user_cq_buf_len_shift=12
+data_loc=all
+cmpl=cq_usr
+data_size_shift=18
+wqe_size_shift=14
+data_cmp=yes
+single_alloc=yes
+cleanup=yes
+wait_for_cleanup=no
+verbose=1
+db_qman=no
+wtd_en=no
+eq_poll=yes
+wq_loc=host
+user_db=yes
+mtu=8192
+;3 types of transfers are allowed
+;test_opcode=write or wr-rdv or rd-rdv
+test_opcode=write
+
+[common]
+;ports=0
+qps_per_port=128
+lpbk_qps_per_port=0
+runtime_iterations=1
+data_loc=all
+wq_loc=host
+user_fifo=yes
+cmpl=cq
+single_cmpl=no
+user_cq_idx=0
+data_size_shift=18
+wqe_size_shift=14
+mtu=8192
+data_cmp=yes
+single_alloc=yes
+eq_poll=yes
+cleanup=yes
+wait_for_cleanup=no
+force_wq_with_pmmu=no
+assign_qp_priority=no
+verbose=1
+wtd_en=no
+odp_en=no
+sack_en=no
+compression_en=no
+;------valid values for reduction test------
+;reduction_en=yes/no
+;red_op=add or sub or max or min
+;red_dt=int8 or bf16 or fp32 or upscale
+reduction_en=no
+red_op=
+red_dt=
+;3 types of transfers are allowed
+;test_opcode=write or wr-rdv or rd-rdv
+test_opcode=write

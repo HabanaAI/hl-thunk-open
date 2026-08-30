@@ -46,9 +46,10 @@ static struct MTState state;
 #define L31(x) (0x7FFFFFFF & x) // 31 LSBs
 
 #define UNROLL(expr) \
-  y = M32(state.MT[i]) | L31(state.MT[i+1]); \
-  state.MT[i] = state.MT[expr] ^ (y >> 1) ^ ((((int32_t) y << 31) >> 31) & MAGIC); \
-  ++i;
+	y = M32(state.MT[i]) | L31(state.MT[i + 1]); \
+	state.MT[i] = state.MT[(expr)] ^ (y >> 1) ^ \
+	((uint32_t)(((int32_t)y << 31) >> 31) & MAGIC); \
+	++i;
 
 static void generate_numbers(void)
 {
@@ -96,12 +97,12 @@ static void generate_numbers(void)
 #endif
   }
 
-  {
-    // i = 623, last step rolls over
-    y = M32(state.MT[SIZE-1]) | L31(state.MT[0]);
-    state.MT[SIZE-1] = state.MT[PERIOD-1] ^ (y >> 1) ^ ((((int32_t) y << 31) >>
-          31) & MAGIC);
-  }
+	{
+		// i = 623, last step rolls over
+		y = M32(state.MT[SIZE - 1]) | L31(state.MT[0]);
+		state.MT[SIZE - 1] = state.MT[PERIOD - 1] ^ (y >> 1) ^
+			((uint32_t)(((int32_t)y << 31) >> 31) & MAGIC);
+	}
 
   // Temper all numbers in a batch
   for (i = 0; i < SIZE; ++i) {
@@ -155,8 +156,8 @@ void seed(uint32_t value)
 	state.index = SIZE;
 
 	for (i = 1 ; i < SIZE ; ++i)
-		state.MT[i] = 0x6c078965
-			* (state.MT[i - 1] ^ state.MT[i - 1] >> 30) + i;
+		state.MT[i] = 0x6c078965U
+			* (state.MT[i - 1] ^ state.MT[i - 1] >> 30) + (uint32_t)i;
 }
 
 uint32_t rand_u32()

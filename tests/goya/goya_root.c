@@ -21,7 +21,7 @@
 VOID test_qman_write_to_protected_register(void **state, bool is_tpc)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	struct hlthunk_hw_ip_info hw_ip;
+	struct hlthunk_hw_ip_info *hw_ip = &tests_state->hw_ip;
 	struct hltests_cs_chunk restore_arr[1], execute_arr[2];
 	struct hltests_pkt_info pkt_info;
 	struct hltests_monitor_and_fence mon_and_fence_info;
@@ -45,19 +45,13 @@ VOID test_qman_write_to_protected_register(void **state, bool is_tpc)
 	cfg_address = CFG_BASE + mmDMA_QM_4_PQ_BASE_HI;
 
 	/* Set engine queue ID and SRAM addresses */
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
-	if (!hw_ip.sram_size)
-		skip();
-
 	if (is_tpc) {
 		/* Find first available TPC */
 		uint8_t tpc_id, tpc_cnt;
 
 		tpc_cnt = hltests_get_tpc_cnt(fd);
 		for (tpc_id = 0;
-			(!(hw_ip.tpc_enabled_mask & (0x1 << tpc_id))) &&
+			(!(hw_ip->tpc_enabled_mask & (0x1 << tpc_id))) &&
 			(tpc_id < tpc_cnt);)
 			tpc_id++;
 
@@ -67,7 +61,7 @@ VOID test_qman_write_to_protected_register(void **state, bool is_tpc)
 		engine_qid = hltests_get_mme_qid(fd, 0, 0);
 	}
 
-	engine_cb_sram_addr = hw_ip.sram_base_address + 0x3000;
+	engine_cb_sram_addr = hw_ip->sram_base_address + 0x3000;
 
 	/* Internal CB for engine QMAN: MSG_LONG + signal SOB0 */
 	engine_cb = hltests_create_cb(fd, SZ_4K, INTERNAL, engine_cb_sram_addr);
@@ -114,7 +108,7 @@ VOID test_qman_write_to_protected_register(void **state, bool is_tpc)
 	dma_cb_size = 0;
 
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
-	mon_and_fence_info.queue_id = hltests_get_dma_down_qid(fd, STREAM0);
+	mon_and_fence_info.queue_id = u8_safe(hltests_get_dma_down_qid(fd, STREAM0));
 	mon_and_fence_info.cmdq_fence = false;
 	mon_and_fence_info.sob_id = 0;
 	mon_and_fence_info.mon_id = 0;
@@ -153,7 +147,7 @@ VOID test_qman_write_to_protected_register(void **state, bool is_tpc)
 	assert_int_equal(rc, 0);
 
 	/* Verify that the protected register wasn't written */
-	val = RREG32(cfg_address);
+	val = READ32(cfg_address);
 	assert_int_not_equal(val, 0x789a0ded);
 
 	END_TEST;
@@ -165,9 +159,9 @@ VOID test_goya_debugfs_sram_read_write(void **state)
 					(struct hltests_state *) *state;
 	uint32_t val;
 
-	WREG32(SRAM_BASE_ADDR + 0x200000, 0x99775533);
-	WREG32(SRAM_BASE_ADDR + 0x200000, 0x12345678);
-	val = RREG32(SRAM_BASE_ADDR + 0x200000);
+	WRITE32(SRAM_BASE_ADDR + 0x200000, 0x99775533);
+	WRITE32(SRAM_BASE_ADDR + 0x200000, 0x12345678);
+	val = READ32(SRAM_BASE_ADDR + 0x200000);
 
 	assert_int_equal(0x12345678, val);
 
@@ -184,8 +178,8 @@ VOID test_write_to_cfg_space(void **state)
 	void *ptr;
 	int fd = tests_state->fd;
 
-	WREG32(cfg_address, 0x55555555);
-	val = RREG32(cfg_address);
+	WRITE32(cfg_address, 0x55555555);
+	val = READ32(cfg_address);
 	assert_int_equal(val, 0x55555555);
 
 	ptr = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
@@ -205,7 +199,7 @@ VOID test_write_to_cfg_space(void **state)
 				hltests_get_dma_down_qid(fd, STREAM0),
 				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_TIMEDOUT);
 
-	val = RREG32(cfg_address);
+	val = READ32(cfg_address);
 	assert_int_not_equal(val, 0xbaba0ded);
 
 	END_TEST;
@@ -229,10 +223,10 @@ VOID test_write_to_mmTPC_PLL_CLK_RLX_0_from_qman(void **state)
 	void *ptr;
 	int fd = tests_state->fd;
 
-	val_orig = RREG32(CFG_BASE + mmTPC_PLL_CLK_RLX_0);
+	val_orig = READ32(CFG_BASE + mmTPC_PLL_CLK_RLX_0);
 
-	WREG32(CFG_BASE + mmTPC_PLL_CLK_RLX_0, 0x300030);
-	val = RREG32(CFG_BASE + mmTPC_PLL_CLK_RLX_0);
+	WRITE32(CFG_BASE + mmTPC_PLL_CLK_RLX_0, 0x300030);
+	val = READ32(CFG_BASE + mmTPC_PLL_CLK_RLX_0);
 	assert_int_equal(val, 0x300030);
 
 	ptr = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
@@ -249,10 +243,10 @@ VOID test_write_to_mmTPC_PLL_CLK_RLX_0_from_qman(void **state)
 				hltests_get_dma_down_qid(fd, STREAM0),
 				DESTROY_CB_TRUE, HL_WAIT_CS_STATUS_COMPLETED);
 
-	val = RREG32(CFG_BASE + mmTPC_PLL_CLK_RLX_0);
+	val = READ32(CFG_BASE + mmTPC_PLL_CLK_RLX_0);
 	assert_int_equal(val, 0x400040);
 
-	WREG32(CFG_BASE + mmTPC_PLL_CLK_RLX_0, val_orig);
+	WRITE32(CFG_BASE + mmTPC_PLL_CLK_RLX_0, val_orig);
 
 	END_TEST;
 }
@@ -279,18 +273,16 @@ static const char *const usage[] = {
 
 int main(int argc, const char **argv)
 {
-	int num_tests = sizeof(goya_root_tests) / sizeof((goya_root_tests)[0]);
+	size_t num_tests = sizeof(goya_root_tests) / sizeof((goya_root_tests)[0]);
 
 	hltests_parser(argc, argv, usage, HLTEST_DEVICE_MASK_GOYA, goya_root_tests,
-			num_tests);
+			(int)num_tests);
 
-	if (access("/sys/kernel/debug", R_OK)) {
-		printf("This executable need to be run with sudo\n");
+	if (!can_open_debugfs(true))
 		return 0;
-	}
 
 	return hltests_run_group_tests("goya_root", goya_root_tests, num_tests,
-				hltests_root_setup, hltests_root_teardown);
+					hltests_setup, hltests_teardown);
 }
 
 #endif /* HLTESTS_LIB_MODE */

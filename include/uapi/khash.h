@@ -162,13 +162,51 @@ typedef unsigned long long khint64_t;
 typedef khint32_t khint_t;
 typedef khint_t khiter_t;
 
-#define __ac_isempty(flag, i) ((flag[i>>4]>>((i&0xfU)<<1))&2)
-#define __ac_isdel(flag, i) ((flag[i>>4]>>((i&0xfU)<<1))&1)
-#define __ac_iseither(flag, i) ((flag[i>>4]>>((i&0xfU)<<1))&3)
-#define __ac_set_isdel_false(flag, i) (flag[i>>4]&=~(1ul<<((i&0xfU)<<1)))
-#define __ac_set_isempty_false(flag, i) (flag[i>>4]&=~(2ul<<((i&0xfU)<<1)))
-#define __ac_set_isboth_false(flag, i) (flag[i>>4]&=~(3ul<<((i&0xfU)<<1)))
-#define __ac_set_isdel_true(flag, i) (flag[i>>4]|=1ul<<((i&0xfU)<<1))
+#define __ac_isempty(flag, i)                                              \
+({                                                                         \
+	khint_t __ac_i = (i);                                              \
+	(((flag)[__ac_i >> 4] >> (((__ac_i & 0xFU) << 1))) & 2U);          \
+})
+
+#define __ac_isdel(flag, i)                                                \
+({                                                                         \
+	khint_t __ac_i = (i);                                              \
+	((((flag)[__ac_i >> 4] >> (((__ac_i & 0xFU) << 1))) & 1U));        \
+})
+
+#define __ac_iseither(flag, i)                                             \
+({                                                                         \
+	khint_t __ac_i = (i);                                              \
+	(((flag)[__ac_i >> 4] >> (((__ac_i & 0xFU) << 1))) & 3U);          \
+})
+
+#define __ac_set_isdel_false(flag, i)                                       \
+do {                                                                        \
+	khint_t __ac_i = (i);                                               \
+	(flag)[__ac_i >> 4] &=                                              \
+		~((khint32_t)1U << (((__ac_i & 0xFU) << 1)));               \
+} while (0)
+
+#define __ac_set_isempty_false(flag, i)                                     \
+do {                                                                        \
+	khint_t __ac_i = (i);                                               \
+	(flag)[__ac_i >> 4] &=                                              \
+		~((khint32_t)2U << (((__ac_i & 0xFU) << 1)));               \
+} while (0)
+
+#define __ac_set_isboth_false(flag, i)                                       \
+do {                                                                         \
+	khint_t __ac_i = (i);                                                \
+	(flag)[__ac_i >> 4] &=                                               \
+		~((khint32_t)3U << (((__ac_i & 0xFU) << 1)));                \
+} while (0)
+
+#define __ac_set_isdel_true(flag, i)                                          \
+do {                                                                          \
+	khint_t __ac_i = (i);                                                 \
+	(flag)[__ac_i >> 4] |=                                                \
+		(khint32_t)1U << (((__ac_i & 0xFU) << 1));                    \
+} while (0)
 
 #define __ac_fsize(m) ((m) < 16? 1 : (m)>>4)
 
@@ -394,8 +432,12 @@ static const double __ac_HASH_UPPER = 0.77;
  */
 static kh_inline khint_t __ac_X31_hash_string(const char *s)
 {
-	khint_t h = (khint_t)*s;
-	if (h) for (++s ; *s; ++s) h = (h << 5) - h + (khint_t)*s;
+	khint_t h = (khint_t)(unsigned char)*s;
+
+	if (h) {
+		for (++s; *s; ++s)
+			h = (h << 5) - h + (khint_t)(unsigned char)*s;
+	}
 	return h;
 }
 /*! @function

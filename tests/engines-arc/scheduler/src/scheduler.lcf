@@ -1,0 +1,86 @@
+#No ICCM
+#DCCM = 64K
+#ICache = 32K --> HBM Region = 120K
+#DCache = 8192 -> HBM Region = 8KB
+#System Memory HBM Region = 2MB for test cases
+
+MEMORY {
+	.dccm      : ORIGIN = 0x80000000, LENGTH = 0x10000
+	.hbm_code  : ORIGIN = 0x40000000, LENGTH = 0x1E000
+	.hbm_data  : ORIGIN = 0x4001E000, LENGTH = 0x2000
+	.sys_mem   : ORIGIN = 0x40020000, LENGTH = 0x200000
+}
+
+ENTRY(_start)
+
+SECTIONS
+{
+	.ivt : {
+		KEEP (*(.ivt));
+	} > .hbm_code;
+
+	.text : {
+		crt0_sched.o (.text*)
+		*(.text .text.*)
+		__text_end = . ;
+	} >.hbm_code
+
+	.arc_regs : {
+		. = ALIGN(8);
+		* (.arc_regs*)
+	} >.dccm
+
+	.data : {
+		__data_start = . ;
+		. = ALIGN(8);
+		* (.data*)
+	} >.dccm
+
+	.rodata : {
+		. = ALIGN(8);
+		* (.rodata*)
+	} >.dccm
+
+	.sdata : {
+		. = ALIGN(8);
+		__sdata_start = . ;
+		* (.sdata*)
+		__sdata_end = . ;
+	} >.dccm
+
+	.bss : {
+		. = ALIGN(8);
+		__bss_start = . ;
+		* (.bss*)
+		__bss_end = . ;
+	} >.dccm
+
+	.stack : {
+		. = ALIGN(8);
+		__stack = . ;
+		. = . + 2048 ;
+		__stack_top = . ;
+	} > .dccm
+
+	.hbmdata : {
+		. = ALIGN(8);
+		* (.hbmdata*)
+	} >.hbm_data
+
+	.hbmrodata : {
+		. = ALIGN(8);
+		* (.hbmrodata*)
+	} >.hbm_data
+
+	.hbmbss : {
+		. = ALIGN(8);
+		__hbmbss_start = . ;
+		* (.hbmbss*)
+		__hbmbss_end = . ;
+	} >.hbm_data
+
+	.sysmem : {
+		. = ALIGN(8);
+		* (.sysmem*)
+	} >.sys_mem
+}

@@ -1,4 +1,7 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
+# Copyright (C) 2025 Intel Corporation
+#
 set -e
 
 # To build with tests, install cmocka-dev and define EXTRA_CMAKE_FLAGS as:

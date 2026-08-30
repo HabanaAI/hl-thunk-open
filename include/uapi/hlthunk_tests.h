@@ -8,24 +8,319 @@
 #ifndef HLTHUNK_TESTS_H
 #define HLTHUNK_TESTS_H
 
-#include "drm/habanalabs_accel.h"
 #include "hlthunk.h"
 #include "khash.h"
 #include "pci_ids.h"
 
-#include <stdint.h>
-#include <sys/types.h>
 #include <sys/mman.h>
-#include <stdbool.h>
+#include <sys/time.h>
+#include <sys/types.h>
 
-#include <stdarg.h>
+#include <errno.h>
+#include <limits.h>
+#include <stdbool.h>
 #include <stddef.h>
-#include <setjmp.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 
 #ifndef HLTESTS_LIB_MODE
+/* These includes are necessary for cmocka */
+#include <setjmp.h>
+#include <stdarg.h>
+
 #include <cmocka.h>
-#endif
+#endif /* ndef HLTESTS_LIB_MODE */
+
+#define __STRINGIFY(x_) #x_
+#define STRINGIFY(x_) __STRINGIFY(x_)
+
+#define LOG(level_, format_, ...) \
+	printf("[" level_ "] %s:" STRINGIFY(__LINE__) ": " format_ "\n", __func__, ##__VA_ARGS__)
+
+#define D(format_, ...)                                     \
+	do {                                                \
+		if (hltests_get_verbose_enabled())          \
+			LOG("DBG", format_, ##__VA_ARGS__); \
+	} while (0)
+#define I(format_, ...) LOG("INF", format_, ##__VA_ARGS__)
+#define W(format_, ...) LOG("WRN", format_, ##__VA_ARGS__)
+#define E(format_, ...) LOG("ERR", format_ " (errno: %s)", ##__VA_ARGS__, strerror(errno))
+
+/**
+ * read_poll_timeout - Periodically poll an address until a condition is met or
+ *                     a timeout occurs.
+ * @op: Accessor function (takes @args as its arguments)
+ * @val: Variable to read the value into
+ * @cond: Break condition (usually involving @val)
+ * @sleep_us: Maximum time to sleep between reads in us (0
+ *            tight-loops).
+ * @timeout_us: Timeout in us, 0 means never timeout
+ * @sleep_before_read: if it is true, sleep @sleep_us before read.
+ * @args: arguments for @op poll
+ *
+ * Returns 0 on success and -ETIMEDOUT upon a timeout. In either
+ * case, the last read value at @args is stored in @val.
+ */
+#define read_poll_timeout(op, val, cond, sleep_us, timeout_us, sleep_before_read, args...) \
+	({                                                                                 \
+		uint64_t __timeout_us = (timeout_us);                                      \
+		unsigned long __sleep_us = (sleep_us);                                     \
+		struct timeval __end_time, __current_time,                                 \
+			__timeout = { .tv_usec = __timeout_us };                           \
+		gettimeofday(&__end_time, NULL);                                           \
+		timeradd(&__end_time, &__timeout, &__end_time);                            \
+		if (sleep_before_read && __sleep_us)                                       \
+			usleep(__sleep_us);                                                \
+		for (;;) {                                                                 \
+			(val) = op(args);                                                  \
+			if (cond)                                                          \
+				break;                                                     \
+			gettimeofday(&__current_time, NULL);                               \
+			if (__timeout_us && timercmp(&__current_time, &__end_time, >=)) {  \
+				(val) = op(args);                                          \
+				break;                                                     \
+			}                                                                  \
+			if (__sleep_us)                                                    \
+				usleep(__sleep_us);                                        \
+		}                                                                          \
+		(cond) ? 0 : -ETIMEDOUT;                                                   \
+	})
+
+static inline int str_to_u64_strict(const char *str, int base, uint64_t max, uint64_t *out)
+{
+	char *tailptr;
+	unsigned long long parsed;
+
+	if (!str || !out)
+		return -EINVAL;
+
+	if (*str == '\0' || *str == '-')
+		return -EINVAL;
+
+	errno = 0;
+	parsed = strtoull(str, &tailptr, base);
+
+	if (errno == ERANGE)
+		return -ERANGE;
+
+	if (tailptr == str || *tailptr != '\0')
+		return -EINVAL;
+
+	if (parsed > max)
+		return -E2BIG;
+
+	*out = (uint64_t)parsed;
+	return 0;
+}
+
+static inline int str_to_u32_safe(const char *str, int base, uint32_t *val)
+{
+	uint64_t tmp;
+	int rc;
+
+	rc = str_to_u64_strict(str, base, UINT32_MAX, &tmp);
+	if (rc)
+		return rc;
+
+	*val = (uint32_t)tmp;
+
+	return 0;
+}
+
+#define str_to_u32_safe_ret_on_err(dest, src_str, base, err) do {	\
+	const char *_src = (src_str);  /* evaluate once */		\
+	int _rc_;							\
+									\
+	_rc_ = str_to_u32_safe(_src, (base), &(dest));			\
+	if (_rc_) {							\
+		LOG("ERR", "Conversion to u32: %s, FAILED (%d)",	\
+				_src ? _src : "(null)", _rc_);		\
+		return err;						\
+	}								\
+} while (0)
+
+#define str_to_u8_safe_ret_on_err(dest, src_str, base, err) do {	\
+	const char *_src = (src_str);  /* evaluate once */		\
+	uint64_t _val_64;						\
+	int _rc_;							\
+									\
+	_rc_ = str_to_u64_strict(_src, (base), UINT8_MAX, &_val_64);	\
+	if (_rc_) {							\
+		LOG("ERR", "Conversion to u8: %s, FAILED (%d)",		\
+				_src ? _src : "(null)", _rc_);		\
+		return (err);						\
+	}								\
+									\
+	(dest) = (uint8_t)_val_64;					\
+} while (0)
+
+#define u8_safe_ret_ptr(func_call) ({		\
+	uint64_t _val = (func_call);		\
+						\
+	assert_true_ret_ptr(_val <= UINT8_MAX);	\
+	(uint8_t)_val;				\
+})
+
+#define u8_safe_ret_val(func_call, retval) ({			\
+	uint64_t _val = (func_call);				\
+								\
+	assert_true_ret_val(_val <= UINT8_MAX, (retval));	\
+	(uint8_t)_val;						\
+})
+
+#define u8_safe_ret(func_call) ({		\
+	uint64_t _val = (func_call);		\
+						\
+	assert_true_ret(_val <= UINT8_MAX);	\
+	(uint8_t)_val;				\
+})
+
+#define u8_safe(func_call) ({	\
+	uint64_t _val = (func_call);		\
+						\
+	assert_true(_val <= UINT8_MAX);		\
+	(uint8_t)_val;				\
+})
+
+#define u16_safe(func_call) ({			\
+	uint64_t _val = (func_call);		\
+						\
+	assert_true(_val <= UINT16_MAX);	\
+	(uint16_t)_val;				\
+})
+
+#define u16_safe_ret(func_call) ({		\
+	uint64_t _val = (func_call);		\
+						\
+	assert_true_ret(_val <= UINT16_MAX);	\
+	(uint16_t)_val;				\
+})
+
+#define u16_safe_ret_ptr(func_call) ({		\
+	uint64_t _val = (func_call);		\
+						\
+	assert_true_ret_ptr(_val <= UINT16_MAX);\
+	(uint16_t)_val;				\
+})
+
+#define u16_safe_ret_val(func_call, retval) ({			\
+	uint64_t _val = (func_call);				\
+								\
+	assert_true_ret_val(_val <= UINT16_MAX, (retval));	\
+	(uint16_t)_val;						\
+})
+
+#define u32_safe(func_call) ({			\
+	uint64_t _val = (func_call);		\
+						\
+	assert_true(_val <= UINT32_MAX);	\
+	(uint32_t)_val;				\
+})
+
+#define u32_safe_ret_ptr(func_call) ({			\
+	uint64_t _val = (func_call);			\
+							\
+	assert_true_ret_ptr(_val <= UINT32_MAX);	\
+	(uint32_t)_val;					\
+})
+
+#define u32_safe_ret(func_call) ({			\
+	uint64_t _val = (func_call);			\
+							\
+	assert_true_ret(_val <= UINT32_MAX);		\
+	(uint32_t)_val;					\
+})
+
+#define u32_safe_ret_val(func_call, retval) ({			\
+	uint64_t _val = (func_call);				\
+								\
+	assert_true_ret_val(_val <= UINT32_MAX, (retval));	\
+	(uint32_t)_val;						\
+})
+
+#define uint_to_int_safe(func_call) ({		\
+	uint64_t _ival = (func_call);		\
+						\
+	assert_true(_ival <= INT_MAX);		\
+	(int)_ival;				\
+})
+
+#define uint_to_int_safe_ret(func_call) ({	\
+	uint64_t _ival = (func_call);		\
+						\
+	assert_true_ret(_ival <= INT_MAX);	\
+	(int)_ival;				\
+})
+
+#define uint_to_int_safe_ret_val(func_call, retval) ({		\
+	uint64_t _ival = (func_call);				\
+								\
+	assert_true_ret_val(_ival <= INT_MAX, (retval));	\
+	(int)_ival;						\
+})
+
+#define int_to_uint_safe(func_call) ({		\
+	int64_t _ival = (func_call);				\
+								\
+	assert_in_range(_ival, 0, UINT_MAX);	\
+	(unsigned int)_ival;						\
+})
+
+#define int_to_uint_safe_ret_val(func_call, retval) ({		\
+	int64_t _ival = (func_call);				\
+								\
+	assert_in_range_ret_val(_ival, 0, UINT_MAX, (retval));	\
+	(unsigned int)_ival;					\
+})
+
+#define bitfield_safe(_val, _width) ({			\
+	union {						\
+		uint64_t __raw;				\
+		uint64_t __bf:(_width);			\
+	} __conv;					\
+							\
+	__conv.__raw = (uint64_t)(_val);		\
+	assert_true(__conv.__raw  == __conv.__bf);	\
+	__conv.__bf;					\
+})
+
+#define s_bitfield_safe(_val, _width) ({		\
+	union {						\
+		int64_t __raw;				\
+		int64_t __bf:(_width);			\
+	} __conv;					\
+							\
+	__conv.__raw = (int64_t)(_val);			\
+	assert_true(__conv.__raw  == __conv.__bf);	\
+	__conv.__bf;					\
+})
+
+#define bitfield_safe_ret(_val, _width)	({		\
+	union {						\
+		uint64_t __raw;				\
+		uint64_t __bf:(_width);			\
+	} __conv;					\
+							\
+	__conv.__raw = (uint64_t)(_val);		\
+	assert_true_ret(__conv.__raw  == __conv.__bf);	\
+	__conv.__bf;					\
+})
+
+#define bitfield_safe_ret_val(_val, _width, _ret_val) ({		\
+	union {								\
+		uint64_t __raw;						\
+		uint64_t __bf:(_width);					\
+	} __conv;							\
+									\
+	__conv.__raw = (uint64_t)(_val);				\
+	assert_true_ret_val(__conv.__raw  == __conv.__bf, (_ret_val));	\
+	__conv.__bf;							\
+})
+
+#define bitfield_safe_ret_u32_err(_val, _width)	\
+		bitfield_safe_ret_val((_val), (_width), (uint32_t)-1)
 
 #ifdef HLTESTS_LIB_MODE
 
@@ -50,6 +345,7 @@
 #define assert_int_not_equal(a, b) if ((a) == (b)) return -1
 
 #define assert_ptr_not_equal(p, v) if ((p) == (v)) return -1
+#define assert_ptr_equal(p, v) if ((p) != (v)) return -1
 
 #define assert_in_range(a, min, max) if (!((a) >= (min) && (a) <= (max))) return -1
 #define assert_not_in_range(a, min, max) if ((a) >= (min) && (a) <= (max)) return -1
@@ -58,11 +354,17 @@
 #define assert_false(a) if (a) return -1
 
 #define fail_ret_ptr() return NULL
+#define fail_ret_val(retval) do { return (retval); } while (0)
 
 #define fail_msg_ret_ptr(fmt, ...) printf(fmt, ##__VA_ARGS__); return NULL
+#define fail_msg_ret_val(retval, fmt, ...) do {	\
+	printf(fmt, ##__VA_ARGS__);			\
+	return (retval);				\
+} while (0)
 
 #define assert_null_ret_ptr(p) if (p) return NULL
 #define assert_non_null_ret_ptr(p) if (!(p)) return NULL
+#define assert_non_null_ret_val(p, retval) do { if (!(p)) return (retval); } while (0)
 
 #define assert_int_equal_ret_ptr(a, b) if ((a) != (b)) return NULL
 #define assert_int_not_equal_ret_ptr(a, b) if ((a) == (b)) return NULL
@@ -80,20 +382,33 @@
 #define assert_true_ret_ptr(a) if (!(a)) return NULL
 #define assert_false_ret_ptr(a) if (a) return NULL
 
+#define assert_int_equal_ret_val(a, b, retval) do { if ((a) != (b)) return (retval); } while (0)
+#define assert_int_not_equal_ret_val(a, b, retval) do { if ((a) == (b)) return (retval); } while (0)
+#define assert_true_ret(a) do { if (!(a)) return; } while (0)
+#define assert_true_ret_val(a, retval) do { if (!(a)) return (retval); } while (0)
+
+#define assert_in_range_ret_val(a, min, max, retval) do {	\
+	typeof(a) _a = (a);					\
+								\
+	if (!((_a) >= (min) && (_a) <= (max)))			\
+		return (retval);				\
+} while (0)
+
 #define assert_return_code(rc, error) fail_msg("%d < 0, errno(%d): %s", rc, error, strerror(error))
 
-#define ALLOC_2D_ARR_RET_PTR(arr, r, c) \
-	do { \
-		(arr) = malloc(r * sizeof(*(arr))); \
-		assert_non_null_ret_ptr((arr)); \
-		for (i = 0 ; i < (r) ; i++) { \
-			(arr)[i] = malloc((c) * sizeof(**(arr))); \
-			assert_non_null_ret_ptr(arr[i]); \
-			memset((arr)[i], 0, (c) * sizeof(**(arr))); \
-		} \
+#define ALLOC_2D_ARR_RET_PTR(arr, r, c)                               \
+	do {                                                          \
+		typeof(r) __i;                                        \
+		(arr) = malloc(r * sizeof(*(arr)));                   \
+		assert_non_null_ret_ptr((arr));                       \
+		for (__i = 0; __i < (r); __i++) {                     \
+			(arr)[__i] = malloc((c) * sizeof(**(arr)));   \
+			assert_non_null_ret_ptr(arr[__i]);            \
+			memset((arr)[__i], 0, (c) * sizeof(**(arr))); \
+		}                                                     \
 	} while (0)
 
-#else
+#else /* HLTESTS_LIB_MODE */
 
 #define VOID void
 #define END_TEST
@@ -102,8 +417,16 @@
 #define CALL_HELPER_FUNC(func) (func)
 
 #define fail_ret_ptr() fail()
+#define fail_ret_val(retval) do {	\
+	fail();				\
+	return retval;		\
+} while (0)
 
-#define fail_msg_ret_ptr(fmt, ...) fail_msg(fmt, ...)
+#define fail_msg_ret_ptr(fmt, ...) fail_msg((fmt), ##__VA_ARGS__)
+#define fail_msg_ret_val(retval, fmt, ...) do {		\
+	fail_msg(fmt, ##__VA_ARGS__);			\
+	return retval;				\
+} while (0)
 
 #define assert_null_ret_ptr(p) assert_null((p))
 #define assert_non_null_ret_ptr(p) assert_non_null((p))
@@ -121,14 +444,54 @@
 #define assert_true_ret_ptr(a) assert_true((a))
 #define assert_false_ret_ptr(a) assert_false((a))
 
+#define assert_int_equal_ret_val(a, b, retval) do {	\
+	(void)(retval);					\
+	assert_int_equal((a), (b));			\
+} while (0)
+
+#define assert_int_not_equal_ret_val(a, b, retval) do {	\
+	(void)(retval);					\
+	assert_int_not_equal((a), (b));			\
+} while (0)
+
+#define assert_non_null_ret_val(p, retval) do {		\
+	(void)(retval);					\
+	assert_non_null((p));				\
+} while (0)
+
+#define assert_true_ret(a) assert_true((a))
+#define assert_true_ret_val(a, retval) do {	\
+	(void)(retval);				\
+	assert_true((a));			\
+} while (0)
+
+#define assert_in_range_ret_val(a, min, max, retval) do {	\
+	(void)(retval);						\
+	assert_in_range((a), (min), (max));			\
+} while (0)
+
 #define ALLOC_2D_ARR_RET_PTR(arr, r, c) ALLOC_2D_ARR(arr, r, c)
 
-#endif
+#endif /* HLTESTS_LIB_MODE */
+
+#define NUM_OF_SRAM_AFA_ADDRS		2
+#define AFA_MAX_NUM_OF_CMPL_REGS	2
 
 #ifdef HLTHUNK_TESTS_SANITIZER
 #undef skip
 #define skip() EXIT_FROM_TEST
-#endif
+#endif /* HLTHUNK_TESTS_SANITIZER */
+
+#define MSEC_PER_SEC			1000L
+#define USEC_PER_MSEC			1000L
+#define NSEC_PER_USEC			1000L
+#define NSEC_PER_MSEC			1000000L
+#define USEC_PER_SEC			1000000L
+#define NSEC_PER_SEC			1000000000L
+
+#define POLL_FREQ_USEC			USEC_PER_MSEC
+#define POLL_TIMEOUT_USEC		USEC_PER_SEC
+#define MINI_ASSERT_POLL_TIMEOUT_USEC	(10 * USEC_PER_MSEC)
 
 #define ARRAY_SIZE(arr)			(sizeof(arr) / sizeof((arr)[0]))
 #define BIT(nr)				((1UL) << (nr))
@@ -139,16 +502,29 @@
 
 #ifndef BITS_PER_BYTE
 #define BITS_PER_BYTE	8
-#endif
+#endif /* BITS_PER_BYTE */
 
 #ifndef BITS_PER_LONG
 #define BITS_PER_LONG	(BITS_PER_BYTE * sizeof(unsigned long))
-#endif
+#endif /* BITS_PER_LONG */
+
+#define CONCATENATE(a, b) __CONCAT(a, b)
 
 #define GENMASK(h, l) \
 	(((~0UL) - (1UL << (l)) + 1) & (~0UL >> (BITS_PER_LONG - 1 - (h))))
 
-#define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
+#define DIV_ROUND_UP(n, d) ({	\
+	typeof(n) __n = (n);	\
+	typeof(d) __d = (d);	\
+	(__n + __d - 1) / __d;	\
+})
+
+#define roundup(x, y) (					\
+{							\
+	typeof(y) __y = y;				\
+	(((x) + (__y - 1)) / __y) * __y;		\
+}							\
+)
 
 #define rounddown(x, y) (				\
 {							\
@@ -182,17 +558,46 @@ do {	\
 
 #define WAIT_FOR_CS_DEFAULT_TIMEOUT		5000000 /* 5 sec */
 #define WAIT_FOR_CS_DEFAULT_TIMEOUT_NON_LEGACY	30000000 /* 30 sec */
+
+#define RESET_WAIT_TIMEOUT_SEC			60 /* 60 sec */
+#define PLDM_RESET_WAIT_TIMEOUT_SEC		600 /* 600 sec */
+
+#define EVENTS_WAIT_TIMEOUT_SEC			5 /* 5 sec */
+#define PLDM_EVENTS_WAIT_TIMEOUT_SEC		40 /* 40 sec */
+
 #define HLTHUNK_MAX_DCORES			4
 
 /* device bitmasks */
 #define HLTEST_DEVICE_MASK_INVALID		0
 #define HLTEST_DEVICE_MASK_GOYA			BIT(0)
+#define HLTEST_DEVICE_MASK_GRECO		BIT(1)
 #define HLTEST_DEVICE_MASK_GAUDI		BIT(2)
+#define HLTEST_DEVICE_MASK_GAUDI_HL2000M	BIT(3)
 #define HLTEST_DEVICE_MASK_GAUDI2		BIT(4)
-#define HLTEST_DEVICE_MASK_DONT_CARE		GENMASK(5, 0)
+#define HLTEST_DEVICE_MASK_GAUDI3		BIT(5)
+#define HLTEST_DEVICE_MASK_GAUDI2B		BIT(6)
+#define HLTEST_DEVICE_MASK_GAUDI2C		BIT(7)
+#define HLTEST_DEVICE_MASK_GAUDI2D		BIT(8)
+#define HLTEST_DEVICE_MASK_GAUDI3D		BIT(9)
+#define HLTEST_DEVICE_MASK_GAUDI2E		BIT(10)
+#define HLTEST_DEVICE_MASK_GAUDI3E		BIT(11)
+#define HLTEST_DEVICE_MASK_DONT_CARE		GENMASK(11, 0)
 
 #define HLTEST_DEVICE_MASK_GAUDI_ALL	\
-		(HLTEST_DEVICE_MASK_GAUDI)
+		(HLTEST_DEVICE_MASK_GAUDI | HLTEST_DEVICE_MASK_GAUDI_HL2000M)
+
+#define HLTEST_DEVICE_MASK_GAUDI2_ALL	\
+		(HLTEST_DEVICE_MASK_GAUDI2 | HLTEST_DEVICE_MASK_GAUDI2B | \
+		HLTEST_DEVICE_MASK_GAUDI2C | HLTEST_DEVICE_MASK_GAUDI2D | \
+		HLTEST_DEVICE_MASK_GAUDI2E)
+
+#define HLTEST_DEVICE_MASK_GAUDI3_ALL	\
+		(HLTEST_DEVICE_MASK_GAUDI3 | HLTEST_DEVICE_MASK_GAUDI3D | \
+		HLTEST_DEVICE_MASK_GAUDI3E)
+
+#define HLTEST_DEVICE_MASK_GAUDI_FAMILY	\
+		(HLTEST_DEVICE_MASK_GAUDI_ALL | HLTEST_DEVICE_MASK_GAUDI2_ALL | \
+		HLTEST_DEVICE_MASK_GAUDI3_ALL)
 
 #define SZ_128				0x00000080
 
@@ -225,77 +630,121 @@ do {	\
 #define SZ_8G				0x200000000ULL
 #define SZ_16G				0x400000000ULL
 #define SZ_32G				0x800000000ULL
+#define SZ_128G				0x2000000000ULL
 
 #define SHIFT_1MB			20
 #define SHIFT_32MB			25
 #define SHIFT_1GB			30
 
-#define ALLOC_2D_ARR(arr, r, c) \
-	do { \
-		(arr) = malloc(r * sizeof(*(arr))); \
-		assert_non_null((arr)); \
-		for (i = 0 ; i < (r) ; i++) { \
-			(arr)[i] = malloc((c) * sizeof(**(arr))); \
-			assert_non_null(arr[i]); \
-			memset((arr)[i], 0, (c) * sizeof(**(arr))); \
-		} \
+#define TIME_1_MIN_IN_USEC		60000000
+
+#define ALLOC_2D_ARR(arr, r, c)                                       \
+	do {                                                          \
+		typeof(r) __i;                                        \
+		(arr) = malloc(r * sizeof(*(arr)));                   \
+		assert_non_null((arr));                               \
+		for (__i = 0; __i < (r); __i++) {                     \
+			(arr)[__i] = malloc((c) * sizeof(**(arr)));   \
+			assert_non_null(arr[__i]);                    \
+			memset((arr)[__i], 0, (c) * sizeof(**(arr))); \
+		}                                                     \
 	} while (0)
 
-#define FREE_2D_ARR(arr, r) \
-	do { \
-		for (i = 0 ; i < (r) ; i++) { \
-			free((arr)[i]); \
-		} \
-		free((arr)); \
+#define FREE_2D_ARR(arr, r)                       \
+	do {                                      \
+		typeof(r) __i;                    \
+		for (__i = 0; __i < (r); __i++) { \
+			free((arr)[__i]);         \
+		}                                 \
+		free((arr));                      \
 	} while (0)
 
 #define PAGE_SHIFT_4KB			12
 #define PAGE_SHIFT_2MB			21
 #define PAGE_SHIFT_16MB			24
 
-#define DIV_ROUND_DOWN_ULL(ll, d) ({ div((ll), (d)).quot; })
+/* Floor division for unsigned long long (same as /) */
+#define DIV_ROUND_DOWN_ULL(ll, d) \
+({ \
+	unsigned long long __n = (unsigned long long)(ll);	\
+	unsigned long long __d = (unsigned long long)(d);	\
+	__n / __d;	\
+})
 
+/* Ceil division for unsigned long long: q + (r != 0), no overflow risk */
 #define DIV_ROUND_UP_ULL(ll, d) \
-	DIV_ROUND_DOWN_ULL((unsigned long long) (ll) + (d) - 1, (d))
+({ \
+	unsigned long long __n = (unsigned long long)(ll);	\
+	unsigned long long __d = (unsigned long long)(d);	\
+	__n / __d + ((__n % __d) != 0); \
+})
 
 #define MAX(x, y) ((x > y) ? (x) : (y))
 
-/* Last bit set for 32bit var */
-#define LBS32(_x)		(_x ? (32 - __builtin_clz(_x)) : 0)
-/* Last bit set for 64bit var */
-#define LBS64(_x)	 (upper_32_bits(_x) ? LBS32(upper_32_bits(_x)) : LBS32(lower_32_bits(_x)))
+#define __builtin_clzg(_x)                                           \
+	({                                                           \
+		typeof(_x) x__ = _x;                                 \
+		_Generic((x__),                                      \
+			 int                : __builtin_clz,         \
+			 unsigned int       : __builtin_clz,         \
+			 long               : __builtin_clzl,        \
+			 unsigned long      : __builtin_clzl,        \
+			 long long          : __builtin_clzll,       \
+			 unsigned long long : __builtin_clzll)(x__); \
+	})
+
 /* Last bit set */
-#define LBS(_n)			((sizeof(_n) <= 4) ? LBS32(_n) : LBS64(_n))
+
+#define LBS(_n)                                                             \
+	(_n ? ((typeof(sizeof(_n)))(sizeof(_n) * 8) -                          \
+		(typeof(sizeof(_n)))__builtin_clzg(_n)) : 0)
+
 /* log of base 2 for unsigned 32bit or 64bit values */
 #define HL_LOG2(_n)		(LBS(_n) - 1)
 
 #define DMA_TEST_INC_SRAM(func_name, state, size) \
-	void func_name(void **state) { hltests_dma_test(state, false, size, 0); }
-#define DMA_TEST_INC_DRAM(func_name, state, size, page_size) \
-	void func_name(void **state) { hltests_dma_test(state, true, size, page_size); }
+	void func_name(void **state) { hltests_dma_sram_test(state, size); }
+#define DMA_TEST_INC_DRAM(func_name, state, size) \
+	void func_name(void **state) { hltests_dma_dram_test(state, size); }
 #define DMA_TEST_INC_DRAM_FRAG(func_name, state, size) \
 	void func_name(void **state) \
 	{ hltests_dma_dram_frag_mem_test(state, size); }
 #define DMA_TEST_INC_DRAM_HIGH(func_name, state, size) \
 	void func_name(void **state) \
 	{ hltests_dma_dram_high_mem_test(state, size); }
-#define RREG32(full_address) \
+#define READ32(full_address) \
 		hltests_debugfs_read(tests_state->debugfs.addr_fd, \
 			tests_state->debugfs.data32_fd, full_address)
-#define WREG32(full_address, val) \
+#define WRITE32(full_address, val) \
 		hltests_debugfs_write(tests_state->debugfs.addr_fd, \
 			tests_state->debugfs.data32_fd, full_address, val)
-#define RREG64(full_address) \
+#define READ64(full_address) \
 		hltests_debugfs_read64(tests_state->debugfs.addr_fd, \
 			tests_state->debugfs.data64_fd, full_address)
-#define WREG64(full_address, val) \
+#define WRITE64(full_address, val) \
 		hltests_debugfs_write64(tests_state->debugfs.addr_fd, \
 			tests_state->debugfs.data64_fd, full_address, val)
 
 #define PLDM_MAX_DMA_SIZE_FOR_TESTING SZ_1M
 
-#define ALIGN_UP(addr, size)	((addr + (size - 1)) & ~(size - 1))
-#define ALIGN_DOWN(addr, size)  ((addr) & ~(size - 1))
+/* opcode 0 is undefined for all asics (including for pqm in gaudi3) */
+#define PACKET_UNDEF_OPCODE 0x0
+
+#define ALIGN_UP(addr, size)                                                \
+({                                                                          \
+	typeof(addr) __ac_addr = (addr);                                    \
+	typeof(addr) __ac_size = (typeof(addr))(size);                      \
+	(__ac_addr + (__ac_size - (typeof(addr))1)) &                       \
+		~(__ac_size - (typeof(addr))1);                             \
+})
+
+#define ALIGN_DOWN(addr, size)                                              \
+({                                                                          \
+	typeof(addr) __ac_addr = (addr);                                    \
+	typeof(addr) __ac_size = (typeof(addr))(size);                      \
+	__ac_addr & ~(__ac_size - (typeof(addr))1);                         \
+})
+
 #define IS_8B_ALIGNED(addr)	(((addr) & 0x7) == 0)
 
 #define IS_POWER_OF_TWO(x) (				\
@@ -318,20 +767,74 @@ do {	\
 	_a > _b ? _b : _a;		\
 })
 
-#define MAX_NIC_NUMBER_OF_PORTS		24
-
-#define CQ_DB_SEQ_MASK			0xff00000000000000ul
-#define CQ_DB_SEQ_SUBMITTER_SHIFT	56
+#define IS_ALIGNED(x, a)		(((x) & ((typeof(x))(a) - 1)) == 0)
 
 #define CQ_SIZE_LOG_2			3
 #define CQ_SIZE				(1 << CQ_SIZE_LOG_2) /* 8 bytes, always */
 
+#define DEFAULT_COLL_LAG_SIZE		3
+
+#define CAP_ARC_FW_LOAD_NON_MASK		0x00000000
+#define CAP_ARC_FW_LOAD_SCHED_MASK		BIT_ULL(1)
+#define CAP_ARC_FW_LOAD_TPC_MASK		BIT_ULL(2)
+#define CAP_ARC_FW_LOAD_MME_MASK		BIT_ULL(3)
+#define CAP_ARC_FW_LOAD_EDMA_MASK		BIT_ULL(4)
+#define CAP_ARC_FW_LOAD_PDMA_MASK		BIT_ULL(5)
+#define CAP_ARC_FW_LOAD_ROT_MASK		BIT_ULL(6)
+#define CAP_ARC_FW_LOAD_NIC_MASK		BIT_ULL(7)
+#define CAP_MME_DMA_MASK			BIT_ULL(8)
+
+#define CAP_ARC_FW_LOAD_PDMA_ONLY \
+	(CAP_ARC_FW_LOAD_SCHED_MASK | CAP_ARC_FW_LOAD_PDMA_MASK)
+
+#define ARC_BIN_PATH_MAX_LENGTH		256
+#define ARC_HINT_48BIT_MASK		((1ull << 48ull) - 1ull)
+#define ARC_ADDR_OFFSET_MASK		((1ull << 28ull) - 1ull)
+
 KHASH_MAP_INIT_INT(ptr, void*)
 KHASH_MAP_INIT_INT64(ptr64, void*)
+KHASH_MAP_INIT_INT64(mapping, size_t)
 
-/* Must be an exact copy of goya_dma_direction for the no mmu mode to work
- * This structure is relevant only for Goya. In Gaudi and above, we don't need
- * the user to hint us about the direction
+#define PQM_PI_CI_IN_MEM_Q_SIZE		SZ_32M
+#define PQM_TIMEOUT_USEC		10000
+#define PLDM_PQM_TIMEOUT_USEC		3000000
+
+#define ARC_BUILD_ADDR(region, addr)	\
+	((uint32_t) (((region) << 28) | ((addr) & ARC_ADDR_OFFSET_MASK)))
+
+/* This is used by gaudi3 only and it is (NUM_OF_PDMA_GRP * NUM_OF_PDMA_CH_PER_GRP) */
+#define MAX_PDMA_CH_NUM		24
+
+#define MAX_NUM_OF_MME	8
+
+#define MAX_NUM_OF_BP_OFFSETS		16
+
+#define TEST_TDR_DEADLOCK_TIMEOUT_SEC	5
+#define MME_DMA_SIZE SZ_1M
+
+/* There are no userspace equivalent for the SPEED and WIDTH kernel macros. Hence add them
+ * explicitly till it is added to IB core userspace.
+ */
+#define HLTEST_IBV_SPEED_SDR	1
+#define HLTEST_IBV_SPEED_DDR	2
+#define HLTEST_IBV_SPEED_QDR	4
+#define HLTEST_IBV_SPEED_FDR10	8
+#define HLTEST_IBV_SPEED_FDR	16
+#define HLTEST_IBV_SPEED_EDR	32
+#define HLTEST_IBV_SPEED_HDR	64
+#define HLTEST_IBV_SPEED_NDR	128
+
+enum hltest_ib_port_width {
+	HLTEST_IBV_WIDTH_1X	= 1,
+	HLTEST_IBV_WIDTH_2X	= 16,
+	HLTEST_IBV_WIDTH_4X	= 2,
+	HLTEST_IBV_WIDTH_8X	= 4,
+	HLTEST_IBV_WIDTH_12X	= 8
+};
+
+/* Must not be changed, otherwise the no mmu mode will fail to work on GOYA.
+ * This structure is relevant only for Goya, Gaudi3 and above.
+ * In other ASICs, we don't need the user to hint us about the direction.
  */
 enum hltests_dma_direction {
 	DMA_DIR_HOST_TO_DRAM,
@@ -369,9 +872,9 @@ enum hltests_mb {
 	MB_TRUE
 };
 
-enum mon_mode {
-	GREATER_OR_EQUAL = 0,
-	EQUAL,
+enum hltests_mon_mode {
+	SOB_GREATER_OR_EQUAL = 0,
+	SOB_EQUAL,
 };
 
 enum hl_tests_write_to_sob_mod {
@@ -461,6 +964,11 @@ enum hltests_test_results {
 	RESULTS_DMA_PERF_HOST_SRAM_BIDIR,
 	RESULTS_DMA_PERF_HOST_DRAM_BIDIR,
 	RESULTS_DMA_PERF_ALL2ALL_SUPER_STRESS,
+	RESULTS_NIC_E2E,
+	RESULTS_DMA_PERF_DRAM2DRAM_SINGLE_CH_MME_DMA,
+	RESULTS_DMA_PERF_DRAM2DRAM_MULTI_CH_MME_DMA,
+	RESULTS_DMA_PERF_HOST2DRAM_MULTI_CH,
+	RESULTS_DMA_PERF_DRAM2HOST_MULTI_CH,
 	RESULTS_MAX
 };
 
@@ -474,6 +982,51 @@ enum range_type {
 	DRAM_ADDR
 };
 
+enum dup_group_id {
+	ENG_GROUP_MME_COMPUTE = 0,
+	ENG_GROUP_TPC_COMPUTE = 1,
+	ENG_GROUP_EDMA_COMPUTE = 2,
+	ENG_GROUP_EDMA_NETWORK_REDUCTION = 3,
+	ENG_GROUP_EDMA_NETWORK_LOOPBACK = 4,
+	ENG_GROUP_EDMA_NETWORK_MEMSET = 5,
+	ENG_GROUP_TPC_MEDIA = 6,
+	ENG_GROUP_RTR_MEDIA = 7,
+	ENG_GROUP_PDMA_TX_CMD = 8,
+	ENG_GROUP_PDMA_TX_DATA = 9,
+	ENG_GROUP_PDMA_RX = 10,
+	ENG_GROUP_NIC_RECEIVE_SCALE_UP = 11,
+	ENG_GROUP_NIC_RECEIVE_SCALE_OUT = 12,
+	ENG_GROUP_NIC_SEND_SCALE_UP = 13,
+	ENG_GROUP_NIC_SEND_SCALE_OUT = 14,
+	ENG_GROUP_NUMBER_OF_GROUPS,
+	ENG_GROUP_INVALID
+};
+
+enum arc_type {
+	ARC_TYPE_SCHED,
+	ARC_TYPE_ENGINE,
+	ARC_TYPE_NUM,
+};
+
+enum arc_type_mask {
+	ARC_TYPE_SCHED_MASK = BIT(ARC_TYPE_SCHED),
+	ARC_TYPE_ENGINE_MASK = BIT(ARC_TYPE_ENGINE),
+	ARC_TYPE_ALL_MASK = ARC_TYPE_SCHED_MASK | ARC_TYPE_ENGINE_MASK,
+};
+
+enum err_trigger {
+	TRIG_SARC_ERR,
+	TRIG_QM_ERR,
+	TRIG_DMA_ERR,
+	TRIG_SM_ERR,
+	TRIG_MME_DMA_ERR,
+	RAZWI_TYPE_LBW_RR,
+	RAZWI_TYPE_HBW_RR,
+	RAZWI_TYPE_ADDR_DEC,
+	RAZWI_TYPE_NUM,
+	TRIG_NUM
+};
+
 struct hltests_debugfs {
 	int addr_fd;
 	int data32_fd;
@@ -482,11 +1035,230 @@ struct hltests_debugfs {
 	char clk_gate_val[32];
 };
 
+struct hltests_module_params_info {
+	uint64_t tpc_mask;
+	uint64_t nic_ports_mask;
+	uint32_t gaudi_huge_page_optimization;
+	uint32_t timeout_locked;
+	uint32_t reset_on_lockup;
+	uint32_t pldm;
+	uint32_t mmu_enable;
+	uint32_t clock_gating;
+	uint32_t mme_enable;
+	uint32_t dram_enable;
+	uint32_t cpu_enable;
+	uint32_t reset_pcilink;
+	uint32_t config_pll;
+	uint32_t cpu_queues_enable;
+	uint32_t fw_loading;
+	uint32_t heartbeat;
+	uint32_t axi_drain;
+	uint32_t security_enable;
+	uint32_t sram_scrambler_enable;
+	uint32_t dram_scrambler_enable;
+	uint32_t cache_enabled;
+	uint32_t hbm_ecc_enable;
+	uint32_t compatibility_mode;
+	uint32_t hard_reset_on_fw_events;
+	uint32_t decoder_mask;
+	uint32_t rotator_mask;
+	uint32_t dram_page_scrub;
+	uint32_t clock_gating_ext;
+	uint32_t fw_loading_ext;
+	uint32_t nic_lanes_per_port;
+};
+
+struct hltests_cb {
+	void *ptr;
+	uint64_t cb_handle;
+	uint32_t cb_size;
+	enum hltests_cb_type cb_type;
+};
+
+struct hltests_cq_queue {
+	struct hltests_cb cq_cb;
+	uint64_t cq_device_va;
+	uint32_t *data;
+	uint32_t length;
+	uint32_t pi;
+	uint32_t ci;
+	uint16_t log2_size;
+	uint16_t cqid;
+	uint16_t intid;
+};
+
+struct hltests_completion_db {
+	struct hltests_cq_queue cqq;
+	struct hltests_cb cq_cb;
+	pthread_mutex_t db_lock;
+	pthread_mutex_t wait_lock;
+	uint64_t next_seq;
+	uint64_t data_device_va;
+	uint64_t submission_cnt;
+	uint64_t curr_cnt;
+	uint32_t max_num_of_cs;
+	uint16_t cqid;
+	uint16_t intid;
+	uint16_t sync_sob;
+	uint16_t sync_sob_val;
+	uint16_t pre_cq_ready_active_sob;
+	bool cq_ready;
+	size_t idx;
+
+	struct hltests_completion_db_e {
+		bool job_completed;
+		uint64_t seq;
+		uint32_t target_value;
+		uint16_t counter_mon;
+		uint16_t queue_mon;
+		uint16_t sob[2];
+		uint16_t payload;
+		uint16_t expected_sync_sob_val;
+		uint16_t expected_active_sob_val;
+		uint8_t  active_sob;
+	} *cqs;
+};
+
+struct hltests_mmapped_buff {
+	void *ptr;
+	uint64_t lbw_addr;
+	size_t size;
+};
+
+struct hltests_mmapped_reg {
+	uint32_t *ptr;
+	uint32_t lbw_addr;
+};
+
+struct hltests_mmapped_resource {
+	struct hltests_mmapped_buff buff;
+	bool is_available;
+};
+
+struct arc_fw_info {
+	pthread_mutex_t submission_lock;
+	uint32_t arc_id;
+	uint8_t *dccm_host_addr;
+	uint8_t *acp_host_addr;
+	uint8_t *cq_ptr;
+	uint32_t hbm_offset;
+	uint32_t dccm_size;
+	uint32_t acp_size;
+	uint32_t cq_size;
+	uint32_t ccb_size;
+	bool enabled;
+};
+
 struct sm_global_counters {
 	uint32_t reserved_sobs;
 	uint32_t reserved_mons;
 	uint32_t reserved_cqs;
 	uint32_t reserved_interrupts;
+};
+
+struct arc_log_buf {
+	char *ptr;
+	uint32_t ci;
+};
+
+struct hltests_arc_db {
+	struct arc_fw_info *fw_info;
+	struct arc_log_buf *arc_log_bufs;
+	void *host_mem;
+	void *host_mem_for_page_fault_neg_test;
+	void *cq_host_mem;
+	void *dram_on_host_mem;
+	uint64_t device_mem_handle;
+	uint64_t device_mem_size;
+	uint64_t host_device_va;
+	uint64_t host_va_for_page_fault_neg_test;
+	uint64_t dram_device_va;
+	uint64_t cq_device_va;
+	uint32_t dram_mem_size;
+	uint32_t host_mem_reserved_size;
+	uint32_t device_mem_reserved_size;
+	uint32_t arc_count;
+	pthread_t logs_thread;
+};
+
+struct arc_asic_fw_load_params {
+	uint64_t sched_arc_image_size;
+	uint64_t eng_arc_image_size;
+	uint32_t sched_arc_first_idx;
+	uint32_t sched_arc_last_idx;
+	uint32_t eng_arc_first_idx;
+	uint32_t eng_arc_last_idx;
+	uint32_t arc_image_hbm_size;
+};
+
+struct arc_load_img_data {
+	void *img_host_ptr;
+	uint64_t img_host_va;
+};
+
+struct arc_load_data {
+	struct arc_load_img_data sched_img_data;
+	struct arc_load_img_data eng_img_data;
+	int fd;
+};
+
+struct iterate_arcs_ctx {
+	void (*fn)(struct iterate_arcs_ctx *ctx, uint32_t cpu_id);
+	struct arc_asic_fw_load_params *load_param;
+	struct hltests_arc_db *arc_db;
+	void *data;
+	int rc;
+};
+
+struct pdma_ch_info {
+	pthread_mutex_t pi_ci_lock;
+	uint64_t submission_q_handle;
+	uint32_t submission_q_size;
+	uint8_t *submission_q;
+	uint32_t ch_block_size;
+	uint8_t *ch_host_addr;
+	uint32_t pi_shadow;
+	uint32_t ci_shadow;
+	bool is_down;
+	bool enabled;
+	uint8_t prio;
+};
+
+struct hltests_pdma_db {
+	struct pdma_ch_info *ch_info;
+	uint64_t user_en_ch_mask;
+	uint16_t pdma_grp_ch_max;
+	uint16_t pdma_grp_max;
+	uint16_t pdma_ch_max;
+	uint16_t ch_qid_lut[MAX_PDMA_CH_NUM];
+};
+
+struct hltests_mme_dma_info {
+	uint16_t sob_id[MAX_NUM_OF_MME];
+	uint16_t mon_id[MAX_NUM_OF_MME];
+	bool enable;
+};
+
+/* enum hltests_recovery_status - recovery status information.
+ * @RECOVERY_STATUS_NOT_REQUIRED: no recovery is required.
+ * @RECOVERY_STATUS_REQUIRED: recovery is required due to event with a device reset indication.
+ * @RECOVERY_STATUS_FAILED: recovery has failed.
+ */
+enum hltests_recovery_status {
+	RECOVERY_STATUS_NOT_REQUIRED,
+	RECOVERY_STATUS_REQUIRED,
+	RECOVERY_STATUS_FAILED
+};
+
+struct hltests_listener_thread_params {
+	pthread_t thread_id;
+	pthread_barrier_t barrier;
+	pthread_cond_t cond;
+	pthread_mutex_t lock;
+	uint64_t notifier_events;
+	enum hltests_recovery_status recovery_status;
+	int handle;
+	pid_t listener_tid; /* SW-159137 TODO: field can be removed when issue is sovled */
 };
 
 struct hltests_device {
@@ -501,34 +1273,51 @@ struct hltests_device {
 	pthread_mutex_t mem_table_device_lock;
 
 	khash_t(ptr64) * cb_table;
+	struct ibv_device *ibdev;
+	uint32_t *hl_to_ib_port_map;
 
 	pthread_mutex_t cb_table_lock;
+
+	khash_t(mapping) * mmap_table;
+	pthread_mutex_t mmap_table_lock;
+
 	void *priv;
 	int fd;
 	int refcnt;
 	enum hl_pci_ids device_id;
 	bool sim_dram_on_host;
+	bool in_debug;
+	uint32_t vm;
+	int32_t vm_fd;
+	struct hltests_module_params_info module_params;
+	struct hltests_arc_db arc_db;
+	struct hltests_pdma_db pdma_db;
 	struct sm_global_counters counters;
 	struct sm_global_counters cq_db_counters;
-};
+	struct hltests_mme_dma_info mme_dma_info;
+	struct hltests_completion_db completion_db;
 
-enum hltests_id {
-	HLTESTS_NIC_E2E_LPBK = 1,
-	HLTESTS_NIC_GEN_TEST = 2,
+	void *nic_test_ctx;
 };
 
 struct hltests_state {
+	struct hlthunk_mac_addr mac_addrs[HL_INFO_MAC_ADDR_MAX_NUM];
 	double perf_outcomes[RESULTS_MAX];
 	struct hltests_debugfs debugfs;
+	struct ibv_device **dev_list;
+	uint64_t nic_ports_mask;
 	int fd;
+	int imp_fd;
 	bool mme;
-	bool mmu;
-	bool security;
+	bool lkd_security;
 	enum hlthunk_device_name asic_type;
+	struct hltests_listener_thread_params listener_thread_params;
+	struct hlthunk_hw_ip_info hw_ip;
+	void *priv;
 };
 
 struct hltests_pkt_info {
-	uint32_t qid;
+	uint32_t qid; /* currently, reserved only for Gaudi3's PDMA/ARC */
 	enum hltests_eb eb;
 	enum hltests_mb mb;
 	uint8_t pred;
@@ -552,7 +1341,7 @@ struct hltests_pkt_info {
 		} msg_short;
 		struct {
 			uint16_t address;
-			enum mon_mode mon_mode;
+			enum hltests_mon_mode mon_mode;
 			uint16_t sob_val;
 			uint16_t sob_id;
 			uint8_t base;
@@ -614,7 +1403,7 @@ struct hltests_pkt_info {
 };
 
 struct hltests_monitor {
-	uint32_t qid;
+	uint32_t qid; /* currently, reserved only for Gaudi3's PDMA/ARC */
 	union {
 		uint64_t mon_address;
 		uint8_t cq_id;
@@ -629,6 +1418,7 @@ struct hltests_monitor {
 	uint8_t sm_data_config;
 	bool auto_zero;
 	enum hl_tests_mon_wr_num num_writes;
+	enum hltests_mon_mode mon_mode;
 };
 
 struct hltests_monitor_and_fence {
@@ -642,6 +1432,7 @@ struct hltests_monitor_and_fence {
 	uint8_t queue_id;
 	uint8_t long_mode;
 	enum hl_tests_mon_wr_num num_writes;
+	enum hltests_mon_mode mon_mode;
 };
 
 enum hltests_arb {
@@ -665,7 +1456,7 @@ enum hltests_async_event_id {
 
 struct hltests_cq_config {
 	int fd;
-	uint32_t qid;
+	uint32_t qid; /* currently, reserved only for Gaudi3's PDMA/ARC */
 	uint64_t cq_address;
 	uint16_t cq_size_log2;
 	uint16_t cq_id;
@@ -683,6 +1474,33 @@ struct hltests_direct_cq_write {
 	uint64_t value;
 	uint32_t cq_id;
 	uint32_t qid;
+};
+
+struct hltests_sched_arc_cmd_params {
+	union {
+		struct {
+			uint32_t padding_cnt_in_bytes;
+		} nop;
+		struct {
+			uint32_t fence_id;
+			uint32_t target;
+		} fence_wait;
+		struct {
+			uint32_t comp_group_index;
+			uint32_t target_value;
+			uint32_t rel_so_set;
+		} alloc_barrier;
+		struct {
+			uint32_t num_engine_group_type;
+			uint8_t *engine_group_type;
+		} dispatch_barrier;
+		struct {
+			uint32_t engine_group_type;
+			uint32_t size;
+			uint32_t engine_cpu_id;
+			uint64_t addr;
+		} dispatch_static_ecb_list;
+	};
 };
 
 /**
@@ -703,6 +1521,12 @@ struct monitor_dma_test {
 	int poll_interval_sec;
 };
 
+/* the size of the arc log cyclic buffer should be power of 2 */
+#define ARC_LOG_BUF_SIZE_LOG2 20
+#define ARC_LOG_BUF_SIZE (1 << ARC_LOG_BUF_SIZE_LOG2)
+#define ARC_LOG_BUF_NEXT_CI(ci) \
+	((typeof(ci))(((size_t)(ci) + (size_t)1) & (size_t)(~(size_t)ARC_LOG_BUF_SIZE)))
+
 struct hltests_asic_funcs {
 	uint32_t (*add_arb_en_pkt)(void *buffer, uint32_t buf_off,
 			struct hltests_pkt_info *pkt_info,
@@ -710,6 +1534,8 @@ struct hltests_asic_funcs {
 			uint32_t queue_id, bool enable);
 	uint32_t (*add_cq_config_pkt)(void *buffer, uint32_t buf_off,
 			struct hltests_cq_config *cq_config);
+	uint32_t (*add_pdma_ch_bw_config_pkt)(int fd, void *buffer,
+			uint32_t buf_off, int qid, bool set_lbw);
 	uint32_t (*add_monitor_and_fence)(int fd,
 			enum hltests_dcore_separation_mode dcore_sep_mode,
 			void *buffer, uint32_t buf_off,
@@ -718,6 +1544,8 @@ struct hltests_asic_funcs {
 					struct hltests_monitor *mon);
 	uint64_t (*get_fence_addr)(int fd, uint32_t qid, bool cmdq_fence);
 	uint32_t (*add_nop_pkt)(void *buffer, uint32_t buf_off,
+					struct hltests_pkt_info *pkt_info);
+	uint32_t (*add_undef_opcode_pkt)(void *buffer, uint32_t buf_off,
 					struct hltests_pkt_info *pkt_info);
 	uint32_t (*add_msg_barrier_pkt)(void *buffer, uint32_t buf_off,
 					struct hltests_pkt_info *pkt_info);
@@ -755,9 +1583,13 @@ struct hltests_asic_funcs {
 			enum hltests_stream_id stream);
 	uint8_t (*get_ddma_cnt)(int fd,
 			enum hltests_dcore_separation_mode dcore_sep_mode);
+	uint32_t (*get_pdma_qid)(int fd, uint16_t dma_idx);
+	uint8_t (*get_pdma_ch_cnt)(int fd,
+			enum hltests_dcore_separation_mode dcore_sep_mode);
 	uint32_t (*get_tpc_qid)(int fd,
 			enum hltests_dcore_separation_mode dcore_sep_mode,
 			uint8_t tpc_id, enum hltests_stream_id stream);
+	uint32_t (*get_mme_id)(int fd, uint32_t qid);
 	uint32_t (*get_mme_qid)(
 			enum hltests_dcore_separation_mode dcore_sep_mode,
 			uint8_t mme_id,	enum hltests_stream_id stream);
@@ -766,11 +1598,17 @@ struct hltests_asic_funcs {
 	uint8_t (*get_mme_cnt)(int fd,
 			enum hltests_dcore_separation_mode dcore_sep_mode,
 			bool master_slave_mode);
+	uint32_t (*get_nic_qid)(enum hltests_dcore_separation_mode dcore_sep_mode,
+			uint8_t nic_id,	enum hltests_stream_id stream);
 	uint16_t (*get_first_avail_sob)(int fd);
 	uint16_t (*get_first_avail_mon)(int fd);
 	uint16_t (*get_first_avail_cq)(int fd);
 	uint64_t (*get_sob_base_addr)(int fd);
+	uint64_t (*get_sob_lbw_offset)(int fd, uint32_t sob_idx);
+	uint32_t (*get_sob_value)(int fd, uint32_t sob_idx);
+	int (*set_sob_value)(int fd, uint32_t sob_idx, uint32_t value);
 	uint64_t (*get_lbw_base_addr)(int fd);
+	uint64_t (*get_any_mappable_hw_block_base_addr)(int fd);
 	uint16_t (*get_cache_line_size)(void);
 	int (*asic_priv_init)(struct hltests_device *hdev);
 	void (*asic_priv_fini)(struct hltests_device *hdev);
@@ -778,7 +1616,8 @@ struct hltests_asic_funcs {
 				uint64_t *return_addr);
 	void (*dram_pool_free)(struct hltests_device *hdev, uint64_t addr,
 				uint64_t size);
-	int (*get_default_cfg)(void *cfg, enum hltests_id id);
+	int (*va_pool_alloc)(struct hltests_device *hdev, uint64_t size, uint64_t *return_addr);
+	void (*va_pool_free)(struct hltests_device *hdev, uint64_t addr, uint64_t size);
 	int (*submit_cs)(int fd, struct hltests_cs_chunk *restore_arr,
 				uint32_t restore_arr_size,
 				struct hltests_cs_chunk *execute_arr,
@@ -795,7 +1634,35 @@ struct hltests_asic_funcs {
 	uint32_t (*get_sob_id)(uint32_t base_addr_off);
 	uint16_t (*get_mon_cnt_per_dcore)(void);
 	int (*get_stream_master_qid_arr)(uint32_t **qid_arr);
+	uint32_t (*add_sched_arc_nop_cmd)(void *buffer, uint32_t buf_off,
+					struct hltests_sched_arc_cmd_params *params);
+	uint32_t (*add_sched_arc_dispatch_static_ecb_list)(void *buffer, uint32_t buf_off,
+					struct hltests_sched_arc_cmd_params *params);
 	uint32_t (*get_arc_cb_suffix_size)(void);
+	uint32_t (*arc_get_max_cpuid)(void);
+	uint64_t (*arc_get_va_range_host_start)(void);
+	uint64_t (*arc_get_va_range_dram_start)(void);
+	void (*arc_get_sched_cpuid_range)(int *sched_first, int *sched_last);
+	void (*arc_get_engine_cpuid_range)(int *engine_first, int *engine_last);
+	int (*asic_load_fw_to_arcs)(struct iterate_arcs_ctx *ctx);
+	void (*set_arc_asic_fw_load_params)(struct arc_asic_fw_load_params *load_param);
+	int (*arc_set_asic_model)(int fd, uint32_t cpu_id, struct hltests_arc_db *arc_db);
+	int (*arc_set_regions)(int fd, uint32_t cpu_id,	struct hltests_arc_db *arc_db);
+	int (*arc_set_config)(int fd, uint32_t cpu_id, struct hltests_arc_db *arc_db,
+				uint16_t run_arc_done_sob);
+	int (*arc_map_lbw_blocks)(int fd, uint32_t cpu_id, struct hltests_arc_db *arc_db);
+	uint32_t (*arc_get_num_schedulers)(void);
+	int (*wait_arc_run_done)(int fd, struct hltests_arc_db *arc_db, uint16_t arc_run_done_sob);
+	int (*arc_activate)(int fd, uint32_t cpu_id, struct hltests_arc_db *arc_db);
+	void (*arc_unmap_lbw_blocks)(int fd, uint32_t cpu_id, struct hltests_arc_db *arc_db);
+	int (*arc_set_enabled_cores)(int fd, struct hltests_arc_db *arc_db);
+	int (*arc_configure_scheduler_streams)(int fd, struct hltests_arc_db *arc_db);
+	uint32_t (*pdma_get_max_ch_id)(int fd);
+	int (*pdma_map_lbw_blocks)(int fd, struct hltests_pdma_db *pdma_db);
+	void (*pdma_unmap_lbw_blocks)(int fd, struct hltests_pdma_db *pdma_db);
+	int (*pdma_config_ch_blocks)(int fd, struct hltests_pdma_db *pdma_db);
+	int (*arc_get_cpu_id_eng_group)(int fd, uint32_t queue_idx,
+					uint32_t *cpu_id, uint32_t *eng_group);
 	uint64_t (*get_tc_base_addr)(uint32_t core_id);
 	int (*get_async_event_id)(enum hltests_async_event_id hltests_event_id,
 					uint32_t *asic_event_id);
@@ -807,26 +1674,35 @@ struct hltests_asic_funcs {
 	uint16_t (*cq_db_get_available_sob)(int fd);
 	uint16_t (*cq_db_get_available_mon)(int fd);
 	uint16_t (*cq_db_get_available_cq)(int fd);
-	int (*mme_dma_init)(int fd, uint8_t mme_idx, uint32_t sob_id);
+	uint32_t (*add_cq_db_set_cq_queue_pkt)(void *buffer, uint32_t buf_off,
+					struct hltests_cq_config *cq_config, uint16_t sob_id);
+	int (*mme_dma_init)(int fd);
+	uint32_t (*prepare_mme_dma_req)(int fd, void *cb, uint32_t cb_size, uint64_t src,
+			uint64_t dst, uint8_t mme_idx, uint64_t size);
+	uint32_t (*get_mme_dma_cb_size)(int fd, int num_of_lindma_pkts, uint32_t size);
+	uint64_t (*get_razwi_addr)(enum err_trigger);
+	uint64_t (*get_pb_secured_addr)(void);
+	int (*edp_get_engines_list)(int fd, uint32_t **engine_ids, uint32_t *engine_ids_size);
+	uint64_t (*get_fw_mem_addr)(uint64_t size);
+	int (*debug_completion)(int fd, uint32_t dbe_sob_idx, uint32_t sync_sob_idx,
+					uint32_t expected_dbe_sob, uint32_t expected_sync_sob);
+	uint64_t (*get_tpc_intr_cause_reg)(uint32_t tpc_idx);
+	uint16_t (*qid_to_eid)(uint16_t qid);
+	size_t (*get_coll_resources_by_type)(int fd, struct hltests_mmapped_resource res[],
+					     size_t res_len, uint32_t resource_type);
+	int (*dma_transfer)(int fd, uint64_t src_va, uint64_t dst_va, size_t size);
+	uint32_t (*cause_page_fault_from_arc)(int fd, uint64_t long_addr, uint32_t qid, void *cb);
+	struct hltests_nic_asic_funcs *nic_funcs;
 };
 
 struct hltests_memory {
-	union {
-		uint64_t device_handle;
-		void *host_ptr;
-	};
+	uint64_t device_handle;
+	void *host_ptr;
 	uint64_t device_virt_addr;
 	uint64_t size;
 	bool is_huge;
 	bool is_host;
 	bool is_pool;
-};
-
-struct hltests_cb {
-	void *ptr;
-	uint64_t cb_handle;
-	uint32_t cb_size;
-	enum hltests_cb_type cb_type;
 };
 
 struct hltest_host_meminfo {
@@ -847,6 +1723,14 @@ struct mem_pool {
 	uint8_t *pool;
 };
 
+struct dma_perf_transfer {
+	uint64_t src_addr;
+	uint64_t dst_addr;
+	uint32_t size;
+	uint32_t queue_index;
+	enum hltests_dma_direction dma_dir;
+};
+
 extern char asic_names[HLTHUNK_DEVICE_MAX][20];
 
 void hltests_parser(int argc, const char **argv, const char * const*usage,
@@ -857,18 +1741,29 @@ void hltests_parser(int argc, const char **argv, const char * const*usage,
 			);
 
 const char *hltests_get_parser_pciaddr(void);
+void hltests_override_parser_pciaddr(const char *pciaddr);
+uint32_t hltests_get_parser_enable_arc_log(void);
 const char *hltests_get_config_filename(void);
 int hltests_get_parser_run_disabled_tests(void);
 int hltests_get_verbose_enabled(void);
 uint32_t hltests_get_cur_seed(void);
 const char *hltests_get_build_path(void);
+int hltests_set_build_path(const char *path);
+int hltests_get_parser_nic_port(void);
+int hltests_get_parser_events_listener(void);
+uint32_t hltests_get_parser_negative_tests(void);
+uint32_t hltests_get_parser_mini_suite(void);
 struct hltests_device *get_hdev_from_fd(int fd);
 bool hltests_is_legacy_mode_enabled(int fd);
 bool hltests_is_simulator(int fd);
 bool hltests_is_goya(int fd);
 bool hltests_is_gaudi(int fd);
 bool hltests_is_gaudi2(int fd);
+bool hltests_is_gaudi3(int fd);
+bool hltests_is_gaudi3d(int fd);
+bool hltests_is_gaudi_family(int fd);
 bool hltests_is_pldm(int fd);
+bool hltests_is_device_idle_and_operational(int fd);
 
 #ifndef HLTESTS_LIB_MODE
 int hltests_run_group_tests(const char *group_name,
@@ -904,10 +1799,18 @@ void *hltests_allocate_host_mem_aligned(int fd, uint64_t size,
 void *hltests_allocate_host_mem_aligned_flags(int fd, uint64_t size,
 			enum hltests_huge huge, uint64_t align, uint32_t flags);
 void *hltests_allocate_device_mem(int fd, uint64_t size, uint64_t page_size,
-					enum hltests_contiguous contiguous);
+				  enum hltests_contiguous contiguous);
+const struct hltests_memory *
+hltests_allocate_device_mem_ret_mem(int fd, uint64_t size, uint64_t page_size,
+				    enum hltests_contiguous contiguous);
+int hltests_allocate_device_mem_mix_page_size(int fd, uint64_t size,
+		uint64_t *device_addr_arr, int device_addr_arr_size, int *actual_arr_size);
+int hltests_free_device_mem_mix_page_size(int fd, uint64_t *device_addr_arr, int size);
+
 int hltests_free_host_mem(int fd, void *vaddr);
 int hltests_free_device_mem(int fd, void *vaddr);
 uint64_t hltests_get_device_va_for_host_ptr(int fd, void *vaddr);
+const struct hltests_memory *hltests_get_mem_for_device_va(int fd, void *device_va);
 uint64_t hltests_get_device_handle_for_device_va(int fd, void *device_va);
 
 void *hltests_create_cb(int fd, uint32_t cb_size, enum hltests_cb_type cb_type,
@@ -922,6 +1825,12 @@ int hltests_fill_cs_chunk(struct hltests_device *hdev,
 				void *cb_ptr,
 				uint32_t cb_size,
 				uint32_t queue_index);
+int hltests_submit_cb(int fd,
+				void *cb_ptr,
+				uint32_t cb_size,
+				uint32_t queue_index,
+				uint32_t flags,
+				uint64_t *seq);
 int hltests_submit_cs(int fd, struct hltests_cs_chunk *restore_arr,
 				uint32_t restore_arr_size,
 				struct hltests_cs_chunk *execute_arr,
@@ -947,6 +1856,10 @@ int hltests_submit_staged_cs(int fd, struct hltests_cs_chunk *restore_arr,
 				uint32_t execute_arr_size,
 				uint32_t flags,
 				uint64_t staged_cs_seq,
+				uint64_t *seq);
+int hltests_sched_arc_send_cb(int fd, struct hltests_cs_chunk *hltests_chunk);
+int hltests_sched_arc_submit_cs(int fd, struct hltests_cs_chunk *arr,
+				uint32_t arr_size, uint32_t sched_id,
 				uint64_t *seq);
 int hltests_wait_for_cs(int fd, uint64_t seq, uint64_t timeout_us);
 int hltests_wait_for_legacy_cs(int fd, uint64_t seq, uint64_t timeout_us);
@@ -979,31 +1892,42 @@ int hltests_setup(void **state);
 int hltests_setup_user_engines(struct hltests_state *tests_state);
 int hltests_teardown(void **state);
 int hltests_teardown_user_engines(struct hltests_state *tests_state);
-int hltests_root_setup(void **state);
-int hltests_root_teardown(void **state);
 int hltests_root_debug_setup(void **state);
 int hltests_root_debug_teardown(void **state);
+
+int hltests_get_module_params_info(int fd,
+				struct hltests_module_params_info *info);
 
 void hltests_set_rand_seed(uint32_t val);
 uint32_t hltests_rand_u32(void);
 bool hltests_rand_flip_coin(void);
-void hltests_fill_rand_values(void *ptr, uint32_t size);
+void hltests_fill_rand_values(void *ptr, uint64_t size);
+void hltests_fill_addr_chunk(void *ptr, uint32_t size, uint64_t addr, uint64_t chunk);
 void hltests_fill_seq_values(void *ptr, uint32_t size);
 void hltests_endian_swap_values(void *ptr, uint32_t size,
 				enum hltests_endian_swap endian_swap);
 
 int hltests_mem_compare_with_stop(void *ptr1, void *ptr2, uint64_t size, bool
-			stop_on_err);
+			stop_on_err, uint64_t *offset);
 int hltests_mem_compare(void *ptr1, void *ptr2, uint64_t size);
+int hltests_mem_compare_offset(void *ptr1, void *ptr2, uint64_t size, uint64_t *offset);
 
+int hltests_dma_transfer_large(int fd, uint32_t queue_index, enum hltests_eb eb,
+				enum hltests_mb mb,
+				uint64_t src_addr, uint64_t dst_addr,
+				uint64_t size,
+				enum hltests_dma_direction dma_dir,
+				double *bw_gbps);
 int hltests_dma_transfer(int fd, uint32_t queue_index, enum hltests_eb eb,
 				enum hltests_mb mb,
 				uint64_t src_addr, uint64_t dst_addr,
 				uint32_t size,
 				enum hltests_dma_direction dma_dir);
+double hltests_dma_transfer_perf(int fd, struct dma_perf_transfer *transfer);
+double hltests_dma_transfer_perf_bidirectional(int fd, struct dma_perf_transfer *t1,
+						struct dma_perf_transfer *t2);
 
-int hltests_zero_device_memory(int fd, uint64_t dst_addr, uint32_t size,
-				enum hltests_dma_direction dma_dir);
+int hltests_zero_dram_memory(int fd, uint64_t dst_addr, uint32_t size);
 
 int hltests_dma_transfer_legacy(int fd, uint32_t queue_index,
 				enum hltests_eb eb, enum hltests_mb mb,
@@ -1011,13 +1935,16 @@ int hltests_dma_transfer_legacy(int fd, uint32_t queue_index,
 				uint32_t size,
 				enum hltests_dma_direction dma_dir);
 
-VOID hltests_dma_test(void **state, bool is_ddr, uint64_t size, uint64_t page_size);
+VOID hltests_dma_sram_test(void **state, uint64_t size);
+VOID hltests_dma_dram_test(void **state, uint64_t size);
 VOID hltests_dma_test_flags(void **state, bool is_ddr, uint64_t size, uint64_t page_size,
 				uint32_t flags);
 
 VOID hltests_dma_dram_frag_mem_test(void **state, uint64_t size);
 
 VOID hltests_dma_dram_high_mem_test(void **state, uint64_t size);
+
+VOID hltests_tdr_deadlock_test(void **state, bool recovery);
 
 int hltests_mmu_hint_address(int fd, uint64_t page_size, uint64_t ref_addr,
 			     enum range_type type, bool page_aligned);
@@ -1095,15 +2022,21 @@ uint32_t hltests_add_arb_en_pkt(int fd, void *buffer, uint32_t buf_off,
 		uint32_t queue_id, bool enable);
 uint32_t hltests_add_cq_config_pkt(int fd, void *buffer, uint32_t buf_off,
 		struct hltests_cq_config *cq_config);
+uint32_t hltests_add_pdma_ch_bw_config_pkt(int fd, void *buffer, uint32_t buf_off,
+		int qid, bool set_lbw);
 uint32_t hltests_get_dma_down_qid(int fd, enum hltests_stream_id stream);
 uint32_t hltests_get_dma_up_qid(int fd, enum hltests_stream_id stream);
 uint32_t hltests_get_ddma_qid(int fd, int dma_ch,
 					enum hltests_stream_id stream);
+uint32_t hltests_get_pdma_qid(int fd, int dma_idx);
 uint8_t hltests_get_ddma_cnt(int fd);
+uint8_t hltests_get_pdma_ch_cnt(int fd);
+uint32_t hltests_pdma_config_ch_blocks(int fd);
 uint32_t hltests_get_tpc_qid(int fd, uint8_t tpc_id,
 				enum hltests_stream_id stream);
-uint32_t hltests_get_mme_qid(int fd, uint8_t mme_id,
-				enum hltests_stream_id stream);
+uint32_t hltests_get_mme_id(int fd, uint32_t qid);
+uint32_t hltests_get_mme_qid(int fd, uint8_t mme_id, enum hltests_stream_id stream);
+uint32_t hltests_get_nic_qid(int fd, uint8_t nic_id, enum hltests_stream_id stream);
 uint8_t hltests_get_tpc_cnt(int fd);
 uint8_t hltests_get_mme_cnt(int fd, bool master_slave_mode);
 uint16_t hltests_get_first_avail_sob(int fd);
@@ -1111,36 +2044,44 @@ uint16_t hltests_get_first_avail_mon(int fd);
 uint16_t hltests_get_first_avail_cq(int fd);
 uint16_t hltests_get_first_avail_interrupt(int fd);
 uint64_t hltests_get_sob_base_addr(int fd);
+uint64_t hltests_get_sob_lbw_offset(int fd, uint32_t sob_idx);
 uint64_t hltests_get_lbw_base_addr(int fd);
+uint64_t hltests_get_any_mappable_hw_block_base_addr(int fd);
+uint16_t hltests_get_cache_line_size(int fd);
 uint16_t hltests_get_monitors_cnt_per_dcore(int fd);
 int hltests_get_stream_master_qid_arr(int fd, uint32_t **qid_arr);
 
+uint32_t hltests_add_sched_arc_nop_cmd(int fd, void *buffer, uint32_t buf_off,
+					struct hltests_sched_arc_cmd_params *params);
+uint32_t hltests_add_sched_arc_dispatch_static_ecb_list(int fd, void *buffer, uint32_t buf_off,
+					struct hltests_sched_arc_cmd_params *params);
 uint32_t hltests_add_direct_write_cq_pkt(int fd, void *buffer, uint32_t buf_off,
 						struct hltests_direct_cq_write *pkt_info);
-void hltests_monitor_dma_start(struct monitor_dma_test *params);
+void hltests_monitor_dma_start(struct monitor_dma_test *params, int fd, uint32_t qid,
+				int poll_interval_sec);
 void hltests_monitor_dma_stop(struct monitor_dma_test *params);
 
 void goya_tests_set_asic_funcs(struct hltests_device *hdev);
 void gaudi_tests_set_asic_funcs(struct hltests_device *hdev);
 void gaudi2_tests_set_asic_funcs(struct hltests_device *hdev);
-
+void gaudi3_tests_set_asic_funcs(struct hltests_device *hdev);
 
 double get_timediff_sec(struct timespec *begin, struct timespec *end);
+double get_timediff_usec(struct timespec *begin, struct timespec *end);
 double get_bw_gigabyte_per_sec(uint64_t bytes, struct timespec *begin,
 							struct timespec *end);
-int hltests_get_default_cfg(int fd, void *cfg, enum hltests_id id);
+double get_bw_gigabit_from_timesync(uint64_t total_size, struct hlthunk_time_sync_info *begin,
+					struct hlthunk_time_sync_info *end);
+
+uint32_t next_pow2(uint32_t v);
+
 int hltests_get_max_pll_idx(int fd);
 const char *hltests_stringify_pll_idx(int fd, uint32_t pll_idx);
 const char *hltests_stringify_pll_type(int fd, uint32_t pll_idx,
 				uint8_t type_idx);
 
-int hltests_device_memory_export_dmabuf_fd(int fd, void *device_addr,
-						uint64_t size);
-
-int hltests_cb_list_push(void *cb);
-void *hltests_cb_list_pop(void);
-int hltests_hmem_list_push(void *buf);
-void *hltests_hmem_list_pop(void);
+int hltests_device_memory_export_dmabuf_fd(int fd, void *device_addr, uint64_t size,
+						uint64_t offset);
 
 uint64_t hltests_get_tc_base_addr(int fd, uint32_t core_id);
 
@@ -1153,11 +2094,73 @@ uint32_t hltests_get_cq_patch_size(int fd, uint32_t qid);
 uint32_t hltests_get_max_pkt_size(int fd, bool mb, bool eb, uint32_t qid);
 uint64_t hltests_get_total_avail_device_mem(int fd);
 
+int hltests_reset_events(struct hltests_state *tests_state);
+int hltests_wait_for_events(struct hltests_state *tests_state, uint32_t timeout_sec,
+				uint64_t expected_events, uint64_t *received_events);
+int hltests_teardown_and_setup(struct hltests_state *tests_state);
+
 void *hltests_mmap(int fd, size_t length, off_t offset);
-int hltests_munmap(void *addr, size_t length);
+int hltests_munmap(int fd, void *addr, size_t length);
 
 int hltests_init(void);
 void hltests_fini(void);
+bool hltests_is_dma_dir_from_dram(enum hltests_dma_direction dir);
+
+int wait_until_device_idle(int fd, uint32_t timeout_sec);
+int wait_until_device_not_in_reset(int fd);
+int hltests_edp_get_engines_list(int fd, uint32_t **engine_ids, uint32_t *engine_ids_size);
+
+/* ARCs */
+void *hltests_arc_get_log_buf_ci_addr(uint32_t cpu_id,
+				struct hltests_arc_db *arc_db);
+void *hltests_arc_get_asic_model_addr(uint32_t cpu_id,
+				struct hltests_arc_db *arc_db);
+void *hltests_arc_get_canary_addr(uint32_t cpu_id,
+				struct hltests_arc_db *arc_db);
+
+uint32_t hltests_cause_page_fault_from_arc(int fd, uint64_t long_addr, uint32_t qid, void *cb);
+
+int hltests_arc_add_arc_config(int fd, struct hltests_arc_db *arc_db, void *cfg,
+		size_t config_sz, void *cb, uint32_t cb_size, uint32_t cpu_id, uint64_t base,
+		uint64_t config_addr_offset, uint64_t config_size_offset, uint64_t arc_pci_reg,
+		uint32_t qid);
+int hltests_arc_init(int fd, struct hltests_arc_db *arc_db);
+void hltests_arc_fini(int fd, struct hltests_arc_db *arc_db);
+int hltests_completion_db_init(int fd, struct hltests_completion_db *cq_db);
+int hltests_completion_db_teardown(int fd, struct hltests_completion_db *cq_db);
+void hltests_set_capabilities_mask(const uint64_t new_mask);
+uint64_t hltests_get_capabilities_mask(void);
+int hltests_asic_iterate_arcs(struct iterate_arcs_ctx *ctx, enum arc_type_mask arc_type_mask);
+uint32_t hltests_arc_get_submitter_id(int fd, uint32_t scheduler_id);
+
+/* MME DMA*/
+int gaudi3_mme_dma(int fd, uint64_t src, uint64_t dst, uint8_t mme_idx, uint64_t size);
+int hltests_mme_dma_init(int fd);
+int hltests_is_mme_dma_enabled(int fd);
+uint32_t hltests_prepare_mme_dma_req(int fd, void *cb, uint32_t cb_size, uint64_t src,
+					uint64_t dst, uint8_t mme_idx, uint64_t size);
+uint32_t hltests_get_mme_dma_cb_size(int fd, int num_of_lindma_pkts, uint32_t size);
+bool can_open_debugfs(bool dbg_print);
+
+/* MMU multi-page support */
+VOID hltests_build_page_size_array(uint64_t **page_size_arr, uint8_t *arr_size, uint64_t bitmask);
+void hltests_destroy_page_size_array(uint64_t *page_size_arr);
+VOID hltests_build_memalloc_page_size_array(int fd, uint64_t **page_size_arr,
+						uint8_t *page_size_arr_size);
+void hltests_destroy_memalloc_page_size_array(uint64_t *page_size_arr);
+
+/* Completion */
+int hltests_submit_job(int fd, struct hltests_cs_chunk *arr, uint32_t arr_size,
+					uint64_t *seq, pthread_mutex_t *lock,
+					int (*submitter)(int, struct hltests_cs_chunk *));
+int hltests_wait_for_job(int fd, uint64_t seq, int64_t timeout_us);
+uint32_t hltests_add_cq_db_set_cq_queue_pkt(int fd, void *buffer, uint32_t buf_off,
+					struct hltests_cq_config *cq_config, uint16_t sob_id);
+uint64_t hltests_get_razwi_addr(int fd, enum err_trigger type);
+uint64_t hltests_get_fw_mem_addr(int fd, uint64_t size);
+uint64_t hltests_get_tpc_intr_cause_reg(int fd, uint64_t tpc_idx);
+int hltests_set_vram_size(int fd, uint64_t vram_size, uint8_t vram_id);
+int verbose_printf(const char *format, ...);
 
 /* Tests */
 VOID test_hbm_read_temperature(void **state);
@@ -1165,6 +2168,14 @@ VOID test_hbm_read_interrupts(void **state);
 VOID test_print_asic_rev(void **state);
 VOID test_read_every_4KB_registers_block(void **state);
 VOID test_read_through_pci(void **state);
+VOID test_nic_read_interrupts(void **state);
+VOID test_nic_e2e_lpbk(void **state);
+VOID test_nic_bw_pfc_recv(void **state);
+VOID test_nic_bw_pfc_send(void **state);
+VOID test_nic_e2e(void **state);
+VOID test_nic_ping_pong_latency(void **state);
+VOID test_nic_bw(void **state);
+VOID test_nic_bidir_bw(void **state);
 VOID test_tpc_corner_with_inbound_pci_hbw(void **state);
 VOID rate_limiter_init(struct hltests_state *tests_state);
 VOID activate_all2all_dma_channels(void **state, uint64_t *dram_addr,
@@ -1178,6 +2189,7 @@ VOID activate_super_stress_dma_channels(void **state,
 VOID test_dma_all2all_super_stress(void **state);
 VOID test_cpucp_msg_stress(void **state);
 VOID test_cpucp_eq_stress(void **state);
+VOID test_cpucp_generic_request(void **state);
 VOID test_mme_basic_conv(void **state);
 VOID test_conn_alloc_destroy(void **state);
 VOID test_conn_set_context(void **state);
@@ -1192,6 +2204,7 @@ VOID test_conn_8_threads(void **state);
 VOID test_conn_512_threads(void **state);
 VOID test_conn_1023_threads(void **state);
 VOID test_print_ips_macs(void **state);
+VOID test_nic_disabled_qm(void **state);
 VOID test_qman_write_to_protected_register(void **state, bool is_tpc);
 VOID test_goya_debugfs_sram_read_write(void **state);
 VOID test_write_to_cfg_space(void **state);
@@ -1206,6 +2219,7 @@ VOID test_deny_access_to_secured_sobjs(void **state);
 VOID test_deny_mon_access_to_secured_area(void **state);
 VOID test_deny_access_to_secured_monitors(void **state);
 VOID test_tdr_deadlock(void **state);
+VOID test_tdr_deadlock_and_recovery(void **state);
 VOID test_endless_memory_ioctl(void **state);
 VOID test_dma_custom(void **state);
 VOID test_transfer_bigger_than_alloc(void **state);
@@ -1214,28 +2228,31 @@ VOID test_loop_map_work_unmap(void **state);
 VOID test_duplicate_file_descriptor(void **state);
 VOID test_page_miss(void **state);
 VOID test_register_security(void **state);
+VOID test_scan_with_sm(void **state);
+VOID test_recover_from_page_fault(void **state);
 VOID test_open_by_busid(void **state);
 VOID test_open_twice(void **state);
 VOID test_open_by_module_id(void **state);
+VOID test_open_control_by_module_id(void **state);
 VOID test_open_close_without_ioctl(void **state);
 VOID test_close_without_releasing_debug(void **state);
 VOID test_open_and_print_pci_bdf(void **state);
-VOID test_sm(void **state, bool is_tpc, bool is_wait, uint8_t engine_id);
+VOID test_sm(void **state, int engine_qid, bool is_wait);
 VOID test_sm_pingpong_upper_cp(void **state, bool is_tpc,
 				bool upper_cb_in_host, uint8_t engine_id);
 VOID test_sm_tpc(void **state);
 VOID test_sm_mme(void **state);
-VOID test_sm_pingpong_tpc_upper_cp_from_sram(void **state);
-VOID test_sm_pingpong_mme_upper_cp_from_sram(void **state);
+VOID test_sm_pingpong_tpc_upper_cp_from_device(void **state);
+VOID test_sm_pingpong_mme_upper_cp_from_device(void **state);
 VOID test_sm_pingpong_tpc_upper_cp_from_host(void **state);
 VOID test_sm_pingpong_mme_upper_cp_from_host(void **state);
-VOID test_sm_pingpong_tpc_common_cp_from_sram(void **state);
-VOID test_sm_pingpong_mme_common_cp_from_sram(void **state);
+VOID test_sm_pingpong_tpc_common_cp_from_device(void **state);
+VOID test_sm_pingpong_mme_common_cp_from_device(void **state);
 VOID test_sm_pingpong_tpc_common_cp_from_host(void **state);
 VOID test_sm_pingpong_mme_common_cp_from_host(void **state);
 VOID test_sm_sob_cleanup_on_ctx_switch(void **state);
-VOID test_sm_monitor_set_sram(void **state);
-VOID test_sm_monitor_set_hostmem(void **state);
+VOID test_sm_monitor_set_device_mem(void **state);
+VOID test_sm_monitor_set_host_mem(void **state);
 VOID test_signal_wait(void **state);
 VOID test_signal_wait_parallel(void **state);
 VOID test_signal_collective_wait_parallel(void **state);
@@ -1243,46 +2260,64 @@ VOID test_signal_wait_dma(void **state);
 VOID test_sm_long_mode(void **state);
 VOID test_signal_collective_wait_dma(void **state);
 VOID test_print_hw_ip_info(void **state);
-VOID print_engine_name(int fd, uint32_t engine_id);
-VOID test_print_hw_idle_info(void **state);
+VOID test_get_hw_idle_info(void **state);
 VOID test_print_dram_usage_info_no_stop(void **state);
 VOID test_print_device_utilization_no_stop(void **state);
-VOID test_print_clk_rate(void **state);
-VOID test_print_reset_count(void **state);
-VOID test_print_time_sync_info(void **state);
+VOID test_get_clk_rate(void **state);
+VOID test_get_reset_count(void **state);
+VOID test_get_time_sync_info(void **state);
 VOID test_print_hlthunk_version(void **state);
-VOID test_print_cs_drop_statistics(void **state);
-VOID test_print_pci_counters(void **state);
-VOID test_print_clk_throttling_reason(void **state);
-VOID test_print_total_energy_consumption(void **state);
-VOID print_events_counters(void **state, bool aggregate);
-VOID test_print_events_counters(void **state);
-VOID test_print_events_counters_aggregate(void **state);
-VOID test_print_pci_bdf(void **state);
-VOID test_print_pll_info(void **state);
-VOID test_print_hw_asic_status(void **state);
+VOID test_get_cs_drop_statistics(void **state);
+VOID test_get_pci_counters(void **state);
+VOID test_get_clk_throttling_reason(void **state);
+VOID test_get_total_energy_consumption(void **state);
+VOID test_get_events_counters(void **state);
+VOID test_get_events_counters_aggregate(void **state);
+VOID test_get_pci_bdf(void **state);
+VOID test_get_pll_info(void **state);
+VOID test_get_hw_asic_status(void **state);
+VOID test_get_nic_ports_mask(void **state);
+VOID test_get_nic_link_state(void **state);
+VOID test_print_nic_statistics(void **state);
+VOID test_event_record(void **state);
+VOID test_get_dev_memalloc_page_orders(void **state);
+VOID test_engine_status(void **state);
+VOID test_get_mac_addresses(void **state);
+VOID test_get_sec_attest_info(void **state);
+VOID test_page_fault_info(void **state);
+VOID test_get_device_count(void **state);
 VOID test_dma_entire_sram_random(void **state);
-VOID test_dmabuf_multiple_threads(void **state, uint32_t num_of_threads,
-				uint32_t iterations, uint64_t alloc_size,
-				uint64_t access_size, bool shared_device_memory,
-				bool random_offset);
+
 VOID test_dmabuf_basic(void **state);
 VOID test_dmabuf_multiple_threads_non_shared_memory(void **state);
 VOID test_dmabuf_multiple_threads_shared_memory(void **state);
+VOID test_dmabuf_non_zero_offset(void **state);
+VOID test_dmabuf_entire_dram(void **state);
+
 VOID test_host_sram_perf(void **state);
 VOID test_sram_host_perf(void **state);
 VOID test_host_dram_perf(void **state);
 VOID test_dram_host_perf(void **state);
 VOID test_sram_dram_single_ch_perf(void **state);
+VOID test_sram_dram_single_ch_mme_dma_perf(void **state);
 VOID test_dram_sram_single_ch_perf(void **state);
+VOID test_dram_sram_single_ch_mme_dma_perf(void **state);
 VOID test_dram_dram_single_ch_perf(void **state);
+VOID test_dram_dram_single_ch_mme_dma_perf(void **state);
 VOID test_sram_dram_multi_ch_perf(void **state);
+VOID test_sram_dram_multi_ch_mme_dma_perf(void **state);
 VOID test_dram_sram_multi_ch_perf(void **state);
+VOID test_dram_sram_multi_ch_mme_dma_perf(void **state);
 VOID test_dram_dram_multi_ch_perf(void **state);
+VOID test_dram_dram_multi_ch_mme_dma_perf(void **state);
 VOID test_sram_dram_bidirectional_full_multi_ch_perf(void **state);
+VOID test_sram_dram_bidirectional_full_multi_ch_mme_dma_perf(void **state);
 VOID test_dram_sram_5ch_perf(void **state);
 VOID test_host_sram_bidirectional_perf(void **state);
 VOID test_host_dram_bidirectional_perf(void **state);
+VOID test_host_dram_multi_ch_perf(void **state);
+VOID test_dram_host_multi_ch_perf(void **state);
+
 VOID test_map_bigger_than_4GB(void **state);
 VOID hltests_allocate_device_mem_until_full(void **state, uint32_t page_size,
 					enum hltests_contiguous contigouos, bool mix_alloc);
@@ -1375,20 +2410,14 @@ VOID test_dma_entire_dram_random_256KB(void **state);
 VOID test_dma_entire_dram_random_512KB(void **state);
 VOID test_dma_entire_dram_random_1MB(void **state);
 VOID test_dma_entire_dram_random_2MB(void **state);
-VOID cb_create_mmap_unmap_destroy(void **state, uint32_t size,
-					bool unmap, bool destroy);
 VOID test_cb_mmap(void **state);
 VOID test_cb_unaligned_size(void **state);
 VOID test_cb_small_unaligned_odd_size(void **state);
 VOID test_cb_unaligned_odd_size(void **state);
 VOID test_cb_skip_unmap(void **state);
 VOID test_cb_skip_unmap_and_destroy(void **state);
+VOID test_cb_skip_unmap_and_redundant_destroy(void **state);
 VOID test_cb_unalign(void **state);
-VOID submit_unalign_device_common_cb(int fd, void *upper_cb,
-				uint64_t host_buf_va, int offset,
-				bool sram_test);
-VOID submit_unalign_host_common_cb(int fd, void *upper_cb,
-				uint64_t host_buf_va, int offset);
 VOID test_common_cb_unalign(void **state);
 VOID test_cb_kernel_mapped(void **state);
 VOID test_error_injection_endless_command(void **state);
@@ -1408,5 +2437,16 @@ VOID test_debugfs_read_write_sram(void **state);
 VOID test_debugfs_read_write_dram(void **state);
 VOID test_debugfs_read_write_sram64(void **state);
 VOID test_debugfs_read_write_dram64(void **state);
-
+VOID test_debugfs_read_write_dram_full_range(void **state);
+VOID test_cbc_single_range(void **state);
+VOID test_cbc_multiple_ranges(void **state);
+VOID test_coalescing_same_interrupt(void **state);
+VOID test_coalescing_different_interrupts(void **state);
+VOID test_pmmu_page_fault_sm_initiator(void **state);
+VOID test_pmmu_page_fault_tpc_initiator(void **state);
+VOID test_pmmu_page_fault_mme_initiator(void **state);
+VOID test_pmmu_page_fault_pdma_initiator(void **state);
+VOID test_hmmu_page_fault_pdma_initiator(void **state);
+VOID test_odp_page_in_flow_basic(void **state);
+VOID test_odp_full_cycle_basic(void **state);
 #endif /* HLTHUNK_TESTS_H */

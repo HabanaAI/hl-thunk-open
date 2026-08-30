@@ -19,7 +19,7 @@
 VOID test_dma_4_queues_goya(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	struct hlthunk_hw_ip_info hw_ip;
+	struct hlthunk_hw_ip_info *hw_ip = &tests_state->hw_ip;
 	struct hltests_cs_chunk execute_arr[4];
 	struct hltests_pkt_info pkt_info;
 	struct hltests_monitor_and_fence mon_and_fence_info;
@@ -62,14 +62,8 @@ VOID test_dma_4_queues_goya(void **state)
 		assert_non_null(dram_addr[i]);
 	}
 
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
-	if (!hw_ip.sram_size)
-		skip();
-
-	assert_int_equal(hw_ip.dram_enabled, 1);
-	sram_addr = hw_ip.sram_base_address + 0x1000;
+	assert_int_equal(hw_ip->dram_enabled, 1);
+	sram_addr = hw_ip->sram_base_address + 0x1000;
 
 
 	/* Setup CB: clear SOB 0-2 */
@@ -107,7 +101,7 @@ VOID test_dma_4_queues_goya(void **state)
 	assert_non_null(dma_cb[1]);
 
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
-	mon_and_fence_info.queue_id = hltests_get_ddma_qid(fd, 0, STREAM0);
+	mon_and_fence_info.queue_id = u8_safe(hltests_get_ddma_qid(fd, 0, STREAM0));
 	mon_and_fence_info.cmdq_fence = false;
 	mon_and_fence_info.sob_id = 0;
 	mon_and_fence_info.mon_id = 0;
@@ -144,7 +138,7 @@ VOID test_dma_4_queues_goya(void **state)
 	assert_non_null(dma_cb[2]);
 
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
-	mon_and_fence_info.queue_id = hltests_get_ddma_qid(fd, 1, STREAM0);
+	mon_and_fence_info.queue_id = u8_safe(hltests_get_ddma_qid(fd, 1, STREAM0));
 	mon_and_fence_info.cmdq_fence = false;
 	mon_and_fence_info.sob_id = 1;
 	mon_and_fence_info.mon_id = 1;
@@ -181,7 +175,7 @@ VOID test_dma_4_queues_goya(void **state)
 	assert_non_null(dma_cb[3]);
 
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
-	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd, 0);
+	mon_and_fence_info.queue_id = u8_safe(hltests_get_dma_up_qid(fd, 0));
 	mon_and_fence_info.cmdq_fence = false;
 	mon_and_fence_info.sob_id = 2;
 	mon_and_fence_info.mon_id = 2;
@@ -263,10 +257,10 @@ static const char *const usage[] = {
 
 int main(int argc, const char **argv)
 {
-	int num_tests = sizeof(goya_dma_tests) / sizeof((goya_dma_tests)[0]);
+	size_t num_tests = sizeof(goya_dma_tests) / sizeof((goya_dma_tests)[0]);
 
 	hltests_parser(argc, argv, usage, HLTEST_DEVICE_MASK_GOYA, goya_dma_tests,
-			num_tests);
+			(int)num_tests);
 
 	return hltests_run_group_tests("goya_dma", goya_dma_tests, num_tests,
 					hltests_setup, hltests_teardown);

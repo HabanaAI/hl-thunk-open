@@ -115,10 +115,13 @@ hlthunk_public int hlthunk_err_inject_fatal_event(int fd, int *event_num)
 	printf("Wait up to 60 sec for driver reset process to complete\n");
 	for (i = 0 ; i < 12 ; i++) {
 		fd = hlthunk_open(HLTHUNK_DEVICE_DONT_CARE, pci_bus_id);
-		if ((fd >= 0) &&
-		    (hlthunk_get_device_status_info(fd) !=
-				    HL_DEVICE_STATUS_IN_RESET))
-			break;
+		if (fd >= 0) {
+			if (hlthunk_get_device_status_info(fd) != HL_DEVICE_STATUS_IN_RESET)
+				break;
+
+			close(fd);
+		}
+
 		sleep(5);
 	}
 
@@ -163,10 +166,13 @@ hlthunk_public int hlthunk_err_inject_loss_of_heartbeat(int fd)
 	printf("Wait up to 60 sec for driver reset process to complete\n");
 	for (i = 0 ; i < 12 ; i++) {
 		fd = hlthunk_open(HLTHUNK_DEVICE_DONT_CARE, pci_bus_id);
-		if ((fd >= 0) &&
-		    (hlthunk_get_device_status_info(fd) !=
-				    HL_DEVICE_STATUS_IN_RESET))
-			break;
+		if (fd >= 0) {
+			if (hlthunk_get_device_status_info(fd) != HL_DEVICE_STATUS_IN_RESET)
+				break;
+
+			close(fd);
+		}
+
 		sleep(5);
 	}
 
@@ -254,7 +260,6 @@ hlthunk_public int hlthunk_err_inject_thermal_event(int fd)
 	long temp_offset;
 	int temp_offset_fd;
 	ssize_t size;
-	int rc;
 	char value[64] = "";
 
 	temp_offset_fd = open_device_temperature_file(fd,
@@ -267,7 +272,6 @@ hlthunk_public int hlthunk_err_inject_thermal_event(int fd)
 	if (size < 0) {
 		printf("Failed to read from temperature offset fd [rc %zd]\n",
 		       size);
-		rc = size;
 		goto exit;
 	}
 
@@ -280,17 +284,16 @@ hlthunk_public int hlthunk_err_inject_thermal_event(int fd)
 	if (size < 0) {
 		printf("Failed to write to temperature offset fd [rc %zd]\n",
 		       size);
-		rc = size;
 		goto exit;
 	}
 
 	printf("Wait for driver to detect the thermal event\n");
 	sleep(1);
 
-	rc = 0;
+	size = 0;
 exit:
 	close(temp_offset_fd);
-	return rc;
+	return (int)size;
 }
 
 hlthunk_public int hlthunk_err_eject_thermal_event(int fd)
@@ -298,7 +301,6 @@ hlthunk_public int hlthunk_err_eject_thermal_event(int fd)
 	long temp_offset;
 	int temp_offset_fd;
 	ssize_t size;
-	int rc = 0;
 	char value[64] = "";
 
 	temp_offset_fd = open_device_temperature_file(fd,
@@ -311,7 +313,6 @@ hlthunk_public int hlthunk_err_eject_thermal_event(int fd)
 	if (size < 0) {
 		printf("Failed to read from temperature offset fd [rc %zd]\n",
 		       size);
-		rc = size;
 		goto exit;
 	}
 
@@ -324,10 +325,9 @@ hlthunk_public int hlthunk_err_eject_thermal_event(int fd)
 	if (size < 0) {
 		printf("Failed to write to temperature offset fd [rc %zd]\n",
 		       size);
-		rc = size;
 	}
 
 exit:
 	close(temp_offset_fd);
-	return rc;
+	return (int)size;
 }

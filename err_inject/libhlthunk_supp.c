@@ -55,6 +55,7 @@ struct hlthunk_asic_funcs *hlthunk_get_asic_funcs(int fd)
 	case HLTHUNK_DEVICE_GOYA:
 		return get_asic_funcs_goya();
 	case HLTHUNK_DEVICE_GAUDI:
+	case HLTHUNK_DEVICE_GAUDI_HL2000M:
 		return get_asic_funcs_gaudi();
 	default:
 		return NULL;
@@ -177,7 +178,7 @@ static int hlthunk_err_inj_wait_for_cs(int fd, uint64_t seq,
 	if (rc && errno != ETIMEDOUT && errno != EIO)
 		return rc;
 
-	return status;
+	return (int)status;
 }
 
 static int hlthunk_wait_for_cs_until_not_busy(int fd, uint64_t seq)
@@ -210,7 +211,7 @@ struct hlthunk_cb_obj *hlthunk_create_cb_obj(int fd, uint32_t cb_size,
 		goto free_cb;
 
 	cb_obj->cb_ptr = hlthunk_cb_mmap(fd,
-					 cb_obj->cb_size, cb_obj->cb_handle);
+					 cb_obj->cb_size, (off_t)cb_obj->cb_handle);
 	if (cb_obj->cb_ptr == MAP_FAILED)
 		goto destroy_cb_obj;
 

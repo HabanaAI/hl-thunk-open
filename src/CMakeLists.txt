@@ -3,14 +3,14 @@
 file(GLOB SRC *.c) # compile all files with *.c suffix
 
 include_directories(klib)
-include_directories(/usr/include/drm/)
 
-exec_program(
-    "git"
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ARGS "rev-parse --short HEAD"
+execute_process(
+    COMMAND git rev-parse --short HEAD
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     OUTPUT_VARIABLE HLTHUNK_SHA1_VERSION
-    RETURN_VALUE GIT_RC)
+    RESULT_VARIABLE GIT_RC
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET)
 
 IF(NOT "${GIT_RC}" EQUAL 0)
     set(HLTHUNK_SHA1_VERSION "")

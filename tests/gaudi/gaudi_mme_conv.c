@@ -1040,6 +1040,7 @@ static void dma_cb_prepare(int fd, void *dma_cb,
 	mon_and_fence_info.sob_val = 2;
 	mon_and_fence_info.dec_fence = true;
 	mon_and_fence_info.mon_payload = 1;
+	mon_and_fence_info.mon_mode = SOB_EQUAL;
 	dma_cb_offset = hltests_add_monitor_and_fence(fd,
 				dma_cb, dma_cb_offset,
 				&mon_and_fence_info);
@@ -1089,7 +1090,7 @@ VOID test_mme_basic_conv(void **state)
 	struct hltests_cs_chunk execute_arr[3];
 	uint32_t mme_master0_cb_offset = 0;
 	uint32_t mme_master2_cb_offset = 0;
-	struct hlthunk_hw_ip_info hw_ip;
+	struct hlthunk_hw_ip_info *hw_ip = &tests_state->hw_ip;
 	int rc, i, fd = tests_state->fd;
 	uint32_t dma_cb_offset = 0;
 	uint64_t sram_base;
@@ -1211,13 +1212,7 @@ VOID test_mme_basic_conv(void **state)
 		expected_out_buffer_ui[i] =
 					*(uint32_t *) &expected_out_buffer[i];
 
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
-
-	if (!hw_ip.sram_size)
-		skip();
-
-	sram_base = hw_ip.sram_base_address;
+	sram_base = hw_ip->sram_base_address;
 
 	/* Setup SRAM addresses */
 	inputs_sram_addr = sram_base;
@@ -1310,44 +1305,50 @@ VOID test_mme_basic_conv(void **state)
 			output_sram, output_size, &dma_cb_offset);
 
 	/* Move MME masters CB and configs CB to SRAM before start conv */
-	hltests_dma_transfer(fd,
+	rc = hltests_dma_transfer(fd,
 			hltests_get_dma_down_qid(fd, STREAM0),
 			EB_FALSE, MB_TRUE, mme_master0_config_cb_device_va,
 			mme_master0_config_cb_sram,
 			mme_master0_config_cb_offset,
 			DMA_DIR_HOST_TO_SRAM);
+	assert_int_equal(rc, 0);
 
-	hltests_dma_transfer(fd,
+	rc = hltests_dma_transfer(fd,
 			hltests_get_dma_down_qid(fd, STREAM0),
 			EB_FALSE, MB_TRUE, mme_master2_config_cb_device_va,
 			mme_master2_config_cb_sram,
 			mme_master2_config_cb_offset,
 			DMA_DIR_HOST_TO_SRAM);
+	assert_int_equal(rc, 0);
 
-	hltests_dma_transfer(fd,
+	rc = hltests_dma_transfer(fd,
 			hltests_get_dma_down_qid(fd, STREAM0),
 			EB_FALSE, MB_TRUE, mme_master0_cb_device_va,
 			mme_master0_cb_sram, mme_master0_cb_offset,
 			DMA_DIR_HOST_TO_SRAM);
+	assert_int_equal(rc, 0);
 
-	hltests_dma_transfer(fd,
+	rc = hltests_dma_transfer(fd,
 			hltests_get_dma_down_qid(fd, STREAM0),
 			EB_FALSE, MB_TRUE, mme_master2_cb_device_va,
 			mme_master2_cb_sram, mme_master2_cb_offset,
 			DMA_DIR_HOST_TO_SRAM);
+	assert_int_equal(rc, 0);
 
 	/* Move inputs and weights to SRAM */
-	hltests_dma_transfer(fd,
+	rc = hltests_dma_transfer(fd,
 			hltests_get_dma_down_qid(fd, STREAM1),
 			EB_FALSE, MB_TRUE, host_src_inputs_device_va,
 			inputs_sram_addr, in_size,
 			DMA_DIR_HOST_TO_SRAM);
+	assert_int_equal(rc, 0);
 
-	hltests_dma_transfer(fd,
+	rc = hltests_dma_transfer(fd,
 			hltests_get_dma_down_qid(fd, STREAM0),
 			EB_FALSE, MB_TRUE, host_src_weights_device_va,
 			weights_sram_addr, wght_size,
 			DMA_DIR_HOST_TO_SRAM);
+	assert_int_equal(rc, 0);
 
 	/* Submit CS and wait */
 	execute_arr[0].cb_ptr = dma_cb;
@@ -1418,10 +1419,11 @@ static const char *const usage[] = {
 
 int main(int argc, const char **argv)
 {
-	int num_tests = sizeof(gaudi_mme_tests) / sizeof((gaudi_mme_tests)[0]);
+	size_t num_tests = sizeof(gaudi_mme_tests) / sizeof((gaudi_mme_tests)[0]);
 
 	hltests_parser(argc, argv, usage, HLTEST_DEVICE_MASK_GAUDI_ALL,
-			gaudi_mme_tests, num_tests);
+			gaudi_mme_tests, (int)num_tests);
+	hltests_set_capabilities_mask(0);
 
 	return hltests_run_group_tests("gaudi_mme", gaudi_mme_tests, num_tests,
 					hltests_setup, hltests_teardown);

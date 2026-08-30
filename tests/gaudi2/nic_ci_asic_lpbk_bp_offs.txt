@@ -1,0 +1,46 @@
+[lpbk]
+qps_per_port=8
+iterations_mem=1
+iterations_db=1
+cq_buf_len_shift=24
+user_cq_buf_len_shift=12
+data_loc=host
+cmpl=sob
+data_size_shift=24
+wqe_size_shift=17
+data_cmp=yes
+single_alloc=yes
+cleanup=yes
+wait_for_cleanup=no
+verbose=1
+db_qman=no
+wtd_en=no
+eq_poll=yes
+wq_loc=host
+user_db=yes
+mtu=8192
+;3 types of transfers are allowed
+;test_opcode=write or wr-rdv or rd-rdv
+test_opcode=write
+bp_offs=yes
+
+[common]
+;ports=0
+qps_per_port=8
+runtime_iterations=1
+data_loc=host
+wq_loc=host
+user_fifo=yes
+data_size_shift=24
+wqe_size_shift=17
+mtu=8192
+single_alloc=yes
+eq_poll=yes
+cleanup=yes
+wait_for_cleanup=no
+force_wq_with_pmmu=no
+assign_qp_priority=no
+verbose=1
+;3 types of transfers are allowed
+;test_opcode=write or wr-rdv or rd-rdv
+test_opcode=write

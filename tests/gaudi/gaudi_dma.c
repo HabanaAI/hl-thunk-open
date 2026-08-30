@@ -37,12 +37,15 @@ static void *dma_thread_func_int(void *args)
 	double time_diff = 0.0;
 	int rc, fd = params->fd;
 
+	if (params->execute_arr_len < 0)
+		return NULL;
+
 	clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
 
 	while (time_diff < params->test_duration) {
 		rc = hltests_submit_cs(fd, params->restore_arr, 1,
 					params->execute_arr,
-					params->execute_arr_len,
+					(unsigned int)params->execute_arr_len,
 					HL_CS_FLAGS_FORCE_RESTORE, &seq);
 		if (rc)
 			return NULL;
@@ -69,14 +72,17 @@ static void *dma_thread_func_ext(void *args)
 	double time_diff = 0.0;
 	int rc, fd = params->fd;
 
+	if (params->size <= 0 || params->execute_arr_len < 0)
+		return NULL;
+
 	clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
 
 	while (time_diff < params->test_duration) {
-		memset(params->output, 0, params->size);
+		memset(params->output, 0, (unsigned int)params->size);
 
 		rc = hltests_submit_cs(fd, params->restore_arr, 1,
 					params->execute_arr,
-					params->execute_arr_len,
+					(unsigned int)params->execute_arr_len,
 					HL_CS_FLAGS_FORCE_RESTORE, &seq);
 		if (rc)
 			return NULL;
@@ -86,7 +92,7 @@ static void *dma_thread_func_ext(void *args)
 			return NULL;
 
 		rc = hltests_mem_compare(params->input, params->output,
-						params->size);
+						(unsigned int)params->size);
 		if (rc)
 			return NULL;
 
@@ -100,7 +106,7 @@ static void *dma_thread_func_ext(void *args)
 VOID test_gaudi_dma_all2all(void **state)
 {
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	struct hlthunk_hw_ip_info hw_ip;
+	struct hlthunk_hw_ip_info *hw_ip = &tests_state->hw_ip;
 	struct hltests_cs_chunk int_restore_arr[1], ext_restore_arr[1],
 		int_execute_arr[NUM_OF_INT_Q + 1], ext_execute_arr[2];
 	struct dma_thread_params *thread_params;
@@ -119,23 +125,16 @@ VOID test_gaudi_dma_all2all(void **state)
 		nop_cb_size = 0, restore_cb_size = 0, ext_restore_cb_size = 0,
 		int_dma_size = 1 << 21, ext_dma_size = 1 << 20,
 		queue;
+	uint16_t i;
 	struct hltests_pkt_info pkt_info;
 	struct hltests_monitor_and_fence mon_and_fence_info;
 	enum hltests_dma_direction dma_dir;
-	int rc, fd = tests_state->fd, i;
+	int rc, fd = tests_state->fd;
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
 
-	if (!hltests_get_parser_run_disabled_tests()) {
-		printf("Test is skipped because it is disabled by default\n");
+	if (!hltests_get_parser_run_disabled_tests())
 		skip();
-	}
-
-	/* This test can't run if mmu is disabled */
-	if (!tests_state->mmu) {
-		printf("Test is skipped. MMU must be enabled\n");
-		skip();
-	}
 
 	/* Allocate arrays for threads management */
 	thread_id = (pthread_t *) hlthunk_malloc(2 * sizeof(*thread_id));
@@ -175,18 +174,12 @@ VOID test_gaudi_dma_all2all(void **state)
 	 *   create noise in the system.
 	 */
 
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
+	assert_true(hw_ip->dram_enabled);
 
-	if (!hw_ip.sram_size)
-		skip();
+	assert_true(ext_dma_size < hw_ip->dram_size);
+	assert_true(int_dma_size * NUM_OF_INT_Q < hw_ip->sram_size);
 
-	assert_true(hw_ip.dram_enabled);
-
-	assert_true(ext_dma_size < hw_ip.dram_size);
-	assert_true(int_dma_size * NUM_OF_INT_Q < hw_ip.sram_size);
-
-	sram_base = hw_ip.sram_base_address;
+	sram_base = hw_ip->sram_base_address;
 
 	int_restore_cb = hltests_create_cb(fd, SZ_4K, EXTERNAL, 0);
 	assert_non_null(int_restore_cb);
@@ -305,7 +298,7 @@ VOID test_gaudi_dma_all2all(void **state)
 
 		memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
 		mon_and_fence_info.queue_id =
-					hltests_get_dma_down_qid(fd, STREAM0);
+					u8_safe(hltests_get_dma_down_qid(fd, STREAM0));
 		mon_and_fence_info.cmdq_fence = false;
 		mon_and_fence_info.sob_id = i * 8;
 		mon_and_fence_info.mon_id = i;
@@ -313,6 +306,7 @@ VOID test_gaudi_dma_all2all(void **state)
 		mon_and_fence_info.sob_val = 1;
 		mon_and_fence_info.dec_fence = true;
 		mon_and_fence_info.mon_payload = 1;
+		mon_and_fence_info.mon_mode = SOB_EQUAL;
 		nop_cb_size = hltests_add_monitor_and_fence(fd, nop_cb,
 					nop_cb_size, &mon_and_fence_info);
 
@@ -391,7 +385,7 @@ VOID test_gaudi_dma_all2all(void **state)
 						ext_dma_cb_size[0], &pkt_info);
 
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
-	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd, STREAM0);
+	mon_and_fence_info.queue_id = u8_safe(hltests_get_dma_up_qid(fd, STREAM0));
 	mon_and_fence_info.cmdq_fence = false;
 	mon_and_fence_info.sob_id = NUM_OF_INT_Q * 8;
 	mon_and_fence_info.mon_id = NUM_OF_INT_Q;
@@ -399,6 +393,7 @@ VOID test_gaudi_dma_all2all(void **state)
 	mon_and_fence_info.sob_val = 1;
 	mon_and_fence_info.dec_fence = true;
 	mon_and_fence_info.mon_payload = 1;
+	mon_and_fence_info.mon_mode = SOB_EQUAL;
 	ext_dma_cb_size[1] = hltests_add_monitor_and_fence(fd, ext_dma_cb[1],
 				ext_dma_cb_size[1], &mon_and_fence_info);
 
@@ -429,7 +424,7 @@ VOID test_gaudi_dma_all2all(void **state)
 	thread_params[1].execute_arr_len = 2;
 	thread_params[1].input = ext_buf[0];
 	thread_params[1].output = ext_buf[1];
-	thread_params[1].size = ext_dma_size;
+	thread_params[1].size = uint_to_int_safe(ext_dma_size);
 	thread_params[1].fd = fd;
 	thread_params[1].test_duration = test_duration;
 
@@ -499,10 +494,11 @@ VOID test_strided_dma(void **state)
 	struct hltests_cs_chunk restore_arr[1], execute_arr[1];
 	uint64_t src_buf_va, dst_buf_va, seq[2],
 		sob_addr = CFG_BASE + mmSYNC_MNGR_E_N_SYNC_MNGR_OBJS_SOB_OBJ_0;
-	uint32_t cb_size[2] = {0}, restore_cb_size = 0, data_size = (1 << 20),
+	uint32_t cb_size[2] = {0}, restore_cb_size = 0, data_size = BIT(20),
 		num_of_strides = 10, stride_size = data_size * 2,
 		total_dma_size = num_of_strides * stride_size;
-	int rc, fd = tests_state->fd, i, j, test_failed = 0;
+	unsigned int i;
+	int rc, fd = tests_state->fd, j, test_failed = 0;
 	struct timespec begin, end;
 
 	/* In case test_strided_dma() fails, we want to rerun it once again.
@@ -559,7 +555,7 @@ VOID test_strided_dma(void **state)
 			restore_cb, restore_cb_size, &pkt_info);
 
 	memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
-	mon_and_fence_info.queue_id = hltests_get_dma_up_qid(fd, STREAM0);
+	mon_and_fence_info.queue_id = u8_safe(hltests_get_dma_up_qid(fd, STREAM0));
 	mon_and_fence_info.cmdq_fence = false;
 	mon_and_fence_info.sob_id = 0;
 	mon_and_fence_info.mon_id = 0;
@@ -567,6 +563,7 @@ VOID test_strided_dma(void **state)
 	mon_and_fence_info.sob_val = 1;
 	mon_and_fence_info.dec_fence = true;
 	mon_and_fence_info.mon_payload = 1;
+	mon_and_fence_info.mon_mode = SOB_EQUAL;
 	cb_size[0] = hltests_add_monitor_and_fence(fd, cb[0],
 				cb_size[0], &mon_and_fence_info);
 
@@ -778,7 +775,7 @@ VOID test_strided_dma(void **state)
 	pkt_info.mb = MB_TRUE;
 	pkt_info.wreg32.reg_addr =
 		(uint16_t) (mmDMA0_CORE_WR_COMP_ADDR_HI - mmDMA0_CORE_BASE);
-	pkt_info.wreg32.value = sob_addr >> 32;
+	pkt_info.wreg32.value = (uint32_t)(sob_addr >> 32);
 	cb_size[1] = hltests_add_wreg32_pkt(fd, cb[1], cb_size[1], &pkt_info);
 
 	memset(&pkt_info, 0, sizeof(pkt_info));
@@ -879,10 +876,11 @@ static const char *const usage[] = {
 
 int main(int argc, const char **argv)
 {
-	int num_tests = sizeof(gaudi_dma_tests) / sizeof((gaudi_dma_tests)[0]);
+	size_t num_tests = sizeof(gaudi_dma_tests) / sizeof((gaudi_dma_tests)[0]);
 
 	hltests_parser(argc, argv, usage, HLTEST_DEVICE_MASK_GAUDI_ALL,
-			gaudi_dma_tests, num_tests);
+			gaudi_dma_tests, (int)num_tests);
+	hltests_set_capabilities_mask(0);
 
 	return hltests_run_group_tests("gaudi_dma", gaudi_dma_tests, num_tests,
 					hltests_setup, hltests_teardown);

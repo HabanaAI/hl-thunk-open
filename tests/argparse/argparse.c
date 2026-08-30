@@ -1,6 +1,7 @@
 /**
  * Copyright (C) 2012-2015 Yecheng Fu <cofyc.jackson at gmail dot com>
  * Copyright (c) 2019 HabanaLabs Ltd.
+ * Copyright (c) 2026 Intel Corporation.
  * All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,6 +28,8 @@
 #include <string.h>
 #include <assert.h>
 #include <errno.h>
+#include <limits.h>
+#include <unistd.h>
 #include "argparse.h"
 
 #define OPT_UNSET 1
@@ -68,6 +71,7 @@ argparse_getvalue(struct argparse *self, const struct argparse_option *opt,
                   int flags)
 {
     char *s = NULL;
+    long lval;
     if (!opt->value)
         goto skipped;
     switch (opt->type) {
@@ -83,9 +87,9 @@ argparse_getvalue(struct argparse *self, const struct argparse_option *opt,
         break;
     case ARGPARSE_OPT_BIT:
         if (flags & OPT_UNSET) {
-            *(int *)opt->value &= ~opt->data;
+            *(int *)opt->value &= ~(int)opt->data;
         } else {
-            *(int *)opt->value |= opt->data;
+            *(int *)opt->value |= (int)opt->data;
         }
         break;
     case ARGPARSE_OPT_STRING:
@@ -100,20 +104,31 @@ argparse_getvalue(struct argparse *self, const struct argparse_option *opt,
         }
         break;
     case ARGPARSE_OPT_INTEGER:
-        errno = 0;
-        if (self->optvalue) {
-            *(int *)(opt->value) = strtol(self->optvalue, (char **)&s, 0);
-            self->optvalue     = NULL;
-        } else if (self->argc > 1) {
-            self->argc--;
-            *(int *)opt->value = strtol(*++self->argv, (char **)&s, 0);
-        } else {
-            argparse_error(self, opt, "requires a value", flags);
-        }
-        if (errno)
-            argparse_error(self, opt, strerror(errno), flags);
-        if (s[0] != '\0')
-            argparse_error(self, opt, "expects an integer value", flags);
+	errno = 0;
+	lval = 0;
+	s = NULL;
+	if (self->optvalue) {
+		lval = strtol(self->optvalue, (char **)&s, 0);
+		self->optvalue = NULL;
+	} else if (self->argc > 1) {
+		self->argc--;
+		lval = strtol(*++self->argv, (char **)&s, 0);
+	} else {
+		argparse_error(self, opt, "requires a value", flags);
+	}
+
+	/* Validate parsing and range before assignment */
+	if (errno == ERANGE)
+		argparse_error(self, opt, "value out of range", flags);
+	else if (errno)
+		argparse_error(self, opt, strerror(errno), flags);
+	else if (s && *s != '\0')
+		argparse_error(self, opt, "invalid integer value", flags);
+	else if (lval < INT_MIN || lval > INT_MAX)
+		argparse_error(self, opt, "integer out of range", flags);
+
+        /* Only assign after all validation passes */
+        *(int *)opt->value = (int)lval;
         break;
     case ARGPARSE_OPT_FLOAT:
         errno = 0;
@@ -301,8 +316,14 @@ unknown:
     }
 
 end:
+	if (self->argc < 0) {
+		fprintf(stderr, "error: argc is invalid %d\n", self->argc);
+		argparse_usage(self);
+		exit(1);
+	}
+
     memmove(self->out + self->cpidx, self->argv,
-            self->argc * sizeof(*self->out));
+            ((unsigned int)self->argc) * sizeof(*self->out));
     self->out[self->cpidx + self->argc] = NULL;
 
     return self->cpidx + self->argc;
@@ -359,8 +380,8 @@ argparse_usage(struct argparse *self)
 
     options = self->options;
     for (; options->type != ARGPARSE_OPT_END; options++) {
-        size_t pos = 0;
-        int pad    = 0;
+	ssize_t pos = 0;
+	size_t pad = 0;
         if (options->type == ARGPARSE_OPT_GROUP) {
             fputc('\n', stdout);
             fprintf(stdout, "%s", options->help);
@@ -384,13 +405,13 @@ argparse_usage(struct argparse *self)
         } else if (options->type == ARGPARSE_OPT_STRING) {
             pos += fprintf(stdout, "=<str>");
         }
-        if (pos <= usage_opts_width) {
-            pad = usage_opts_width - pos;
+        if (pos >= 0 && (size_t)pos <= usage_opts_width) {
+            pad = usage_opts_width - (size_t)pos;
         } else {
             fputc('\n', stdout);
             pad = usage_opts_width;
         }
-        fprintf(stdout, "%*s%s\n", pad + 2, "", options->help);
+        fprintf(stdout, "%*s%s\n", (int)(pad + 2), "", options->help);
     }
 
     // print epilog

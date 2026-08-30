@@ -15,6 +15,8 @@ extern "C" {
 #include <stdio.h>
 #include <stdlib.h>
 
+#define BITMASK(n) ((1u << (n)) - 1)
+
 struct hlthunk_cb_obj {
 	void *cb_ptr;
 	uint64_t cb_handle;

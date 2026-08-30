@@ -19,9 +19,11 @@
 #include <pthread.h>
 #include <inttypes.h>
 
-
 #define DMA_ENTIRE_DRAM_PLDM_TIMEOUT_USEC_PER_MB	4000000
 #define DMA_ENTIRE_DRAM_SIM_TIMEOUT_USEC_PER_MB		100000
+
+#define DMA_ENTIRE_DRAM_MONITOR_DMA_VERBOSE_SEC		30		/* 30 seconds */
+#define DMA_ENTIRE_DRAM_MONITOR_DMA_NON_VERBOSE_SEC	(20 * 60)	/* 20 minutes */
 
 struct dma_chunk {
 	void *input;
@@ -52,33 +54,172 @@ static int dma_dram_parser(void *user, const char *section, const char *name,
 	return 1;
 }
 
+static void entire_dram_dump_mismatch(struct hltests_state *tests_state, void *host_src,
+					uint64_t dram_base, uint64_t offset)
+{
+	uint32_t *host_p, dram_val;
+	uint64_t dram_addr;
+	int i;
+
+
+	host_p = (uint32_t *)((uint64_t)host_src + offset);
+	dram_addr = dram_base + offset;
+	print_and_flush("Dump mismatch: DRAM base: %#lx, offset: %#lx\n", dram_base, offset);
+	for (i = 0; i < 20; i++) {
+		dram_val = READ32(dram_addr);
+		print_and_flush("    %#lx: host: %#x, hbm: %#x\n", dram_addr, *host_p, dram_val);
+		dram_addr += sizeof(uint32_t);
+		host_p++;
+	}
+}
+
+static int prepare_cb_for_dma_engines(int fd, uint64_t dma_size, void *array, void **cb,
+		uint32_t *cb_size, struct hltests_cs_chunk *execute_arr,
+		uint32_t *qid_down, uint32_t *qid_up)
+{
+	struct hltests_monitor_and_fence mon_and_fence_info;
+	uint32_t dma_idx, j, packets_size, vec_len, qid;
+	struct hltests_pkt_info pkt_info;
+	uint16_t chunks_sob, chunks_mon;
+	struct dma_chunk chunk;
+	bool dir_down;
+	size_t vec_size;
+
+	kvec_t(struct dma_chunk) *arr = array;
+	vec_size = kv_size(*arr);
+	assert_true(vec_size <= UINT32_MAX);
+
+	vec_len = (uint32_t)vec_size;
+
+	chunks_sob = hltests_get_first_avail_sob(fd);
+	chunks_mon = hltests_get_first_avail_mon(fd);
+
+	/* Clear SOB before we start */
+	hltests_clear_sobs(fd, 2);
+
+	/*
+	 * CB[0]- will contain the down DMA operations
+	 * CB[1]- will contain the up DMA operations
+	 * Down DMA engine will transfer chunk of data to device DRAM then will signal
+	 * The Up DMA engine to start the Up transfer of this chunk and the other chunks
+	 * which already transferred.
+	 * CB[0] will look like this: lin_dma -> inc SOB -> lin_dma -> inc sob ....
+	 * CB[1] will look like this: mon_fence -> lin_dma -> mon_fence -> lin_dma...
+	 * Note the monitor and fence works in greater_equal mode.
+	 * since we cannot guarantee the timing of the cmds, where several chunks of down
+	 * DMA finished and only then the up dma starts, in such case
+	 * the monitor in mode equal won't work.
+	 */
+	for (dma_idx = 0 ; dma_idx < 2 ; dma_idx++) {
+		if (dma_idx) {
+			qid = *qid_up = hltests_get_dma_up_qid(fd, STREAM0);
+			dir_down = false;
+		} else {
+			qid = *qid_down = hltests_get_dma_down_qid(fd, STREAM0);
+			dir_down = true;
+		}
+
+		/*
+		 * Note about packets_size: we used vec_len * 4 as it's large enough to hold
+		 * all the required packets (lin_dma and sync packets)
+		 * every time we need to add more packets to the CB we need to make sure this size
+		 * is enough and update accordingly.
+		 */
+		packets_size = hltests_get_max_pkt_size(fd, MB_TRUE, EB_FALSE, qid) * (vec_len * 4);
+		packets_size += hltests_get_cq_patch_size(fd, qid);
+
+		cb_size[dma_idx] = 0;
+
+		cb[dma_idx] = hltests_create_cb(fd, packets_size, EXTERNAL, 0);
+		assert_non_null(cb[dma_idx]);
+
+		for (j = 0 ; j < vec_len ; j++) {
+			chunk = kv_A(*arr, j);
+
+			if (dma_idx) {
+				/* Add monitor and fence */
+				memset(&mon_and_fence_info, 0, sizeof(mon_and_fence_info));
+				mon_and_fence_info.queue_id = u8_safe(qid);
+				mon_and_fence_info.cmdq_fence = false;
+				mon_and_fence_info.sob_id = chunks_sob;
+				mon_and_fence_info.mon_id = chunks_mon;
+				mon_and_fence_info.mon_address = 0;
+				mon_and_fence_info.sob_val = j + 1;
+				mon_and_fence_info.dec_fence = true;
+				mon_and_fence_info.mon_payload = 1;
+				mon_and_fence_info.mon_mode = SOB_GREATER_OR_EQUAL;
+				cb_size[dma_idx] = hltests_add_monitor_and_fence(fd, cb[dma_idx],
+						cb_size[dma_idx], &mon_and_fence_info);
+			}
+
+			memset(&pkt_info, 0, sizeof(pkt_info));
+			pkt_info.dma.src_addr = dir_down ? chunk.input_device_va :
+					(uint64_t) (uintptr_t) chunk.dram_addr;
+			pkt_info.dma.dst_addr = dir_down ? (uint64_t) (uintptr_t) chunk.dram_addr :
+					chunk.output_device_va;
+			pkt_info.dma.size = u32_safe(dma_size);
+			pkt_info.qid = qid;
+			pkt_info.eb = EB_TRUE;
+			pkt_info.mb = MB_TRUE;
+			pkt_info.dma.dma_dir =
+					dir_down ? DMA_DIR_HOST_TO_DRAM : DMA_DIR_DRAM_TO_HOST;
+			cb_size[dma_idx] = hltests_add_dma_pkt(fd, cb[dma_idx], cb_size[dma_idx],
+						&pkt_info);
+
+			if (!dma_idx) {
+				/* increment the 'chunks' sob */
+				memset(&pkt_info, 0, sizeof(pkt_info));
+				pkt_info.qid = qid;
+				pkt_info.eb = EB_TRUE;
+				pkt_info.mb = MB_TRUE;
+				pkt_info.write_to_sob.mode = SOB_ADD;
+				pkt_info.write_to_sob.sob_id = chunks_sob;
+				pkt_info.write_to_sob.value = 1;
+				cb_size[dma_idx] = hltests_add_write_to_sob_pkt(fd, cb[dma_idx],
+						cb_size[dma_idx], &pkt_info);
+			}
+		}
+
+		execute_arr[dma_idx].cb_ptr = cb[dma_idx];
+		execute_arr[dma_idx].cb_size = cb_size[dma_idx];
+		execute_arr[dma_idx].queue_index = qid;
+	}
+
+	return 0;
+}
+
 VOID dma_entire_dram_random(void **state, uint64_t zone_size, uint64_t dma_size)
 {
-	struct hltests_state *tests_state = (struct hltests_state *) *state;
-	uint32_t offset, cb_size[2], vec_len, packets_size, max_zone_offset;
-	uint64_t dram_size, dram_addr, dram_addr_end, device_va[2], seq;
+	uint64_t dram_size, dram_addr, dram_addr_end, device_va[2], seq, copy_size_mb, timeout_us,
+		*page_arr = NULL;
+	unsigned int i;
+	int rc, verbose, fd, device_addr_arr_size, actual_arr_size = 0, poll_interval_sec = 0;
+	bool debugfs_opened, monitor_dma, is_pldm, dbg_h9_mismatch, mix_pages_alloc;
 	const char *config_filename = hltests_get_config_filename();
-	bool monitor_dma, is_pldm, split_cs = false;
-	int i, rc, verbose, fd = tests_state->fd;
+	uint32_t offset, cb_size[2], vec_len, max_zone_offset;
+	struct hltests_state *tests_state = *state;
+	uint32_t dma_down_qid = 0, dma_up_qid = 0;
 	void *buf[2], *cb[2] = {NULL}, *dram_ptr;
 	struct hltests_cs_chunk execute_arr[2];
-	uint64_t copy_size_mb, timeout_us;
-	uint16_t dma_down_qid, dma_up_qid;
-	struct hltests_pkt_info pkt_info;
-	struct monitor_dma_test mon_dma;
-	struct hlthunk_hw_ip_info hw_ip;
+	struct monitor_dma_test mon_dma[2];
+	struct hlthunk_hw_ip_info *hw_ip;
+	uint64_t *device_addr_arr = NULL;
 	struct dma_entire_dram_cfg cfg;
 	kvec_t(struct dma_chunk) array;
 	struct timespec begin, end;
 	struct dma_chunk chunk;
+	uint8_t page_arr_size;
+	size_t arr_size;
 
-	rc = hlthunk_get_hw_ip_info(fd, &hw_ip);
-	assert_int_equal(rc, 0);
+	hw_ip = &tests_state->hw_ip;
+	fd = tests_state->fd;
 
-	if (!hw_ip.dram_enabled) {
+	if (!hw_ip->dram_enabled) {
 		printf("DRAM is disabled so skipping test\n");
 		skip();
 	}
+
+	debugfs_opened = can_open_debugfs(false);
 
 	/* As of 02/06/2021 entire DRAM test on GOYA-16GB cards
 	 * will fail, due to [SW-40881], *possible hw issue.
@@ -87,20 +228,28 @@ VOID dma_entire_dram_random(void **state, uint64_t zone_size, uint64_t dma_size)
 	 * GOYA-16GB ram will actually be reported as 15.5GB, due to
 	 * the lower DRAM being reserved, hence the formula.
 	 */
-	if (hw_ip.dram_size >= (SZ_16G - SZ_512M) && hltests_is_goya(fd) &&
-					!hltests_get_parser_run_disabled_tests()) {
-		printf("Test is disabled on this device due to [SW-40881].\n");
-		printf("To explicitly enable it, run with -d flag.\n");
+	if (hw_ip->dram_size >= (SZ_16G - SZ_512M) && hltests_is_goya(fd) &&
+					!hltests_get_parser_run_disabled_tests())
 		skip();
-	}
 
 	is_pldm = hltests_is_pldm(fd);
 	verbose = hltests_get_verbose_enabled();
-	monitor_dma = is_pldm && verbose;
+	mix_pages_alloc = hltests_is_gaudi3(fd);
+	monitor_dma = is_pldm;
+	if (monitor_dma)
+		poll_interval_sec = verbose ? DMA_ENTIRE_DRAM_MONITOR_DMA_VERBOSE_SEC :
+						DMA_ENTIRE_DRAM_MONITOR_DMA_NON_VERBOSE_SEC;
 
-	/* if mmu is disabled split to 2 cb's */
-	if (!tests_state->mmu)
-		split_cs = true;
+	/*
+	 * this flag is added to be able to debug the failure of this test
+	 * It fix the randomization so that constant addresses will be used
+	 * and trigger will potentially can be taken for further investigation.
+	 * this will be removed once this investigation path will be over
+	 */
+	dbg_h9_mismatch = is_pldm && verbose && hltests_is_gaudi3(fd);
+
+	if (dbg_h9_mismatch)
+		hltests_set_rand_seed(0x62D5E0EA);
 
 	cfg.dma_size = dma_size;
 	cfg.zone_size = zone_size;
@@ -126,18 +275,43 @@ VOID dma_entire_dram_random(void **state, uint64_t zone_size, uint64_t dma_size)
 
 	dram_size = hltests_get_total_avail_device_mem(fd);
 
-	/* if dram page size is not power of 2 align dram_size to dram_page_size
-	 * else align it to zone_size
-	 */
-	if (hw_ip.device_mem_alloc_default_page_size &&
-			!IS_POWER_OF_TWO(hw_ip.device_mem_alloc_default_page_size))
-		dram_size = rounddown(dram_size, hw_ip.device_mem_alloc_default_page_size);
-	else
+	/* if "default allocation page size" is a power of 2 align dram_size to zone size */
+	if (IS_POWER_OF_TWO(hw_ip->device_mem_alloc_default_page_size))
 		dram_size = rounddown(dram_size, cfg.zone_size);
 
 	assert_true(cfg.zone_size < dram_size);
 
-	dram_ptr = hltests_allocate_device_mem(fd, dram_size, 0, CONTIGUOUS);
+	/*
+	 * The mixed pages are relevant to asics that support several page sizes.
+	 * Currently only Gaudi3 supports several page sizes (32M and 1G).
+	 */
+	if (mix_pages_alloc) {
+		/* read supported page sizes */
+		hltests_build_memalloc_page_size_array(fd, &page_arr, &page_arr_size);
+		assert_int_not_equal(page_arr_size, 0);
+		assert_non_null(page_arr);
+
+		/* avoid complicated requirement, dram_size must be aligned to smallest page */
+		assert_int_equal((dram_size % page_arr[0]), 0);
+
+		arr_size = dram_size / page_arr[0];
+		assert_true(arr_size <= INT_MAX);
+		device_addr_arr_size = (int)arr_size;
+		device_addr_arr = hlthunk_malloc(arr_size * sizeof(uint64_t));
+		assert_non_null(device_addr_arr);
+
+		hlthunk_free(page_arr);
+		rc = hltests_allocate_device_mem_mix_page_size(fd, dram_size,
+					device_addr_arr, device_addr_arr_size, &actual_arr_size);
+
+		assert_int_equal(rc, 0);
+		assert_int_not_equal(actual_arr_size, 0);
+
+		dram_ptr = (void *)(device_addr_arr[0]);
+	} else {
+		dram_ptr = hltests_allocate_device_mem(fd, dram_size, 0, CONTIGUOUS);
+	}
+
 	assert_non_null(dram_ptr);
 	dram_addr = (uint64_t) (uintptr_t) dram_ptr;
 	dram_addr_end = dram_addr + dram_size;
@@ -161,16 +335,21 @@ VOID dma_entire_dram_random(void **state, uint64_t zone_size, uint64_t dma_size)
 	 * we limit offset within the zone to make sure DMA does not overflows
 	 * outside zone's boundaries
 	 */
-	max_zone_offset = cfg.zone_size - cfg.dma_size;
+	max_zone_offset = u32_safe(cfg.zone_size - cfg.dma_size);
 
 	i = 0;
 	while (dram_addr < (dram_addr_end - cfg.dma_size)) {
 		buf[0] = hltests_allocate_host_mem(fd, cfg.dma_size, NOT_HUGE_MAP);
 		assert_non_null(buf[0]);
-		hltests_fill_rand_values(buf[0], cfg.dma_size);
+		if (dbg_h9_mismatch)
+			hltests_fill_addr_chunk(buf[0], u32_safe(cfg.dma_size),
+						dram_addr, i);
+		else
+			hltests_fill_rand_values(buf[0], cfg.dma_size);
 		device_va[0] = hltests_get_device_va_for_host_ptr(fd, buf[0]);
 
-		buf[1] = hltests_allocate_host_mem(fd, cfg.dma_size, NOT_HUGE_MAP);
+		buf[1] = hltests_allocate_host_mem(fd, u32_safe(cfg.dma_size),
+						   NOT_HUGE_MAP);
 		assert_non_null(buf[1]);
 		memset(buf[1], 0, cfg.dma_size);
 		device_va[1] = hltests_get_device_va_for_host_ptr(fd, buf[1]);
@@ -211,76 +390,19 @@ VOID dma_entire_dram_random(void **state, uint64_t zone_size, uint64_t dma_size)
 			hltests_get_cur_seed());
 	}
 
-	dma_down_qid = hltests_get_dma_down_qid(fd, STREAM0);
-	dma_up_qid = hltests_get_dma_up_qid(fd, STREAM0);
+	vec_len = u32_safe(kv_size(array));
 
-	vec_len = kv_size(array);
-
-	if (split_cs)
-		vec_len = vec_len >> 1;
-
-	packets_size = hltests_get_max_pkt_size(fd, MB_TRUE, EB_FALSE, dma_down_qid) * vec_len;
-	packets_size += hltests_get_cq_patch_size(fd, dma_down_qid);
-
-	/* DMA down */
-	cb_size[0] = 0;
-	cb[0] = hltests_create_cb(fd, packets_size, EXTERNAL, 0);
-	assert_non_null(cb[0]);
-
-	if (split_cs) {
-		cb_size[1] = 0;
-		cb[1] = hltests_create_cb(fd, packets_size, EXTERNAL, 0);
-		assert_non_null(cb[1]);
-	}
-
-	for (i = 0 ; i < vec_len ; i++) {
-		chunk = kv_A(array, i);
-		memset(&pkt_info, 0, sizeof(pkt_info));
-		pkt_info.qid = dma_down_qid;
-		pkt_info.eb = EB_FALSE;
-		pkt_info.mb = MB_TRUE;
-		pkt_info.dma.src_addr = chunk.input_device_va;
-		pkt_info.dma.dst_addr = (uint64_t) (uintptr_t) chunk.dram_addr;
-		pkt_info.dma.size = cfg.dma_size;
-		pkt_info.dma.dma_dir = DMA_DIR_HOST_TO_DRAM;
-		cb_size[0] = hltests_add_dma_pkt(fd, cb[0], cb_size[0], &pkt_info);
-	}
-
-	for (i = vec_len ; (i < vec_len * 2) && split_cs ; i++) {
-		chunk = kv_A(array, i);
-		memset(&pkt_info, 0, sizeof(pkt_info));
-		pkt_info.qid = dma_down_qid;
-		pkt_info.eb = EB_FALSE;
-		pkt_info.mb = MB_TRUE;
-		pkt_info.dma.src_addr = chunk.input_device_va;
-		pkt_info.dma.dst_addr = (uint64_t) (uintptr_t) chunk.dram_addr;
-		pkt_info.dma.size = cfg.dma_size;
-		pkt_info.dma.dma_dir = DMA_DIR_HOST_TO_DRAM;
-		cb_size[1] = hltests_add_dma_pkt(fd, cb[1], cb_size[1], &pkt_info);
-	}
-
-	execute_arr[0].cb_ptr = cb[0];
-	execute_arr[0].cb_size = cb_size[0];
-	execute_arr[0].queue_index = dma_down_qid;
-
-	if (split_cs) {
-		execute_arr[1].cb_ptr = cb[1];
-		execute_arr[1].cb_size = cb_size[1];
-		execute_arr[1].queue_index = dma_down_qid;
-	}
-
-	if (monitor_dma) {
-		mon_dma.fd = fd;
-		mon_dma.poll_interval_sec = 30;
-	}
+	/* build the DOWN/UP DMA CBs */
+	prepare_cb_for_dma_engines(fd, dma_size, &array, cb, cb_size, execute_arr,
+						&dma_down_qid, &dma_up_qid);
 
 	if (verbose) {
-		print_with_ts_and_flush("DMA down...\n");
+		print_with_ts_and_flush("DMA down/up...\n");
 		clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
 	}
 
 	if (is_pldm || hltests_is_simulator(fd)) {
-		copy_size_mb = (kv_size(array) * cfg.dma_size) / 1024 / 1024;
+		copy_size_mb = (kv_size(array) * cfg.dma_size) / SZ_1M;
 		if (is_pldm)
 			timeout_us = copy_size_mb * DMA_ENTIRE_DRAM_PLDM_TIMEOUT_USEC_PER_MB;
 		else
@@ -289,137 +411,37 @@ VOID dma_entire_dram_random(void **state, uint64_t zone_size, uint64_t dma_size)
 		if (verbose)
 			print_and_flush("timeout: %lu seconds.\n", timeout_us / 1000000);
 
-		rc = hltests_submit_cs_timeout(fd, NULL, 0, execute_arr,
-						split_cs ? 2 : 1, 0, timeout_us / 1000000, &seq);
+		assert_true((timeout_us / 1000000) <= UINT32_MAX);
+
+		rc = hltests_submit_cs_timeout(fd, NULL, 0, execute_arr, 2, 0,
+						(uint32_t)(timeout_us / 1000000), &seq);
 		assert_int_equal(rc, 0);
 
 		if (monitor_dma) {
-			mon_dma.qid = dma_down_qid;
-			hltests_monitor_dma_start(&mon_dma);
+			hltests_monitor_dma_start(&mon_dma[0], fd, dma_down_qid, poll_interval_sec);
+			hltests_monitor_dma_start(&mon_dma[1], fd, dma_up_qid, poll_interval_sec);
 		}
 
 		rc = hltests_wait_for_cs(fd, seq, timeout_us);
-	} else {
-		rc = hltests_submit_cs(fd, NULL, 0, execute_arr, split_cs ? 2 : 1, 0, &seq);
-		assert_int_equal(rc, 0);
-		rc = hltests_wait_for_cs_until_not_busy(fd, seq);
-	}
-
-	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
-
-	if (monitor_dma)
-		hltests_monitor_dma_stop(&mon_dma);
-
-	if (verbose) {
-		clock_gettime(CLOCK_MONOTONIC_RAW, &end);
-		print_with_ts_and_flush("DMA down took %u seconds.\n",
-			(unsigned int) get_timediff_sec(&begin, &end));
-	}
-
-	rc = hltests_destroy_cb(fd, cb[0]);
-	assert_int_equal(rc, 0);
-
-	if (split_cs) {
-		rc = hltests_destroy_cb(fd, cb[1]);
-		assert_int_equal(rc, 0);
-	}
-
-	/* DMA up */
-	cb_size[0] = 0;
-	cb[0] = hltests_create_cb(fd, packets_size, EXTERNAL, 0);
-	assert_non_null(cb[0]);
-
-	if (split_cs) {
-		cb_size[1] = 0;
-		cb[1] = hltests_create_cb(fd, packets_size, EXTERNAL, 0);
-		assert_non_null(cb[1]);
-	}
-
-	for (i = 0 ; i < vec_len ; i++) {
-		chunk = kv_A(array, i);
-		memset(&pkt_info, 0, sizeof(pkt_info));
-		pkt_info.qid = dma_up_qid;
-		pkt_info.eb = EB_FALSE;
-		pkt_info.mb = MB_TRUE;
-		pkt_info.dma.src_addr = (uint64_t) (uintptr_t) chunk.dram_addr;
-		pkt_info.dma.dst_addr = chunk.output_device_va;
-		pkt_info.dma.size = cfg.dma_size;
-		pkt_info.dma.dma_dir = DMA_DIR_DRAM_TO_HOST;
-		cb_size[0] = hltests_add_dma_pkt(fd, cb[0], cb_size[0], &pkt_info);
-	}
-
-	for (i = vec_len ; (i < vec_len * 2) && split_cs ; i++) {
-		chunk = kv_A(array, i);
-		memset(&pkt_info, 0, sizeof(pkt_info));
-		pkt_info.qid = dma_up_qid;
-		pkt_info.eb = EB_FALSE;
-		pkt_info.mb = MB_TRUE;
-		pkt_info.dma.src_addr = (uint64_t) (uintptr_t) chunk.dram_addr;
-		pkt_info.dma.dst_addr = chunk.output_device_va;
-		pkt_info.dma.size = cfg.dma_size;
-		pkt_info.dma.dma_dir = DMA_DIR_DRAM_TO_HOST;
-		cb_size[1] = hltests_add_dma_pkt(fd, cb[1], cb_size[1], &pkt_info);
-	}
-
-	execute_arr[0].cb_ptr = cb[0];
-	execute_arr[0].cb_size = cb_size[0];
-	execute_arr[0].queue_index = dma_up_qid;
-
-	if (split_cs) {
-		execute_arr[1].cb_ptr = cb[1];
-		execute_arr[1].cb_size = cb_size[1];
-		execute_arr[1].queue_index = dma_up_qid;
-	}
-
-	if (verbose) {
-		print_with_ts_and_flush("DMA up...\n");
-		clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
-	}
-
-	if (is_pldm) {
-		copy_size_mb = (kv_size(array) * cfg.dma_size) / 1024 / 1024;
-		timeout_us = copy_size_mb * DMA_ENTIRE_DRAM_PLDM_TIMEOUT_USEC_PER_MB;
-
-		if (verbose)
-			print_and_flush("timeout: %lu seconds.\n", timeout_us / 1000000);
-
-		rc = hltests_submit_cs_timeout(fd, NULL, 0, execute_arr,
-					split_cs ? 2 : 1, 0, timeout_us / 1000000, &seq);
-		assert_int_equal(rc, 0);
+		assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
 
 		if (monitor_dma) {
-			mon_dma.qid = dma_up_qid;
-			hltests_monitor_dma_start(&mon_dma);
+			hltests_monitor_dma_stop(&mon_dma[0]);
+			hltests_monitor_dma_stop(&mon_dma[1]);
 		}
-		rc = hltests_wait_for_cs(fd, seq, timeout_us);
 	} else {
-		rc = hltests_submit_cs(fd, NULL, 0, execute_arr,
-					split_cs ? 2 : 1, 0, &seq);
+		rc = hltests_submit_cs(fd, NULL, 0, execute_arr, 2, 0, &seq);
 		assert_int_equal(rc, 0);
 		rc = hltests_wait_for_cs_until_not_busy(fd, seq);
+		assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
 	}
-
-	assert_int_equal(rc, HL_WAIT_CS_STATUS_COMPLETED);
-
-	if (monitor_dma)
-		hltests_monitor_dma_stop(&mon_dma);
 
 	if (verbose) {
 		clock_gettime(CLOCK_MONOTONIC_RAW, &end);
-		print_with_ts_and_flush("DMA up took %u seconds.\n",
+
+		print_with_ts_and_flush("DMA took %u sec.\n",
 			(unsigned int) get_timediff_sec(&begin, &end));
 	}
-
-	rc = hltests_destroy_cb(fd, cb[0]);
-	assert_int_equal(rc, 0);
-
-	if (split_cs) {
-		rc = hltests_destroy_cb(fd, cb[1]);
-		assert_int_equal(rc, 0);
-	}
-
-	if (split_cs)
-		vec_len = vec_len * 2;
 
 	/* compare host memories */
 	if (verbose) {
@@ -428,10 +450,14 @@ VOID dma_entire_dram_random(void **state, uint64_t zone_size, uint64_t dma_size)
 	}
 
 	for (i = 0 ; i < vec_len ; i++) {
+		int ret;
+		uint64_t mismatch_off;
+
 		chunk = kv_A(array, i);
-		rc = hltests_mem_compare(chunk.input, chunk.output,
-						cfg.dma_size);
-		if (rc && verbose)
+		ret = hltests_mem_compare_offset(chunk.input, chunk.output, cfg.dma_size,
+							&mismatch_off);
+		rc |= ret;
+		if (ret && verbose) {
 			print_and_flush("compare failed in chunk %d/%u.\n"
 				"chunk.dram_addr: 0x%" PRIX64 "\n"
 				"chunk.input_device_va: 0x%" PRIX64 "\n"
@@ -440,8 +466,21 @@ VOID dma_entire_dram_random(void **state, uint64_t zone_size, uint64_t dma_size)
 				chunk.dram_addr, chunk.input_device_va,
 				chunk.output_device_va, chunk.input, chunk.output);
 
-		assert_int_equal(rc, 0);
+			if (debugfs_opened)
+				entire_dram_dump_mismatch(tests_state, chunk.input, chunk.dram_addr,
+								mismatch_off);
+		}
+
+		if (!dbg_h9_mismatch)
+			assert_int_equal(rc, 0);
 	}
+
+	/*
+	 * TODO: remove once when dbg_h9_mismatch is resolved.
+	 * a mismatch occurs dump all chunks to get a better view on the issue.
+	 */
+	if (dbg_h9_mismatch)
+		assert_int_equal(rc, 0);
 
 	/* cleanup */
 	if (verbose) {
@@ -449,6 +488,11 @@ VOID dma_entire_dram_random(void **state, uint64_t zone_size, uint64_t dma_size)
 		print_and_flush("comparison took %u seconds.\n",
 			(unsigned int) get_timediff_sec(&begin, &end));
 		clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
+	}
+
+	for (i = 0 ; i < 2 ; i++) {
+		rc = hltests_destroy_cb(fd, cb[i]);
+		assert_int_equal(rc, 0);
 	}
 
 	for (i = 0 ; i < vec_len ; i++) {
@@ -466,8 +510,15 @@ VOID dma_entire_dram_random(void **state, uint64_t zone_size, uint64_t dma_size)
 				(unsigned int) get_timediff_sec(&begin, &end));
 	}
 
-	rc = hltests_free_device_mem(fd, dram_ptr);
-	assert_int_equal(rc, 0);
+	if (mix_pages_alloc) {
+		rc = hltests_free_device_mem_mix_page_size(fd, device_addr_arr, actual_arr_size);
+		assert_int_equal(rc, 0);
+
+		hlthunk_free(device_addr_arr);
+	} else {
+		rc = hltests_free_device_mem(fd, dram_ptr);
+		assert_int_equal(rc, 0);
+	}
 
 	kv_destroy(array);
 
@@ -476,35 +527,26 @@ VOID dma_entire_dram_random(void **state, uint64_t zone_size, uint64_t dma_size)
 
 VOID test_dma_entire_dram_random_256KB(void **state)
 {
-	if (!hltests_get_parser_run_disabled_tests()) {
-		printf("This test needs to be run with -d flag\n");
+	if (!hltests_get_parser_run_disabled_tests())
 		skip();
-	}
 
-	END_TEST_FUNC(dma_entire_dram_random(state,
-					16 * 1024 * 1024, 256 * 1024));
+	END_TEST_FUNC(dma_entire_dram_random(state, SZ_16M, SZ_256K));
 }
 
 VOID test_dma_entire_dram_random_512KB(void **state)
 {
-	if (!hltests_get_parser_run_disabled_tests()) {
-		printf("This test needs to be run with -d flag\n");
+	if (!hltests_get_parser_run_disabled_tests())
 		skip();
-	}
 
-	END_TEST_FUNC(dma_entire_dram_random(state,
-					16 * 1024 * 1024, 512 * 1024));
+	END_TEST_FUNC(dma_entire_dram_random(state, SZ_16M, SZ_512K));
 }
 
 VOID test_dma_entire_dram_random_1MB(void **state)
 {
-	if (!hltests_get_parser_run_disabled_tests()) {
-		printf("This test needs to be run with -d flag\n");
+	if (!hltests_get_parser_run_disabled_tests())
 		skip();
-	}
 
-	END_TEST_FUNC(dma_entire_dram_random(state,
-					16 * 1024 * 1024, 1 * 1024 * 1024));
+	END_TEST_FUNC(dma_entire_dram_random(state, SZ_16M, SZ_1M));
 }
 
 VOID test_dma_entire_dram_random_2MB(void **state)
@@ -512,119 +554,104 @@ VOID test_dma_entire_dram_random_2MB(void **state)
 	struct hltests_state *tests_state = (struct hltests_state *) *state;
 	int fd = tests_state->fd;
 
-	if (hltests_is_pldm(fd) && !hltests_get_parser_run_disabled_tests()) {
-		printf("This test needs to be run with -d flag on pldm\n");
+	if (hltests_is_pldm(fd) && !hltests_get_parser_run_disabled_tests())
 		skip();
-	}
 
-	/* TODO: enable once SW-92827 is resolved */
-	if (!hltests_is_legacy_mode_enabled(fd)) {
-		printf("This test is temporarily disabled in non-legacy mode\n");
-		skip();
-	}
-
-	/* TODO: enable once SW-93827 is resolved */
-	if (hltests_is_gaudi2(fd) && hltests_is_simulator(fd)) {
-		printf("This test is temporarily disabled for gaudi2 simulator\n");
-		skip();
-	}
-
-	END_TEST_FUNC(dma_entire_dram_random(state,
-					16 * 1024 * 1024, 2 * 1024 * 1024));
+	END_TEST_FUNC(dma_entire_dram_random(state, SZ_16M, SZ_2M));
 }
 
-DMA_TEST_INC_DRAM(test_dma_dram_size_1KB, state, 1 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_2KB, state, 2 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_3KB, state, 3 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_4KB, state, 4 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_5KB, state, 5 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_6KB, state, 6 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_7KB, state, 7 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_8KB, state, 8 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_9KB, state, 9 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_10KB, state, 10 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_11KB, state, 11 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_12KB, state, 12 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_13KB, state, 13 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_14KB, state, 14 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_15KB, state, 15 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_16KB, state, 16 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_20KB, state, 20 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_24KB, state, 24 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_28KB, state, 28 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_32KB, state, 32 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_36KB, state, 36 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_40KB, state, 40 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_44KB, state, 44 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_48KB, state, 48 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_52KB, state, 52 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_56KB, state, 56 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_60KB, state, 60 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_64KB, state, 64 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_96KB, state, 96 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_128KB, state, 128 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_160KB, state, 160 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_192KB, state, 192 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_224KB, state, 224 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_256KB, state, 256 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_288KB, state, 288 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_320KB, state, 320 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_352KB, state, 352 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_384KB, state, 384 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_416KB, state, 416 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_448KB, state, 448 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_480KB, state, 480 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_512KB, state, 512 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_640KB, state, 640 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_768KB, state, 768 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_896KB, state, 896 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_1024KB, state, 1024 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_1152KB, state, 1152 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_1280KB, state, 1280 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_1408KB, state, 1408 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_1536KB, state, 1536 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_1664KB, state, 1664 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_1792KB, state, 1792 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_1920KB, state, 1920 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_2MB, state, 2 * 1024 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_3MB, state, 3 * 1024 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_4MB, state, 4 * 1024 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_5MB, state, 5 * 1024 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_6MB, state, 6 * 1024 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_7MB, state, 7 * 1024 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_8MB, state, 8 * 1024 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_9MB, state, 9 * 1024 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_10MB, state, 10 * 1024 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_11MB, state, 11 * 1024 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_12MB, state, 12 * 1024 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_13MB, state, 13 * 1024 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_14MB, state, 14 * 1024 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_15MB, state, 15 * 1024 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_16MB, state, 16 * 1024 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_20MB, state, 20 * 1024 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_24MB, state, 24 * 1024 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_28MB, state, 28 * 1024 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_32MB, state, 32 * 1024 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_36MB, state, 36 * 1024 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_40MB, state, 40 * 1024 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_44MB, state, 44 * 1024 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_48MB, state, 48 * 1024 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_64MB, state, 64 * 1024 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_128MB, state, 128 * 1024 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_192MB, state, 192 * 1024 * 1024, 0)
-DMA_TEST_INC_DRAM(test_dma_dram_size_256MB, state, 256 * 1024 * 1024, 0)
-DMA_TEST_INC_DRAM_FRAG(test_dma_dram_frag_size_64MB, state, 64 * 1024 * 1024)
-DMA_TEST_INC_DRAM_FRAG(test_dma_dram_frag_size_128MB, state, 128 * 1024 * 1024)
-DMA_TEST_INC_DRAM_FRAG(test_dma_dram_frag_size_192MB, state, 192 * 1024 * 1024)
-DMA_TEST_INC_DRAM_FRAG(test_dma_dram_frag_size_256MB, state, 256 * 1024 * 1024)
-DMA_TEST_INC_DRAM_FRAG(test_dma_dram_frag_size_512MB, state, 512 * 1024 * 1024)
-DMA_TEST_INC_DRAM_FRAG(test_dma_dram_frag_size_1GB, state, 1024 * 1024 * 1024)
-DMA_TEST_INC_DRAM_HIGH(test_dma_dram_high_size_64MB, state, 64 * 1024 * 1024)
-DMA_TEST_INC_DRAM_HIGH(test_dma_dram_high_size_128MB, state, 128 * 1024 * 1024)
-DMA_TEST_INC_DRAM_HIGH(test_dma_dram_high_size_192MB, state, 192 * 1024 * 1024)
-DMA_TEST_INC_DRAM_HIGH(test_dma_dram_high_size_256MB, state, 256 * 1024 * 1024)
-DMA_TEST_INC_DRAM_HIGH(test_dma_dram_high_size_512MB, state, 512 * 1024 * 1024)
-DMA_TEST_INC_DRAM_HIGH(test_dma_dram_high_size_1GB, state, 1024 * 1024 * 1024)
+DMA_TEST_INC_DRAM(test_dma_dram_size_1KB, state, 1 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_2KB, state, 2 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_3KB, state, 3 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_4KB, state, 4 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_5KB, state, 5 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_6KB, state, 6 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_7KB, state, 7 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_8KB, state, 8 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_9KB, state, 9 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_10KB, state, 10 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_11KB, state, 11 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_12KB, state, 12 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_13KB, state, 13 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_14KB, state, 14 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_15KB, state, 15 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_16KB, state, 16 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_20KB, state, 20 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_24KB, state, 24 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_28KB, state, 28 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_32KB, state, 32 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_36KB, state, 36 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_40KB, state, 40 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_44KB, state, 44 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_48KB, state, 48 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_52KB, state, 52 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_56KB, state, 56 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_60KB, state, 60 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_64KB, state, 64 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_96KB, state, 96 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_128KB, state, 128 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_160KB, state, 160 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_192KB, state, 192 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_224KB, state, 224 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_256KB, state, 256 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_288KB, state, 288 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_320KB, state, 320 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_352KB, state, 352 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_384KB, state, 384 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_416KB, state, 416 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_448KB, state, 448 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_480KB, state, 480 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_512KB, state, 512 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_640KB, state, 640 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_768KB, state, 768 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_896KB, state, 896 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_1024KB, state, 1024 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_1152KB, state, 1152 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_1280KB, state, 1280 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_1408KB, state, 1408 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_1536KB, state, 1536 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_1664KB, state, 1664 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_1792KB, state, 1792 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_1920KB, state, 1920 * SZ_1K)
+DMA_TEST_INC_DRAM(test_dma_dram_size_2MB, state, 2 * SZ_1M)
+DMA_TEST_INC_DRAM(test_dma_dram_size_3MB, state, 3 * SZ_1M)
+DMA_TEST_INC_DRAM(test_dma_dram_size_4MB, state, 4 * SZ_1M)
+DMA_TEST_INC_DRAM(test_dma_dram_size_5MB, state, 5 * SZ_1M)
+DMA_TEST_INC_DRAM(test_dma_dram_size_6MB, state, 6 * SZ_1M)
+DMA_TEST_INC_DRAM(test_dma_dram_size_7MB, state, 7 * SZ_1M)
+DMA_TEST_INC_DRAM(test_dma_dram_size_8MB, state, 8 * SZ_1M)
+DMA_TEST_INC_DRAM(test_dma_dram_size_9MB, state, 9 * SZ_1M)
+DMA_TEST_INC_DRAM(test_dma_dram_size_10MB, state, 10 * SZ_1M)
+DMA_TEST_INC_DRAM(test_dma_dram_size_11MB, state, 11 * SZ_1M)
+DMA_TEST_INC_DRAM(test_dma_dram_size_12MB, state, 12 * SZ_1M)
+DMA_TEST_INC_DRAM(test_dma_dram_size_13MB, state, 13 * SZ_1M)
+DMA_TEST_INC_DRAM(test_dma_dram_size_14MB, state, 14 * SZ_1M)
+DMA_TEST_INC_DRAM(test_dma_dram_size_15MB, state, 15 * SZ_1M)
+DMA_TEST_INC_DRAM(test_dma_dram_size_16MB, state, 16 * SZ_1M)
+DMA_TEST_INC_DRAM(test_dma_dram_size_20MB, state, 20 * SZ_1M)
+DMA_TEST_INC_DRAM(test_dma_dram_size_24MB, state, 24 * SZ_1M)
+DMA_TEST_INC_DRAM(test_dma_dram_size_28MB, state, 28 * SZ_1M)
+DMA_TEST_INC_DRAM(test_dma_dram_size_32MB, state, 32 * SZ_1M)
+DMA_TEST_INC_DRAM(test_dma_dram_size_36MB, state, 36 * SZ_1M)
+DMA_TEST_INC_DRAM(test_dma_dram_size_40MB, state, 40 * SZ_1M)
+DMA_TEST_INC_DRAM(test_dma_dram_size_44MB, state, 44 * SZ_1M)
+DMA_TEST_INC_DRAM(test_dma_dram_size_48MB, state, 48 * SZ_1M)
+DMA_TEST_INC_DRAM(test_dma_dram_size_64MB, state, 64 * SZ_1M)
+DMA_TEST_INC_DRAM(test_dma_dram_size_128MB, state, 128 * SZ_1M)
+DMA_TEST_INC_DRAM(test_dma_dram_size_192MB, state, 192 * SZ_1M)
+DMA_TEST_INC_DRAM(test_dma_dram_size_256MB, state, 256 * SZ_1M)
+DMA_TEST_INC_DRAM_FRAG(test_dma_dram_frag_size_64MB, state, 64 * SZ_1M)
+DMA_TEST_INC_DRAM_FRAG(test_dma_dram_frag_size_128MB, state, 128 * SZ_1M)
+DMA_TEST_INC_DRAM_FRAG(test_dma_dram_frag_size_192MB, state, 192 * SZ_1M)
+DMA_TEST_INC_DRAM_FRAG(test_dma_dram_frag_size_256MB, state, 256 * SZ_1M)
+DMA_TEST_INC_DRAM_FRAG(test_dma_dram_frag_size_512MB, state, 512 * SZ_1M)
+DMA_TEST_INC_DRAM_FRAG(test_dma_dram_frag_size_1GB, state, 1024 * SZ_1M)
+DMA_TEST_INC_DRAM_HIGH(test_dma_dram_high_size_64MB, state, 64 * SZ_1M)
+DMA_TEST_INC_DRAM_HIGH(test_dma_dram_high_size_128MB, state, 128 * SZ_1M)
+DMA_TEST_INC_DRAM_HIGH(test_dma_dram_high_size_192MB, state, 192 * SZ_1M)
+DMA_TEST_INC_DRAM_HIGH(test_dma_dram_high_size_256MB, state, 256 * SZ_1M)
+DMA_TEST_INC_DRAM_HIGH(test_dma_dram_high_size_512MB, state, 512 * SZ_1M)
+DMA_TEST_INC_DRAM_HIGH(test_dma_dram_high_size_1GB, state, SZ_1G)
 
 #ifndef HLTESTS_LIB_MODE
 
@@ -830,11 +857,12 @@ static const char *const usage[] = {
 
 int main(int argc, const char **argv)
 {
-	int num_tests = sizeof(dma_dram_tests) / sizeof((dma_dram_tests)[0]);
+	size_t num_tests = sizeof(dma_dram_tests) / sizeof((dma_dram_tests)[0]);
 
 	hltests_parser(argc, argv, usage, HLTEST_DEVICE_MASK_DONT_CARE,
-			dma_dram_tests, num_tests);
-
+			dma_dram_tests, (int)num_tests);
+	hltests_set_capabilities_mask(CAP_ARC_FW_LOAD_SCHED_MASK |
+				CAP_ARC_FW_LOAD_PDMA_MASK);
 	return hltests_run_group_tests("dma_dram", dma_dram_tests, num_tests,
 					hltests_setup, hltests_teardown);
 }
